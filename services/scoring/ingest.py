@@ -21,6 +21,7 @@ Usage (daily cron cadence, polite: page_limit=1 per portal):
 
 import importlib
 import json
+import math
 import os
 import statistics
 import sys
@@ -232,9 +233,14 @@ def score(rows: List[dict], cache_dir: Optional[str] = None, resolver=None) -> L
             r["reasons"].insert(
                 0, TYPE_REASON.get(r["deal_type"], TYPE_REASON["unknown"])
             )
+        geo = (resolver or (lambda a: livability.resolve(a, cache_dir)))(
+            r.get("address", "")
+        )
+        if geo:
+            r["lat"], r["lon"] = geo.get("lat"), geo.get("lon")
         liv, liv_reasons = livability.enrich_row(
             r.get("address", ""), r.get("county", ""), cache_dir,
-            resolver=resolver,
+            resolver=resolver, geo=geo,
         )
         r["score_livability"] = liv
         r["reasons"].extend(liv_reasons)
@@ -306,6 +312,77 @@ def connect():
         return None
 
 
+CELL_DEGREES = 0.25  # mirrors web binListingsToHexes default
+
+
+def heat_level(score: float) -> str:
+    if score >= 70:
+        return "good"
+    if score >= 40:
+        return "mid"
+    return "bad"
+
+
+def build_cells(rows: List[dict]) -> List[dict]:
+    """Aggregate geocoded rows into grid cells (avg livability + count)."""
+    acc: Dict[str, dict] = {}
+    for r in rows:
+        lon, lat = r.get("lon"), r.get("lat")
+        liv = r.get("score_livability")
+        if not isinstance(lon, (int, float)) or not isinstance(lat, (int, float)):
+            continue
+        if not isinstance(liv, (int, float)):
+            continue
+        ix, iy = math.floor(lon / CELL_DEGREES), math.floor(lat / CELL_DEGREES)
+        key = "cell-%d:%d" % (ix, iy)
+        cell = acc.setdefault(key, {"sum": 0.0, "n": 0, "ix": ix, "iy": iy})
+        cell["sum"] += liv
+        cell["n"] += 1
+    out = []
+    for key, c in acc.items():
+        avg = round(c["sum"] / c["n"], 1)
+        out.append(
+            {
+                "h3": key,
+                "score_goodness": int(round(avg)),
+                "level": heat_level(avg),
+                "lon": (c["ix"] + 0.5) * CELL_DEGREES,
+                "lat": (c["iy"] + 0.5) * CELL_DEGREES,
+                "count": c["n"],
+            }
+        )
+    return out
+
+
+UPSERT_CELL_SQL = """
+INSERT INTO area_scores (h3, score_goodness, level, geom)
+VALUES (%(h3)s, %(score_goodness)s, %(level)s,
+  ST_MakeEnvelope(%(minlon)s, %(minlat)s, %(maxlon)s, %(maxlat)s, 4326))
+ON CONFLICT (h3) DO UPDATE SET
+  score_goodness = EXCLUDED.score_goodness, level = EXCLUDED.level,
+  geom = EXCLUDED.geom
+"""
+
+
+def upsert_cells(conn, cells: List[dict]) -> int:
+    cur = conn.cursor()
+    for c in cells:
+        cur.execute(
+            UPSERT_CELL_SQL,
+            {
+                "h3": c["h3"],
+                "score_goodness": c["score_goodness"],
+                "level": c["level"],
+                "minlon": c["lon"] - CELL_DEGREES / 2,
+                "minlat": c["lat"] - CELL_DEGREES / 2,
+                "maxlon": c["lon"] + CELL_DEGREES / 2,
+                "maxlat": c["lat"] + CELL_DEGREES / 2,
+            },
+        )
+    conn.commit()
+    return len(cells)
+
+
 def run(cache_dir: Optional[str] = None) -> dict:
     """Scrape enabled portals, dedup, enrich, upsert. Returns a report."""
     report: Dict[str, dict] = {}
@@ -332,6 +409,8 @@ def run(cache_dir: Optional[str] = None) -> dict:
     priced = [r for r in enriched if r.get("price")]
     conn = connect()
     stored = upsert(conn, priced) if conn is not None else 0
+    cells = build_cells(priced)
+    ncells = upsert_cells(conn, cells) if conn is not None else 0
     if conn is not None:
         conn.close()
     report["_total"] = {
@@ -339,6 +418,7 @@ def run(cache_dir: Optional[str] = None) -> dict:
         "unique": len(merged),
         "skipped_no_price": len(enriched) - len(priced),
         "stored": stored,
+        "cells": ncells,
         "db": conn is not None,
     }
     return report

@@ -129,6 +129,73 @@ def fetch_html(url: str, params: dict, headers: dict, timeout: float = 20.0) -> 
     return resp.text
 
 
+CHROME_BINARY_CANDIDATES = (
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "/usr/bin/google-chrome",
+    "/usr/bin/chromium",
+    "/usr/bin/chromium-browser",
+    "/snap/bin/chromium",
+)
+
+
+def find_chrome_binary() -> Optional[str]:
+    """Path to a real Chrome/Chromium engine, or None when not installed."""
+    import shutil
+
+    for cand in CHROME_BINARY_CANDIDATES:
+        if os.path.isfile(cand) and os.access(cand, os.X_OK):
+            return cand
+    for name in ("google-chrome", "chromium", "chromium-browser"):
+        found = shutil.which(name)
+        if found:
+            return found
+    return None
+
+
+def fetch_html_via_chrome(url: str, timeout: float = 280.0) -> str:
+    """Render a page with genuine headless Chrome and return the DOM HTML.
+
+    Some portals (kv.ee) gate on the TLS fingerprint, which scripted HTTP
+    clients cannot present; a real browser engine passes with no spoofing
+    and no challenge-solving. Polite use only: callers keep page_limit=1,
+    daily-cron cadence, and the 24h file cache. Raises RuntimeError when
+    no Chrome engine is installed.
+    """
+    import subprocess
+    import tempfile
+
+    binary = find_chrome_binary()
+    if not binary:
+        raise RuntimeError("no Chrome/Chromium engine installed for fallback fetch")
+    # Fresh profile per call: a reused dir can block on a stale Singleton lock
+    # and serialize concurrent runs.
+    profile = tempfile.mkdtemp(prefix="hf-chrome-")
+    try:
+        proc = subprocess.run(
+            [
+                binary,
+                "--headless=new",
+                "--disable-gpu",
+                "--no-first-run",
+                "--user-data-dir=%s" % profile,
+                "--virtual-time-budget=15000",
+                "--dump-dom",
+                url,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+    finally:
+        import shutil
+
+        shutil.rmtree(profile, ignore_errors=True)
+    html = proc.stdout or ""
+    if "<html" not in html.lower():
+        raise RuntimeError("headless Chrome returned no document for %s" % url)
+    return html
+
+
 def to_int_eur(raw: Optional[str]) -> Optional[int]:
     digits = re.sub(r"\D", "", raw or "")
     return int(digits) if digits else None

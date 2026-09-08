@@ -44,7 +44,7 @@ function HomeInner() {
       <h1>Kodud Eestis — parimast halvimani</h1>
       <SortBar value={sort} onChange={setSort} count={listings?.length ?? MOCK_LISTINGS.length} />
       <TradeoffHint combinedTop={top.combined} livabilityTop={top.livability} dealTop={top.deal} />
-      <ListingMap />
+      <ListingMap listings={listings ?? undefined} />
       {listings === null ? (
         <ol aria-busy="true" aria-label="Loend laeb">
           {[0, 1, 2].map((i) => (

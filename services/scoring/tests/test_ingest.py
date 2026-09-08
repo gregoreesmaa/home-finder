@@ -196,6 +196,47 @@ def test_enrich_discount_against_county_median():
     assert by_id["a"]["county"] == "Harju maakond"
 
 
+def test_score_stashes_geocode_coords_on_rows():
+    geo = {"lat": 59.4372, "lon": 24.7536, "pois": []}
+    (r,) = ingest.enrich(
+        [row(id="a", address="A 1, Tallinn", price=200000, area_m2=50.0)],
+        resolver=lambda address: geo,
+    )
+    assert r["lat"] == 59.4372
+    assert r["lon"] == 24.7536
+
+
+def test_build_cells_averages_livability_per_grid():
+    cells = ingest.build_cells(
+        [
+            {"lon": 24.76, "lat": 59.44, "score_livability": 80},
+            {"lon": 24.78, "lat": 59.45, "score_livability": 90},
+            {"lon": 26.72, "lat": 58.37, "score_livability": 50},
+            {"lon": None, "lat": 59.44, "score_livability": 80},
+        ]
+    )
+    assert len(cells) == 2
+    tallinn = next(c for c in cells if c["lon"] < 25.0)
+    assert tallinn["score_goodness"] == 85
+    assert tallinn["level"] == "good"
+    assert tallinn["count"] == 2
+
+
+def test_upsert_cells_writes_sql_per_cell():
+    conn = FakeConn()
+    n = ingest.upsert_cells(
+        conn,
+        [{"h3": "cell-1:2", "score_goodness": 70, "level": "good",
+          "lon": 25.0, "lat": 58.75, "count": 3}],
+    )
+    assert n == 1
+    sql, params = conn.cur.calls[0]
+    assert "INSERT INTO area_scores" in sql
+    assert params["h3"] == "cell-1:2"
+    assert params["level"] == "good"
+    assert conn.committed
+
+
 def test_enrich_scores_livability_with_injected_geo():
     geo = {"lat": 59.4372, "lon": 24.7536, "pois": [
         {"kind": "school", "lat": 59.4380, "lon": 24.7550},
@@ -282,6 +323,7 @@ def test_run_without_db_reports_not_stored(monkeypatch):
         "unique": 0,
         "skipped_no_price": 0,
         "stored": 0,
+        "cells": 0,
         "db": False,
     }
 

@@ -366,9 +366,15 @@ def _load_pois(raw: str) -> Optional[List[dict]]:
 
 
 def enrich_row(address: str, county: str, cache_dir: Optional[str] = None,
-               resolver: Optional[Callable[[str], Optional[dict]]] = None) -> Tuple[int, List[str]]:
-    """(livability, reasons) for one listing. resolver injects fakes in tests."""
-    geo = (resolver or (lambda a: resolve(a, cache_dir)))(address)
+               resolver: Optional[Callable[[str], Optional[dict]]] = None,
+               geo: Optional[dict] = None) -> Tuple[int, List[str]]:
+    """(livability, reasons) for one listing. resolver injects fakes in tests.
+
+    Pass pre-resolved `geo` to avoid resolving twice (ingest stashes the
+    coordinates on the row for the map); otherwise resolves here.
+    """
+    if geo is None:
+        geo = (resolver or (lambda a: resolve(a, cache_dir)))(address)
     origin = (geo["lat"], geo["lon"]) if geo else None
     pois = geo.get("pois") if geo else None
     dims: Dict[str, Optional[int]] = {}

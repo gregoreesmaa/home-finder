@@ -179,6 +179,46 @@ export function hexesFromGeoJSON(fc: unknown): AreaHex[] {
   return out;
 }
 
+/** Where the painted cells came from (shown next to the map, B1/B4). */
+export type HeatSource = "cells" | "listings" | "mock";
+
+export const HEAT_SOURCE_ET: Record<HeatSource, string> = {
+  cells: "piirkonna headus",
+  listings: "nimekirja tihedus",
+  mock: "demo-andmed",
+};
+
+/** Listings carrying coordinates become heat input when cells are not live. */
+export function listingsToPoints(
+  listings: { lon?: number | null; lat?: number | null; score_livability?: number | null }[],
+): ListingPoint[] {
+  const out: ListingPoint[] = [];
+  for (const l of listings) {
+    if (typeof l.lon !== "number" || typeof l.lat !== "number") continue;
+    if (!Number.isFinite(l.lon) || !Number.isFinite(l.lat)) continue;
+    if (typeof l.score_livability !== "number" || !Number.isFinite(l.score_livability)) continue;
+    out.push({ lon: l.lon, lat: l.lat, livability: l.score_livability });
+  }
+  return out;
+}
+
+/**
+ * Pick heat input (B1): live DB cells win; otherwise bin geocoded listings;
+ * mock cells are the last resort. Never returns [] when fallback is non-empty.
+ */
+export function pickHeatInput(
+  cells: AreaHex[],
+  live: boolean,
+  listings: ListingPoint[],
+  fallback: AreaHex[],
+): { hexes: AreaHex[]; source: HeatSource } {
+  if (live && cells.length > 0) return { hexes: cells, source: "cells" };
+  const bins = binListingsToHexes(listings);
+  if (bins.length > 0) return { hexes: bins, source: "listings" };
+  if (cells.length > 0) return { hexes: cells, source: "mock" };
+  return { hexes: fallback, source: "mock" };
+}
+
 /**
  * Normalise any /area-scores payload (AreaHex[] or GeoJSON FeatureCollection)
  * to hexes; fall back to `fallback` (mock) when nothing usable arrives.

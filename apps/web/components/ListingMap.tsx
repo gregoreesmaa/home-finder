@@ -2,15 +2,20 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  HEAT_SOURCE_ET,
   MOCK_HEXES,
+  hexesFromGeoJSON,
   legendBuckets,
+  listingsToPoints,
   nearestHeatPoint,
+  pickHeatInput,
   popupText,
-  resolveHexes,
   toHeatPoints,
   type AreaHex,
   type HeatPoint,
+  type HeatSource,
 } from "../lib/heatmap";
+import type { MockListing } from "../lib/mockListings";
 
 export { MOCK_HEXES };
 
@@ -27,47 +32,89 @@ type Mode = "heatmap" | "hex";
  *
  * Data: GET /area-scores (GeoJSON). With ?mock=1, when no `hexes` prop is
  * given and the API is unreachable, the bundled mock hexes are used.
+ *
+ * Note: deck.gl 9.4 logs "luma.gl: Binding weightsTexture not set" on the
+ * WebGL path. It is a known benign upstream warning (visgl/deck.gl#10483
+ * notes it on their own unchanged baseline) — the heatmap still paints.
  */
 export function ListingMap({
   hexes,
+  listings,
   initialMode = "heatmap",
 }: {
   hexes?: AreaHex[];
+  listings?: MockListing[];
   initialMode?: Mode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<{ getBounds: () => { getWest: () => number; getSouth: () => number; getEast: () => number; getNorth: () => number } } | null>(null);
   const [mode, setMode] = useState<Mode>(initialMode);
   const [remote, setRemote] = useState<AreaHex[] | null>(null);
+  const [liveCells, setLiveCells] = useState(false);
+  const [source, setSource] = useState<HeatSource>("mock");
   const [selected, setSelected] = useState<HeatPoint | null>(null);
 
-  // Fetch live scores unless the caller passes hexes explicitly.
+  const listingPoints = useMemo(() => listingsToPoints(listings ?? []), [listings]);
+
+  // Pick heat input (B1): live DB cells win, else bin geocoded listings,
+  // else the bundled mock. Runs on every cell/listings change.
+  const [picked, setPicked] = useState<AreaHex[]>(MOCK_HEXES);
+  useEffect(() => {
+    if (hexes) {
+      setPicked(hexes);
+      setSource("cells");
+      return;
+    }
+    if (remote === null) {
+      setPicked(MOCK_HEXES);
+      setSource("mock");
+      return;
+    }
+    const p = pickHeatInput(remote, liveCells, listingPoints, MOCK_HEXES);
+    setPicked(p.hexes);
+    setSource(p.source);
+  }, [hexes, remote, liveCells, listingPoints]);
+
+  // Fetch live cells (B3: bbox-aware on move, debounced), unless the caller
+  // passes hexes explicitly or ?mock=1 forces the bundled fallback.
+  // The loader lives in a ref so the map-init effect can call it on moveend.
+  const loadRef = useRef<(bbox?: string) => void>(() => {});
   useEffect(() => {
     if (hexes) return;
     if (
       typeof window !== "undefined" &&
       new URLSearchParams(window.location.search).has("mock")
     ) {
-      setRemote(MOCK_HEXES);
+      setRemote([]);
+      setLiveCells(false);
       return;
     }
     let cancelled = false;
-    fetch(`${SCORING_URL}/area-scores`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((json: unknown) => {
-        if (!cancelled) setRemote(resolveHexes(json, MOCK_HEXES));
-      })
-      .catch(() => {
-        if (!cancelled) setRemote(MOCK_HEXES);
-      });
+    loadRef.current = (bbox?: string) => {
+      const url = bbox
+        ? `${SCORING_URL}/heatmap-cells?bbox=${bbox}`
+        : `${SCORING_URL}/area-scores`;
+      fetch(url)
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+        .then((json: unknown) => {
+          if (cancelled) return;
+          const obj = json as { features?: unknown; live?: unknown };
+          setRemote(hexesFromGeoJSON(obj));
+          setLiveCells(obj?.live === true);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setRemote([]);
+          setLiveCells(false);
+        });
+    };
+    loadRef.current();
     return () => {
       cancelled = true;
     };
   }, [hexes]);
 
-  const points = useMemo(
-    () => toHeatPoints(hexes ?? remote ?? MOCK_HEXES),
-    [hexes, remote],
-  );
+  const points = useMemo(() => toHeatPoints(hexes ?? picked), [hexes, picked]);
   const legend = useMemo(() => legendBuckets(), []);
 
   useEffect(() => {
@@ -126,13 +173,29 @@ export function ListingMap({
         ],
       });
       map.addControl(overlay);
+      mapRef.current = map;
       // Click popup works in both modes: select the nearest hex cell.
       const onClick = (e: { lngLat: { lng: number; lat: number } }) => {
         setSelected(nearestHeatPoint(points, e.lngLat.lng, e.lngLat.lat));
       };
       map.on("click", onClick);
+      // B3: reload cells for the new viewport (debounced in the loader path).
+      let moveTimer: ReturnType<typeof setTimeout> | null = null;
+      const onMove = () => {
+        if (moveTimer) clearTimeout(moveTimer);
+        moveTimer = setTimeout(() => {
+          const b = map.getBounds();
+          loadRef.current(
+            `${b.getWest()},${b.getSouth()},${b.getEast()},${b.getNorth()}`,
+          );
+        }, 600);
+      };
+      map.on("moveend", onMove);
       cleanup = () => {
+        if (moveTimer) clearTimeout(moveTimer);
         map.off("click", onClick);
+        map.off("moveend", onMove);
+        mapRef.current = null;
         map.remove();
       };
     })();
@@ -160,6 +223,10 @@ export function ListingMap({
           Hex
         </button>
       </div>
+      <p aria-live="polite">
+        Andmeallikas: {HEAT_SOURCE_ET[source]} ·{" "}
+        {liveCells && source === "cells" ? "reaalajas" : "demo-andmed"}
+      </p>
       <div
         ref={ref}
         role="application"

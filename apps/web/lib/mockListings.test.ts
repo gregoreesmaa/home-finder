@@ -33,6 +33,12 @@ describe("formatFacts (card facts line, null-tolerant for live rows)", () => {
     ).toBe("285 000 € · – · – · –");
   });
 
+  it("renders a missing price as a dash instead of crashing", () => {
+    expect(
+      plain(formatFacts({ ...base, price: null as unknown as number })),
+    ).toBe("– · 4200 €/m² · 3 tuba · 68 m²");
+  });
+
   it("handles partially missing fields", () => {
     expect(plain(formatFacts({ ...base, rooms: null }))).toContain("–");
     expect(plain(formatFacts({ ...base, rooms: null }))).toContain(
