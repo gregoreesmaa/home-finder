@@ -1,4 +1,4 @@
-"""Regression: uusmaa.ee adapter parses search HTML offline (no network)."""
+"""Regression: uusmaa.ee adapter parses live /pakkumised/ HTML offline (no network)."""
 
 import os
 
@@ -13,15 +13,17 @@ def test_parse_uusmaa_search_fixture():
     with open(FIXTURE, encoding="utf-8") as f:
         rows = parse_search_html(f.read())
     assert len(rows) == 2
-    assert rows[0]["id"] == "uusmaa-452101"
+    assert rows[0]["id"] == "uusmaa-29502"
     assert rows[0]["source"] == "uusmaa.ee"
-    assert rows[0]["source_url"].startswith("https://uusmaa.ee/")
-    assert rows[0]["price"] == 285000
-    assert "Kotzebue" in rows[0]["address"]
+    assert rows[0]["source_url"].startswith("https://uusmaa.ee/pakkumine/29502-")
+    assert rows[0]["price"] == 95000
+    assert "Riia mnt 71" in rows[0]["address"]
     assert rows[0]["rooms"] == 3
-    assert rows[0]["area_m2"] == 68.0
-    assert rows[1]["price"] == 149000
-    assert rows[1]["area_m2"] == 45.5
+    assert rows[0]["area_m2"] == 62.4
+    assert rows[1]["id"] == "uusmaa-29514"
+    assert rows[1]["price"] == 229000
+    assert "Telliskivi 49" in rows[1]["address"]
+    assert rows[1]["area_m2"] == 43.5
 
 
 def test_parse_empty_html_yields_no_rows():
@@ -41,10 +43,10 @@ def test_fetch_and_scrape_use_mocked_http(monkeypatch):
     with open(FIXTURE, encoding="utf-8") as f:
         html = f.read()
     monkeypatch.setattr(uusmaa, "fetch_html", lambda *a, **k: html)
-    assert "452101" in uusmaa.fetch_search_html()
+    assert "29502" in uusmaa.fetch_search_html()
     rows = uusmaa.scrape()
     assert len(rows) == 2
-    assert rows[0]["id"] == "uusmaa-452101"
+    assert rows[0]["id"] == "uusmaa-29502"
 
 
 def test_scrape_serves_second_call_from_cache(monkeypatch, tmp_path):
@@ -70,5 +72,6 @@ def test_scrape_serves_second_call_from_cache(monkeypatch, tmp_path):
 
 def test_adapter_satisfies_contract():
     assert adapter_contract_check(uusmaa) == []
+    assert uusmaa.SEARCH_URL == "https://uusmaa.ee/pakkumised/"
     assert uusmaa.ROBOTS_URL.endswith("/robots.txt")
     assert "home-finder" in uusmaa.HEADERS["User-Agent"]
