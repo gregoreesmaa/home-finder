@@ -17,6 +17,23 @@ from adapters import kv_ee
 URL = os.environ.get("DATABASE_URL")
 
 
+SCHEMA_SQL = """
+CREATE EXTENSION IF NOT EXISTS postgis;
+CREATE TABLE IF NOT EXISTS listings (
+  id TEXT PRIMARY KEY, source TEXT NOT NULL, source_url TEXT NOT NULL,
+  address TEXT NOT NULL, county TEXT NOT NULL, price INTEGER NOT NULL,
+  price_per_m2 INTEGER, rooms NUMERIC, area_m2 NUMERIC,
+  lat DOUBLE PRECISION, lon DOUBLE PRECISION,
+  score_livability INTEGER, discount_pct NUMERIC,
+  reasons JSONB DEFAULT '[]', scraped_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS area_scores (
+  h3 TEXT PRIMARY KEY, score_goodness INTEGER NOT NULL,
+  level TEXT NOT NULL, geom GEOMETRY(Polygon, 4326)
+);
+"""
+
+
 def _db():
     if not URL:
         pytest.skip("DATABASE_URL not set")
@@ -24,6 +41,10 @@ def _db():
         conn = psycopg.connect(URL, connect_timeout=5)
     except Exception:
         pytest.skip("PostGIS unreachable")
+    conn.autocommit = True
+    with conn.cursor() as cur:
+        cur.execute(SCHEMA_SQL)
+    conn.autocommit = False
     return conn
 
 
