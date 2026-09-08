@@ -24,12 +24,13 @@ from pydantic import BaseModel, Field, model_validator
 
 app = FastAPI(title="home-finder scoring")
 
-# The Next.js web UI (http://localhost:3000) reads this API cross-origin
-# from the browser; without these headers every fetch is CORS-blocked
-# (the page then silently falls back to bundled mock data).
+# The Next.js web UI reads this API cross-origin from the browser; without
+# these headers every fetch is CORS-blocked (the page then silently falls
+# back to bundled mock data). Local loopback on any port: production web
+# (:3000), dev server (:3100 in tests), future tooling.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )

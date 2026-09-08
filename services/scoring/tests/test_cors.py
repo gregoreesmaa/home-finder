@@ -34,3 +34,16 @@ def test_preflight_allows_web_origin():
     )
     assert r.status_code == 200, r.text
     assert r.headers.get("access-control-allow-origin") in (WEB_ORIGIN, "*")
+
+
+def test_loopback_any_port_allowed():
+    # Playwright dev server runs on 127.0.0.1:3100; must not be blocked.
+    r = client.get("/area-scores", headers={"Origin": "http://127.0.0.1:3100"})
+    assert r.status_code == 200, r.text
+    assert r.headers.get("access-control-allow-origin") == "http://127.0.0.1:3100"
+
+
+def test_non_loopback_origin_gets_no_cors_headers():
+    r = client.get("/listings?sort=combined", headers={"Origin": "https://evil.test"})
+    assert r.status_code == 200, r.text
+    assert "access-control-allow-origin" not in r.headers
