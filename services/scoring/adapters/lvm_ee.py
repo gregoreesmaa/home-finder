@@ -8,16 +8,20 @@ Politeness / ToS: default page_limit=1, polite UA, 24h file cache, daily-cron
 cadence. Check ROBOTS_URL before polling. Network isolated in
 fetch_search_html() so tests run fully offline against tests/fixtures/.
 
-Probe note (2026-09-08, 1 polite probe, no retry): GET
-https://www.lvm.ee/robots.txt -> HTTP 301 to https://lvm.ee/robots.txt
-(apex is canonical; www 301s). Search markup was NOT fetched (1-probe budget
-spent on robots.txt); SELECTORS below are hand-built from observed public
-markup knowledge and tests/fixtures/lvm_search.html is a synthetic offline
-sample (not a scraped dump). Re-verify SEARCH_URL + selectors with one polite
-probe before enabling cron.
+Live note (2026-09-08, offline re-read of saved search hub HTML,
+https://lvm.ee/objektid/, no new live request): result cards are
+<div class="realestate-object"> blocks (exact class; inner wrappers use
+suffixed classes such as realestate-object-info), each with
+<a href="/objektid/<id>">, an <h3> address, a
+<span class="realestate-object-price"> ("520 €", "365 000 €") and a
+<div class="realestate-object-stats"> span ("3 korrus | 2 tuba |
+üldpind 34.70m²"). SELECTORS below match that live markup;
+tests/fixtures/lvm_search.html holds 2 verbatim live cards (small excerpt,
+not a dump). Full-page live parse yields 20 rows.
 """
 
 import re
+from html import unescape as _unescape
 from typing import List, Optional
 
 from adapters import (
@@ -32,19 +36,21 @@ from adapters import (
 
 SOURCE = "lvm.ee"
 BASE_URL = "https://lvm.ee"
-# Candidate search path on the canonical apex host — re-verify with 1 polite
-# probe before enabling cron.
-SEARCH_URL = BASE_URL + "/kinnisvara"
+SEARCH_URL = BASE_URL + "/objektid/"
 ROBOTS_URL = BASE_URL + "/robots.txt"
 
 SELECTORS = {
-    # listing-item hooks matching tests/fixtures/lvm_search.html;
-    # re-verify against live markup if parse yields 0 rows.
-    "card": r'<div[^>]*class="[^"]*listing-item[^"]*"[^>]*data-listing-id="(?P<id>\d+)"[^>]*>(?P<body>.*?)</div>\s*(?=<div[^>]*class="[^"]*listing-item|$)',
-    "url": r'href="(?P<url>/[^\"]*?-(?P<id2>\d+)(?:\.html|/?))"',
+    # Live card: outer <div class="realestate-object"> (exact class match so
+    # inner -info/-description/-details wrappers don't open false cards).
+    # Body runs from the main /objektid/<id> link through the stats div, so
+    # the first url match in the body is always the canonical listing link
+    # (not the trailing #objbroker broker anchor).
+    "card": r'<div[^>]*class="realestate-object"[^>]*>(?P<body>\s*<a[^>]*href="/objektid/\d+"[^>]*>.*?</a>.*?<div[^>]*class="[^"]*realestate-object-stats[^"]*"[^>]*>.*?</div>\s*)</div>\s*</div>',
+    "url": r'href="(?P<url>/objektid/(?P<id2>\d+)[^"]*)"',
+    "price_scope": '<span[^>]*class="[^"]*realestate-object-price[^"]*"[^>]*>(?P<scope>.*?)</span>',
     "price": r'(?P<price>[\d\s\u00a0]+)\s*€',
     "rooms": r'(?P<rooms>\d+)\s*(?:tuba|tubal|rooms?|tk)',
-    "area": r'(?P<area>[\d.,]+)\s*m[²2]',
+    "area": r'(?P<area>\d[\d.,]*)\s*m[²2]',
 }
 
 HEADERS = polite_headers()
@@ -60,14 +66,19 @@ def fetch_search_html(query: str = "", page_limit: int = 1, timeout: float = 20.
 
 def _parse_card(card_id: str, body: str) -> dict:
     um = re.search(SELECTORS["url"], body)
-    pm = re.search(SELECTORS["price"], body)
-    address_m = re.search(r"<h[23][^>]*>(?P<a>.*?)</h[23]>", body, re.S)
+    # Unescape first (live prices use &nbsp;, areas use m&#178;) and strip
+    # tags before matching detail fields.
+    text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", _unescape(body)))
+    scope_m = re.search(SELECTORS["price_scope"], _unescape(body), re.S)
+    price_text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", _unescape(scope_m.group("scope")))) if scope_m else text
+    pm = re.search(SELECTORS["price"], price_text)
+    address_m = re.search(r"<h3[^>]*>(?P<a>.*?)</h3>", _unescape(body), re.S)
     if not address_m:
         address_m = re.search(
             r'class="[^"]*(?:address|title)[^"]*"[^>]*>(?P<a>[^<]+)<', body, re.S | re.I
         )
     address = re.sub(r"<[^>]+>", "", address_m.group("a")).strip() if address_m else ""
-    text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", body))
+    address = re.sub(r"\s+", " ", _unescape(address)).strip()
     rm = re.search(SELECTORS["rooms"], text, re.I)
     am = re.search(SELECTORS["area"], text, re.I)
     url = um.group("url") if um else "/"
@@ -90,7 +101,11 @@ def parse_search_html(html: str) -> List[dict]:
     """Parse search HTML into canonical records. Offline-safe (no network)."""
     out: List[dict] = []
     for m in re.finditer(SELECTORS["card"], html, re.S):
-        out.append(_parse_card(m.group("id"), m.group("body")))
+        body = m.group("body")
+        um = re.search(SELECTORS["url"], body)
+        if not um:
+            continue
+        out.append(_parse_card(um.group("id2"), body))
     return out
 
 

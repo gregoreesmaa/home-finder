@@ -1,4 +1,9 @@
-"""Regression: domus.ee adapter parses search HTML offline (no network)."""
+"""Regression: domus.ee adapter parses search HTML offline (no network).
+
+Fixture is a REAL live-markup excerpt (2026-09-08): 2 verbatim cards from
+the hub https://domus.ee/objektid/ — a Tartu rental flat (monthly rent,
+rooms present) and Muhu land (no rooms cell).
+"""
 
 import os
 
@@ -13,14 +18,22 @@ def test_parse_domus_search_fixture():
     with open(FIXTURE, encoding="utf-8") as f:
         rows = parse_search_html(f.read())
     assert len(rows) == 2
-    assert rows[0]["id"] == "domus-901234"
+    assert rows[0]["id"] == "domus-73894235018904380"
     assert rows[0]["source"] == "domus.ee"
-    assert rows[0]["source_url"].startswith("https://domus.ee/")
-    assert rows[0]["price"] == 279000
-    assert "Kotzebue" in rows[0]["address"]
-    assert rows[0]["rooms"] == 3
-    assert rows[0]["area_m2"] == 68.0
-    assert rows[1]["price"] == 198000
+    assert rows[0]["source_url"].startswith("https://domus.ee/objektid/")
+    assert rows[0]["price"] == 475  # "475 €/kuus" monthly-rent card
+    assert "Nõlvaku" in rows[0]["address"]
+    assert rows[0]["rooms"] == 2
+    assert rows[0]["area_m2"] == 43.2
+    assert rows[1]["id"] == "domus-233977266401842900"
+    assert rows[1]["price"] == 35000
+    assert rows[1]["rooms"] is None  # land card has no rooms cell
+    assert rows[1]["area_m2"] == 20000.0
+
+
+def test_search_url_is_objektid_hub():
+    # /kinnisvara 301s to a 2015 blog post — the hub is /objektid/.
+    assert domus.SEARCH_URL == "https://domus.ee/objektid/"
 
 
 def test_parse_empty_html_yields_no_rows():
@@ -46,10 +59,10 @@ def test_fetch_and_scrape_use_mocked_http(monkeypatch):
     with open(FIXTURE, encoding="utf-8") as f:
         html = f.read()
     monkeypatch.setattr(domus, "fetch_html", lambda *a, **k: html)
-    assert "901234" in domus.fetch_search_html()
+    assert "73894235018904380" in domus.fetch_search_html()
     rows = domus.scrape()
     assert len(rows) == 2
-    assert rows[0]["id"] == "domus-901234"
+    assert rows[0]["id"] == "domus-73894235018904380"
 
 
 def test_scrape_serves_second_call_from_cache(monkeypatch, tmp_path):
