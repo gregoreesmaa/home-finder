@@ -20,7 +20,7 @@ export function combinedScore(livability: number, discountPct: number): number {
   return Math.round(100 * (0.6 * (livability / 100) + 0.4 * dealNorm(discountPct)));
 }
 
-export function withCombined<T extends Rankable>(l: T): T {
+export function withCombined<T extends Rankable>(l: T): T & { score_combined: number } {
   return { ...l, score_combined: combinedScore(l.score_livability, l.discount_pct) };
 }
 
