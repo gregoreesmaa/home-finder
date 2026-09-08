@@ -1,14 +1,59 @@
-<!-- Hand-built offline sample for remax.ee adapter regression tests.
-     Synthetic markup in the style of the portal's public listing cards;
-     NOT scraped. See adapters/remax_ee.py probe note (cards may be
-     JS-rendered live; this sample covers the server-rendered fallback). -->
-<div class="property-tile" data-id="440501">
-  <h3 class="tile-address"><a href="/kinnisvara/korter-harjumaa-viimsi-randvere-tee-25-440501.html">Randvere tee 25, Viimsi</a></h3>
-  <span class="tile-price">525 000 €</span>
-  <span class="tile-meta">4 tuba, 102 m²</span>
+<!-- REAL live-markup excerpt (2026-09-08): the remax.ee hub's own card
+     template (outputListing JS on https://www.remax.ee/muugiobjektid/)
+     populated with 2 REAL listings from its JSON endpoint (Telliskivi/Õle
+     29/2 and Narva mnt 9a, Tallinn). Small regression sample only. Card 2
+     keeps its real ad-copy `rooms` value to prove the numeric-rooms guard. -->
+<div class="col-12 col-sm-6 col-lg-4">
+	<a class="apartment-list-items" href="/objekt/tallinn/pohja-tallinn/korter/80443837/">
+		<div class="item-image">
+			<img src="https://images.linear.fi/68a696cf-00d1-4293-919b-2bb53872bc88.jpg" loading="lazy" alt="Põhja-Tallinn, Tallinn, Telliskivi/Õle 29/2">
+			<div class="item-image-hover">Põhja-Tallinn, Tallinn, <br>Telliskivi/Õle 29/2</div>
+		</div>
+		<div class="item-body col-12">
+			<div class="row mx-n1 pb-2">
+				<div class="col-8 px-1">
+					<div class="item-title">Telliskivi/Õle 29/2</div>
+				<div class="item-title-text">Põhja-Tallinn, Tallinn</div>
+			</div>
+			<div class="col-4 px-1 ml-auto text-right">
+				<div class="item-price">72,8 m²</div>
+			</div>
+		</div>
+		<div class="row mx-n1 pb-2">
+			<div class="col-8 px-1">
+				<div class="item-text"></div>
+			</div>
+			<div class="col-4 px-1 ml-auto text-right">
+				<div class="item-price">199 000 €</div>
+			</div>
+		</div>
+	</div>
+</a>
 </div>
-<div class="property-tile" data-id="440502">
-  <h3 class="tile-address"><a href="/kinnisvara/korter-tallinn-nomme-mangu-14-440502.html">Mängu 14, Tallinn</a></h3>
-  <span class="tile-price">238 000 €</span>
-  <span class="tile-meta">3 tuba, 63 m²</span>
+<div class="col-12 col-sm-6 col-lg-4">
+	<a class="apartment-list-items" href="/objekt/tallinn/kesklinn/korter/80511339/">
+		<div class="item-image">
+			<img src="https://images.linear.fi/44eef6a6-6770-40c6-b60a-e43204ef1cac.jpg" loading="lazy" alt="Kesklinn, Tallinn, Narva mnt 9a">
+			<div class="item-image-hover">Kesklinn, Tallinn, <br>Narva mnt 9a</div>
+		</div>
+		<div class="item-body col-12">
+			<div class="row mx-n1 pb-2">
+				<div class="col-8 px-1">
+					<div class="item-title">Narva mnt 9a</div>
+				<div class="item-title-text">Kesklinn, Tallinn</div>
+			</div>
+			<div class="col-4 px-1 ml-auto text-right">
+				<div class="item-price">23,7 m²</div>
+			</div>
+		</div>
+		<div class="row mx-n1 pb-2">
+			<div class="col-8 px-1">
+				<div class="item-text">Super asukoht lühiajaliseks majutuseks + hea hind! Südalinn, hotellimaiguline ja täielikult uuenenud maja.</div>
+			</div>
+			<div class="col-4 px-1 ml-auto text-right">
+				<div class="item-price">106 650 €</div>
+			</div>
+		</div>
+	</div>
+</a>
 </div>
