@@ -1,9 +1,10 @@
 """Regression: portals-D adapters (oberhaus/arcovara/lvm/remax) parse offline.
 
-Covers GitHub issues #16-#19. Fully offline: fixtures are small real-markup
-excerpts (not scraped dumps); network paths use monkeypatched fetch_html.
-Shared files (test_portal_stubs.py, test_adapters_base.py) are left
-untouched so sibling portal batches merge cleanly. The remax fixture pair
+Covers GitHub issues #16-#19. Fully offline: fixtures are small verbatim
+excerpts (2 real cards each) from saved live search HTML (not scraped
+dumps); network paths use monkeypatched fetch_html. Shared files
+(test_portal_stubs.py, test_adapters_base.py) are left untouched so
+sibling portal batches merge cleanly. The remax fixture pair
 (remax_search.html + remax_search.json) holds the same 2 REAL listings from
 the hub's JSON endpoint in both rendered-card and raw-JSON form.
 """
@@ -23,14 +24,14 @@ PORTALS = {
          "second_price": 189000},
     ),
     "adapters.arcovara_ee": (
-        "arcovara.ee", "arcovara-770301", "arcovara_search.html",
-        {"address": "Kadaka tee 56", "price": 259000, "rooms": 4, "area_m2": 81.0,
-         "second_price": 320000},
+        "arcovara.ee", "arcovara-353253", "arcovara_search.html",
+        {"address": "Eisma küla 24", "price": 122000, "rooms": 3, "area_m2": 77.5,
+         "second_price": 650},
     ),
     "adapters.lvm_ee": (
-        "lvm.ee", "lvm-660401", "lvm_search.html",
-        {"address": "Viru väljak 6", "price": 410000, "rooms": 3, "area_m2": 88.0,
-         "second_price": 175000},
+        "lvm.ee", "lvm-80533810", "lvm_search.html",
+        {"address": "Papiniidu tänav 54", "price": 520, "rooms": 2, "area_m2": 34.7,
+         "second_price": 365000},
     ),
     "adapters.remax_ee": (
         "remax.ee", "remax-80443837", "remax_search.html",
@@ -81,6 +82,19 @@ def test_parse_fixture_yields_two_canonical_rows(modname):
         for key in ("id", "source", "source_url", "address", "price", "rooms", "area_m2"):
             assert key in row, "missing %s" % key
         assert row["address"].strip()
+
+
+LIVE_SEARCH_URLS = {
+    # #17/#18: corrected hubs, verified against the saved live pages.
+    "adapters.arcovara_ee": "https://www.arcovara.ee/et/otsi-kinnisvara",
+    "adapters.lvm_ee": "https://lvm.ee/objektid/",
+}
+
+
+@pytest.mark.parametrize("modname,expected", list(LIVE_SEARCH_URLS.items()))
+def test_search_url_points_at_live_hub(modname, expected):
+    mod = importlib.import_module(modname)
+    assert mod.SEARCH_URL == expected
 
 
 @pytest.mark.parametrize("modname", list(PORTALS))
