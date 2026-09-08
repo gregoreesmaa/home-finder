@@ -21,7 +21,9 @@ services:
       - db
 
   web:
-    build: ./apps/web
+    build:
+      context: .
+      dockerfile: ./apps/web/Dockerfile
     environment:
       NEXT_PUBLIC_SCORING_URL: http://localhost:8000
     ports:
