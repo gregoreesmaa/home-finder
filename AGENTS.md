@@ -74,6 +74,13 @@ npm install
 npx turbo run test          # or: npm test --workspace @home-finder/web
 npm run dev --workspace @home-finder/web
 
+# QA gates (also enforced by .github/workflows/ci.yml on every PR)
+npm run lint                # eslint, repo-wide
+npm run typecheck           # tsc --noEmit (web)
+npm test                    # turbo: vitest unit suites
+npm run test:python         # pytest scoring suite, from repo root
+npm run test:e2e --workspace @home-finder/web   # playwright smoke (needs: npx playwright install chromium)
+
 # scoring (FastAPI)
 pip install -r services/scoring/requirements.txt
 python3 -m pytest services/scoring/tests -q
