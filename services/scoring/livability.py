@@ -345,7 +345,9 @@ def resolve(address: str, cache_dir: Optional[str] = None) -> Optional[dict]:
         return None
     try:
         loc = cached_fetch(
-            "liv_geocode", address, 1,
+            # v2: v1 froze Photon-outage negatives as "" for 30d before the
+            # Nominatim fallback existed; the bump forces one re-geocode.
+            "liv_geocode2", address, 1,
             lambda: _dump_loc(fetch_geocode(address)),
             cache_dir, GEOCODE_TTL_S,
         )
@@ -357,7 +359,7 @@ def resolve(address: str, cache_dir: Optional[str] = None) -> Optional[dict]:
     key = "%.4f,%.4f" % (lat, lon)
     try:
         raw = cached_fetch(
-            "liv_pois", key, 1,
+            "liv_pois2", key, 1,
             lambda: _dump_pois(fetch_pois(lat, lon)),
             cache_dir, OVERPASS_TTL_S,
         )

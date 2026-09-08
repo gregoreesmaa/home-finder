@@ -315,6 +315,36 @@ def test_run_reports_per_source_and_skips_priceless(monkeypatch):
     assert conn.closed
 
 
+def test_disabled_portals_carry_reasons_and_stay_skipped(monkeypatch):
+    """C4: the cron never retries blocked portals; reasons stay published."""
+    disabled = [(m, n) for m, e, n in ingest.PORTALS if not e]
+    assert disabled, "expected some disabled portals"
+    for modname, note in disabled:
+        assert note.strip(), "%s disabled without a reason" % modname
+    # skip mechanics (offline): disabled entries are never fetched
+    monkeypatch.setattr(
+        ingest, "PORTALS", [(m, False, n) for m, n in disabled]
+    )
+    monkeypatch.setattr(ingest, "connect", lambda: None)
+    report = ingest.run()
+    for modname, note in disabled:
+        assert report[modname]["status"] == "skipped"
+        assert report[modname]["reason"] == note
+        assert report[modname]["count"] == 0
+
+
+def test_sources_exposes_disabled_reasons(monkeypatch):
+    monkeypatch.setattr(scoring_app, "_db_rows", lambda sql, params=(): [])
+    by_source = {s["source"]: s for s in client.get("/sources").json()["sources"]}
+    for modname, enabled, note in ingest.PORTALS:
+        if enabled:
+            continue
+        mod = __import__(modname, fromlist=["SOURCE"])
+        entry = by_source[mod.SOURCE]
+        assert entry["enabled"] is False
+        assert entry["note"] == note
+
+
 def test_run_without_db_reports_not_stored(monkeypatch):
     monkeypatch.setattr(ingest, "PORTALS", [])
     monkeypatch.setattr(ingest, "connect", lambda: None)
