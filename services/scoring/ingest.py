@@ -48,6 +48,36 @@ PORTALS: List[Tuple[str, bool, str]] = [
 
 NEUTRAL_LIVABILITY = 50
 
+# Deal typing from URL slugs (lowercase substring match). Sale/rent markers
+# were read off real imported URLs (domus mixes both: 'muua-*' vs
+# 'uurile-anda-*'); remax URLs carry the property type (korter/maja/...).
+RENT_MARKERS = ("uurile", "üürile", "for-rent", "to-rent", "rent", "vuokra", "miete")
+SALE_MARKERS = ("muua", "muugi", "müü", "myy", "sale", "for-sale", "osta", "ostu")
+LAND_MARKERS = ("-maa", "/maa", "maatükk", "maatykk", "land", "plot", "grund", "kinnistu")
+
+# Default deal type per hub. domus provably mixes sale+rent, so markers (or
+# unknown) decide there; the other enabled hubs are sale-listing pages, so
+# unmarked rows default to sale. Rent markers override everywhere.
+PORTAL_DEFAULT_TYPE = {
+    "adapters.domus_ee": None,
+}
+
+
+def deal_type(source_url: str, modname: str) -> str:
+    """rent | sale | land | unknown — drives median pooling, never hidden."""
+    slug = (source_url or "").lower()
+    if any(m in slug for m in RENT_MARKERS) and not any(
+        m in slug for m in SALE_MARKERS
+    ):
+        return "rent"
+    if any(m in slug for m in SALE_MARKERS):
+        if any(m in slug for m in LAND_MARKERS):
+            return "land"
+        return "sale"
+    default = PORTAL_DEFAULT_TYPE.get(modname, "sale")
+    return default or "unknown"
+
+
 CITY_COUNTY = {
     "tallinn": "Harju maakond",
     "tartu": "Tartu maakond",
@@ -75,33 +105,107 @@ CITY_COUNTY = {
 }
 
 
+COUNTY_NAMES = {
+    "harju maakond": "Harju maakond",
+    "tartu maakond": "Tartu maakond",
+    "pärnu maakond": "Pärnu maakond",
+    "ida-viru maakond": "Ida-Viru maakond",
+    "viljandi maakond": "Viljandi maakond",
+    "lääne-viru maakond": "Lääne-Viru maakond",
+    "saare maakond": "Saare maakond",
+    "lääne maakond": "Lääne maakond",
+    "järva maakond": "Järva maakond",
+    "valga maakond": "Valga maakond",
+    "võru maakond": "Võru maakond",
+    "põlva maakond": "Põlva maakond",
+    "rapla maakond": "Rapla maakond",
+    "jõgeva maakond": "Jõgeva maakond",
+    "hiiu maakond": "Hiiu maakond",
+}
+
+
 def county_for(address: str) -> str:
-    """Map 'Street 12, Tallinn' -> county via the city after the last comma."""
-    city = (address or "").split(",")[-1].strip().lower()
-    return CITY_COUNTY.get(city, "Eesti")
+    """Map an address to its county.
+
+    Live addresses carry the full hierarchy
+    ('Nõlvaku tn 17, Annelinn, Tartu linn, Tartu maakond'), so segments are
+    scanned last-first: the city almost always sits at the end, while street
+    names may borrow another city's name ('Rakvere tn 87, Narva' is Narva,
+    not Rakvere). Falls back to explicit county names, then 'Eesti'.
+    """
+    segments = (address or "").split(",")
+    for seg in reversed(segments):
+        seg = seg.strip().lower()
+        for city in sorted(CITY_COUNTY, key=len, reverse=True):
+            if city in seg:
+                return CITY_COUNTY[city]
+    text = (address or "").lower()
+    for name in sorted(COUNTY_NAMES, key=len, reverse=True):
+        if name in text:
+            return COUNTY_NAMES[name]
+    return "Eesti"
 
 
-def enrich(rows: List[dict]) -> List[dict]:
-    """Add price_per_m2, county, batch-median discount, neutral livability."""
+TYPE_REASON = {
+    "rent": "Üürikuulutus – tehingu skoorimata",
+    "land": "Maatükk – €/m² ei võrrelda hoonetega",
+    "unknown": "Kuulutuse tüüp teadmata – tehingu skoorimata",
+}
+
+
+def classify(rows: List[dict], modname: str = "") -> List[dict]:
+    """Add price_per_m2, county, deal type. Typing needs the portal default."""
     for r in rows:
         price, area = r.get("price"), r.get("area_m2")
         r["price_per_m2"] = round(price / area) if price and area else None
         r["county"] = county_for(r.get("address", ""))
-    medians: Dict[str, float] = {}
+        r["deal_type"] = deal_type(r.get("source_url", ""), modname)
+    return rows
+
+
+SALE_PPM_FLOOR = 100.0
+
+
+def score(rows: List[dict]) -> List[dict]:
+    """Batch-median discount over SALE rows per county + neutral livability.
+
+    Rents (EUR/month) and land (EUR/m2 of soil) are excluded from the sale
+    medians and keep discount 0.0 with an honest typed reason. As a backstop
+    against mislabeled rows, sub-floor sale prices (EUR/m2 < 100 — far below
+    any Estonian sale market) do not enter the median pool either, though
+    they are still scored against it.
+    """
     buckets: Dict[str, List[float]] = {}
     for r in rows:
-        if r["price_per_m2"] is not None:
-            buckets.setdefault(r["county"], []).append(r["price_per_m2"])
+        ppm = r["price_per_m2"]
+        if (
+            r.get("deal_type", "sale") == "sale"
+            and ppm is not None
+            and ppm >= SALE_PPM_FLOOR
+        ):
+            buckets.setdefault(r["county"], []).append(ppm)
     medians = {c: statistics.median(v) for c, v in buckets.items()}
     for r in rows:
-        ppm, med = r["price_per_m2"], medians.get(r["county"])
-        r["discount_pct"] = (
-            round((med - ppm) / med * 100, 1) if ppm and med else 0.0
-        )
+        if r.get("deal_type", "sale") == "sale":
+            ppm, med = r["price_per_m2"], medians.get(r["county"])
+            r["discount_pct"] = (
+                round((med - ppm) / med * 100, 1) if ppm and med else 0.0
+            )
+        else:
+            r["discount_pct"] = 0.0
         r["score_livability"] = NEUTRAL_LIVABILITY
         # Source attribution renders from the `source` field in the UI.
         r["reasons"] = ["Elamiskvaliteet arvutamata (automaatimport)"]
+        if r.get("deal_type", "sale") != "sale":
+            r["reasons"].insert(
+                0, TYPE_REASON.get(r["deal_type"], TYPE_REASON["unknown"])
+            )
     return rows
+
+
+def enrich(rows: List[dict], modname: str = "") -> List[dict]:
+    """classify + score in one pass (single-portal convenience)."""
+    return score(classify(rows, modname))
 
 
 UPSERT_SQL = """
@@ -173,15 +277,17 @@ def run(cache_dir: Optional[str] = None) -> dict:
             mod = importlib.import_module(modname)
             rows = mod.scrape("", 1, cache_dir)
             report[modname] = {"status": "ok", "count": len(rows)}
-            fetched.extend(rows)
+            fetched.extend(classify(rows, modname))
         except Exception as e:  # polite: record, never crash the run
             report[modname] = {
                 "status": "error",
                 "reason": "%s: %s" % (type(e).__name__, e),
                 "count": 0,
             }
+    # Typing is per-portal, but discount medians pool across all portals,
+    # so classify first, dedup, then score the merged set.
     merged = dedup_listings(*[fetched]) if fetched else []
-    enriched = enrich(merged)
+    enriched = score(merged)
     priced = [r for r in enriched if r.get("price")]
     conn = connect()
     stored = upsert(conn, priced) if conn is not None else 0

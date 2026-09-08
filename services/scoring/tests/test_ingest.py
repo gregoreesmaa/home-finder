@@ -61,6 +61,98 @@ def test_county_for_known_and_unknown_cities():
     assert ingest.county_for("") == "Eesti"
 
 
+def test_county_for_full_hierarchy_addresses():
+    # Live addresses carry street, village, parish AND county.
+    assert (
+        ingest.county_for("Nõlvaku tn 17, Annelinn, Tartu linn, Tartu maakond")
+        == "Tartu maakond"
+    )
+    assert (
+        ingest.county_for("Kadaka, Nurme küla, Muhu vald, Saare maakond")
+        == "Saare maakond"
+    )
+    assert (
+        ingest.county_for("Raemetsa, Reiu küla, Pärnu linn, Pärnu maakond")
+        == "Pärnu maakond"
+    )
+
+
+def test_deal_type_from_url_markers():
+    rent = "https://domus.ee/objektid/1-uurile-anda-korter-2-tuba-tartu-linn/"
+    assert ingest.deal_type(rent, "adapters.domus_ee") == "rent"
+    land = "https://domus.ee/objektid/2-muua-maa-muhu-vald-nurme-kula/"
+    assert ingest.deal_type(land, "adapters.domus_ee") == "land"
+    sale = "https://domus.ee/objektid/3-muua-korter-1-tuba-parnu-linn/"
+    assert ingest.deal_type(sale, "adapters.domus_ee") == "sale"
+    # Sale-hub default when unmarked; domus (mixed hub) stays unknown.
+    remax = "https://www.remax.ee/objekt/tartu/karlova/korter/80518936/"
+    assert ingest.deal_type(remax, "adapters.remax_ee") == "sale"
+    assert ingest.deal_type("https://domus.ee/objektid/9-x/", "adapters.domus_ee") == "unknown"
+
+
+def test_sale_floor_keeps_mislabeled_rows_out_of_median():
+    rows = ingest.enrich(
+        [
+            row(
+                id="s1",
+                address="A 1, Tallinn",
+                price=300000,
+                area_m2=50.0,
+                source_url="https://x.test/muua-a",
+            ),
+            row(
+                id="weird",
+                address="B 2, Tallinn",
+                price=500,
+                area_m2=50.0,
+                source_url="https://x.test/muua-b",
+            ),
+        ],
+        "adapters.remax_ee",
+    )
+    by_id = {r["id"]: r for r in rows}
+    # Pool holds only the genuine sale (6000/m2): s1 scores ~0, the 10/m2
+    # row is still scored against it instead of corrupting the median.
+    assert by_id["s1"]["discount_pct"] == 0.0
+    assert by_id["weird"]["discount_pct"] == pytest.approx(99.8, abs=0.1)
+
+
+def test_enrich_excludes_rent_and_land_from_medians():
+    rows = ingest.enrich(
+        [
+            row(
+                id="s1",
+                address="A 1, Tallinn",
+                price=200000,
+                area_m2=50.0,
+                source_url="https://x.test/muua-korter-a",
+            ),
+            row(
+                id="s2",
+                address="B 2, Tallinn",
+                price=400000,
+                area_m2=50.0,
+                source_url="https://x.test/muua-korter-b",
+            ),
+            row(
+                id="r1",
+                address="C 3, Tallinn",
+                price=475,
+                area_m2=43.2,
+                source_url="https://domus.ee/objektid/1-uurile-anda-korter-tallinn/",
+            ),
+        ],
+        "adapters.domus_ee",
+    )
+    by_id = {r["id"]: r for r in rows}
+    # Median over the two sales (6000/m2); the 11 EUR/m2 rent must not move it.
+    assert by_id["s1"]["discount_pct"] == pytest.approx(33.3, abs=0.1)
+    assert by_id["s2"]["discount_pct"] == pytest.approx(-33.3, abs=0.1)
+    assert by_id["r1"]["deal_type"] == "rent"
+    assert by_id["r1"]["discount_pct"] == 0.0
+    assert "Üürikuulutus" in by_id["r1"]["reasons"][0]
+
+
 def test_enrich_discount_against_county_median():
     rows = ingest.enrich(
         [

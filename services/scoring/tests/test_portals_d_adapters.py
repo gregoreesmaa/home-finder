@@ -175,3 +175,19 @@ def test_scrape_serves_second_call_from_cache(modname, monkeypatch, tmp_path):
     monkeypatch.setattr(mod, "fetch_html", boom)
     second = mod.scrape(cache_dir=str(tmp_path))
     assert second == first and len(calls) == 1
+
+
+def test_lvm_first_page_fetches_without_page_param(monkeypatch):
+    # /objektid/ answers 200 bare but 404s with ?page=1 (live-probed).
+    mod = importlib.import_module("adapters.lvm_ee")
+    seen = {}
+
+    def capture(url, params=None, **kwargs):
+        seen["url"] = url
+        seen["params"] = dict(params or {})
+        return "<html></html>"
+
+    monkeypatch.setattr(mod, "fetch_html", capture)
+    assert mod.parse_search_html(mod.fetch_search_html()) == []
+    assert seen["url"] == "https://lvm.ee/objektid/"
+    assert "page" not in seen["params"]
