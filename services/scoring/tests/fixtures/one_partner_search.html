@@ -1,0 +1,21 @@
+<!-- Hand-built minimal sample (NOT a scraped dump) mirroring the teaser
+     structure observed on https://www.1partner.ee/ 2026-09-08 (HTTP 200,
+     polite 1-probe): <article> teasers with permalink, EUR price, rooms/area
+     meta. No dedicated listing index was linked from the front page within
+     the one-probe budget, so the adapter polls the apex featured set; only
+     teasers with a same-host link AND a price are kept (blog teasers are
+     skipped). See adapters/one_partner_ee.py. -->
+<article class="featured-offer" data-id="660101">
+  <h3><a href="https://www.1partner.ee/kinnisvara/korter-kotzebue-12-tallinn-660101/">Kotzebue 12, Tallinn</a></h3>
+  <span class="offer-price">289 000 €</span>
+  <span class="offer-meta">3 tuba, 71 m²</span>
+</article>
+<article class="blog-teaser">
+  <h3><a href="https://www.1partner.ee/muu/blogi/some-post-1092">Market news, no price here</a></h3>
+  <p>Quarterly review with no offer attached.</p>
+</article>
+<article class="featured-offer" data-id="660102">
+  <h3><a href="https://www.1partner.ee/kinnisvara/korter-tahe-45-tartu-660102/">Tähe 45, Tartu</a></h3>
+  <span class="offer-price">155 000 €</span>
+  <span class="offer-meta">2 tuba, 48 m²</span>
+</article>
