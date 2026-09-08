@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: homefinder
+      POSTGRES_PASSWORD: homefinder
+      POSTGRES_DB: homefinder
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+  scoring:
+    build: ./services/scoring
+    environment:
+      DATABASE_URL: postgresql://homefinder:homefinder@db:5432/homefinder
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+  web:
+    build: ./apps/web
+    environment:
+      NEXT_PUBLIC_SCORING_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - scoring
+
+volumes:
+  pgdata:

@@ -1,3 +1,11 @@
 .worktrees/
 node_modules/
+.next/
+dist/
+coverage/
 __pycache__/
+.venv/
+*.pyc
+.DS_Store
+.env
+.env.local

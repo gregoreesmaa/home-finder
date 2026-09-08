@@ -1,0 +1,18 @@
+{
+  "name": "home-finder",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Estonian home-finder: ranked best-to-worst on livability fit + price fairness, region heatmap on a real map.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "test": "turbo run test"
+  },
+  "devDependencies": {
+    "turbo": "^2.4.0"
+  }
+}

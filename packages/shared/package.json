@@ -1,0 +1,7 @@
+{
+  "name": "@home-finder/shared",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/ranking.ts",
+  "types": "./src/ranking.ts"
+}
