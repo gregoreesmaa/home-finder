@@ -13,7 +13,6 @@ import pytest
 
 # module -> (expected SOURCE, owning issue)
 STUBS = {
-    "adapters.city24_ee": ("city24.ee", 6),
     "adapters.kinnisvara24_ee": ("kinnisvara24.ee", 7),
     "adapters.kinnisvaraweb_ee": ("kinnisvaraweb.ee", 8),
     "adapters.okidoki_ee": ("okidoki.ee", 9),

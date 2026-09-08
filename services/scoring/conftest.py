@@ -1,8 +1,9 @@
-"""Pytest bootstrap: let tests import `app`/`adapters` however pytest is invoked.
+"""Pytest bootstrap: make `import app` / `import adapters.*` work.
 
-AGENTS.md §6 documents `python3 -m pytest services/scoring/tests -q` from the
-repo root; without this, that invocation fails with ModuleNotFoundError and
-only in-service-dir runs collect. Inserting this directory keeps both working.
+The suite is invoked from the repo root (`npm run test:python`, CI),
+so the scoring service directory is not on sys.path by default.
+Inserting it here keeps the root-level invocation green without
+depending on the caller's working directory.
 """
 
 import os

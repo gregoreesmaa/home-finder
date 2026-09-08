@@ -1,0 +1,20 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "h3": "mock-tallinn", "score_goodness": 85, "level": "good" },
+      "geometry": { "type": "Point", "coordinates": [24.75, 59.43] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "h3": "mock-tartu", "score_goodness": 62, "level": "mid" },
+      "geometry": { "type": "Point", "coordinates": [26.72, 58.37] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "h3": "mock-parnu", "score_goodness": 30, "level": "bad" },
+      "geometry": { "type": "Point", "coordinates": [24.5, 58.38] }
+    }
+  ]
+}

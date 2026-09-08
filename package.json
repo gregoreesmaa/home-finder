@@ -2,6 +2,7 @@
   "name": "home-finder",
   "private": true,
   "version": "0.1.0",
+  "packageManager": "npm@11.19.0",
   "description": "Estonian home-finder: ranked best-to-worst on livability fit + price fairness, region heatmap on a real map.",
   "workspaces": [
     "apps/*",
@@ -10,9 +11,16 @@
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
-    "test": "turbo run test"
+    "test": "turbo run test",
+    "test:python": "python3 -m pytest services/scoring/tests -q",
+    "test:e2e": "npm run test:e2e --workspace @home-finder/web",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p apps/web/tsconfig.json"
   },
   "devDependencies": {
-    "turbo": "^2.4.0"
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.10.0",
+    "turbo": "^2.4.0",
+    "typescript-eslint": "^8.70.0"
   }
 }

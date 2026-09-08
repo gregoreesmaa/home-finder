@@ -1,30 +1,84 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import type { AreaHex } from "../lib/heatmap";
-import { toHeatPoints } from "../lib/heatmap";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  MOCK_HEXES,
+  legendBuckets,
+  nearestHeatPoint,
+  popupText,
+  resolveHexes,
+  toHeatPoints,
+  type AreaHex,
+  type HeatPoint,
+} from "../lib/heatmap";
+
+export { MOCK_HEXES };
 
 const ESTONIA_CENTER: [number, number] = [25.0, 58.75];
+const SCORING_URL =
+  process.env.NEXT_PUBLIC_SCORING_URL ?? "http://localhost:8000";
+
+type Mode = "heatmap" | "hex";
 
 /**
- * MapLibre base (Carto light) + deck.gl HeatmapLayer over H3 area-scores.
- * Map libs load lazily on the client; with ?mock=1 (or when the API is
- * unreachable) the layer renders from the bundled mock hexes.
+ * MapLibre base (Carto light) + deck.gl layer over H3 area-scores:
+ * HeatmapLayer (density, weight = livability goodness) or HexagonLayer
+ * (cluster toggle) with legend + click popup.
+ *
+ * Data: GET /area-scores (GeoJSON). With ?mock=1, when no `hexes` prop is
+ * given and the API is unreachable, the bundled mock hexes are used.
  */
-export const MOCK_HEXES: AreaHex[] = [
-  { h3: "mock-tallinn", score_goodness: 85, lon: 24.75, lat: 59.43 },
-  { h3: "mock-tartu", score_goodness: 62, lon: 26.72, lat: 58.37 },
-  { h3: "mock-parnu", score_goodness: 30, lon: 24.5, lat: 58.38 },
-];
-
-export function ListingMap({ hexes }: { hexes?: AreaHex[] }) {
+export function ListingMap({
+  hexes,
+  initialMode = "heatmap",
+}: {
+  hexes?: AreaHex[];
+  initialMode?: Mode;
+}) {
   const ref = useRef<HTMLDivElement>(null);
+  const [mode, setMode] = useState<Mode>(initialMode);
+  const [remote, setRemote] = useState<AreaHex[] | null>(null);
+  const [selected, setSelected] = useState<HeatPoint | null>(null);
+
+  // Fetch live scores unless the caller passes hexes explicitly.
+  useEffect(() => {
+    if (hexes) return;
+    if (
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).has("mock")
+    ) {
+      setRemote(MOCK_HEXES);
+      return;
+    }
+    let cancelled = false;
+    fetch(`${SCORING_URL}/area-scores`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((json: unknown) => {
+        if (!cancelled) setRemote(resolveHexes(json, MOCK_HEXES));
+      })
+      .catch(() => {
+        if (!cancelled) setRemote(MOCK_HEXES);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [hexes]);
+
+  const points = useMemo(
+    () => toHeatPoints(hexes ?? remote ?? MOCK_HEXES),
+    [hexes, remote],
+  );
+  const legend = useMemo(() => legendBuckets(), []);
 
   useEffect(() => {
     let cancelled = false;
+    let cleanup = () => {};
     (async () => {
-      const data = toHeatPoints(hexes ?? MOCK_HEXES);
-      const [{ default: maplibregl }, { MapboxOverlay }, { HeatmapLayer }] = (await Promise.all([
+      const [
+        { default: maplibregl },
+        { MapboxOverlay },
+        { HeatmapLayer, HexagonLayer },
+      ] = (await Promise.all([
         import("maplibre-gl"),
         import("@deck.gl/mapbox"),
         import("@deck.gl/aggregation-layers"),
@@ -43,22 +97,99 @@ export function ListingMap({ hexes }: { hexes?: AreaHex[] }) {
       const overlay = new MapboxOverlay({
         interleaved: true,
         layers: [
-          new HeatmapLayer({
-            id: "goodness-heat",
-            data,
-            getPosition: (d) => [d.lon, d.lat],
-            getWeight: (d) => d.weight,
-            radiusPixels: 60,
-          }),
+          mode === "hex"
+            ? new HexagonLayer({
+                id: "goodness-hex",
+                data: points,
+                getPosition: (d: HeatPoint) => [d.lon, d.lat],
+                getColorWeight: (d: HeatPoint) => d.weight * 100,
+                getColorValue: (cell: HeatPoint[]) =>
+                  cell.reduce((s, p) => s + p.weight * 100, 0) / cell.length,
+                colorRange: [
+                  [220, 60, 50],
+                  [230, 170, 40],
+                  [46, 160, 67],
+                ],
+                radius: 15000,
+                coverage: 0.9,
+                extruded: false,
+                pickable: true,
+                autoHighlight: true,
+              })
+            : new HeatmapLayer({
+                id: "goodness-heat",
+                data: points,
+                getPosition: (d: HeatPoint) => [d.lon, d.lat],
+                getWeight: (d: HeatPoint) => d.weight,
+                radiusPixels: 60,
+              }),
         ],
       });
       map.addControl(overlay);
-      return () => map.remove();
+      // Click popup works in both modes: select the nearest hex cell.
+      const onClick = (e: { lngLat: { lng: number; lat: number } }) => {
+        setSelected(nearestHeatPoint(points, e.lngLat.lng, e.lngLat.lat));
+      };
+      map.on("click", onClick);
+      cleanup = () => {
+        map.off("click", onClick);
+        map.remove();
+      };
     })();
     return () => {
       cancelled = true;
+      cleanup();
     };
-  }, [hexes]);
+  }, [points, mode]);
 
-  return <div ref={ref} aria-label="Piirkondade heatmap" style={{ height: 480 }} />;
+  return (
+    <section aria-label="Piirkondade heatmap">
+      <div role="group" aria-label="Kihi vaade">
+        <button
+          type="button"
+          aria-pressed={mode === "heatmap"}
+          onClick={() => setMode("heatmap")}
+        >
+          Heatmap
+        </button>
+        <button
+          type="button"
+          aria-pressed={mode === "hex"}
+          onClick={() => setMode("hex")}
+        >
+          Hex
+        </button>
+      </div>
+      <div
+        ref={ref}
+        role="application"
+        aria-label="Eesti piirkondade kaart"
+        style={{ height: 480 }}
+      />
+      <ul aria-label="Legend: roheline hea, kollane keskmine, punane halb">
+        {legend.map((b) => (
+          <li key={b.level}>
+            <span
+              aria-hidden="true"
+              style={{
+                display: "inline-block",
+                width: 12,
+                height: 12,
+                background: b.css,
+              }}
+            />{" "}
+            {b.label}
+          </li>
+        ))}
+      </ul>
+      {selected && (
+        <div role="dialog" aria-label="Piirkonna info">
+          <p>{popupText(selected)}</p>
+          <button type="button" onClick={() => setSelected(null)}>
+            Sulge
+          </button>
+        </div>
+      )}
+    </section>
+  );
 }

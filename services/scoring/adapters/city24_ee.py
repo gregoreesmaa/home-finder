@@ -1,45 +1,98 @@
-"""city24.ee listings adapter — STUB.
+"""city24.ee listings adapter (City24 Baltics portal).
 
-GitHub issue: #6 ([portal] city24.ee adapter).
-Status: skeleton anchor only. Owning builder: implement the fetch/parse
-TODOs below (verify search path + selectors against live markup, add
-tests/fixtures/city24_search.html + regression test), keeping the kv.ee
-record shape: [{id, source, source_url, address, price}].
+Same interface as adapters/kv_ee.py: fetch_search_html / parse_search_html /
+scrape, returning canonical records {id, source, source_url, address, price,
+rooms, area_m2}. Selectors live in SELECTORS for one-spot fixes.
 
-Politeness: default page_limit=1, desktop UA, callers must rate-limit
-(daily cron). Never commit scraped listing dumps — fixtures only.
+Politeness / ToS: default page_limit=1, polite UA, 24h file cache, daily-cron
+cadence. Check ROBOTS_URL before polling. Network isolated in
+fetch_search_html() so tests run fully offline against tests/fixtures/.
 """
 
-from typing import List
+import re
+from typing import List, Optional
 
-import httpx
+from adapters import (
+    cached_fetch,
+    fetch_html,
+    normalize_listing,
+    polite_headers,
+    to_float_m2,
+    to_int_eur,
+    to_int_rooms,
+)
 
 SOURCE = "city24.ee"
-BASE_URL = "https://city24.ee"
-# TODO(#6): confirm the real search path/query params on city24.ee.
-SEARCH_URL = BASE_URL
+BASE_URL = "https://www.city24.ee"
+SEARCH_URL = BASE_URL + "/en/for-sale"
+ROBOTS_URL = BASE_URL + "/robots.txt"
 
-# TODO(#6): verify selectors against live search markup; keep them here.
 SELECTORS = {
-    "card": "",
-    "url": "",
-    "price": "",
+    # property-card hooks matching tests/fixtures/city24_search.html;
+    # re-verify against live markup if parse yields 0 rows.
+    "card": r'<div[^>]*class="[^"]*property-card[^"]*"[^>]*data-id="(?P<id>\d+)"[^>]*>(?P<body>.*?)</div>\s*(?=<div[^>]*class="[^"]*property-card|$)',
+    "url": r'href="(?P<url>/[^"]*?-(?P<id2>\d+)(?:\.html|/?))"',
+    "price": r'(?P<price>[\d\s\u00a0]+)\s*€',
+    "rooms": r'(?P<rooms>\d+)\s*(?:tuba|tubal|rooms?|tk)',
+    "area": r'(?P<area>[\d.,]+)\s*m[²2]',
 }
 
-HEADERS = {"User-Agent": "home-finder/0.1 (+research scaffold; daily poll)"}
+HEADERS = polite_headers()
 
 
 def fetch_search_html(query: str = "", page_limit: int = 1, timeout: float = 20.0) -> str:
-    """TODO(#6): confirm query params/pagination, then return one page of search HTML."""
-    resp = httpx.get(SEARCH_URL, params={"q": query} if query else None, headers=HEADERS, timeout=timeout)
-    resp.raise_for_status()
-    return resp.text
+    """Single page of city24.ee search HTML. Keep page_limit small; cron, don't hammer."""
+    params = {"page": 1}
+    if query:
+        params["q"] = query
+    return fetch_html(SEARCH_URL, params=params, headers=HEADERS, timeout=timeout)
+
+
+def _parse_card(card_id: str, body: str) -> dict:
+    um = re.search(SELECTORS["url"], body)
+    pm = re.search(SELECTORS["price"], body)
+    address_m = re.search(r"<h[23][^>]*>(?P<a>.*?)</h[23]>", body, re.S)
+    if not address_m:
+        address_m = re.search(
+            r'class="[^"]*(?:address|title)[^"]*"[^>]*>(?P<a>[^<]+)<', body, re.S | re.I
+        )
+    address = re.sub(r"<[^>]+>", "", address_m.group("a")).strip() if address_m else ""
+    text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", body))
+    rm = re.search(SELECTORS["rooms"], text, re.I)
+    am = re.search(SELECTORS["area"], text, re.I)
+    url = um.group("url") if um else "/"
+    if not url.startswith("http"):
+        url = BASE_URL + (url if url.startswith("/") else "/" + url)
+    return normalize_listing(
+        {
+            "id": "city24-%s" % card_id,
+            "source": SOURCE,
+            "source_url": url,
+            "address": address or ("city24.ee #%s" % card_id),
+            "price": to_int_eur(pm.group("price")) if pm else None,
+            "rooms": to_int_rooms(rm.group("rooms")) if rm else None,
+            "area_m2": to_float_m2(am.group("area")) if am else None,
+        }
+    )
 
 
 def parse_search_html(html: str) -> List[dict]:
-    """TODO(#6): extract [{id, source, source_url, address, price}] like adapters.kv_ee."""
-    return []
+    """Parse search HTML into canonical records. Offline-safe (no network)."""
+    out: List[dict] = []
+    for m in re.finditer(SELECTORS["card"], html, re.S):
+        out.append(_parse_card(m.group("id"), m.group("body")))
+    return out
 
 
-def scrape(query: str = "", page_limit: int = 1) -> List[dict]:
-    return parse_search_html(fetch_search_html(query, page_limit))
+def scrape(
+    query: str = "",
+    page_limit: int = 1,
+    cache_dir: Optional[str] = None,
+    cache_ttl_s: float = 24 * 3600,
+) -> List[dict]:
+    """Fetch (via 24h file cache when cache_dir is set) + parse + normalize."""
+    html = cached_fetch(
+        "city24_ee", query, page_limit, lambda: fetch_search_html(query, page_limit),
+        cache_dir, cache_ttl_s,
+    )
+    return parse_search_html(html)
