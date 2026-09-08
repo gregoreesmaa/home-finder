@@ -137,6 +137,14 @@ CHROME_BINARY_CANDIDATES = (
     "/snap/bin/chromium",
 )
 
+# Headless engines advertise "HeadlessChrome" in the default UA, a well-known
+# bot signal. Override with the ordinary desktop UA of the engine's own
+# major version (verified: this + virtual-time-budget passes kv.ee).
+CHROME_DESKTOP_UA = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+    " (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36"
+)
+
 
 def find_chrome_binary() -> Optional[str]:
     """Path to a real Chrome/Chromium engine, or None when not installed."""
@@ -168,8 +176,13 @@ def fetch_html_via_chrome(url: str, timeout: float = 280.0) -> str:
     if not binary:
         raise RuntimeError("no Chrome/Chromium engine installed for fallback fetch")
     # Fresh profile per call: a reused dir can block on a stale Singleton lock
-    # and serialize concurrent runs.
+    # and serialize concurrent runs. --timeout caps the page load itself
+    # (--dump-dom alone can hang on pages with never-ending connections);
+    # the subprocess timeout is a backstop that also kills strays.
+    import shutil
+
     profile = tempfile.mkdtemp(prefix="hf-chrome-")
+    proc = None
     try:
         proc = subprocess.run(
             [
@@ -178,22 +191,50 @@ def fetch_html_via_chrome(url: str, timeout: float = 280.0) -> str:
                 "--disable-gpu",
                 "--no-first-run",
                 "--user-data-dir=%s" % profile,
-                "--virtual-time-budget=15000",
+                "--user-agent=%s" % CHROME_DESKTOP_UA,
+                "--virtual-time-budget=20000",
+                "--timeout=%d" % int(timeout * 1000),
                 "--dump-dom",
                 url,
             ],
             capture_output=True,
             text=True,
-            timeout=timeout,
+            timeout=timeout + 30,
         )
+    except subprocess.TimeoutExpired:
+        raise RuntimeError("headless Chrome timed out for %s" % url)
     finally:
-        import shutil
+        if proc is None:
+            for _p in _chrome_pids_for_profile(profile):
+                try:
+                    import os as _os
+                    import signal as _signal
 
+                    _os.kill(_p, _signal.SIGKILL)
+                except OSError:
+                    pass
         shutil.rmtree(profile, ignore_errors=True)
-    html = proc.stdout or ""
+    html = proc.stdout or "" if proc else ""
     if "<html" not in html.lower():
         raise RuntimeError("headless Chrome returned no document for %s" % url)
     return html
+
+
+def _chrome_pids_for_profile(profile: str) -> list:
+    """PIDs whose command line references the given profile dir."""
+    import subprocess as _sp
+
+    try:
+        out = _sp.run(["pgrep", "-f", profile], capture_output=True, text=True).stdout
+    except OSError:
+        return []
+    pids = []
+    for line in out.splitlines():
+        try:
+            pids.append(int(line.strip()))
+        except ValueError:
+            pass
+    return pids
 
 
 def to_int_eur(raw: Optional[str]) -> Optional[int]:
