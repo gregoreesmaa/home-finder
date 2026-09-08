@@ -1,13 +1,24 @@
-"""Scoring API stub (FastAPI). Canonical ranking contract, mirrored in TS.
+"""Scoring API (FastAPI). Canonical ranking contract, mirrored in TS.
 
 discount_pct: % below predicted market price (POSITIVE = steal / good deal).
 GET /listings?sort=combined|livability|deal  -> best-to-worst sorted items.
 GET /area-scores -> H3 hex goodness as GeoJSON (mock until PostGIS is wired).
+POST /score -> score one listing (livability + deal -> combined).
+GET /heatmap-cells?bbox=minlon,minlat,maxlon,maxlat -> cell aggregates as GeoJSON.
+GET /heatmap-tiles/{z}/{x}/{y} -> JSON cell aggregate for one slippy-map tile
+    (v1 JSON stepping stone to binary MVT via PostGIS ST_AsMVT).
+
+PostGIS path: when DATABASE_URL is set and psycopg is installed, cell reads
+try `area_scores` first and fall back to the in-memory mock on any failure,
+so tests/CI (no DB) stay green and prod reads the real table.
 """
 
+import math
+import os
 from typing import List, Optional
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, HTTPException, Query
+from pydantic import BaseModel, Field, model_validator
 
 app = FastAPI(title="home-finder scoring")
 
@@ -98,10 +109,71 @@ def heat_level(score: int) -> str:
     return "bad"
 
 
-@app.get("/area-scores")
-def area_scores():
+# ---- PostGIS-backed cell reads (graceful mock fallback) ----
+
+_CELLS_SQL = (
+    "SELECT h3, score_goodness, level,"
+    " ST_X(ST_Centroid(geom)) AS lon, ST_Y(ST_Centroid(geom)) AS lat"
+    " FROM area_scores"
+)
+_CELLS_BBOX_SQL = _CELLS_SQL + " WHERE geom && ST_MakeEnvelope(%s,%s,%s,%s,4326)"
+
+
+def _db_rows(sql: str, params: tuple = ()):
+    """Return DB rows or None when no DB is configured/reachable."""
+    url = os.environ.get("DATABASE_URL")
+    if not url:
+        return None
+    try:
+        import psycopg  # type: ignore
+    except ImportError:
+        return None
+    try:
+        with psycopg.connect(url, connect_timeout=3) as conn:  # type: ignore[attr-defined]
+            with conn.cursor() as cur:
+                cur.execute(sql, params)
+                cols = [d[0] for d in cur.description]
+                return [dict(zip(cols, r)) for r in cur.fetchall()]
+    except Exception:
+        return None
+
+
+def get_cells(bounds: Optional[tuple] = None) -> List[dict]:
+    """Cell aggregates, ideally from PostGIS area_scores, else the mock."""
+    rows = None
+    if bounds is not None:
+        rows = _db_rows(_CELLS_BBOX_SQL, bounds)
+    else:
+        rows = _db_rows(_CELLS_SQL)
+    if rows:
+        cells = []
+        for r in rows:
+            try:
+                cells.append(
+                    {
+                        "h3": str(r["h3"]),
+                        "score_goodness": int(r["score_goodness"]),
+                        "lon": float(r["lon"]),
+                        "lat": float(r["lat"]),
+                    }
+                )
+            except (KeyError, TypeError, ValueError):
+                continue
+        if cells:
+            return cells
+    if bounds is None:
+        return list(MOCK_HEXES)
+    minlon, minlat, maxlon, maxlat = bounds
+    return [
+        h
+        for h in MOCK_HEXES
+        if minlon <= h["lon"] <= maxlon and minlat <= h["lat"] <= maxlat
+    ]
+
+
+def cells_to_geojson(cells: List[dict]) -> dict:
     features = []
-    for h in MOCK_HEXES:
+    for h in cells:
         features.append(
             {
                 "type": "Feature",
@@ -117,3 +189,122 @@ def area_scores():
             }
         )
     return {"type": "FeatureCollection", "features": features}
+
+
+@app.get("/area-scores")
+def area_scores():
+    return cells_to_geojson(get_cells())
+
+
+# ---- POST /score ----
+
+
+class ScoreRequest(BaseModel):
+    score_livability: float = Field(..., ge=0, le=100)
+    discount_pct: Optional[float] = None
+    price: Optional[float] = Field(None, gt=0)
+    predicted_price: Optional[float] = Field(None, gt=0)
+
+    @model_validator(mode="after")
+    def _need_discount_or_price_pair(self):
+        if self.discount_pct is None and (
+            self.price is None or self.predicted_price is None
+        ):
+            raise ValueError("provide discount_pct or both price and predicted_price")
+        return self
+
+
+@app.post("/score")
+def score(req: ScoreRequest):
+    discount = req.discount_pct
+    if discount is None:
+        discount = (req.predicted_price - req.price) / req.predicted_price * 100.0
+    dn = deal_norm(discount)
+    combined = combined_score(req.score_livability, discount)
+    return {
+        "score_livability": req.score_livability,
+        "discount_pct": round(float(discount), 2),
+        "deal_norm": dn,
+        "score_combined": combined,
+        "level": heat_level(combined),
+    }
+
+
+# ---- GET /heatmap-cells + GET /heatmap-tiles ----
+
+
+def parse_bbox(bbox: str) -> tuple:
+    try:
+        parts = [float(p) for p in bbox.split(",")]
+    except ValueError:
+        raise HTTPException(
+            status_code=422, detail="bbox must be minlon,minlat,maxlon,maxlat numbers"
+        )
+    if len(parts) != 4:
+        raise HTTPException(
+            status_code=422, detail="bbox must be minlon,minlat,maxlon,maxlat"
+        )
+    minlon, minlat, maxlon, maxlat = parts
+    if not (-180 <= minlon <= 180 and -180 <= maxlon <= 180):
+        raise HTTPException(status_code=422, detail="bbox lon out of [-180,180]")
+    if not (-90 <= minlat <= 90 and -90 <= maxlat <= 90):
+        raise HTTPException(status_code=422, detail="bbox lat out of [-90,90]")
+    if not (minlon < maxlon and minlat < maxlat):
+        raise HTTPException(status_code=422, detail="bbox min must be < max")
+    return (minlon, minlat, maxlon, maxlat)
+
+
+@app.get("/heatmap-cells")
+def heatmap_cells(bbox: Optional[str] = None):
+    bounds = parse_bbox(bbox) if bbox is not None else None
+    cells = get_cells(bounds)
+    fc = cells_to_geojson(cells)
+    fc["query"] = {"bbox": list(bounds) if bounds else None}
+    return fc
+
+
+def tile_bounds(z: int, x: int, y: int) -> tuple:
+    n = 2**z
+    minlon = x / n * 360.0 - 180.0
+    maxlon = (x + 1) / n * 360.0 - 180.0
+
+    def _lat(yy: int) -> float:
+        return math.degrees(math.atan(math.sinh(math.pi * (1 - 2 * yy / n))))
+
+    maxlat = _lat(y)
+    minlat = _lat(y + 1)
+    return (minlon, minlat, maxlon, maxlat)
+
+
+@app.get("/heatmap-tiles/{z}/{x}/{y}")
+def heatmap_tile(z: int, x: int, y: int):
+    if not (0 <= z <= 19):
+        raise HTTPException(status_code=422, detail="z must be 0..19")
+    n = 2**z
+    if not (0 <= x < n and 0 <= y < n):
+        raise HTTPException(status_code=422, detail="x/y out of range for z")
+    bounds = tile_bounds(z, x, y)
+    cells = get_cells(bounds)
+    minlon, minlat, maxlon, maxlat = bounds
+    return {
+        "z": z,
+        "x": x,
+        "y": y,
+        "bounds": {
+            "minlon": minlon,
+            "minlat": minlat,
+            "maxlon": maxlon,
+            "maxlat": maxlat,
+        },
+        "count": len(cells),
+        "cells": [
+            {
+                "h3": c["h3"],
+                "score_goodness": c["score_goodness"],
+                "level": heat_level(c["score_goodness"]),
+                "lon": c["lon"],
+                "lat": c["lat"],
+            }
+            for c in cells
+        ],
+    }
