@@ -58,7 +58,9 @@ HEADERS = polite_headers()
 
 def fetch_search_html(query: str = "", page_limit: int = 1, timeout: float = 20.0) -> str:
     """Single page of lvm.ee search HTML. Keep page_limit small; cron, don't hammer."""
-    params = {"page": 1}
+    # NOTE: /objektid/ answers 200 bare but 404s with ?page=1, so the first
+    # page must be fetched without params (deeper pagination scheme unknown).
+    params = {}
     if query:
         params["q"] = query
     return fetch_html(SEARCH_URL, params=params, headers=HEADERS, timeout=timeout)
