@@ -43,8 +43,8 @@ def test_stub_anchor_shape(modname, expected):
 
 
 def test_facebook_has_no_automated_fetch():
+    # #11: paste-in parser is implemented (see test_facebook_adapter.py);
+    # only the automated network path must stay unimplemented.
     mod = importlib.import_module("adapters.facebook")
     with pytest.raises(NotImplementedError):
         mod.fetch_search_html()
-    with pytest.raises(NotImplementedError):
-        mod.parse_pasted("Kotzebue 12, Tallinn 285000 €")
