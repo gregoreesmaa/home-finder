@@ -66,10 +66,12 @@ function HomeInner() {
     [listings],
   );
 
+  // Tops describe the visible (live, filtered) list, not the mock set.
+  const topSource = visible && visible.length > 0 ? visible : MOCK_LISTINGS;
   const top = {
-    combined: sortListings(MOCK_LISTINGS, "combined")[0],
-    livability: sortListings(MOCK_LISTINGS, "livability")[0],
-    deal: sortListings(MOCK_LISTINGS, "deal")[0],
+    combined: sortListings(topSource, "combined")[0],
+    livability: sortListings(topSource, "livability")[0],
+    deal: sortListings(topSource, "deal")[0],
   };
 
   return (
