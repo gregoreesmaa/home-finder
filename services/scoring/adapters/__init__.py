@@ -192,6 +192,10 @@ def fetch_html_via_chrome(url: str, timeout: float = 280.0) -> str:
                 "--no-first-run",
                 "--user-data-dir=%s" % profile,
                 "--user-agent=%s" % CHROME_DESKTOP_UA,
+                # Listing pages carry dozens of image carousels; decoding
+                # them under software rendering dominates wall time while
+                # contributing nothing to the extracted markup/JSON-LD.
+                "--blink-settings=imagesEnabled=false",
                 "--virtual-time-budget=20000",
                 "--timeout=%d" % int(timeout * 1000),
                 "--dump-dom",
