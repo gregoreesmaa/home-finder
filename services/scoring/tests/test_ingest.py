@@ -111,10 +111,19 @@ def test_sale_floor_keeps_mislabeled_rows_out_of_median():
         "adapters.remax_ee",
     )
     by_id = {r["id"]: r for r in rows}
-    # Pool holds only the genuine sale (6000/m2): s1 scores ~0, the 10/m2
-    # row is still scored against it instead of corrupting the median.
+    # Pool holds only the genuine sale (6000/m2): s1 scores ~0, while the
+    # 10/m2 row gets discount 0 with a check-yourself caution, never a
+    # fantasy steal.
     assert by_id["s1"]["discount_pct"] == 0.0
-    assert by_id["weird"]["discount_pct"] == pytest.approx(99.8, abs=0.1)
+    assert by_id["weird"]["discount_pct"] == 0.0
+    assert "kontrolli" in by_id["weird"]["reasons"][0]
+
+
+def test_county_colloquial_maa_forms():
+    assert (
+        ingest.county_for("Tiiru tee 6, Kallavere küla, Jõelähtme vald, Harjumaa")
+        == "Harju maakond"
+    )
 
 
 def test_enrich_excludes_rent_and_land_from_medians():

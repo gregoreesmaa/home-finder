@@ -37,7 +37,7 @@ PORTALS: List[Tuple[str, bool, str]] = [
     ("adapters.lvm_ee", True, ""),
     ("adapters.remax_ee", True, ""),
     ("adapters.kv_ee", False, "HTTP 403 bot protection on search pages"),
-    ("adapters.city24_ee", False, "JS SPA shell -- no server-rendered cards"),
+    ("adapters.city24_ee", True, "public search JSON API (no key, no login)"),
     ("adapters.kinnisvara24_ee", False, "HTTP 403 bot protection"),
     ("adapters.kinnisvaraweb_ee", False, "HTTP 403 bot protection"),
     ("adapters.okidoki_ee", False, "HTTP 403 bot protection"),
@@ -121,6 +121,23 @@ COUNTY_NAMES = {
     "rapla maakond": "Rapla maakond",
     "jõgeva maakond": "Jõgeva maakond",
     "hiiu maakond": "Hiiu maakond",
+    # Colloquial short forms seen in live addresses ("Harjumaa", ...).
+    "harjumaa": "Harju maakond",
+    "tartumaa": "Tartu maakond",
+    "pärnumaa": "Pärnu maakond",
+    "idavirumaa": "Ida-Viru maakond",
+    "ida-virumaa": "Ida-Viru maakond",
+    "viljandimaa": "Viljandi maakond",
+    "lääne-virumaa": "Lääne-Viru maakond",
+    "saaremaa": "Saare maakond",
+    "läänemaa": "Lääne maakond",
+    "järvamaa": "Järva maakond",
+    "valgamaa": "Valga maakond",
+    "võrumaa": "Võru maakond",
+    "põlvamaa": "Põlva maakond",
+    "raplamaa": "Rapla maakond",
+    "jõgevamaa": "Jõgeva maakond",
+    "hiiumaa": "Hiiu maakond",
 }
 
 
@@ -186,20 +203,26 @@ def score(rows: List[dict]) -> List[dict]:
             buckets.setdefault(r["county"], []).append(ppm)
     medians = {c: statistics.median(v) for c, v in buckets.items()}
     for r in rows:
+        # Source attribution renders from the `source` field in the UI.
+        r["reasons"] = ["Elamiskvaliteet arvutamata (automaatimport)"]
         if r.get("deal_type", "sale") == "sale":
             ppm, med = r["price_per_m2"], medians.get(r["county"])
             r["discount_pct"] = (
                 round((med - ppm) / med * 100, 1) if ppm and med else 0.0
             )
+            if ppm is not None and ppm < SALE_PPM_FLOOR:
+                # Sub-floor "sale" (likely a rent slipped through the
+                # markers): do not present a fantasy steal, flag for check.
+                r["discount_pct"] = 0.0
+                r["reasons"].insert(
+                    0, "Hind ebatavaline (€/m²) – kontrolli, kas on müük",
+                )
         else:
             r["discount_pct"] = 0.0
-        r["score_livability"] = NEUTRAL_LIVABILITY
-        # Source attribution renders from the `source` field in the UI.
-        r["reasons"] = ["Elamiskvaliteet arvutamata (automaatimport)"]
-        if r.get("deal_type", "sale") != "sale":
             r["reasons"].insert(
                 0, TYPE_REASON.get(r["deal_type"], TYPE_REASON["unknown"])
             )
+        r["score_livability"] = NEUTRAL_LIVABILITY
     return rows
 
 
@@ -211,16 +234,17 @@ def enrich(rows: List[dict], modname: str = "") -> List[dict]:
 UPSERT_SQL = """
 INSERT INTO listings
   (id, source, source_url, address, county, price, price_per_m2,
-   rooms, area_m2, score_livability, discount_pct, reasons)
+   rooms, area_m2, lat, lon, score_livability, discount_pct, reasons)
 VALUES
   (%(id)s, %(source)s, %(source_url)s, %(address)s, %(county)s, %(price)s,
-   %(price_per_m2)s, %(rooms)s, %(area_m2)s, %(score_livability)s,
-   %(discount_pct)s, %(reasons)s::jsonb)
+   %(price_per_m2)s, %(rooms)s, %(area_m2)s, %(lat)s, %(lon)s,
+   %(score_livability)s, %(discount_pct)s, %(reasons)s::jsonb)
 ON CONFLICT (id) DO UPDATE SET
   source_url = EXCLUDED.source_url, address = EXCLUDED.address,
   county = EXCLUDED.county, price = EXCLUDED.price,
   price_per_m2 = EXCLUDED.price_per_m2, rooms = EXCLUDED.rooms,
-  area_m2 = EXCLUDED.area_m2, score_livability = EXCLUDED.score_livability,
+  area_m2 = EXCLUDED.area_m2, lat = EXCLUDED.lat, lon = EXCLUDED.lon,
+  score_livability = EXCLUDED.score_livability,
   discount_pct = EXCLUDED.discount_pct, reasons = EXCLUDED.reasons,
   scraped_at = now()
 """
@@ -241,6 +265,8 @@ def upsert(conn, rows: List[dict]) -> int:
                 "price_per_m2": r.get("price_per_m2"),
                 "rooms": r.get("rooms"),
                 "area_m2": r.get("area_m2"),
+                "lat": r.get("lat"),
+                "lon": r.get("lon"),
                 "score_livability": r.get("score_livability", NEUTRAL_LIVABILITY),
                 "discount_pct": r.get("discount_pct", 0.0),
                 "reasons": json.dumps(list(r.get("reasons", []))),
