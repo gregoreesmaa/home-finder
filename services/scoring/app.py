@@ -13,9 +13,10 @@ try `area_scores` first and fall back to the in-memory mock on any failure,
 so tests/CI (no DB) stay green and prod reads the real table.
 """
 
+import json
 import math
 import os
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -103,13 +104,92 @@ def health():
 
 @app.get("/listings")
 def listings(sort: str = Query("combined", pattern="^(combined|livability|deal)$")):
+    db_rows = get_db_listings()
+    live = db_rows is not None and len(db_rows) > 0
     items: List[dict] = []
-    for l in MOCK_LISTINGS:
+    for l in db_rows if live else MOCK_LISTINGS:
         item = dict(l)
-        item["score_combined"] = combined_score(l["score_livability"], l["discount_pct"])
+        item["score_combined"] = combined_score(
+            item.get("score_livability") or 0, item.get("discount_pct") or 0
+        )
+        item["is_live"] = live
         items.append(item)
     items.sort(key=sort_key(sort), reverse=True)
-    return {"items": items, "sort": sort}
+    return {"items": items, "sort": sort, "live": live}
+
+
+_LISTINGS_SQL = (
+    "SELECT id, source, source_url, address, county, price, price_per_m2,"
+    " rooms, area_m2, score_livability, discount_pct, reasons FROM listings"
+)
+
+
+def _num(v):
+    """Coerce DB numerics (psycopg returns Decimal) to int/float/None."""
+    if v is None:
+        return None
+    f = float(v)
+    return int(f) if f.is_integer() else f
+
+
+def get_db_listings() -> Optional[List[dict]]:
+    """Live rows from PostGIS, or None when unavailable/empty (mock fallback)."""
+    rows = _db_rows(_LISTINGS_SQL)
+    if not rows:
+        return None
+    out = []
+    for r in rows:
+        reasons = r.get("reasons")
+        if isinstance(reasons, str):
+            try:
+                reasons = json.loads(reasons)
+            except ValueError:
+                reasons = []
+        out.append(
+            {
+                "id": str(r["id"]),
+                "source": r.get("source"),
+                "source_url": r.get("source_url"),
+                "address": r.get("address", ""),
+                "county": r.get("county", "Eesti"),
+                "price": _num(r.get("price")),
+                "price_per_m2": _num(r.get("price_per_m2")),
+                "rooms": _num(r.get("rooms")),
+                "area_m2": _num(r.get("area_m2")),
+                "score_livability": _num(r.get("score_livability")),
+                "discount_pct": _num(r.get("discount_pct")),
+                "reasons": list(reasons or []),
+            }
+        )
+    return out or None
+
+
+@app.get("/sources")
+def sources():
+    """Per-portal integration status: live DB counts + honest block reasons."""
+    import importlib
+
+    from ingest import PORTALS
+
+    counts: Dict[str, int] = {}
+    rows = _db_rows("SELECT source, count(*) AS n FROM listings GROUP BY source")
+    if rows:
+        counts = {str(r["source"]): int(r["n"]) for r in rows}
+    out: List[Dict[str, Any]] = []
+    for modname, enabled, note in PORTALS:
+        try:
+            source = importlib.import_module(modname).SOURCE
+        except Exception:
+            source = modname
+        out.append(
+            {
+                "source": source,
+                "enabled": enabled,
+                "note": note,
+                "count": counts.get(source, 0),
+            }
+        )
+    return {"sources": out}
 
 
 def heat_level(score: int) -> str:

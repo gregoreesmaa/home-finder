@@ -5,13 +5,30 @@ export interface MockListing {
   address: string;
   county: string;
   price: number;
-  price_per_m2: number;
-  rooms: number;
-  area_m2: number;
+  /** Null when the portal card omits the field (common on live imports). */
+  price_per_m2: number | null;
+  rooms: number | null;
+  area_m2: number | null;
   score_livability: number;
   discount_pct: number;
   score_combined: number;
   reasons: readonly string[];
+  /** Present on live API rows (portal domain, e.g. "pindi.ee"). */
+  source?: string;
+  /** True when the row came from a real portal import, false for mocks. */
+  is_live?: boolean;
+}
+
+const etNum = (v: number | null, unit: string): string =>
+  v === null || v === undefined ? "–" : `${v.toLocaleString("et-EE")} ${unit}`;
+
+/** One-line facts for the card; missing live fields render as "–". */
+export function formatFacts(l: MockListing): string {
+  const rooms = l.rooms === null || l.rooms === undefined ? "–" : `${l.rooms} tuba`;
+  return (
+    `${l.price.toLocaleString("et-EE")} € · ${etNum(l.price_per_m2, "€/m²")} · ` +
+    `${rooms} · ${etNum(l.area_m2, "m²")}`
+  );
 }
 
 // Deliberately constructed so each sort mode yields a DIFFERENT top-1
