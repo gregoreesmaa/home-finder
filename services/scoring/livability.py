@@ -294,7 +294,12 @@ def fetch_geocode_photon(address: str, timeout: float = 20.0) -> Optional[Tuple[
 
 
 def fetch_geocode_nominatim(address: str, timeout: float = 20.0) -> Optional[Tuple[float, float]]:
-    """Nominatim fallback (countrycodes=ee + Estonia viewbox). None when empty."""
+    """Nominatim fallback (countrycodes=ee + Estonia viewbox). None when empty.
+
+    Retries through 429s with backoff instead of burning the address as a
+    miss; transport errors still propagate (resolve() maps them to null dims,
+    never to cached negatives).
+    """
     params = {
         "q": address,
         "format": "jsonv2",
@@ -303,13 +308,20 @@ def fetch_geocode_nominatim(address: str, timeout: float = 20.0) -> Optional[Tup
         "viewbox": "%s,%s,%s,%s" % (EE_BBOX[0], EE_BBOX[3], EE_BBOX[2], EE_BBOX[1]),
         "bounded": "1",
     }
-    resp = httpx.get(NOMINATIM_URL, params=params, headers=HEADERS, timeout=timeout)
-    resp.raise_for_status()
-    hits = resp.json()
-    if not hits:
-        return None
-    time.sleep(1.2)  # Nominatim usage policy: max 1 req/s
-    return float(hits[0]["lat"]), float(hits[0]["lon"])
+    backoff = 15.0
+    for attempt in range(3):
+        resp = httpx.get(NOMINATIM_URL, params=params, headers=HEADERS, timeout=timeout)
+        if resp.status_code == 429 and attempt < 2:
+            time.sleep(backoff)
+            backoff *= 4
+            continue
+        resp.raise_for_status()
+        hits = resp.json()
+        if not hits:
+            return None
+        time.sleep(1.5)  # Nominatim usage policy: max 1 req/s
+        return float(hits[0]["lat"]), float(hits[0]["lon"])
+    return None
 
 
 def fetch_geocode(address: str, timeout: float = 20.0) -> Optional[Tuple[float, float]]:
@@ -323,18 +335,19 @@ def fetch_geocode(address: str, timeout: float = 20.0) -> Optional[Tuple[float, 
 
 
 def fetch_pois(lat: float, lon: float, timeout: float = 30.0) -> Optional[List[dict]]:
-    """One Overpass query for all POI kinds. None on transport error."""
-    try:
-        resp = httpx.post(
-            OVERPASS_URL,
-            data={"data": OVERPASS_QUERY.format(lat=lat, lon=lon)},
-            headers=HEADERS,
-            timeout=timeout,
-        )
-        resp.raise_for_status()
-        pois = parse_overpass(resp.json())
-    except httpx.HTTPError:
-        return None
+    """One Overpass query for all POI kinds.
+
+    Transport errors propagate (resolve() maps them to null dims without
+    caching); only real answers are cached.
+    """
+    resp = httpx.post(
+        OVERPASS_URL,
+        data={"data": OVERPASS_QUERY.format(lat=lat, lon=lon)},
+        headers=HEADERS,
+        timeout=timeout,
+    )
+    resp.raise_for_status()
+    pois = parse_overpass(resp.json())
     time.sleep(1.2)  # Overpass usage policy: polite gap after uncached calls
     return pois
 
