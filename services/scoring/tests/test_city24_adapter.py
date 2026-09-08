@@ -1,23 +1,25 @@
-"""Regression: kv.ee adapter parses search HTML offline (no network)."""
+"""Regression: city24.ee adapter parses search HTML offline (no network)."""
 
 import os
 
-import adapters.kv_ee as kv_ee
-from adapters.kv_ee import parse_search_html
+import adapters.city24_ee as city24
+from adapters.city24_ee import parse_search_html
 
-FIXTURE = os.path.join(os.path.dirname(__file__), "fixtures", "kv_search.html")
+FIXTURE = os.path.join(os.path.dirname(__file__), "fixtures", "city24_search.html")
 
 
-def test_parse_kv_search_fixture():
+def test_parse_city24_search_fixture():
     with open(FIXTURE, encoding="utf-8") as f:
         rows = parse_search_html(f.read())
     assert len(rows) == 2
-    assert rows[0]["id"] == "kv-1234567"
-    assert rows[0]["source"] == "kv.ee"
-    assert rows[0]["source_url"].startswith("https://kv.ee/")
-    assert rows[0]["price"] == 285000
+    assert rows[0]["id"] == "city24-987654"
+    assert rows[0]["source"] == "city24.ee"
+    assert rows[0]["source_url"].startswith("https://www.city24.ee/")
+    assert rows[0]["price"] == 279000
     assert "Kotzebue" in rows[0]["address"]
-    assert rows[1]["price"] == 149000
+    assert rows[0]["rooms"] == 3
+    assert rows[0]["area_m2"] == 68.0
+    assert rows[1]["price"] == 198000
 
 
 def test_parse_empty_html_yields_no_rows():
@@ -28,21 +30,19 @@ def test_records_match_canonical_shape():
     with open(FIXTURE, encoding="utf-8") as f:
         rows = parse_search_html(f.read())
     for row in rows:
-        for key in ("id", "source", "source_url", "address", "price"):
+        for key in ("id", "source", "source_url", "address", "price", "rooms", "area_m2"):
             assert key in row, "missing %s" % key
         assert row["address"].strip()
-        # detail fields exist (None when the card omits them)
-        assert "rooms" in row and "area_m2" in row
 
 
 def test_fetch_and_scrape_use_mocked_http(monkeypatch):
     with open(FIXTURE, encoding="utf-8") as f:
         html = f.read()
-    monkeypatch.setattr(kv_ee, "fetch_html", lambda *a, **k: html)
-    assert "1234567" in kv_ee.fetch_search_html()
-    rows = kv_ee.scrape()
+    monkeypatch.setattr(city24, "fetch_html", lambda *a, **k: html)
+    assert "987654" in city24.fetch_search_html()
+    rows = city24.scrape()
     assert len(rows) == 2
-    assert rows[0]["id"] == "kv-1234567"
+    assert rows[0]["id"] == "city24-987654"
 
 
 def test_scrape_serves_second_call_from_cache(monkeypatch, tmp_path):
@@ -54,13 +54,13 @@ def test_scrape_serves_second_call_from_cache(monkeypatch, tmp_path):
         calls.append(1)
         return html
 
-    monkeypatch.setattr(kv_ee, "fetch_html", counting_fetch)
-    first = kv_ee.scrape(cache_dir=str(tmp_path))
+    monkeypatch.setattr(city24, "fetch_html", counting_fetch)
+    first = city24.scrape(cache_dir=str(tmp_path))
     assert len(first) == 2 and len(calls) == 1
 
     def boom(*args, **kwargs):
         raise AssertionError("network must not be hit on warm cache")
 
-    monkeypatch.setattr(kv_ee, "fetch_html", boom)
-    second = kv_ee.scrape(cache_dir=str(tmp_path))
+    monkeypatch.setattr(city24, "fetch_html", boom)
+    second = city24.scrape(cache_dir=str(tmp_path))
     assert second == first and len(calls) == 1
