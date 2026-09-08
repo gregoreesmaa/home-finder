@@ -85,6 +85,8 @@ npm run test:e2e --workspace @home-finder/web   # playwright smoke (needs: npx p
 pip install -r services/scoring/requirements.txt
 python3 -m pytest services/scoring/tests -q
 uvicorn app:app --reload --app-dir services/scoring
+DATABASE_URL=postgresql://homefinder:homefinder@localhost:5432/homefinder \
+  python3 services/scoring/ingest.py --cache-dir /tmp/hf-cache   # live import (polite, page 1/portal)
 
 # everything (PostGIS + API + web)
 docker compose up --build

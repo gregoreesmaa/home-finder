@@ -1,6 +1,6 @@
 "use client";
 
-import type { MockListing } from "../lib/mockListings";
+import { formatFacts, type MockListing } from "../lib/mockListings";
 
 export function livabilityTone(score: number): "green" | "amber" | "red" {
   if (score >= 75) return "green";
@@ -29,10 +29,13 @@ export function ListingCard({
     <article aria-label={`#${rank} ${listing.address}`}>
       <span aria-label={`Koht ${rank}`}>#{rank}</span>
       <h3>{listing.address}</h3>
-      <p>
-        {listing.price.toLocaleString("et-EE")} € · {listing.price_per_m2.toLocaleString("et-EE")} €/m² ·{" "}
-        {listing.rooms} tuba · {listing.area_m2} m²
-      </p>
+      <p>{formatFacts(listing)}</p>
+      {listing.source && (
+        <p>
+          Allikas: {listing.source}
+          {listing.is_live ? " · reaalajas" : ""}
+        </p>
+      )}
       <span data-tone={livabilityTone(listing.score_livability)}>
         Sobivus {listing.score_livability}/100
       </span>{" "}
