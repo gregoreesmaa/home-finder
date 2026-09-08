@@ -3,12 +3,15 @@
 Enabled portals are the ones reachable with polite plain-HTTP fetches
 (probed 2026-09-08: domus, uusmaa, pindi, 1partner, arcovara, lvm, remax
 all serve server-rendered cards; selectors verified against live markup).
+kv.ee gates scripted HTTP on TLS fingerprint, so it fetches via genuine
+headless Chrome instead (verified 2026-09-08: real ItemList JSON-LD).
 Blocked/JS-only portals stay listed with their reason and are skipped
 gracefully -- never retried aggressively.
 
-Scoring of live rows (honest v1): livability signals are not scraped, so
-every live row gets the neutral 50 with a reason saying so; discount_pct
-is measured against the county median EUR/m2 *within the fetched batch*,
+Scoring of live rows: livability comes from the dimension registry in
+livability.py (Photon geocode + OSM POIs, cached, graceful nulls), so rows
+get varied per-listing scores with Estonian reasons; discount_pct is
+measured against the county median EUR/m2 *within the fetched batch*,
 so "steal vs overpriced" stays meaningful and sort modes keep working.
 
 Usage (daily cron cadence, polite: page_limit=1 per portal):
@@ -26,6 +29,7 @@ from typing import Dict, List, Optional, Tuple
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from adapters import dedup_listings  # noqa: E402
+import livability  # noqa: E402
 
 # (adapter module, enabled, note when disabled)
 PORTALS: List[Tuple[str, bool, str]] = [
@@ -36,7 +40,7 @@ PORTALS: List[Tuple[str, bool, str]] = [
     ("adapters.arcovara_ee", True, ""),
     ("adapters.lvm_ee", True, ""),
     ("adapters.remax_ee", True, ""),
-    ("adapters.kv_ee", False, "HTTP 403 bot protection on search pages"),
+    ("adapters.kv_ee", True, "headless-Chrome fetch (genuine browser TLS); daily cron"),
     ("adapters.city24_ee", True, "public search JSON API (no key, no login)"),
     ("adapters.kinnisvara24_ee", False, "HTTP 403 bot protection"),
     ("adapters.kinnisvaraweb_ee", False, "HTTP 403 bot protection"),
@@ -183,14 +187,18 @@ def classify(rows: List[dict], modname: str = "") -> List[dict]:
 SALE_PPM_FLOOR = 100.0
 
 
-def score(rows: List[dict]) -> List[dict]:
-    """Batch-median discount over SALE rows per county + neutral livability.
+def score(rows: List[dict], cache_dir: Optional[str] = None, resolver=None) -> List[dict]:
+    """Batch-median discount over SALE rows per county + livability dims.
 
     Rents (EUR/month) and land (EUR/m2 of soil) are excluded from the sale
     medians and keep discount 0.0 with an honest typed reason. As a backstop
     against mislabeled rows, sub-floor sale prices (EUR/m2 < 100 — far below
     any Estonian sale market) do not enter the median pool either, though
     they are still scored against it.
+
+    Livability comes from livability.enrich_row (Photon geocode + OSM POIs,
+    30d file cache under cache_dir, graceful nulls); all-dims-missing keeps
+    the neutral 50 with an explicit no-data reason.
     """
     buckets: Dict[str, List[float]] = {}
     for r in rows:
@@ -204,7 +212,9 @@ def score(rows: List[dict]) -> List[dict]:
     medians = {c: statistics.median(v) for c, v in buckets.items()}
     for r in rows:
         # Source attribution renders from the `source` field in the UI.
-        r["reasons"] = ["Elamiskvaliteet arvutamata (automaatimport)"]
+        # Livability reasons are computed per listing below; deal/type
+        # warnings stay first in the list.
+        r["reasons"] = []
         if r.get("deal_type", "sale") == "sale":
             ppm, med = r["price_per_m2"], medians.get(r["county"])
             r["discount_pct"] = (
@@ -222,13 +232,18 @@ def score(rows: List[dict]) -> List[dict]:
             r["reasons"].insert(
                 0, TYPE_REASON.get(r["deal_type"], TYPE_REASON["unknown"])
             )
-        r["score_livability"] = NEUTRAL_LIVABILITY
+        liv, liv_reasons = livability.enrich_row(
+            r.get("address", ""), r.get("county", ""), cache_dir,
+            resolver=resolver,
+        )
+        r["score_livability"] = liv
+        r["reasons"].extend(liv_reasons)
     return rows
 
 
-def enrich(rows: List[dict], modname: str = "") -> List[dict]:
+def enrich(rows: List[dict], modname: str = "", cache_dir: Optional[str] = None, resolver=None) -> List[dict]:
     """classify + score in one pass (single-portal convenience)."""
-    return score(classify(rows, modname))
+    return score(classify(rows, modname), cache_dir, resolver=resolver)
 
 
 UPSERT_SQL = """
@@ -313,7 +328,7 @@ def run(cache_dir: Optional[str] = None) -> dict:
     # Typing is per-portal, but discount medians pool across all portals,
     # so classify first, dedup, then score the merged set.
     merged = dedup_listings(*[fetched]) if fetched else []
-    enriched = score(merged)
+    enriched = score(merged, cache_dir)
     priced = [r for r in enriched if r.get("price")]
     conn = connect()
     stored = upsert(conn, priced) if conn is not None else 0

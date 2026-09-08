@@ -14,6 +14,18 @@ import app as scoring_app
 import ingest
 
 
+@pytest.fixture(autouse=True)
+def _no_live_geodata(monkeypatch):
+    """Keep enrich()/run() offline: geodata resolves to None (-> honest 50).
+
+    Tests that exercise real dimension math inject `resolver=` explicitly
+    or cover livability.py directly.
+    """
+    monkeypatch.setattr(
+        ingest.livability, "resolve", lambda address, cache_dir=None: None
+    )
+
+
 class FakeCursor:
     def __init__(self):
         self.calls = []
@@ -167,15 +179,37 @@ def test_enrich_discount_against_county_median():
         [
             row(id="a", address="A 1, Tallinn", price=200000, area_m2=50.0),
             row(id="b", address="B 2, Tallinn", price=400000, area_m2=50.0),
-        ]
+        ],
+        # offline: no geodata -> honest neutral fallback with explicit reason
+        resolver=lambda address: None,
     )
     by_id = {r["id"]: r for r in rows}
     # median 6000 EUR/m2 -> a is 50% below (steal), b is 50% above
     assert by_id["a"]["price_per_m2"] == 4000
     assert by_id["a"]["discount_pct"] == pytest.approx(33.3, abs=0.1)
     assert by_id["b"]["discount_pct"] == pytest.approx(-33.3, abs=0.1)
-    assert by_id["a"]["score_livability"] == ingest.NEUTRAL_LIVABILITY
+    # Harju safety tier (55) applies with no geodata; geo dims stay null.
+    assert by_id["a"]["score_livability"] == 55
+    assert by_id["a"]["reasons"] == [
+        "Harjumaal üle keskmise kuritegevus (riiklikud ülevaated)"
+    ]
     assert by_id["a"]["county"] == "Harju maakond"
+
+
+def test_enrich_scores_livability_with_injected_geo():
+    geo = {"lat": 59.4372, "lon": 24.7536, "pois": [
+        {"kind": "school", "lat": 59.4380, "lon": 24.7550},
+        {"kind": "bus_stop", "lat": 59.4375, "lon": 24.7540},
+        {"kind": "park", "lat": 59.4400, "lon": 24.7600},
+        {"kind": "supermarket", "lat": 59.4360, "lon": 24.7520},
+    ]}
+    (r,) = ingest.enrich(
+        [row(id="a", address="A 1, Tallinn", price=200000, area_m2=50.0)],
+        resolver=lambda address: geo,
+    )
+    assert r["score_livability"] != ingest.NEUTRAL_LIVABILITY
+    assert len(r["reasons"]) >= 4
+    assert not any("arvutamata" in reason for reason in r["reasons"])
 
 
 def test_enrich_missing_area_gives_no_discount():
@@ -304,5 +338,5 @@ def test_sources_reports_counts_and_blocks(monkeypatch):
     by_source = {s["source"]: s for s in r.json()["sources"]}
     assert by_source["pindi.ee"]["count"] == 4
     assert by_source["pindi.ee"]["enabled"] is True
-    assert by_source["kv.ee"]["enabled"] is False
-    assert "403" in by_source["kv.ee"]["note"]
+    assert by_source["kv.ee"]["enabled"] is True
+    assert "Chrome" in by_source["kv.ee"]["note"]
