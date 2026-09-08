@@ -4,18 +4,22 @@ Same interface as adapters/kv_ee.py: fetch_search_html / parse_search_html /
 scrape, returning canonical records {id, source, source_url, address, price,
 rooms, area_m2}. Selectors live in SELECTORS for one-spot fixes.
 
-Live verification (2026-09-08, polite UA "home-finder/0.1", 1 probe + robots):
+Live verification (2026-09-08, polite UA "home-finder/0.1"):
 - GET https://www.1partner.ee/robots.txt -> 200 with
   "Disallow: /*?*=*" (no query-string URLs may be polled) and "Disallow: /fi/".
   fetch_search_html therefore NEVER sends query params; `query` is accepted
   for interface compatibility and intentionally ignored.
-- GET https://www.1partner.ee/ (apex) -> 200 (~45KB). No dedicated listing
-  index path was linked from the front page within the one-probe budget, so
-  SEARCH_URL is the apex itself (a broker front page carries featured offers)
-  and the card parser only keeps <article> teasers that contain BOTH a
-  same-host link and a € price (blog teasers carry no price and are
-  skipped). If a dedicated index path is confirmed later, point SEARCH_URL at
-  it; the card parser needs no change. No retry was made (probe budget spent).
+- Saved live page /tmp/live_partner.html is the broker front page (no € prices,
+  only blog teasers), so it parses to 0 rows by design.
+- One polite probe GET https://www.1partner.ee/pakkumised -> 200 (~174KB,
+  title "Pakkumised - 1Partner") with 18 real cards (clean URL, robots-safe).
+  Real card markup observed:
+  <div class="catalog-list-item"><a href="/pakkumised/<slug>-p.<id>"> with
+  <div class="location"><strong>Müüa</strong>E. Vilde tee 65, ...</div>,
+  attribute rows Hind: 120 000 € / Üldpind: 47 m<sup>2</sup> /
+  Tubade arv: 2. SEARCH_URL is that observed index (the old apex base matched
+  nothing live). Cards are sliced between consecutive card starts because each
+  card nests carousel-control anchors; `query` stays ignored per robots.
 
 Politeness / ToS: default page_limit=1, polite UA, 24h file cache, daily-cron
 cadence. Check ROBOTS_URL before polling. Network isolated in
@@ -37,25 +41,30 @@ from adapters import (
 
 SOURCE = "1partner.ee"
 BASE_URL = "https://www.1partner.ee"
-SEARCH_URL = BASE_URL + "/"
+SEARCH_URL = BASE_URL + "/pakkumised"
 ROBOTS_URL = BASE_URL + "/robots.txt"
 
 SELECTORS = {
-    # Generic front-page teaser blocks; _parse_card keeps only ones with a
-    # same-host link AND a € price. Re-verify if parse yields 0 rows.
-    "card": r'<article[^>]*>.*?</article>',
-    "id": r'data-id="(?P<id>\d+)"',
-    "url": r'href="(?P<url>(?:https://www\.1partner\.ee)?/[^"]*)"',
-    "price": r'(?P<price>[\d\s\u00a0]+)\s*€',
-    "rooms": r'(?P<rooms>\d+)\s*(?:tuba|tubal|rooms?|tk)',
-    "area": r'(?P<area>[\d.,]+)\s*m[²2]',
+    # Card START tag on the live /pakkumised index (2026-09-08); parse slices
+    # between consecutive starts (carousel-control anchors are nested).
+    "card": r'<div class="catalog-list-item">',
+    "id": r"-p\.(?P<id>\d+)",
+    "id_fallback": r"\.(?P<id>\d+)(?:[/?#]|$)",
+    "url": r'href="(?P<url>/pakkumised/[^"#]+)"',
+    "address": r'class="location">\s*(?:<strong[^>]*>.*?</strong>)?\s*(?P<a>[^<]+?)\s*</div>',
+    "price": r"(?P<price>[\d\s\u00a0.,]+)\s*€",
+    # Room count is a bare number after its label ("Tubade arv 2").
+    "rooms_label": r"(?:Tubade arv|tubade arv)\s*(?P<rooms>\d+)",
+    "rooms": r"(?P<rooms>\d+)\s*(?:tuba|tubal|rooms?|tk)",
+    # Stripped text turns 47 m<sup>2</sup> into "47 m 2".
+    "area": r"(?P<area>\d[\d.,]*)\s*m\s*(?:²|2(?!\d))",
 }
 
 HEADERS = polite_headers()
 
 
 def fetch_search_html(query: str = "", page_limit: int = 1, timeout: float = 20.0) -> str:
-    """Single page of 1partner.ee front-page offers. Keeps page_limit small; cron, don't hammer.
+    """Single page of 1partner.ee /pakkumised offers. Keeps page_limit small; cron, don't hammer.
 
     `query` is intentionally ignored: robots.txt disallows query-string URLs
     (Disallow: /*?*=*), so only the clean SEARCH_URL is ever fetched.
@@ -67,24 +76,22 @@ def _parse_card(card_html: str) -> Optional[dict]:
     um = re.search(SELECTORS["url"], card_html)
     pm = re.search(SELECTORS["price"], card_html)
     if not um or not pm:
-        return None  # blog/nav teaser, not an offer
-    im = re.search(SELECTORS["id"], card_html)
-    address_m = re.search(r"<h[23][^>]*>(?P<a>.*?)</h[23]>", card_html, re.S)
-    if not address_m:
-        address_m = re.search(
-            r'class="[^"]*(?:address|title)[^"]*"[^>]*>(?P<a>[^<]+)<', card_html, re.S | re.I
-        )
-    url = um.group("url")
-    card_id = im.group("id") if im else None
-    if not card_id:
-        dm = re.search(r"(\d+)(?:/?(?:\?.*)?)$", url)
-        card_id = dm.group(1) if dm else None
-    if not card_id:
+        return None  # nav/blog teaser, not an offer
+    im = re.search(SELECTORS["id"], um.group("url"))
+    if not im:
+        im = re.search(SELECTORS["id_fallback"], um.group("url"))
+    if not im:
         return None
+    card_id = im.group("id")
+    address_m = re.search(SELECTORS["address"], card_html, re.S)
+    url = um.group("url")
     address = re.sub(r"<[^>]+>", "", address_m.group("a")).strip() if address_m else ""
+    address = re.sub(r"^(?:Müüa|Üürile anda|Müük|Üür)\s+", "", address)
     text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", card_html))
-    rm = re.search(SELECTORS["rooms"], text, re.I)
-    am = re.search(SELECTORS["area"], text, re.I)
+    rm = re.search(SELECTORS["rooms_label"], text)
+    if not rm:
+        rm = re.search(SELECTORS["rooms"], text, re.I)
+    am = re.search(SELECTORS["area"], text)
     if not url.startswith("http"):
         url = BASE_URL + (url if url.startswith("/") else "/" + url)
     return normalize_listing(
@@ -102,9 +109,11 @@ def _parse_card(card_html: str) -> Optional[dict]:
 
 def parse_search_html(html: str) -> List[dict]:
     """Parse search HTML into canonical records. Offline-safe (no network)."""
+    starts = [m.start() for m in re.finditer(SELECTORS["card"], html)]
     out: List[dict] = []
-    for m in re.finditer(SELECTORS["card"], html, re.S):
-        row = _parse_card(m.group(0))
+    for i, pos in enumerate(starts):
+        chunk = html[pos : starts[i + 1] if i + 1 < len(starts) else pos + 15000]
+        row = _parse_card(chunk)
         if row is not None:
             out.append(row)
     return out
