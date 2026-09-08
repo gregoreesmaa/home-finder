@@ -11,7 +11,7 @@ export interface MockListing {
   score_livability: number;
   discount_pct: number;
   score_combined: number;
-  reasons: string[];
+  reasons: readonly string[];
 }
 
 // Deliberately constructed so each sort mode yields a DIFFERENT top-1

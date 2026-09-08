@@ -24,7 +24,7 @@ export function ListingMap({ hexes }: { hexes?: AreaHex[] }) {
     let cancelled = false;
     (async () => {
       const data = toHeatPoints(hexes ?? MOCK_HEXES);
-      const [{ default: maplibregl }, { MapboxOverlay }, { HeatmapLayer }] = (await Promise.all([
+      const [maplibregl, { MapboxOverlay }, { HeatmapLayer }] = (await Promise.all([
         import("maplibre-gl"),
         import("@deck.gl/mapbox"),
         import("@deck.gl/aggregation-layers"),
