@@ -175,8 +175,10 @@ def fetch_html_via_chrome(url: str, timeout: float = 280.0) -> str:
     binary = find_chrome_binary()
     if not binary:
         raise RuntimeError("no Chrome/Chromium engine installed for fallback fetch")
-    # Fresh profile per call: a reused dir can block on a stale Singleton lock
-    # and serialize concurrent runs. --timeout caps the page load itself
+    # Fresh profile per attempt: a reused profile can carry poisoned state
+    # (stale Singleton lock after a kill, half-done challenge cookies) that
+    # hangs the next run; per-visit challenge variance is handled by the
+    # caller's retry loop instead. --timeout caps the page load itself
     # (--dump-dom alone can hang on pages with never-ending connections);
     # the subprocess timeout is a backstop that also kills strays.
     import shutil
@@ -192,6 +194,10 @@ def fetch_html_via_chrome(url: str, timeout: float = 280.0) -> str:
                 "--no-first-run",
                 "--user-data-dir=%s" % profile,
                 "--user-agent=%s" % CHROME_DESKTOP_UA,
+                # --dump-dom drives no automation protocol, yet the engine
+                # still self-labels as automated; bot management misclassifies
+                # the session on that signal alone, so switch the label off.
+                "--disable-blink-features=AutomationControlled",
                 # Listing pages carry dozens of image carousels; decoding
                 # them under software rendering dominates wall time while
                 # contributing nothing to the extracted markup/JSON-LD.
@@ -208,13 +214,14 @@ def fetch_html_via_chrome(url: str, timeout: float = 280.0) -> str:
     except subprocess.TimeoutExpired:
         raise RuntimeError("headless Chrome timed out for %s" % url)
     finally:
+        # Always clean up: the profile is single-use, and a timed-out run
+        # must leave no strays behind.
         if proc is None:
             for _p in _chrome_pids_for_profile(profile):
                 try:
-                    import os as _os
                     import signal as _signal
 
-                    _os.kill(_p, _signal.SIGKILL)
+                    os.kill(_p, _signal.SIGKILL)
                 except OSError:
                     pass
         shutil.rmtree(profile, ignore_errors=True)

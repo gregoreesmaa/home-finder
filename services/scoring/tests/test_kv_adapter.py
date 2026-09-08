@@ -52,6 +52,15 @@ def test_parse_challenge_page_yields_no_rows():
     assert parse_search_html(html) == []
 
 
+def test_id_from_project_style_urls():
+    assert kv_ee._id_from_url("https://www.kv.ee/muua-korter-hinnat-3896526") == "kv-3896526"
+    assert kv_ee._id_from_url("https://www.kv.ee/a-b-1234567.html") == "kv-1234567"
+    # date slugs and articles must not become ids
+    assert kv_ee._id_from_url("https://www.kv.ee/19-08-2026-kliendipaev") is None
+    assert kv_ee._id_from_url("https://www.kv.ee/kinnisvaraturu-ulevaade") is None
+    assert kv_ee._id_from_url("") is None
+
+
 def test_parse_dom_fallback_without_jsonld():
     html = (
         '<article class="object-card" data-object-id="555" '
@@ -95,6 +104,20 @@ def test_fetch_falls_back_to_chrome_on_http_block(monkeypatch):
     rows = kv_ee.scrape("haiba")
     assert [r["id"] for r in rows] == ["kv-3905636", "kv-3879789"]
     assert calls and "keyword=haiba" in calls[0]
+
+
+def test_fetch_retries_chrome_until_results_arrive(monkeypatch):
+    html = _fixture_html()
+    challenge = "<html><head><title>Just a moment...</title></head></html>"
+
+    def blocked(*args, **kwargs):
+        raise httpx.HTTPStatusError("403", request=None, response=None)  # type: ignore[arg-type]
+
+    attempts = iter([challenge, html])
+    monkeypatch.setattr(kv_ee, "fetch_html", blocked)
+    monkeypatch.setattr(kv_ee, "fetch_html_via_chrome", lambda url: next(attempts))
+    rows = kv_ee.scrape("haiba")
+    assert [r["id"] for r in rows] == ["kv-3905636", "kv-3879789"]
 
 
 def test_records_match_canonical_shape():

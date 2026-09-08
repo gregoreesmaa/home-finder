@@ -66,17 +66,44 @@ def build_search_url(query: str = "") -> str:
     return url
 
 
+CHROME_ATTEMPTS = 3
+
+
 def fetch_search_html(query: str = "", page_limit: int = 1, timeout: float = 20.0) -> str:
-    """Single sale-search page. Plain HTTP first, genuine Chrome on block."""
+    """Single sale-search page. Plain HTTP first, genuine Chrome on block.
+
+    Challenge outcomes vary per visit, so the Chrome fallback retries with a
+    fresh profile and only accepts dumps that actually contain results.
+    """
     url = build_search_url(query)
     try:
         return fetch_html(url, params={}, headers=HEADERS, timeout=timeout)
     except httpx.HTTPError:
-        return fetch_html_via_chrome(url)
+        pass
+    last: Exception = RuntimeError("unreachable")
+    for _ in range(CHROME_ATTEMPTS):
+        try:
+            html = fetch_html_via_chrome(url)
+        except RuntimeError as e:
+            last = e
+            continue
+        if '"itemListElement"' in html:
+            return html
+        last = RuntimeError("headless Chrome returned a challenge/empty page")
+    raise last
 
 
 def _id_from_url(url: str) -> Optional[str]:
+    """kv-<id> from detail URLs, classic (`-123.html`) or project-style.
+
+    Project URLs end in a bare `-<id>` with no .html suffix; requiring 5+
+    digits keeps dates/years (`/19-08-2026-kliendipaev...`) and article slugs
+    out while real ids (7 digits) always match.
+    """
     m = re.search(r"-(\d+)\.html", url or "")
+    if m:
+        return "kv-%s" % m.group(1)
+    m = re.search(r"-(\d{5,})/?$", url or "")
     return "kv-%s" % m.group(1) if m else None
 
 
