@@ -273,7 +273,10 @@ def parse_overpass(payload: dict) -> List[dict]:
     return out
 
 
-def fetch_geocode(address: str, timeout: float = 20.0) -> Optional[Tuple[float, float]]:
+NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
+
+
+def fetch_geocode_photon(address: str, timeout: float = 20.0) -> Optional[Tuple[float, float]]:
     """Photon: address -> (lat, lon). None when nothing found."""
     params = {
         "q": address,
@@ -288,6 +291,35 @@ def fetch_geocode(address: str, timeout: float = 20.0) -> Optional[Tuple[float, 
         return None
     lon, lat = feats[0]["geometry"]["coordinates"][:2]
     return float(lat), float(lon)
+
+
+def fetch_geocode_nominatim(address: str, timeout: float = 20.0) -> Optional[Tuple[float, float]]:
+    """Nominatim fallback (countrycodes=ee + Estonia viewbox). None when empty."""
+    params = {
+        "q": address,
+        "format": "jsonv2",
+        "limit": "1",
+        "countrycodes": "ee",
+        "viewbox": "%s,%s,%s,%s" % (EE_BBOX[0], EE_BBOX[3], EE_BBOX[2], EE_BBOX[1]),
+        "bounded": "1",
+    }
+    resp = httpx.get(NOMINATIM_URL, params=params, headers=HEADERS, timeout=timeout)
+    resp.raise_for_status()
+    hits = resp.json()
+    if not hits:
+        return None
+    time.sleep(1.2)  # Nominatim usage policy: max 1 req/s
+    return float(hits[0]["lat"]), float(hits[0]["lon"])
+
+
+def fetch_geocode(address: str, timeout: float = 20.0) -> Optional[Tuple[float, float]]:
+    """address -> (lat, lon): Photon first, Nominatim fallback. None if both miss."""
+    try:
+        # Short primary timeout: the fallback covers slow/dead Photon, and
+        # every success is cached for 30d anyway.
+        return fetch_geocode_photon(address, timeout=4.0)
+    except httpx.HTTPError:
+        return fetch_geocode_nominatim(address, timeout)
 
 
 def fetch_pois(lat: float, lon: float, timeout: float = 30.0) -> Optional[List[dict]]:

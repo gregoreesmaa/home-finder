@@ -105,6 +105,19 @@ def test_enrich_row_scores_with_injected_geo():
     assert not any("arvutamata" in r for r in reasons)
 
 
+def test_geocode_falls_back_to_nominatim(monkeypatch):
+    import httpx
+
+    def boom(*a, **k):
+        raise httpx.ConnectError("photon down")
+
+    monkeypatch.setattr(livability, "fetch_geocode_photon", boom)
+    monkeypatch.setattr(
+        livability, "fetch_geocode_nominatim", lambda a, timeout=20.0: (59.1, 24.1)
+    )
+    assert livability.fetch_geocode("Metsa 1, Tallinn") == (59.1, 24.1)
+
+
 def test_enrich_row_honest_fallback_without_geo():
     score, reasons = enrich_row("Metsa 1, Tundmatu küla", "Rapla maakond",
                                 resolver=lambda a: None)

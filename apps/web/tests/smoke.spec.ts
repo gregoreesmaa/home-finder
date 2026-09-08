@@ -33,6 +33,29 @@ test("homepage ranks best-to-worst in every sort mode", async ({ page }) => {
   await expect(firstCard()).toContainText("Mere pst 7, Pärnu");
 });
 
+// Filters narrow the list through shareable URL params, with a reset path
+// out of the empty state (deterministic mock fallback).
+test("filters narrow the list and reset", async ({ page }) => {
+  await page.route("**/localhost:8000/**", (route) => route.abort());
+  await page.goto("/?county=Harju+maakond");
+
+  await expect(page.getByText("Näitan 1 / 3 kuulutusest")).toBeVisible();
+  await expect(page.locator("ol > li")).toHaveCount(1);
+
+  // impossible combo -> empty state with reset
+  await page.goto("/?minLiv=101");
+  await expect(page.getByText("Ükski kuulutus ei vasta filtritele.")).toBeVisible();
+  await page.getByRole("button", { name: "Tühjenda filtrid" }).click();
+  await expect(page.locator("ol > li")).toHaveCount(3);
+});
+
+// The map always labels its data source (live cells vs binned vs demo).
+test("map shows a data-source badge", async ({ page }) => {
+  await page.route("**/localhost:8000/**", (route) => route.abort());
+  await page.goto("/");
+  await expect(page.getByText(/Andmeallikas:/)).toBeVisible();
+});
+
 // Live backend rendering: whatever the API serves (real import locally,
 // mocks where no API runs), the page must render ranked cards with prices.
 // This is environment-proof by design: no pinned winners, only structure.

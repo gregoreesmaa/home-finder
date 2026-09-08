@@ -40,10 +40,12 @@ type Mode = "heatmap" | "hex";
 export function ListingMap({
   hexes,
   listings,
+  selectedId,
   initialMode = "heatmap",
 }: {
   hexes?: AreaHex[];
   listings?: MockListing[];
+  selectedId?: string | null;
   initialMode?: Mode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -116,6 +118,17 @@ export function ListingMap({
 
   const points = useMemo(() => toHeatPoints(hexes ?? picked), [hexes, picked]);
   const legend = useMemo(() => legendBuckets(), []);
+
+  // D3: a ?selected=<id> (from "Näita kaardil") opens the nearest cell popup.
+  useEffect(() => {
+    if (!selectedId || !listings) {
+      if (!selectedId) setSelected(null);
+      return;
+    }
+    const target = listings.find((l) => l.id === selectedId);
+    if (!target || typeof target.lon !== "number" || typeof target.lat !== "number") return;
+    setSelected(nearestHeatPoint(points, target.lon, target.lat));
+  }, [selectedId, listings, points]);
 
   useEffect(() => {
     let cancelled = false;
