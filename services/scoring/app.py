@@ -120,7 +120,8 @@ def listings(sort: str = Query("combined", pattern="^(combined|livability|deal)$
 
 _LISTINGS_SQL = (
     "SELECT id, source, source_url, address, county, price, price_per_m2,"
-    " rooms, area_m2, score_livability, discount_pct, reasons FROM listings"
+    " rooms, area_m2, lat, lon, score_livability, discount_pct, reasons"
+    " FROM listings"
 )
 
 
@@ -156,6 +157,8 @@ def get_db_listings() -> Optional[List[dict]]:
                 "price_per_m2": _num(r.get("price_per_m2")),
                 "rooms": _num(r.get("rooms")),
                 "area_m2": _num(r.get("area_m2")),
+                "lat": _num(r.get("lat")),
+                "lon": _num(r.get("lon")),
                 "score_livability": _num(r.get("score_livability")),
                 "discount_pct": _num(r.get("discount_pct")),
                 "reasons": list(reasons or []),

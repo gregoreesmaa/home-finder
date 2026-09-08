@@ -1,0 +1,36 @@
+[
+ {
+  "id": "2467435",
+  "price": "209900.00",
+  "room_count": 3,
+  "property_size": 69.5,
+  "latitude": 59.453861,
+  "longitude": 24.697314,
+  "unit_type": "Apartment",
+  "address": {
+   "street_name": "Kopli tn",
+   "house_number": "61",
+   "district_name": null,
+   "city_name": "Põhja-Tallinna linnaosa",
+   "parish_name": "Tallinn",
+   "county_name": "Harju maakond"
+  }
+ },
+ {
+  "id": "2366094",
+  "price": "315000.00",
+  "room_count": 3,
+  "property_size": 75.0,
+  "latitude": 59.436653649603,
+  "longitude": 24.801131324436,
+  "unit_type": "Apartment",
+  "address": {
+   "street_name": "Valge tn",
+   "house_number": null,
+   "district_name": null,
+   "city_name": "Kadriorg",
+   "parish_name": "Tallinn",
+   "county_name": "Harju maakond"
+  }
+ }
+]
