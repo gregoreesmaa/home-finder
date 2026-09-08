@@ -18,9 +18,20 @@ import os
 from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, model_validator
 
 app = FastAPI(title="home-finder scoring")
+
+# The Next.js web UI (http://localhost:3000) reads this API cross-origin
+# from the browser; without these headers every fetch is CORS-blocked
+# (the page then silently falls back to bundled mock data).
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
+)
 
 
 def deal_norm(discount_pct: float) -> float:
