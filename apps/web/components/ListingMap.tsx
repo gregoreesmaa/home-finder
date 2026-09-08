@@ -75,7 +75,7 @@ export function ListingMap({
     let cleanup = () => {};
     (async () => {
       const [
-        { default: maplibregl },
+        maplibregl,
         { MapboxOverlay },
         { HeatmapLayer, HexagonLayer },
       ] = (await Promise.all([
