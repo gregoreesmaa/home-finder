@@ -352,20 +352,31 @@ def fetch_pois(lat: float, lon: float, timeout: float = 30.0) -> Optional[List[d
     return pois
 
 
+class _Transient(Exception):
+    """Transport failure: must never be cached as a negative result."""
+
+
+def _strict_geocode(address: str) -> Optional[Tuple[float, float]]:
+    try:
+        return fetch_geocode(address)
+    except httpx.HTTPError as e:
+        raise _Transient(str(e))
+
+
 def resolve(address: str, cache_dir: Optional[str] = None) -> Optional[dict]:
     """address -> {"lat","lon","pois"} using 30d caches. None when unresolvable."""
     if not address:
         return None
     try:
         loc = cached_fetch(
-            # v2: v1 froze Photon-outage negatives as "" for 30d before the
-            # Nominatim fallback existed; the bump forces one re-geocode.
-            "liv_geocode2", address, 1,
-            lambda: _dump_loc(fetch_geocode(address)),
+            # v3: v2 cached 429-rate-limit misses as "" during the Nominatim
+            # throttle window; the bump forces one clean re-geocode.
+            "liv_geocode3", address, 1,
+            lambda: _dump_loc(_strict_geocode(address)),
             cache_dir, GEOCODE_TTL_S,
         )
         lat, lon = _load_loc(loc)
-    except (httpx.HTTPError, ValueError):
+    except (_Transient, httpx.HTTPError, ValueError):
         return None
     if lat is None:
         return None

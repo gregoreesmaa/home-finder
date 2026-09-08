@@ -118,6 +118,23 @@ def test_geocode_falls_back_to_nominatim(monkeypatch):
     assert livability.fetch_geocode("Metsa 1, Tallinn") == (59.1, 24.1)
 
 
+def test_transient_geocode_errors_are_not_cached(tmp_path, monkeypatch):
+    import httpx
+
+    calls = []
+
+    def boom(address, timeout=20.0):
+        calls.append(address)
+        raise httpx.ConnectError("down")
+
+    monkeypatch.setattr(livability, "fetch_geocode", boom)
+    cache = str(tmp_path)
+    assert livability.resolve("Metsa 1, Tallinn", cache) is None
+    assert livability.resolve("Metsa 1, Tallinn", cache) is None
+    assert len(calls) == 2, "transport errors must not be cached as negatives"
+    assert list(tmp_path.iterdir()) == [], "no cache file on transient failure"
+
+
 def test_enrich_row_honest_fallback_without_geo():
     score, reasons = enrich_row("Metsa 1, Tundmatu küla", "Rapla maakond",
                                 resolver=lambda a: None)
