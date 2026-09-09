@@ -11,9 +11,9 @@
  * Usage: node scripts/agent-ux-loop.js [--base http://127.0.0.1:3100]
  *        [--api http://localhost:8000] [--out /tmp/hf-ux-loop]
  */
-const { chromium } = require("@playwright/test");
-const fs = require("node:fs");
-const path = require("node:path");
+import { chromium } from "@playwright/test";
+import fs from "node:fs";
+import path from "node:path";
 
 function arg(name, fallback) {
   const i = process.argv.indexOf(name);
