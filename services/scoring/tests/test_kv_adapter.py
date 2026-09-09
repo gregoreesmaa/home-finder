@@ -31,6 +31,7 @@ def test_parse_kv_search_fixture():
     assert rows[0]["price"] == 45000
     assert rows[0]["rooms"] == 2
     assert rows[0]["area_m2"] == 46.9
+    assert rows[0]["image_url"] == "https://img-kv.ee/image/object/4/0699/141030699.jpg"
     assert "Sireli" in rows[0]["address"]
     assert rows[1]["id"] == "kv-3879789"
     assert rows[1]["price"] == 55000

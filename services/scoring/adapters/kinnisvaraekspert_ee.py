@@ -59,6 +59,7 @@ SELECTORS = {
     "level": r'<span class="Level\d">(?P<lvl>[^<]*)</span>',
     "rooms": r'param NumberOfRooms"><div class="param-value">(?P<rooms>\d+)',
     "area": r'param AreaSize"><div class="param-value"><strong>(?P<area>[\d.,]+)',
+    "image": r'class="post-thumbnail"><img[^>]*src="(?P<img>[^"]+)"',
 }
 
 HEADERS = polite_headers()
@@ -86,6 +87,10 @@ def _parse_card(card_html: str) -> Optional[dict]:
     address = ", ".join(parts)
     rm = re.search(SELECTORS["rooms"], card)
     am = re.search(SELECTORS["area"], card)
+    im = re.search(SELECTORS["image"], card)
+    img = im.group("img") if im else None
+    if img and not img.startswith("http"):
+        img = BASE_URL + img
     return normalize_listing(
         {
             "id": "ekspert-%s" % um.group("id"),
@@ -95,6 +100,7 @@ def _parse_card(card_html: str) -> Optional[dict]:
             "price": to_int_eur(pm.group("price")) if pm else None,
             "rooms": to_int_rooms(rm.group("rooms")) if rm else None,
             "area_m2": to_float_m2(am.group("area")) if am else None,
+            "image_url": img,
         }
     )
 
