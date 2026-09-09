@@ -2,9 +2,29 @@
 
 from fastapi.testclient import TestClient
 
+import app as scoring_app
 from app import app, combined_score, tile_bounds
 
 client = TestClient(app)
+
+
+def test_cells_carry_live_flag_from_mock_fallback():
+    assert client.get("/area-scores").json()["live"] is False
+    assert client.get("/heatmap-cells").json()["live"] is False
+
+
+def test_cells_report_live_when_db_has_rows(monkeypatch):
+    monkeypatch.setattr(
+        scoring_app,
+        "_db_rows",
+        lambda sql, params=(): [
+            {"h3": "db-1", "score_goodness": 80, "lon": 24.75, "lat": 59.43}
+        ],
+    )
+    body = client.get("/area-scores").json()
+    assert body["live"] is True
+    assert body["features"][0]["properties"]["h3"] == "db-1"
+    assert client.get("/heatmap-cells").json()["live"] is True
 
 
 def test_post_score_explicit_discount():

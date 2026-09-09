@@ -14,6 +14,18 @@ import app as scoring_app
 import ingest
 
 
+@pytest.fixture(autouse=True)
+def _no_live_geodata(monkeypatch):
+    """Keep enrich()/run() offline: geodata resolves to None (-> honest 50).
+
+    Tests that exercise real dimension math inject `resolver=` explicitly
+    or cover livability.py directly.
+    """
+    monkeypatch.setattr(
+        ingest.livability, "resolve", lambda address, cache_dir=None: None
+    )
+
+
 class FakeCursor:
     def __init__(self):
         self.calls = []
@@ -167,15 +179,78 @@ def test_enrich_discount_against_county_median():
         [
             row(id="a", address="A 1, Tallinn", price=200000, area_m2=50.0),
             row(id="b", address="B 2, Tallinn", price=400000, area_m2=50.0),
-        ]
+        ],
+        # offline: no geodata -> honest neutral fallback with explicit reason
+        resolver=lambda address: None,
     )
     by_id = {r["id"]: r for r in rows}
     # median 6000 EUR/m2 -> a is 50% below (steal), b is 50% above
     assert by_id["a"]["price_per_m2"] == 4000
     assert by_id["a"]["discount_pct"] == pytest.approx(33.3, abs=0.1)
     assert by_id["b"]["discount_pct"] == pytest.approx(-33.3, abs=0.1)
-    assert by_id["a"]["score_livability"] == ingest.NEUTRAL_LIVABILITY
+    # Harju safety tier (55) applies with no geodata; geo dims stay null.
+    assert by_id["a"]["score_livability"] == 55
+    assert by_id["a"]["reasons"] == [
+        "Harjumaal üle keskmise kuritegevus (riiklikud ülevaated)"
+    ]
     assert by_id["a"]["county"] == "Harju maakond"
+
+
+def test_score_stashes_geocode_coords_on_rows():
+    geo = {"lat": 59.4372, "lon": 24.7536, "pois": []}
+    (r,) = ingest.enrich(
+        [row(id="a", address="A 1, Tallinn", price=200000, area_m2=50.0)],
+        resolver=lambda address: geo,
+    )
+    assert r["lat"] == 59.4372
+    assert r["lon"] == 24.7536
+
+
+def test_build_cells_averages_livability_per_grid():
+    cells = ingest.build_cells(
+        [
+            {"lon": 24.76, "lat": 59.44, "score_livability": 80},
+            {"lon": 24.78, "lat": 59.45, "score_livability": 90},
+            {"lon": 26.72, "lat": 58.37, "score_livability": 50},
+            {"lon": None, "lat": 59.44, "score_livability": 80},
+        ]
+    )
+    assert len(cells) == 2
+    tallinn = next(c for c in cells if c["lon"] < 25.0)
+    assert tallinn["score_goodness"] == 85
+    assert tallinn["level"] == "good"
+    assert tallinn["count"] == 2
+
+
+def test_upsert_cells_writes_sql_per_cell():
+    conn = FakeConn()
+    n = ingest.upsert_cells(
+        conn,
+        [{"h3": "cell-1:2", "score_goodness": 70, "level": "good",
+          "lon": 25.0, "lat": 58.75, "count": 3}],
+    )
+    assert n == 1
+    sql, params = conn.cur.calls[0]
+    assert "INSERT INTO area_scores" in sql
+    assert params["h3"] == "cell-1:2"
+    assert params["level"] == "good"
+    assert conn.committed
+
+
+def test_enrich_scores_livability_with_injected_geo():
+    geo = {"lat": 59.4372, "lon": 24.7536, "pois": [
+        {"kind": "school", "lat": 59.4380, "lon": 24.7550},
+        {"kind": "bus_stop", "lat": 59.4375, "lon": 24.7540},
+        {"kind": "park", "lat": 59.4400, "lon": 24.7600},
+        {"kind": "supermarket", "lat": 59.4360, "lon": 24.7520},
+    ]}
+    (r,) = ingest.enrich(
+        [row(id="a", address="A 1, Tallinn", price=200000, area_m2=50.0)],
+        resolver=lambda address: geo,
+    )
+    assert r["score_livability"] != ingest.NEUTRAL_LIVABILITY
+    assert len(r["reasons"]) >= 4
+    assert not any("arvutamata" in reason for reason in r["reasons"])
 
 
 def test_enrich_missing_area_gives_no_discount():
@@ -240,6 +315,36 @@ def test_run_reports_per_source_and_skips_priceless(monkeypatch):
     assert conn.closed
 
 
+def test_disabled_portals_carry_reasons_and_stay_skipped(monkeypatch):
+    """C4: the cron never retries blocked portals; reasons stay published."""
+    disabled = [(m, n) for m, e, n in ingest.PORTALS if not e]
+    assert disabled, "expected some disabled portals"
+    for modname, note in disabled:
+        assert note.strip(), "%s disabled without a reason" % modname
+    # skip mechanics (offline): disabled entries are never fetched
+    monkeypatch.setattr(
+        ingest, "PORTALS", [(m, False, n) for m, n in disabled]
+    )
+    monkeypatch.setattr(ingest, "connect", lambda: None)
+    report = ingest.run()
+    for modname, note in disabled:
+        assert report[modname]["status"] == "skipped"
+        assert report[modname]["reason"] == note
+        assert report[modname]["count"] == 0
+
+
+def test_sources_exposes_disabled_reasons(monkeypatch):
+    monkeypatch.setattr(scoring_app, "_db_rows", lambda sql, params=(): [])
+    by_source = {s["source"]: s for s in client.get("/sources").json()["sources"]}
+    for modname, enabled, note in ingest.PORTALS:
+        if enabled:
+            continue
+        mod = __import__(modname, fromlist=["SOURCE"])
+        entry = by_source[mod.SOURCE]
+        assert entry["enabled"] is False
+        assert entry["note"] == note
+
+
 def test_run_without_db_reports_not_stored(monkeypatch):
     monkeypatch.setattr(ingest, "PORTALS", [])
     monkeypatch.setattr(ingest, "connect", lambda: None)
@@ -248,6 +353,7 @@ def test_run_without_db_reports_not_stored(monkeypatch):
         "unique": 0,
         "skipped_no_price": 0,
         "stored": 0,
+        "cells": 0,
         "db": False,
     }
 
@@ -304,5 +410,5 @@ def test_sources_reports_counts_and_blocks(monkeypatch):
     by_source = {s["source"]: s for s in r.json()["sources"]}
     assert by_source["pindi.ee"]["count"] == 4
     assert by_source["pindi.ee"]["enabled"] is True
-    assert by_source["kv.ee"]["enabled"] is False
-    assert "403" in by_source["kv.ee"]["note"]
+    assert by_source["kv.ee"]["enabled"] is True
+    assert "Chrome" in by_source["kv.ee"]["note"]

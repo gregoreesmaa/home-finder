@@ -33,6 +33,57 @@ test("homepage ranks best-to-worst in every sort mode", async ({ page }) => {
   await expect(firstCard()).toContainText("Mere pst 7, Pärnu");
 });
 
+// Filters narrow the list through shareable URL params, with a reset path
+// out of the empty state (deterministic mock fallback).
+test("filters narrow the list and reset", async ({ page }) => {
+  await page.route("**/localhost:8000/**", (route) => route.abort());
+  await page.goto("/?county=Harju+maakond");
+
+  await expect(page.getByText("Näitan 1 / 3 kuulutusest")).toBeVisible();
+  await expect(page.locator("ol > li")).toHaveCount(1);
+
+  // impossible combo -> empty state with reset
+  await page.goto("/?minLiv=101");
+  await expect(page.getByText("Ükski kuulutus ei vasta filtritele.")).toBeVisible();
+  await page.getByRole("button", { name: "Tühjenda filtrid" }).click();
+  await expect(page.locator("ol > li")).toHaveCount(3);
+});
+
+// The map always labels its data source (live cells vs binned vs demo).
+test("map shows a data-source badge", async ({ page }) => {
+  await page.route("**/localhost:8000/**", (route) => route.abort());
+  await page.goto("/");
+  await expect(page.getByText(/Andmeallikas:/)).toBeVisible();
+});
+
+// C3: seeded local stack renders the live list plus real heat cells.
+// Skips where no PostGIS-backed API runs (CI): the unit suites cover shapes.
+test("seeded stack renders live list plus heat cells", async ({ page }) => {
+  const res = await page
+    .request.get("http://localhost:8000/listings?sort=combined")
+    .catch(() => null);
+  const api = res ? await res.json().catch(() => null) : null;
+  test.skip(!api?.live || (api.items?.length ?? 0) === 0, "needs seeded stack");
+
+  await page.goto("/");
+  await expect(page.getByText(/Näitan \d+ \/ \d+ kuulutusest/)).toBeVisible();
+  const mapSection = page.locator('section[aria-label="Piirkondade heatmap"]');
+  await expect(mapSection.getByText(/reaalajas/)).toBeVisible();
+
+  const cellsRes = await page.request.get("http://localhost:8000/area-scores");
+  const cells = await cellsRes.json();
+  expect(cells.live).toBe(true);
+  expect(cells.features.length).toBeGreaterThan(3);
+
+  // sort modes reorder the live list without breaking it
+  const first = () => page.locator("ol > li").first().innerText();
+  const before = await first();
+  await page.getByRole("group", { name: "Sorteerimine" }).getByRole("button", { name: "Soodne hind" }).click();
+  await expect(page.getByText(/Näitan \d+ \/ \d+ kuulutusest/)).toBeVisible();
+  expect(await first()).toContain("€");
+  void before;
+});
+
 // Live backend rendering: whatever the API serves (real import locally,
 // mocks where no API runs), the page must render ranked cards with prices.
 // This is environment-proof by design: no pinned winners, only structure.

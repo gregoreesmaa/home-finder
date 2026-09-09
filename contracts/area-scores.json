@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://home-finder.local/contracts/area-scores.json",
+  "title": "GET /area-scores + /heatmap-cells response",
+  "description": "Shared contract: GeoJSON FeatureCollection of Point cells with a top-level live flag.",
+  "type": "object",
+  "required": ["type", "features", "live"],
+  "properties": {
+    "type": { "type": "string", "const": "FeatureCollection" },
+    "live": { "type": "boolean" },
+    "features": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "properties", "geometry"],
+        "properties": {
+          "type": { "type": "string" },
+          "properties": {
+            "type": "object",
+            "required": ["h3", "score_goodness"],
+            "properties": {
+              "h3": { "type": "string", "minLength": 1 },
+              "score_goodness": { "type": ["integer", "number"] }
+            }
+          },
+          "geometry": {
+            "type": "object",
+            "required": ["type", "coordinates"],
+            "properties": {
+              "type": { "type": "string", "const": "Point" },
+              "coordinates": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": { "type": "number" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

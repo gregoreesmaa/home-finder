@@ -17,6 +17,9 @@ export interface MockListing {
   source?: string;
   /** True when the row came from a real portal import, false for mocks. */
   is_live?: boolean;
+  /** Geocoded coordinates (live rows after the livability import); absent on mocks. */
+  lat?: number | null;
+  lon?: number | null;
 }
 
 const etNum = (v: number | null, unit: string): string =>
@@ -26,7 +29,7 @@ const etNum = (v: number | null, unit: string): string =>
 export function formatFacts(l: MockListing): string {
   const rooms = l.rooms === null || l.rooms === undefined ? "–" : `${l.rooms} tuba`;
   return (
-    `${l.price.toLocaleString("et-EE")} € · ${etNum(l.price_per_m2, "€/m²")} · ` +
+    `${etNum(l.price, "€")} · ${etNum(l.price_per_m2, "€/m²")} · ` +
     `${rooms} · ${etNum(l.area_m2, "m²")}`
   );
 }

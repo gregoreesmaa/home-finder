@@ -16,7 +16,7 @@ const base: MockListing = {
 };
 
 /** et-EE grouping emits NBSP (U+00A0); normalize so expectations stay ASCII. */
-const plain = (s: string): string => s.replace(/ /g, " ");
+const plain = (s: string): string => s.replace(/\u00a0/g, " ");
 
 describe("formatFacts (card facts line, null-tolerant for live rows)", () => {
   it("formats full rows with Estonian number grouping", () => {
@@ -31,6 +31,12 @@ describe("formatFacts (card facts line, null-tolerant for live rows)", () => {
         formatFacts({ ...base, price_per_m2: null, rooms: null, area_m2: null }),
       ),
     ).toBe("285 000 € · – · – · –");
+  });
+
+  it("renders a missing price as a dash instead of crashing", () => {
+    expect(
+      plain(formatFacts({ ...base, price: null as unknown as number })),
+    ).toBe("– · 4200 €/m² · 3 tuba · 68 m²");
   });
 
   it("handles partially missing fields", () => {

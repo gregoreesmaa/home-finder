@@ -16,7 +16,7 @@ so tests/CI (no DB) stay green and prod reads the real table.
 import json
 import math
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -233,8 +233,12 @@ def _db_rows(sql: str, params: tuple = ()):
         return None
 
 
-def get_cells(bounds: Optional[tuple] = None) -> List[dict]:
-    """Cell aggregates, ideally from PostGIS area_scores, else the mock."""
+def get_cells(bounds: Optional[tuple] = None) -> Tuple[List[dict], bool]:
+    """(Cell aggregates, live).
+
+    live is True only when PostGIS area_scores actually yielded cells; any
+    mock fallback returns live=False so the UI can badge demo data honestly.
+    """
     rows = None
     if bounds is not None:
         rows = _db_rows(_CELLS_BBOX_SQL, bounds)
@@ -255,18 +259,18 @@ def get_cells(bounds: Optional[tuple] = None) -> List[dict]:
             except (KeyError, TypeError, ValueError):
                 continue
         if cells:
-            return cells
+            return cells, True
     if bounds is None:
-        return list(MOCK_HEXES)
+        return list(MOCK_HEXES), False
     minlon, minlat, maxlon, maxlat = bounds
     return [
         h
         for h in MOCK_HEXES
         if minlon <= h["lon"] <= maxlon and minlat <= h["lat"] <= maxlat
-    ]
+    ], False
 
 
-def cells_to_geojson(cells: List[dict]) -> dict:
+def cells_to_geojson(cells: List[dict], live: bool = False) -> dict:
     features = []
     for h in cells:
         features.append(
@@ -283,12 +287,15 @@ def cells_to_geojson(cells: List[dict]) -> dict:
                 },
             }
         )
-    return {"type": "FeatureCollection", "features": features}
+    fc: dict = {"type": "FeatureCollection", "features": features}
+    fc["live"] = live
+    return fc
 
 
 @app.get("/area-scores")
 def area_scores():
-    return cells_to_geojson(get_cells())
+    cells, live = get_cells()
+    return cells_to_geojson(cells, live)
 
 
 # ---- POST /score ----
@@ -352,8 +359,8 @@ def parse_bbox(bbox: str) -> tuple:
 @app.get("/heatmap-cells")
 def heatmap_cells(bbox: Optional[str] = None):
     bounds = parse_bbox(bbox) if bbox is not None else None
-    cells = get_cells(bounds)
-    fc = cells_to_geojson(cells)
+    cells, live = get_cells(bounds)
+    fc = cells_to_geojson(cells, live)
     fc["query"] = {"bbox": list(bounds) if bounds else None}
     return fc
 
@@ -379,7 +386,7 @@ def heatmap_tile(z: int, x: int, y: int):
     if not (0 <= x < n and 0 <= y < n):
         raise HTTPException(status_code=422, detail="x/y out of range for z")
     bounds = tile_bounds(z, x, y)
-    cells = get_cells(bounds)
+    cells, live = get_cells(bounds)
     minlon, minlat, maxlon, maxlat = bounds
     return {
         "z": z,
@@ -392,6 +399,7 @@ def heatmap_tile(z: int, x: int, y: int):
             "maxlat": maxlat,
         },
         "count": len(cells),
+        "live": live,
         "cells": [
             {
                 "h3": c["h3"],

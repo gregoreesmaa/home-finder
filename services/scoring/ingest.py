@@ -3,12 +3,15 @@
 Enabled portals are the ones reachable with polite plain-HTTP fetches
 (probed 2026-09-08: domus, uusmaa, pindi, 1partner, arcovara, lvm, remax
 all serve server-rendered cards; selectors verified against live markup).
+kv.ee gates scripted HTTP on TLS fingerprint, so it fetches via genuine
+headless Chrome instead (verified 2026-09-08: real ItemList JSON-LD).
 Blocked/JS-only portals stay listed with their reason and are skipped
 gracefully -- never retried aggressively.
 
-Scoring of live rows (honest v1): livability signals are not scraped, so
-every live row gets the neutral 50 with a reason saying so; discount_pct
-is measured against the county median EUR/m2 *within the fetched batch*,
+Scoring of live rows: livability comes from the dimension registry in
+livability.py (Photon geocode + OSM POIs, cached, graceful nulls), so rows
+get varied per-listing scores with Estonian reasons; discount_pct is
+measured against the county median EUR/m2 *within the fetched batch*,
 so "steal vs overpriced" stays meaningful and sort modes keep working.
 
 Usage (daily cron cadence, polite: page_limit=1 per portal):
@@ -18,6 +21,7 @@ Usage (daily cron cadence, polite: page_limit=1 per portal):
 
 import importlib
 import json
+import math
 import os
 import statistics
 import sys
@@ -26,6 +30,7 @@ from typing import Dict, List, Optional, Tuple
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from adapters import dedup_listings  # noqa: E402
+import livability  # noqa: E402
 
 # (adapter module, enabled, note when disabled)
 PORTALS: List[Tuple[str, bool, str]] = [
@@ -36,7 +41,7 @@ PORTALS: List[Tuple[str, bool, str]] = [
     ("adapters.arcovara_ee", True, ""),
     ("adapters.lvm_ee", True, ""),
     ("adapters.remax_ee", True, ""),
-    ("adapters.kv_ee", False, "HTTP 403 bot protection on search pages"),
+    ("adapters.kv_ee", True, "headless-Chrome fetch (genuine browser TLS); daily cron"),
     ("adapters.city24_ee", True, "public search JSON API (no key, no login)"),
     ("adapters.kinnisvara24_ee", False, "HTTP 403 bot protection"),
     ("adapters.kinnisvaraweb_ee", False, "HTTP 403 bot protection"),
@@ -183,14 +188,18 @@ def classify(rows: List[dict], modname: str = "") -> List[dict]:
 SALE_PPM_FLOOR = 100.0
 
 
-def score(rows: List[dict]) -> List[dict]:
-    """Batch-median discount over SALE rows per county + neutral livability.
+def score(rows: List[dict], cache_dir: Optional[str] = None, resolver=None) -> List[dict]:
+    """Batch-median discount over SALE rows per county + livability dims.
 
     Rents (EUR/month) and land (EUR/m2 of soil) are excluded from the sale
     medians and keep discount 0.0 with an honest typed reason. As a backstop
     against mislabeled rows, sub-floor sale prices (EUR/m2 < 100 — far below
     any Estonian sale market) do not enter the median pool either, though
     they are still scored against it.
+
+    Livability comes from livability.enrich_row (Photon geocode + OSM POIs,
+    30d file cache under cache_dir, graceful nulls); all-dims-missing keeps
+    the neutral 50 with an explicit no-data reason.
     """
     buckets: Dict[str, List[float]] = {}
     for r in rows:
@@ -204,7 +213,9 @@ def score(rows: List[dict]) -> List[dict]:
     medians = {c: statistics.median(v) for c, v in buckets.items()}
     for r in rows:
         # Source attribution renders from the `source` field in the UI.
-        r["reasons"] = ["Elamiskvaliteet arvutamata (automaatimport)"]
+        # Livability reasons are computed per listing below; deal/type
+        # warnings stay first in the list.
+        r["reasons"] = []
         if r.get("deal_type", "sale") == "sale":
             ppm, med = r["price_per_m2"], medians.get(r["county"])
             r["discount_pct"] = (
@@ -222,13 +233,23 @@ def score(rows: List[dict]) -> List[dict]:
             r["reasons"].insert(
                 0, TYPE_REASON.get(r["deal_type"], TYPE_REASON["unknown"])
             )
-        r["score_livability"] = NEUTRAL_LIVABILITY
+        geo = (resolver or (lambda a: livability.resolve(a, cache_dir)))(
+            r.get("address", "")
+        )
+        if geo:
+            r["lat"], r["lon"] = geo.get("lat"), geo.get("lon")
+        liv, liv_reasons = livability.enrich_row(
+            r.get("address", ""), r.get("county", ""), cache_dir,
+            resolver=resolver, geo=geo,
+        )
+        r["score_livability"] = liv
+        r["reasons"].extend(liv_reasons)
     return rows
 
 
-def enrich(rows: List[dict], modname: str = "") -> List[dict]:
+def enrich(rows: List[dict], modname: str = "", cache_dir: Optional[str] = None, resolver=None) -> List[dict]:
     """classify + score in one pass (single-portal convenience)."""
-    return score(classify(rows, modname))
+    return score(classify(rows, modname), cache_dir, resolver=resolver)
 
 
 UPSERT_SQL = """
@@ -291,6 +312,77 @@ def connect():
         return None
 
 
+CELL_DEGREES = 0.25  # mirrors web binListingsToHexes default
+
+
+def heat_level(score: float) -> str:
+    if score >= 70:
+        return "good"
+    if score >= 40:
+        return "mid"
+    return "bad"
+
+
+def build_cells(rows: List[dict]) -> List[dict]:
+    """Aggregate geocoded rows into grid cells (avg livability + count)."""
+    acc: Dict[str, dict] = {}
+    for r in rows:
+        lon, lat = r.get("lon"), r.get("lat")
+        liv = r.get("score_livability")
+        if not isinstance(lon, (int, float)) or not isinstance(lat, (int, float)):
+            continue
+        if not isinstance(liv, (int, float)):
+            continue
+        ix, iy = math.floor(lon / CELL_DEGREES), math.floor(lat / CELL_DEGREES)
+        key = "cell-%d:%d" % (ix, iy)
+        cell = acc.setdefault(key, {"sum": 0.0, "n": 0, "ix": ix, "iy": iy})
+        cell["sum"] += liv
+        cell["n"] += 1
+    out = []
+    for key, c in acc.items():
+        avg = round(c["sum"] / c["n"], 1)
+        out.append(
+            {
+                "h3": key,
+                "score_goodness": int(round(avg)),
+                "level": heat_level(avg),
+                "lon": (c["ix"] + 0.5) * CELL_DEGREES,
+                "lat": (c["iy"] + 0.5) * CELL_DEGREES,
+                "count": c["n"],
+            }
+        )
+    return out
+
+
+UPSERT_CELL_SQL = """
+INSERT INTO area_scores (h3, score_goodness, level, geom)
+VALUES (%(h3)s, %(score_goodness)s, %(level)s,
+  ST_MakeEnvelope(%(minlon)s, %(minlat)s, %(maxlon)s, %(maxlat)s, 4326))
+ON CONFLICT (h3) DO UPDATE SET
+  score_goodness = EXCLUDED.score_goodness, level = EXCLUDED.level,
+  geom = EXCLUDED.geom
+"""
+
+
+def upsert_cells(conn, cells: List[dict]) -> int:
+    cur = conn.cursor()
+    for c in cells:
+        cur.execute(
+            UPSERT_CELL_SQL,
+            {
+                "h3": c["h3"],
+                "score_goodness": c["score_goodness"],
+                "level": c["level"],
+                "minlon": c["lon"] - CELL_DEGREES / 2,
+                "minlat": c["lat"] - CELL_DEGREES / 2,
+                "maxlon": c["lon"] + CELL_DEGREES / 2,
+                "maxlat": c["lat"] + CELL_DEGREES / 2,
+            },
+        )
+    conn.commit()
+    return len(cells)
+
+
 def run(cache_dir: Optional[str] = None) -> dict:
     """Scrape enabled portals, dedup, enrich, upsert. Returns a report."""
     report: Dict[str, dict] = {}
@@ -313,10 +405,12 @@ def run(cache_dir: Optional[str] = None) -> dict:
     # Typing is per-portal, but discount medians pool across all portals,
     # so classify first, dedup, then score the merged set.
     merged = dedup_listings(*[fetched]) if fetched else []
-    enriched = score(merged)
+    enriched = score(merged, cache_dir)
     priced = [r for r in enriched if r.get("price")]
     conn = connect()
     stored = upsert(conn, priced) if conn is not None else 0
+    cells = build_cells(priced)
+    ncells = upsert_cells(conn, cells) if conn is not None else 0
     if conn is not None:
         conn.close()
     report["_total"] = {
@@ -324,6 +418,7 @@ def run(cache_dir: Optional[str] = None) -> dict:
         "unique": len(merged),
         "skipped_no_price": len(enriched) - len(priced),
         "stored": stored,
+        "cells": ncells,
         "db": conn is not None,
     }
     return report

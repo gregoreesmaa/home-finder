@@ -41,6 +41,20 @@ jobs:
 
   python:
     runs-on: ubuntu-latest
+    services:
+      postgis:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: homefinder
+          POSTGRES_PASSWORD: homefinder
+          POSTGRES_DB: homefinder
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U homefinder -d homefinder"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      DATABASE_URL: postgresql://homefinder:homefinder@localhost:5432/homefinder
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

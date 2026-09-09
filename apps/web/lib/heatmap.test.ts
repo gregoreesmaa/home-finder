@@ -5,8 +5,10 @@ import {
   heatLevel,
   hexesFromGeoJSON,
   legendBuckets,
+  listingsToPoints,
   MOCK_HEXES,
   nearestHeatPoint,
+  pickHeatInput,
   popupText,
   resolveHexes,
   toHeatPoints,
@@ -89,6 +91,42 @@ describe("heatmap legend + popup (issue #2)", () => {
     const pts = toHeatPoints(MOCK_HEXES);
     expect(nearestHeatPoint(pts, 24.76, 59.44)?.h3).toBe("mock-tallinn");
     expect(nearestHeatPoint(pts, 0, 0)).toBeNull();
+  });
+});
+
+describe("heat source picker (B1: live cells > binned listings > mock)", () => {
+  const live = [{ h3: "db-1", score_goodness: 80, lon: 24.75, lat: 59.43 }];
+  const geo = [
+    { lon: 24.76, lat: 59.44, score_livability: 80 },
+    { lon: 26.72, lat: 58.37, score_livability: 50 },
+  ];
+
+  it("prefers live DB cells", () => {
+    const p = pickHeatInput(live, true, listingsToPoints(geo), MOCK_HEXES);
+    expect(p.source).toBe("cells");
+    expect(p.hexes).toEqual(live);
+  });
+
+  it("bins geocoded listings when cells are not live", () => {
+    const p = pickHeatInput([], false, listingsToPoints(geo), MOCK_HEXES);
+    expect(p.source).toBe("listings");
+    expect(p.hexes).toHaveLength(2);
+  });
+
+  it("falls back to mock only when nothing else exists", () => {
+    const p = pickHeatInput([], false, listingsToPoints([]), MOCK_HEXES);
+    expect(p.source).toBe("mock");
+    expect(p.hexes).toEqual(MOCK_HEXES);
+  });
+
+  it("listingsToPoints drops rows without coords or score", () => {
+    expect(
+      listingsToPoints([
+        { lon: 24.7, lat: 59.4, score_livability: 80 },
+        { lon: null, lat: 59.4, score_livability: 80 },
+        { lon: 24.7, lat: 59.4, score_livability: null },
+      ]),
+    ).toHaveLength(1);
   });
 });
 
