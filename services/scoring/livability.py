@@ -290,7 +290,8 @@ def fetch_geocode_photon(address: str, timeout: float = 20.0) -> Optional[Tuple[
     params = {
         "q": address,
         "limit": "1",
-        "lang": "et",
+        # NOTE: Photon supports only default/de/en/fr; "et" 400s every call.
+        "lang": "default",
         "bbox": "%s,%s,%s,%s" % EE_BBOX,
     }
     resp = httpx.get(PHOTON_URL, params=params, headers=HEADERS, timeout=timeout)
@@ -364,8 +365,12 @@ def fetch_geocode(address: str, timeout: float = 20.0) -> Optional[Tuple[float, 
     try:
         # Short primary timeout: the fallback covers slow/dead Photon, and
         # every success is cached for 30d anyway.
-        return fetch_geocode_photon(address, timeout=4.0)
-    except httpx.HTTPError:
+        hit = fetch_geocode_photon(address, timeout=4.0)
+        time.sleep(0.5)  # bulk imports must not hammer free geocoders
+        return hit
+    except httpx.HTTPError as e:
+        if getattr(getattr(e, "response", None), "status_code", None) == 429:
+            time.sleep(60.0)  # Photon throttle: back off before the fallback
         return fetch_geocode_nominatim(address, timeout)
 
 
@@ -404,9 +409,9 @@ def resolve(address: str, cache_dir: Optional[str] = None) -> Optional[dict]:
         return None
     try:
         loc = cached_fetch(
-            # v4: v3 cached 429-rate-limit misses as "" during the Nominatim
-            # throttle window; the bump forces one clean re-geocode.
-            "liv_geocode4", address, 1,
+            # v6: v5 ran mid-throttle (Photon+Nominatim 429s), so its ""
+            # negatives are suspect; the bump re-resolves at a polite pace.
+            "liv_geocode6", address, 1,
             lambda: _dump_loc(_strict_geocode(address)),
             cache_dir, GEOCODE_TTL_S,
         )

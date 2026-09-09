@@ -16,7 +16,7 @@ const base: MockListing = {
 };
 
 /** et-EE grouping emits NBSP (U+00A0); normalize so expectations stay ASCII. */
-const plain = (s: string): string => s.replace(/ /g, " ");
+const plain = (s: string): string => s.replace(/\u00a0/g, " ");
 
 describe("formatFacts (card facts line, null-tolerant for live rows)", () => {
   it("formats full rows with Estonian number grouping", () => {
