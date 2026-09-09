@@ -94,3 +94,27 @@ docker compose up --build
 
 Scaffold DoD evidence (v0.1, on `main`): `vitest` 2 files green,
 `pytest` 2 files green — see commit message.
+
+## 7. Operating mindset (for agents)
+
+Distilled from what actually worked shipping v1. Prefer these over cleverness:
+
+1. **Evidence before claims.** Reproduce against real code and live state;
+   never trust summaries — including prior session summaries. Read the file,
+   run the command, quote the output. A confident patch you never saw pass
+   the repo's tests is the most common wrong answer.
+2. **Honest systems over fake precision.** Fallbacks must be explicit and
+   honestly labeled (never present fallback/demo as live). Transport errors
+   are never cached as data; never invent sources, reviews, or scores.
+3. **Verify at the layer the user sees.** Screenshots for UI, DB tallies for
+   data, real cron runs for pipelines — not just unit greens. A green suite
+   with broken UX is not done.
+4. **Polite automation.** Pace, backoff, mirrors, caches; treat HTTP 429 as
+   a stop signal, not a retry dare. Cold caches plus retries pile on — bulk
+   work should converge over runs, not hammer through in one.
+5. **Make gray areas reviewable.** Document judgment calls in code comments
+   and PR reviewer notes; flag ambiguity instead of hiding it. The reviewer
+   can only catch what you surface.
+6. **Hermetic tests by default.** Guard the suite against network access;
+   cover live paths with explicitly-flagged integration tests, not unit runs.
+7. **Small diffs, one issue per worktree/PR**, DoD evidence pasted in the PR.
