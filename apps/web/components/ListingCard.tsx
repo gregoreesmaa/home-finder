@@ -28,12 +28,26 @@ export function ListingCard({
   return (
     <article aria-label={`#${rank} ${listing.address}`}>
       <span aria-label={`Koht ${rank}`}>#{rank}</span>
+      {listing.image_url ? (
+        <img src={listing.image_url} alt={`Foto: ${listing.address}`} loading="lazy" />
+      ) : (
+        <p role="img" aria-label={`Fotot pole: ${listing.address}`}>
+          Fotot pole
+        </p>
+      )}
       <h3>{listing.address}</h3>
       <p>{formatFacts(listing)}</p>
       {listing.source && (
         <p>
           Allikas: {listing.source}
           {listing.is_live ? " · reaalajas" : ""}
+        </p>
+      )}
+      {listing.source_url && (
+        <p>
+          <a href={listing.source_url} target="_blank" rel="noopener noreferrer">
+            Vaata originaalkuulutust{listing.source ? ` (${listing.source})` : ""}
+          </a>
         </p>
       )}
       <span data-tone={livabilityTone(listing.score_livability)}>

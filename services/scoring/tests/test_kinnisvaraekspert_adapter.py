@@ -34,6 +34,10 @@ def test_parse_fixture_cards():
     assert sale["price"] == 86000  # &nbsp; thousand separator parsed
     assert sale["rooms"] == 1
     assert sale["area_m2"] == 25.0
+    assert sale["image_url"] == (
+        "https://kinnisvaraekspert.ee/next/6/156286/object_pictures/"
+        "2gyw1w7a34g0co8cgog8sck04csok044_380.jpg"
+    )
     assert sale["address"] == "Oja 118, Pärnu maakond, Pärnu linn"
     assert rent["id"] == "ekspert-156296"
     assert rent["price"] == 750

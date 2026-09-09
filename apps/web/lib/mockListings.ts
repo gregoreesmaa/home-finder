@@ -15,6 +15,10 @@ export interface MockListing {
   reasons: readonly string[];
   /** Present on live API rows (portal domain, e.g. "pindi.ee"). */
   source?: string;
+  /** Original portal listing URL (#70); absent when unknown. */
+  source_url?: string;
+  /** Portal thumbnail photo (#76); null/ absent renders an honest placeholder. */
+  image_url?: string | null;
   /** True when the row came from a real portal import, false for mocks. */
   is_live?: boolean;
   /** Geocoded coordinates (live rows after the livability import); absent on mocks. */
@@ -48,6 +52,9 @@ const RAW = [
     score_livability: 88,
     discount_pct: 10,
     reasons: ["Harju keskmisest -5%", "12 min kesklinna"],
+    source: "pindi.ee",
+    source_url: "https://www.pindi.ee/kinnisvarapakkumised/kotzebue-12/",
+    image_url: "https://www.pindi.ee/media/kotzebue-12.jpg",
   },
   {
     id: "tartu-karlova",

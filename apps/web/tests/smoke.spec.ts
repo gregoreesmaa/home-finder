@@ -84,6 +84,25 @@ test("seeded stack renders live list plus heat cells", async ({ page }) => {
   void before;
 });
 
+// #70 + #76 (deterministic mock fallback): cards link to the original
+// listing and show a photo, or an honest placeholder when unknown.
+test("cards link out and show photos or placeholders", async ({ page }) => {
+  await page.route("**/localhost:8000/**", (route) => route.abort());
+  await page.goto("/");
+
+  const card = page.getByRole("article", { name: /Kotzebue 12, Tallinn/ });
+  await expect(card.getByRole("img", { name: "Foto: Kotzebue 12, Tallinn" })).toBeVisible();
+  const link = card.getByRole("link", { name: /Vaata originaalkuulutust/ });
+  await expect(link).toHaveAttribute("href", /pindi\.ee/);
+  await expect(link).toHaveAttribute("target", "_blank");
+
+  const noPhoto = page.getByRole("article", { name: /Tähe 45, Tartu/ });
+  await expect(noPhoto.getByText("Fotot pole")).toBeVisible();
+  await expect(
+    noPhoto.getByRole("link", { name: /Vaata originaalkuulutust/ }),
+  ).toHaveCount(0);
+});
+
 // Live backend rendering: whatever the API serves (real import locally,
 // mocks where no API runs), the page must render ranked cards with prices.
 // This is environment-proof by design: no pinned winners, only structure.

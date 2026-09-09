@@ -151,6 +151,9 @@ def _parse_jsonld_item(entry: dict) -> Optional[dict]:
     offers = item.get("offers") or {}
     floor = item.get("floorSize") or {}
     rooms = item.get("numberOfRooms")
+    image = item.get("image") or None
+    if not isinstance(image, str) or not image.startswith("http"):
+        image = None
     return normalize_listing(
         {
             "id": rec_id,
@@ -160,6 +163,7 @@ def _parse_jsonld_item(entry: dict) -> Optional[dict]:
             "price": to_int_eur(str(offers.get("price", ""))) or None,
             "rooms": to_int_rooms(str(rooms)) if rooms is not None else None,
             "area_m2": to_float_m2(str(floor.get("value", ""))) or None,
+            "image_url": image,
         }
     )
 

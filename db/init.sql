@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS listings (
   address       TEXT NOT NULL,
   county        TEXT NOT NULL,          -- Harju / Tartu / Pärnu / ...
   price         INTEGER NOT NULL,       -- EUR
+  image_url     TEXT,                   -- portal thumbnail (#76), NULL when unknown
   price_per_m2  INTEGER,
   rooms         NUMERIC,
   area_m2       NUMERIC,

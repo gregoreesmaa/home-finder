@@ -33,7 +33,7 @@ DEFAULT_TTL_S = 24 * 3600  # daily cron
 
 # Punch-through for contract tests: every adapter must return these keys.
 REQUIRED_KEYS = ("id", "source", "source_url", "address", "price")
-OPTIONAL_KEYS = ("rooms", "area_m2")
+OPTIONAL_KEYS = ("rooms", "area_m2", "image_url")
 
 
 def polite_headers() -> dict:

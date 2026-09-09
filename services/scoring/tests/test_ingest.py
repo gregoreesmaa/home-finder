@@ -263,12 +263,24 @@ def test_upsert_writes_one_row_per_record():
     conn = FakeConn()
     n = ingest.upsert(conn, ingest.enrich([row(), row(id="x-2", price=60000)]))
     assert n == 2
-    assert len(conn.cur.calls) == 2
+    schema_sql, _ = conn.cur.calls[0]
+    assert "ADD COLUMN IF NOT EXISTS image_url" in schema_sql
+    upserts = conn.cur.calls[1:]
+    assert len(upserts) == 2
     assert conn.committed
-    sql, params = conn.cur.calls[0]
+    sql, params = upserts[0]
     assert "ON CONFLICT (id) DO UPDATE" in sql
     assert params["id"] == "x-1"
     assert params["county"] == "Ida-Viru maakond"
+    assert params["image_url"] is None
+
+
+def test_upsert_carries_image_url():
+    conn = FakeConn()
+    n = ingest.upsert(conn, ingest.enrich([row(image_url="https://img.test/1.jpg")]))
+    assert n == 1
+    _sql, params = conn.cur.calls[-1]
+    assert params["image_url"] == "https://img.test/1.jpg"
 
 
 def test_run_reports_per_source_and_skips_priceless(monkeypatch):
