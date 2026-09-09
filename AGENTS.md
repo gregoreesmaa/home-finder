@@ -118,3 +118,11 @@ Distilled from what actually worked shipping v1. Prefer these over cleverness:
 6. **Hermetic tests by default.** Guard the suite against network access;
    cover live paths with explicitly-flagged integration tests, not unit runs.
 7. **Small diffs, one issue per worktree/PR**, DoD evidence pasted in the PR.
+
+## 8. Agent UX loop (the standing user-driven QA task, #80)
+
+`node scripts/agent-ux-loop.js [--base URL] [--api URL] [--out DIR]`
+drives the running site like a buyer (sorts, weights, POI, map pan,
+filters), collects every console/page error, and writes screenshots +
+`report.json`. Zero page errors is the bar; fix issues and re-run the
+loop until all green, then report the loop output as DoD evidence.

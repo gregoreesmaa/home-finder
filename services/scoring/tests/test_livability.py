@@ -174,6 +174,32 @@ def test_simplify_address_strips_hierarchy():
         "Ravi tn 1a",
     ]
     assert livability.simplify_address("Tallinn") == ["Tallinn"]
+    assert livability.simplify_address("") == []
+
+
+def test_simplify_address_handles_brittle_portal_strings():
+    """#81: apartment suffixes, junk segments, missing numbers."""
+    cands = livability.simplify_address(
+        "Astangu tn 68-19, Harku järve lähedal, Haabersti, Tallinn"
+    )
+    assert cands[0].startswith("Astangu tn 68-19")
+    assert "Astangu tn 68, Tallinn" in cands
+    cands = livability.simplify_address("Tähetorni tn , Nõmme, Tallinn, Harjumaa")
+    assert "Tähetorni tn, Tallinn" in cands
+    cands = livability.simplify_address("Mäepealse tn 9/1-25, Nõmmemäe, Nõmme, Tallinn")
+    assert "Mäepealse tn 9, Tallinn" in cands
+
+
+def test_geocode_falls_back_on_photon_miss(monkeypatch):
+    """#81: a Photon empty (not just errors) reaches Nominatim."""
+    calls = []
+    monkeypatch.setattr(livability, "fetch_geocode_photon", lambda a, timeout=20.0: None)
+    monkeypatch.setattr(
+        livability, "fetch_geocode_nominatim",
+        lambda a, timeout=20.0: calls.append(a) or (59.1, 24.1),
+    )
+    assert livability.fetch_geocode("Metsa 1, Tallinn") == (59.1, 24.1)
+    assert calls, "Nominatim must run after a Photon miss"
 
 
 def test_air_stub_returns_null_with_reason():

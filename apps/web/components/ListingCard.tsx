@@ -35,7 +35,7 @@ export function ListingCard({
           Fotot pole
         </p>
       )}
-      <h3>{listing.address}</h3>
+      <h2>{listing.address}</h2>
       <p>{formatFacts(listing)}</p>
       {listing.source && (
         <p>

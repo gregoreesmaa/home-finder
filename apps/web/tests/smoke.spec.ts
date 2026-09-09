@@ -169,6 +169,33 @@ test("balance slider and POI badges re-score the list", async ({ page }) => {
   await expect(card.getByText(/Töö · autoga ~0 min/)).toBeVisible();
 });
 
+// #84: keyboard-only flow — tab to a sort button, Enter re-ranks; map
+// arrows pan the camera. (Tab order itself: sort, filters, weights, POI,
+// map toggles, canvas — verified in the #84 walkthrough, no traps.)
+test("keyboard operates sort and map", async ({ page }) => {
+  await page.route("**/localhost:8000/**", (route) => route.abort());
+  await page.goto("/");
+  await page.locator("ol > li").first().waitFor({ timeout: 30000 });
+
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Tab");
+  await expect(page.locator(":focus")).toHaveText("Elamiskvaliteet");
+  await page.keyboard.press("Enter");
+  await expect(page.locator(":focus")).toHaveAttribute("aria-pressed", "true");
+  await expect(page).toHaveURL(/sort=livability/);
+
+  const mapBox = page.locator(
+    'section[aria-label="Piirkondade heatmap"] div[role="application"]',
+  );
+  await mapBox.scrollIntoViewIfNeeded();
+  await page.locator("canvas.maplibregl-canvas").focus();
+  const before = await mapBox.getAttribute("data-camera");
+  for (let i = 0; i < 5; i++) await page.keyboard.press("ArrowRight");
+  await expect
+    .poll(async () => mapBox.getAttribute("data-camera"), { timeout: 10000 })
+    .not.toBe(before);
+});
+
 // Live backend rendering: whatever the API serves (real import locally,
 // mocks where no API runs), the page must render ranked cards with prices.
 // This is environment-proof by design: no pinned winners, only structure.
