@@ -412,3 +412,27 @@ def test_sources_reports_counts_and_blocks(monkeypatch):
     assert by_source["pindi.ee"]["enabled"] is True
     assert by_source["kv.ee"]["enabled"] is True
     assert "Chrome" in by_source["kv.ee"]["note"]
+
+
+def test_run_uses_cache_dir_env_when_no_flag(monkeypatch, tmp_path):
+    """#78: container cron sets HF_CACHE_DIR; explicit arg still wins."""
+    seen = {}
+
+    class Probe:
+        SOURCE = "probe.ee"
+
+        @staticmethod
+        def scrape(*a, **k):
+            seen["cache_dir"] = k.get("cache_dir", a[2] if len(a) > 2 else None)
+            return []
+
+    monkeypatch.setattr(ingest, "PORTALS", [("adapters.probe_ee", True, "")])
+    monkeypatch.setitem(sys.modules, "adapters.probe_ee", Probe)
+    monkeypatch.setattr(ingest, "connect", lambda: None)
+    monkeypatch.setenv(ingest.CACHE_DIR_ENV_VAR, str(tmp_path))
+
+    ingest.run()
+    assert seen["cache_dir"] == str(tmp_path)
+
+    ingest.run("/explicit")
+    assert seen["cache_dir"] == "/explicit"

@@ -146,6 +146,20 @@ CHROME_DESKTOP_UA = (
 )
 
 
+def chrome_extra_args() -> list:
+    """Extra engine flags for the current runtime environment.
+
+    Containers run as root, under which Chrome refuses to start without
+    --no-sandbox; developer machines keep the sandbox. (#77)
+    """
+    try:
+        if os.geteuid() == 0:
+            return ["--no-sandbox"]
+    except AttributeError:
+        pass  # non-POSIX (Windows): no uid concept, keep the sandbox
+    return []
+
+
 def find_chrome_binary() -> Optional[str]:
     """Path to a real Chrome/Chromium engine, or None when not installed."""
     import shutil
@@ -191,6 +205,7 @@ def fetch_html_via_chrome(url: str, timeout: float = 280.0) -> str:
                 binary,
                 "--headless=new",
                 "--disable-gpu",
+                *chrome_extra_args(),
                 "--no-first-run",
                 "--user-data-dir=%s" % profile,
                 "--user-agent=%s" % CHROME_DESKTOP_UA,

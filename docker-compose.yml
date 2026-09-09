@@ -15,8 +15,13 @@ services:
     build: ./services/scoring
     environment:
       DATABASE_URL: postgresql://homefinder:homefinder@db:5432/homefinder
+      # Persisted ingest cache: container cron reuses geocode/POI responses
+      # instead of cold-start hammering Nominatim/Overpass (#78).
+      HF_CACHE_DIR: /var/cache/home-finder
     ports:
       - "8000:8000"
+    volumes:
+      - hf-cache:/var/cache/home-finder
     depends_on:
       - db
 
@@ -33,3 +38,4 @@ services:
 
 volumes:
   pgdata:
+  hf-cache:
