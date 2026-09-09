@@ -383,8 +383,15 @@ def upsert_cells(conn, cells: List[dict]) -> int:
     return len(cells)
 
 
+CACHE_DIR_ENV_VAR = "HF_CACHE_DIR"
+
+
 def run(cache_dir: Optional[str] = None) -> dict:
     """Scrape enabled portals, dedup, enrich, upsert. Returns a report."""
+    if cache_dir is None:
+        # Container cron sets HF_CACHE_DIR at a persisted volume (#78);
+        # explicit --cache-dir still wins for host runs.
+        cache_dir = os.environ.get(CACHE_DIR_ENV_VAR)
     report: Dict[str, dict] = {}
     fetched: List[dict] = []
     for modname, enabled, note in PORTALS:

@@ -85,3 +85,10 @@ def test_cache_files_land_in_cache_dir(tmp_path):
 def test_adapters_package_exports():
     assert adapters.DEFAULT_TTL_S == 24 * 3600
     assert set(adapters.REQUIRED_KEYS) == {"id", "source", "source_url", "address", "price"}
+
+
+def test_chrome_extra_args_drops_sandbox_only_as_root(monkeypatch):
+    monkeypatch.setattr(os, "geteuid", lambda: 0)
+    assert adapters.chrome_extra_args() == ["--no-sandbox"]
+    monkeypatch.setattr(os, "geteuid", lambda: 1000)
+    assert adapters.chrome_extra_args() == []
