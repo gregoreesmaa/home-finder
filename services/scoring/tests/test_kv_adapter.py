@@ -81,12 +81,40 @@ def test_search_url_uses_sale_route():
     assert "keyword=haiba" in url
 
 
+def test_category_urls_paginate_by_start():
+    assert kv_ee.build_search_url("", "/korterid-muuk", 0).endswith("/korterid-muuk?start=0")
+    assert kv_ee.build_search_url("", "/majad-muuk", 2).endswith("/majad-muuk?start=100")
+
+
+def test_scrape_walks_both_categories_page_by_page(monkeypatch):
+    """#67 paginates, #69 covers houses: 2 cats x page_limit fetches."""
+    html = _fixture_html()
+    seen = []
+    monkeypatch.setattr(kv_ee, "_fetch_url", lambda u: seen.append(u) or html)
+    rows = kv_ee.scrape("", page_limit=2, delay_s=0)
+    assert seen == [
+        "https://www.kv.ee/korterid-muuk?start=0",
+        "https://www.kv.ee/korterid-muuk?start=50",
+        "https://www.kv.ee/majad-muuk?start=0",
+        "https://www.kv.ee/majad-muuk?start=50",
+    ]
+    assert len(rows) == 8  # 2 fixture rows x 4 page fetches
+    assert {r["id"] for r in rows} == {"kv-3905636", "kv-3879789"}
+
+
+def test_scrape_query_mode_keeps_legacy_single_search(monkeypatch):
+    html = _fixture_html()
+    monkeypatch.setattr(kv_ee, "fetch_html", lambda *a, **k: html)
+    rows = kv_ee.scrape("haiba", delay_s=0)
+    assert [r["id"] for r in rows] == ["kv-3905636", "kv-3879789"]
+
+
 def test_fetch_and_scrape_use_mocked_http(monkeypatch):
     html = _fixture_html()
     monkeypatch.setattr(kv_ee, "fetch_html", lambda *a, **k: html)
     assert "3905636" in kv_ee.fetch_search_html()
-    rows = kv_ee.scrape()
-    assert len(rows) == 2
+    rows = kv_ee.scrape(delay_s=0)
+    assert len(rows) == 4  # 2 fixture rows x apartments + houses (#69)
     assert rows[0]["id"] == "kv-3905636"
 
 
@@ -139,12 +167,12 @@ def test_scrape_serves_second_call_from_cache(monkeypatch, tmp_path):
         return html
 
     monkeypatch.setattr(kv_ee, "fetch_html", counting_fetch)
-    first = kv_ee.scrape(cache_dir=str(tmp_path))
-    assert len(first) == 2 and len(calls) == 1
+    first = kv_ee.scrape(cache_dir=str(tmp_path), delay_s=0)
+    assert len(first) == 4 and len(calls) == 2  # apartments + houses pages
 
     def boom(*args, **kwargs):
         raise AssertionError("network must not be hit on warm cache")
 
     monkeypatch.setattr(kv_ee, "fetch_html", boom)
-    second = kv_ee.scrape(cache_dir=str(tmp_path))
-    assert second == first and len(calls) == 1
+    second = kv_ee.scrape(cache_dir=str(tmp_path), delay_s=0)
+    assert second == first and len(calls) == 2

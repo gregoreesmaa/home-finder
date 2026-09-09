@@ -23,6 +23,7 @@ STUBS = {
     "adapters.arcovara_ee": ("arcovara.ee", 17),
     "adapters.lvm_ee": ("lvm.ee", 18),
     "adapters.remax_ee": ("remax.ee", 19),
+    "adapters.lahekinnisvara_ee": ("lahekinnisvara.ee", 68),
 }
 
 

@@ -436,3 +436,31 @@ def test_run_uses_cache_dir_env_when_no_flag(monkeypatch, tmp_path):
 
     ingest.run("/explicit")
     assert seen["cache_dir"] == "/explicit"
+
+
+def test_run_page_limit_env_and_explicit_win(monkeypatch):
+    """#67: HF_PAGE_LIMIT flows to adapters; explicit arg still wins."""
+    seen = {}
+
+    class Probe:
+        SOURCE = "probe.ee"
+
+        @staticmethod
+        def scrape(*a, **k):
+            seen["page_limit"] = a[1] if len(a) > 1 else None
+            return []
+
+    monkeypatch.setattr(ingest, "PORTALS", [("adapters.probe_ee", True, "")])
+    monkeypatch.setitem(sys.modules, "adapters.probe_ee", Probe)
+    monkeypatch.setattr(ingest, "connect", lambda: None)
+    monkeypatch.delenv(ingest.PAGE_LIMIT_ENV_VAR, raising=False)
+
+    ingest.run()
+    assert seen["page_limit"] == ingest.DEFAULT_PAGE_LIMIT
+
+    monkeypatch.setenv(ingest.PAGE_LIMIT_ENV_VAR, "3")
+    ingest.run()
+    assert seen["page_limit"] == 3
+
+    ingest.run(page_limit=1)
+    assert seen["page_limit"] == 1
