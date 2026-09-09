@@ -32,7 +32,14 @@ Scores = List[Tuple[str, Optional[int], str]]  # (dim, score|None, reason)
 
 GEOCODE_TTL_S = 30 * 24 * 3600
 OVERPASS_TTL_S = 30 * 24 * 3600
-OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+# Public mirrors tried in order; per-IP throttling/outages hit mirrors
+# independently, so failover beats retrying one host.
+OVERPASS_URLS = (
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter",
+)
+OVERPASS_URL = OVERPASS_URLS[0]
 PHOTON_URL = "https://photon.komoot.io/api/"
 # Estonia bounding box (lon_min, lat_min, lon_max, lat_max) biases Photon.
 EE_BBOX = (21.5, 57.5, 28.5, 59.7)
@@ -374,22 +381,32 @@ def fetch_geocode(address: str, timeout: float = 20.0) -> Optional[Tuple[float, 
         return fetch_geocode_nominatim(address, timeout)
 
 
-def fetch_pois(lat: float, lon: float, timeout: float = 30.0) -> Optional[List[dict]]:
+def fetch_pois(lat: float, lon: float, timeout: float = 75.0) -> Optional[List[dict]]:
     """One Overpass query for all POI kinds.
 
     Transport errors propagate (resolve() maps them to null dims without
     caching); only real answers are cached.
     """
-    resp = httpx.post(
-        OVERPASS_URL,
-        data={"data": OVERPASS_QUERY.format(lat=lat, lon=lon)},
-        headers=HEADERS,
-        timeout=timeout,
-    )
-    resp.raise_for_status()
-    pois = parse_overpass(resp.json())
-    time.sleep(1.2)  # Overpass usage policy: polite gap after uncached calls
-    return pois
+    last: Optional[httpx.HTTPError] = None
+    # Per-mirror cap: a hanging mirror must not eat the whole budget while
+    # healthier ones wait behind it.
+    each = min(timeout, 25.0)
+    for mirror in OVERPASS_URLS:
+        try:
+            resp = httpx.post(
+                mirror,
+                data={"data": OVERPASS_QUERY.format(lat=lat, lon=lon)},
+                headers=HEADERS,
+                timeout=each,
+            )
+            resp.raise_for_status()
+            pois = parse_overpass(resp.json())
+            time.sleep(1.2)  # Overpass usage policy: polite gap after calls
+            return pois
+        except httpx.HTTPError as e:
+            last = e
+            continue
+    raise last if last is not None else RuntimeError("no Overpass mirror answered")
 
 
 class _Transient(Exception):
