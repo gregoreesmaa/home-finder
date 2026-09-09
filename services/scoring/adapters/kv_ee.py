@@ -21,6 +21,7 @@ polling. Network is isolated in fetch_search_html() so tests run offline.
 
 import json
 import re
+import time
 from typing import List, Optional
 from urllib.parse import quote_plus
 
@@ -58,8 +59,27 @@ SELECTORS = {
 HEADERS = polite_headers()
 
 
-def build_search_url(query: str = "") -> str:
-    """Path-style sale-search URL exactly as the site's own form uses."""
+PAGE_SIZE = 50  # kv.ee serves 50 results per search page (start=0,50,...)
+PAGE_DELAY_S = 3.0  # politeness gap between page fetches (0 in tests)
+
+# (#67) the legacy /et/search view is one unpaged apartment list; the
+# category indexes paginate via ?start=N. (#69) the default search only
+# ever showed apartments (korterid) — houses (majad) need their own index.
+CATEGORIES = (
+    ("korterid", "/korterid-muuk"),
+    ("majad", "/majad-muuk"),
+)
+
+
+def build_search_url(query: str = "", category: str = "", page: int = 0) -> str:
+    """Category index (+start pagination) by default.
+
+    With a category path, returns that index at the given page; otherwise
+    the legacy path-style sale-search URL exactly as the site's own form
+    uses (apartments default view, single page).
+    """
+    if category:
+        return "%s%s?start=%d" % (BASE_URL, category, page * PAGE_SIZE)
     url = "%s&deal_type=%s" % (SEARCH_URL, DEAL_TYPE_SALE)
     if query:
         url += "&keyword=" + quote_plus(query)
@@ -69,13 +89,12 @@ def build_search_url(query: str = "") -> str:
 CHROME_ATTEMPTS = 3
 
 
-def fetch_search_html(query: str = "", page_limit: int = 1, timeout: float = 20.0) -> str:
-    """Single sale-search page. Plain HTTP first, genuine Chrome on block.
+def _fetch_url(url: str, timeout: float = 20.0) -> str:
+    """One search URL. Plain HTTP first, genuine Chrome on block.
 
     Challenge outcomes vary per visit, so the Chrome fallback retries with a
     fresh profile and only accepts dumps that actually contain results.
     """
-    url = build_search_url(query)
     try:
         return fetch_html(url, params={}, headers=HEADERS, timeout=timeout)
     except httpx.HTTPError:
@@ -91,6 +110,15 @@ def fetch_search_html(query: str = "", page_limit: int = 1, timeout: float = 20.
             return html
         last = RuntimeError("headless Chrome returned a challenge/empty page")
     raise last
+
+
+def fetch_search_html(query: str = "", page_limit: int = 1, timeout: float = 20.0) -> str:
+    """Legacy single-URL sale search (apartments default view).
+
+    The daily-cron path is scrape() with an empty query, which walks both
+    category indexes page by page instead.
+    """
+    return _fetch_url(build_search_url(query), timeout)
 
 
 def _id_from_url(url: str) -> Optional[str]:
@@ -205,10 +233,35 @@ def scrape(
     page_limit: int = 1,
     cache_dir: Optional[str] = None,
     cache_ttl_s: float = 24 * 3600,
+    delay_s: float = PAGE_DELAY_S,
 ) -> List[dict]:
-    """Fetch (via 24h file cache when cache_dir is set) + parse + normalize."""
-    html = cached_fetch(
-        "kv_ee", query, page_limit, lambda: fetch_search_html(query, page_limit),
-        cache_dir, cache_ttl_s,
-    )
-    return parse_search_html(html)
+    """Fetch (via 24h file cache when cache_dir is set) + parse + normalize.
+
+    Empty query (the cron path): walk both category indexes (#69) page by
+    page (#67), one cached fetch per (category, page) with a politeness gap
+    between fetches. Query mode keeps the legacy single-search behavior.
+    """
+    if query:
+        html = cached_fetch(
+            "kv_ee", query, page_limit,
+            lambda: fetch_search_html(query, page_limit),
+            cache_dir, cache_ttl_s,
+        )
+        return parse_search_html(html)
+    out: List[dict] = []
+    targets = [
+        (path, page)
+        for _name, path in CATEGORIES
+        for page in range(max(1, page_limit))
+    ]
+    for i, (path, page) in enumerate(targets):
+        url = build_search_url("", path, page)
+        html = cached_fetch(
+            "kv_ee", "%s:p%d" % (path, page),
+            1, lambda u=url: _fetch_url(u),
+            cache_dir, cache_ttl_s,
+        )
+        out.extend(parse_search_html(html))
+        if delay_s and i < len(targets) - 1:
+            time.sleep(delay_s)
+    return out

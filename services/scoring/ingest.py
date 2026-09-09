@@ -43,6 +43,8 @@ PORTALS: List[Tuple[str, bool, str]] = [
     ("adapters.remax_ee", True, ""),
     ("adapters.kv_ee", True, "headless-Chrome fetch (genuine browser TLS); daily cron"),
     ("adapters.city24_ee", True, "public search JSON API (no key, no login)"),
+    ("adapters.kinnisvaraekspert_ee", True, "agency index; mixes sale+rent like domus"),
+    ("adapters.lahekinnisvara_ee", False, "HTTP 403 on robots.txt; no listing probe"),
     ("adapters.kinnisvara24_ee", False, "HTTP 403 bot protection"),
     ("adapters.kinnisvaraweb_ee", False, "HTTP 403 bot protection"),
     ("adapters.okidoki_ee", False, "HTTP 403 bot protection"),
@@ -60,11 +62,13 @@ RENT_MARKERS = ("uurile", "üürile", "for-rent", "to-rent", "rent", "vuokra", "
 SALE_MARKERS = ("muua", "muugi", "müü", "myy", "sale", "for-sale", "osta", "ostu")
 LAND_MARKERS = ("-maa", "/maa", "maatükk", "maatykk", "land", "plot", "grund", "kinnistu")
 
-# Default deal type per hub. domus provably mixes sale+rent, so markers (or
-# unknown) decide there; the other enabled hubs are sale-listing pages, so
-# unmarked rows default to sale. Rent markers override everywhere.
+# Default deal type per hub. domus and kinnisvaraekspert provably mix
+# sale+rent on marker-free detail URLs, so markers (or unknown) decide
+# there; the other enabled hubs are sale-listing pages, so unmarked rows
+# default to sale. Rent markers override everywhere.
 PORTAL_DEFAULT_TYPE = {
     "adapters.domus_ee": None,
+    "adapters.kinnisvaraekspert_ee": None,
 }
 
 
@@ -386,12 +390,24 @@ def upsert_cells(conn, cells: List[dict]) -> int:
 CACHE_DIR_ENV_VAR = "HF_CACHE_DIR"
 
 
-def run(cache_dir: Optional[str] = None) -> dict:
+PAGE_LIMIT_ENV_VAR = "HF_PAGE_LIMIT"
+DEFAULT_PAGE_LIMIT = 2
+
+
+def run(cache_dir: Optional[str] = None, page_limit: Optional[int] = None) -> dict:
     """Scrape enabled portals, dedup, enrich, upsert. Returns a report."""
     if cache_dir is None:
         # Container cron sets HF_CACHE_DIR at a persisted volume (#78);
         # explicit --cache-dir still wins for host runs.
         cache_dir = os.environ.get(CACHE_DIR_ENV_VAR)
+    if page_limit is None:
+        # (#67) more than the first results page per portal; adapters that
+        # ignore paging are unaffected. Explicit arg still wins.
+        try:
+            page_limit = int(os.environ.get(PAGE_LIMIT_ENV_VAR, DEFAULT_PAGE_LIMIT))
+        except ValueError:
+            page_limit = DEFAULT_PAGE_LIMIT
+        page_limit = max(1, page_limit)
     report: Dict[str, dict] = {}
     fetched: List[dict] = []
     for modname, enabled, note in PORTALS:
@@ -400,7 +416,7 @@ def run(cache_dir: Optional[str] = None) -> dict:
             continue
         try:
             mod = importlib.import_module(modname)
-            rows = mod.scrape("", 1, cache_dir)
+            rows = mod.scrape("", page_limit, cache_dir)
             report[modname] = {"status": "ok", "count": len(rows)}
             fetched.extend(classify(rows, modname))
         except Exception as e:  # polite: record, never crash the run
@@ -436,5 +452,6 @@ if __name__ == "__main__":
 
     ap = argparse.ArgumentParser(description="home-finder live ingestion")
     ap.add_argument("--cache-dir", default=None)
+    ap.add_argument("--page-limit", type=int, default=None)
     args = ap.parse_args()
-    print(json.dumps(run(args.cache_dir), indent=2, ensure_ascii=False))
+    print(json.dumps(run(args.cache_dir, args.page_limit), indent=2, ensure_ascii=False))
