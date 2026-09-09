@@ -20,6 +20,7 @@ on uncached Overpass calls); every scorer below is pure and offline-tested.
 """
 
 import math
+import re
 import time
 from typing import Callable, Dict, List, Optional, Tuple
 
@@ -69,6 +70,9 @@ SAFETY_TIERS = {
 }
 
 # Registry weights (sum to 1; renormalized over available dims at combine).
+# NOTE (A9): light / air quality has no open data source yet. It is an
+# explicit stub (dim_air, always None) and stays out of WEIGHTS until
+# sourced — no fake precision.
 WEIGHTS = {
     "schools": 0.20,
     "transit": 0.15,
@@ -193,6 +197,11 @@ def dim_commute(origin: Optional[Tuple[float, float]], address: str) -> Tuple[Op
     return s, "%s ~%s km (linnulennult)" % (label, _fmt_km(km))
 
 
+def dim_air() -> Tuple[Optional[int], str]:
+    """A9: light / air quality — honest stub until a source exists."""
+    return None, "Valgus/õhk: andmed puuduvad"
+
+
 def dim_safety(county: str) -> Tuple[Optional[int], str]:
     """A6: coarse county safety tier (sourced ordinals only)."""
     if county in SAFETY_TIERS:
@@ -293,15 +302,38 @@ def fetch_geocode_photon(address: str, timeout: float = 20.0) -> Optional[Tuple[
     return float(lat), float(lon)
 
 
+def simplify_address(address: str) -> List[str]:
+    """Full address first, then "street, city" for multi-segment hierarchies.
+
+    Portal addresses carry the full hierarchy ("Pärnu linn, Pärnu linn, Ravi
+    tn 1a"); geocoders do best with just street + settlement, so later
+    candidates strip the middle. Order preserved, duplicates dropped.
+    """
+    segs = [s.strip() for s in (address or "").split(",") if s.strip()]
+    if len(segs) < 2:
+        return segs
+    street = next((s for s in segs if re.search(r"\d", s)), segs[-1])
+    city = next(
+        (s for s in segs if re.search(r"linn|alev|küla", s, re.I)), segs[0]
+    )
+    out = [address.strip(), "%s, %s" % (street, city), segs[-1]]
+    seen, deduped = set(), []
+    for cand in out:
+        if cand not in seen:
+            seen.add(cand)
+            deduped.append(cand)
+    return deduped
+
+
 def fetch_geocode_nominatim(address: str, timeout: float = 20.0) -> Optional[Tuple[float, float]]:
     """Nominatim fallback (countrycodes=ee + Estonia viewbox). None when empty.
 
     Retries through 429s with backoff instead of burning the address as a
     miss; transport errors still propagate (resolve() maps them to null dims,
-    never to cached negatives).
+    never to cached negatives). Tries simplified "street, city" candidates
+    after the full hierarchy misses.
     """
-    params = {
-        "q": address,
+    base = {
         "format": "jsonv2",
         "limit": "1",
         "countrycodes": "ee",
@@ -309,18 +341,21 @@ def fetch_geocode_nominatim(address: str, timeout: float = 20.0) -> Optional[Tup
         "bounded": "1",
     }
     backoff = 15.0
-    for attempt in range(3):
-        resp = httpx.get(NOMINATIM_URL, params=params, headers=HEADERS, timeout=timeout)
-        if resp.status_code == 429 and attempt < 2:
-            time.sleep(backoff)
-            backoff *= 4
-            continue
-        resp.raise_for_status()
-        hits = resp.json()
-        if not hits:
-            return None
-        time.sleep(1.5)  # Nominatim usage policy: max 1 req/s
-        return float(hits[0]["lat"]), float(hits[0]["lon"])
+    for query in simplify_address(address):
+        params = dict(base, q=query)
+        for attempt in range(3):
+            resp = httpx.get(NOMINATIM_URL, params=params, headers=HEADERS, timeout=timeout)
+            time.sleep(1.5)  # Nominatim usage policy: max 1 req/s
+            if resp.status_code == 429 and attempt < 2:
+                time.sleep(backoff)
+                backoff *= 4
+                continue
+            resp.raise_for_status()
+            backoff = 15.0
+            hits = resp.json()
+            if hits:
+                return float(hits[0]["lat"]), float(hits[0]["lon"])
+            break
     return None
 
 
@@ -369,9 +404,9 @@ def resolve(address: str, cache_dir: Optional[str] = None) -> Optional[dict]:
         return None
     try:
         loc = cached_fetch(
-            # v3: v2 cached 429-rate-limit misses as "" during the Nominatim
+            # v4: v3 cached 429-rate-limit misses as "" during the Nominatim
             # throttle window; the bump forces one clean re-geocode.
-            "liv_geocode3", address, 1,
+            "liv_geocode4", address, 1,
             lambda: _dump_loc(_strict_geocode(address)),
             cache_dir, GEOCODE_TTL_S,
         )

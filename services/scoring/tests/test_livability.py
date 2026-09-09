@@ -118,6 +118,22 @@ def test_geocode_falls_back_to_nominatim(monkeypatch):
     assert livability.fetch_geocode("Metsa 1, Tallinn") == (59.1, 24.1)
 
 
+def test_simplify_address_strips_hierarchy():
+    assert livability.simplify_address("Pärnu linn, Pärnu linn, Ravi tn 1a") == [
+        "Pärnu linn, Pärnu linn, Ravi tn 1a",
+        "Ravi tn 1a, Pärnu linn",
+        "Ravi tn 1a",
+    ]
+    assert livability.simplify_address("Tallinn") == ["Tallinn"]
+
+
+def test_air_stub_returns_null_with_reason():
+    v, reason = livability.dim_air()
+    assert v is None
+    assert "puuduvad" in reason
+    assert "air" not in livability.WEIGHTS
+
+
 def test_transient_geocode_errors_are_not_cached(tmp_path, monkeypatch):
     import httpx
 
