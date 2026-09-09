@@ -121,7 +121,7 @@ Distilled from what actually worked shipping v1. Prefer these over cleverness:
 
 ## 8. Agent UX loop (the standing user-driven QA task, #80)
 
-`node scripts/agent-ux-loop.js [--base URL] [--api URL] [--out DIR]`
+`node scripts/agent-ux-loop.mjs [--base URL] [--api URL] [--out DIR]`
 drives the running site like a buyer (sorts, weights, POI, map pan,
 filters), collects every console/page error, and writes screenshots +
 `report.json`. Zero page errors is the bar; fix issues and re-run the

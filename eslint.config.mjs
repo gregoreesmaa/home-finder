@@ -19,4 +19,16 @@ export default tseslint.config(
     // Allow the omit-via-destructure pattern: const { dropped, ...rest } = x;
     rules: { "@typescript-eslint/no-unused-vars": ["error", { ignoreRestSiblings: true }] },
   },
+  {
+    // Node + browser-touching automation scripts (no new dep for globals).
+    files: ["scripts/**/*.mjs"],
+    languageOptions: {
+      globals: {
+        console: "readonly",
+        process: "readonly",
+        fetch: "readonly",
+        document: "readonly",
+      },
+    },
+  },
 );
