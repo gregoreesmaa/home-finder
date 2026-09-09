@@ -56,6 +56,18 @@ export function ListingCard({
       <span data-tone={deal.tone} title="vs prognoositud turuhind samas piirkonnas">
         {deal.label}
       </span>
+      {listing.score_weighted != null && (
+        <p>
+          Kaalutud {listing.score_weighted}/100 (sinu kaaludega)
+        </p>
+      )}
+      {listing.poiLines && listing.poiLines.length > 0 && (
+        <ul aria-label="Sõiduajad punktidesse">
+          {listing.poiLines.map((line) => (
+            <li key={line}>{line} (hinnang)</li>
+          ))}
+        </ul>
+      )}
       <p>{listing.reasons.join(" · ")}</p>
       <button type="button" onClick={() => onSelect?.(listing.id)}>
         Näita kaardil

@@ -101,10 +101,17 @@ test("panning the map never snaps the camera back", async ({ page }) => {
   await skipWithoutSeed(page);
 
   await page.goto("/");
+  const mapSection = page.locator('section[aria-label="Piirkondade heatmap"]');
+  // Settle the async cell load first: a layer swap mid-drag drops the gesture.
+  await expect(mapSection.getByText(/reaalajas/)).toBeVisible();
+  await page.waitForTimeout(1000);
   const mapBox = page.locator(
     'section[aria-label="Piirkondade heatmap"] div[role="application"]',
   );
   await expect(mapBox).toBeVisible();
+  // Raw mouse events do not scroll: bring the map into view first so the
+  // drag coordinates land on the canvas, then re-measure.
+  await mapBox.scrollIntoViewIfNeeded();
   await expect
     .poll(async () => mapBox.getAttribute("data-camera"), { timeout: 15000 })
     .not.toBeNull();
@@ -141,6 +148,25 @@ test("cards link out and show photos or placeholders", async ({ page }) => {
   await expect(
     noPhoto.getByRole("link", { name: /Vaata originaalkuulutust/ }),
   ).toHaveCount(0);
+});
+
+// #74 (deterministic mock fallback): the balance slider re-ranks by price
+// alone at 0% quality, and a ?poi= address renders travel-time badges.
+test("balance slider and POI badges re-score the list", async ({ page }) => {
+  await page.route("**/localhost:8000/**", (route) => route.abort());
+  await page.goto("/");
+
+  await expect(page.locator("ol > li").first()).toContainText("Kotzebue 12, Tallinn");
+  await page.getByLabel("Hinna ja kvaliteedi tasakaal").fill("0");
+  await expect(page.locator("ol > li").first()).toContainText("Tähe 45, Tartu");
+  await expect(page).toHaveURL(/bal=0/);
+  await expect(
+    page.locator("ol > li").first().getByText(/Kaalutud \d+\/100/),
+  ).toBeVisible();
+
+  await page.goto("/?poi=59.4372,24.7536,Töö");
+  const card = page.getByRole("article", { name: /Kotzebue 12, Tallinn/ });
+  await expect(card.getByText(/Töö · autoga ~0 min/)).toBeVisible();
 });
 
 // Live backend rendering: whatever the API serves (real import locally,

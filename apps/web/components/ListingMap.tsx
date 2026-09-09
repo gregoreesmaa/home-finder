@@ -113,11 +113,14 @@ export function ListingMap({
   listings,
   selectedId,
   initialMode = "heatmap",
+  onPickLocation,
 }: {
   hexes?: AreaHex[];
   listings?: MockListing[];
   selectedId?: string | null;
   initialMode?: Mode;
+  /** When set, map clicks report coordinates instead of opening popups (#74). */
+  onPickLocation?: (lon: number, lat: number) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<{ getBounds: () => { getWest: () => number; getSouth: () => number; getEast: () => number; getNorth: () => number } } | null>(null);
@@ -205,6 +208,8 @@ export function ListingMap({
   const pointsRef = useRef<HeatPoint[]>([]);
   const deckRef = useRef<DeckKinds | null>(null);
   const overlayRef = useRef<MapboxOverlay | null>(null);
+  const pickRef = useRef(onPickLocation);
+  pickRef.current = onPickLocation;
 
   // Data/mode changes swap layers in place; the camera is never touched.
   useEffect(() => {
@@ -255,7 +260,12 @@ export function ListingMap({
       };
       stampCamera(); // present even before the style finishes loading
       // Click popup works in both modes: select the nearest hex cell.
+      // In pick mode the click reports coordinates instead (#74 POIs).
       const onClick = (e: { lngLat: { lng: number; lat: number } }) => {
+        if (pickRef.current) {
+          pickRef.current(e.lngLat.lng, e.lngLat.lat);
+          return;
+        }
         setSelected(nearestHeatPoint(pointsRef.current, e.lngLat.lng, e.lngLat.lat));
       };
       map.on("click", onClick);

@@ -15,9 +15,18 @@ export function dealNorm(discountPct: number): number {
   return Math.min(1, Math.max(0, (discountPct + 15) / 40));
 }
 
-/** 0.6 * livability_norm + 0.4 * deal_norm, scaled to 0..100 integer. */
-export function combinedScore(livability: number, discountPct: number): number {
-  return Math.round(100 * (0.6 * (livability / 100) + 0.4 * dealNorm(discountPct)));
+/**
+ * livWeight * livability_norm + (1 - livWeight) * deal_norm, 0..100 integer.
+ * Default 0.6/0.4 mirrors services/scoring (Python); the UI (#74) lets the
+ * buyer move the balance, always client-side and labelled.
+ */
+export function combinedScore(
+  livability: number,
+  discountPct: number,
+  livWeight = 0.6,
+): number {
+  const w = Math.min(1, Math.max(0, livWeight));
+  return Math.round(100 * (w * (livability / 100) + (1 - w) * dealNorm(discountPct)));
 }
 
 export function withCombined<T extends Rankable>(l: T): T & { score_combined: number } {

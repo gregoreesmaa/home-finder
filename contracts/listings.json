@@ -29,6 +29,7 @@
         "source": { "type": "string" },
         "source_url": { "type": "string" },
         "image_url": { "type": ["string", "null"] },
+        "dims": { "type": ["object", "null"] },
         "is_live": { "type": "boolean" },
         "lat": { "type": ["number", "null"] },
         "lon": { "type": ["number", "null"] }

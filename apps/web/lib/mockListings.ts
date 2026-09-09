@@ -19,6 +19,12 @@ export interface MockListing {
   source_url?: string;
   /** Portal thumbnail photo (#76); null/ absent renders an honest placeholder. */
   image_url?: string | null;
+  /** Per-dimension livability scores (#74 weights); null when unknown. */
+  dims?: Record<string, number | null> | null;
+  /** Client-side weighted livability when custom weights apply (#74). */
+  score_weighted?: number | null;
+  /** Buyer-POI travel-time badge lines (#74). */
+  poiLines?: string[];
   /** True when the row came from a real portal import, false for mocks. */
   is_live?: boolean;
   /** Geocoded coordinates (live rows after the livability import); absent on mocks. */
@@ -52,9 +58,15 @@ const RAW = [
     score_livability: 88,
     discount_pct: 10,
     reasons: ["Harju keskmisest -5%", "12 min kesklinna"],
+    lat: 59.4372,
+    lon: 24.7536,
     source: "pindi.ee",
     source_url: "https://www.pindi.ee/kinnisvarapakkumised/kotzebue-12/",
     image_url: "https://www.pindi.ee/media/kotzebue-12.jpg",
+    dims: {
+      schools: 90, transit: 95, services: 88, green: 60, water: 70,
+      rail: 85, urban: 90, safety: 55, connect: 92,
+    },
   },
   {
     id: "tartu-karlova",
@@ -67,6 +79,12 @@ const RAW = [
     score_livability: 64,
     discount_pct: 18,
     reasons: ["Turuennustusest -18% alla", "8 min ülikooli"],
+    lat: 58.378,
+    lon: 26.729,
+    dims: {
+      schools: 70, transit: 60, services: 65, green: 55, water: 40,
+      rail: 50, urban: 60, safety: 62, connect: 66,
+    },
   },
   {
     id: "parnu-rannarajoon",
@@ -79,6 +97,12 @@ const RAW = [
     score_livability: 95,
     discount_pct: -9,
     reasons: ["Parim koolide ligipääs", "5 min randa"],
+    lat: 58.3859,
+    lon: 24.4989,
+    dims: {
+      schools: 95, transit: 70, services: 90, green: 100, water: 100,
+      rail: 40, urban: 30, safety: 70, connect: 80,
+    },
   },
 ] as const;
 
