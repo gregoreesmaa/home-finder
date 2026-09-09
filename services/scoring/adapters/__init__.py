@@ -160,10 +160,22 @@ def chrome_extra_args() -> list:
     return []
 
 
+CHROME_BINARY_ENV_VAR = "HF_CHROME_BINARY"
+
+
 def find_chrome_binary() -> Optional[str]:
-    """Path to a real Chrome/Chromium engine, or None when not installed."""
+    """Path to a real Chrome/Chromium engine, or None when not installed.
+
+    HF_CHROME_BINARY pins the engine explicitly (#87: host Chrome
+    auto-updates have wedged headless --dump-dom before, while an older
+    headless-shell kept working). Must be executable; otherwise discovery
+    continues with the usual candidates.
+    """
     import shutil
 
+    pinned = os.environ.get(CHROME_BINARY_ENV_VAR, "").strip()
+    if pinned and os.path.isfile(pinned) and os.access(pinned, os.X_OK):
+        return pinned
     for cand in CHROME_BINARY_CANDIDATES:
         if os.path.isfile(cand) and os.access(cand, os.X_OK):
             return cand

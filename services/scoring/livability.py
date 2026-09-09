@@ -384,38 +384,65 @@ NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 
 
 def fetch_geocode_photon(address: str, timeout: float = 20.0) -> Optional[Tuple[float, float]]:
-    """Photon: address -> (lat, lon). None when nothing found."""
-    params = {
-        "q": address,
-        "limit": "1",
-        # NOTE: Photon supports only default/de/en/fr; "et" 400s every call.
-        "lang": "default",
-        "bbox": "%s,%s,%s,%s" % EE_BBOX,
-    }
-    resp = httpx.get(PHOTON_URL, params=params, headers=HEADERS, timeout=timeout)
-    resp.raise_for_status()
-    feats = resp.json().get("features", [])
-    if not feats:
-        return None
-    lon, lat = feats[0]["geometry"]["coordinates"][:2]
-    return float(lat), float(lon)
+    """Photon: address -> (lat, lon). None when nothing found.
+
+    Full string first, then the simplified variants (#81: portal strings
+    carry apartment suffixes and descriptive junk that only fail whole).
+    Variant misses are cheap single queries, cached 30d under the address.
+    """
+    for i, query in enumerate(simplify_address(address)):
+        params = {
+            "q": query,
+            "limit": "1",
+            # NOTE: Photon supports only default/de/en/fr; "et" 400s every call.
+            "lang": "default",
+            "bbox": "%s,%s,%s,%s" % EE_BBOX,
+        }
+        resp = httpx.get(PHOTON_URL, params=params, headers=HEADERS, timeout=timeout)
+        resp.raise_for_status()
+        feats = resp.json().get("features", [])
+        if feats:
+            lon, lat = feats[0]["geometry"]["coordinates"][:2]
+            return float(lat), float(lon)
+        if i < len(simplify_address(address)) - 1:
+            time.sleep(0.5)  # bulk imports must not hammer free geocoders
+    return None
+
+
+def _de_apartment(seg: str) -> str:
+    """Strip apartment suffixes: "Astangu tn 68-19" -> "Astangu tn 68"."""
+    return re.sub(r"(\d+)[/\-]\d+[\-\d/]*", r"\1", seg)
+
+
+_CITY_HINT = re.compile(
+    r"linn|alev|küla|tallinn|tartu|pärnu|narva|kohtu|viljandi|rakvere|"
+    r"maardu|kuressaare|valga|võru|jõhvi|haapsalu|keila|paide|elva|tapa|"
+    r"saue|maakond|vald",
+    re.I,
+)
 
 
 def simplify_address(address: str) -> List[str]:
-    """Full address first, then "street, city" for multi-segment hierarchies.
+    """Full address first, then progressively simpler candidates (#81).
 
-    Portal addresses carry the full hierarchy ("Pärnu linn, Pärnu linn, Ravi
-    tn 1a"); geocoders do best with just street + settlement, so later
-    candidates strip the middle. Order preserved, duplicates dropped.
+    Portal addresses carry apartment suffixes ("68-19"), descriptive junk
+    ("Harku järve lähedal") or missing numbers ("Tähetorni tn ,"); later
+    candidates normalize those away down to street + settlement. Order
+    preserved, duplicates dropped.
     """
     segs = [s.strip() for s in (address or "").split(",") if s.strip()]
     if len(segs) < 2:
         return segs
-    street = next((s for s in segs if re.search(r"\d", s)), segs[-1])
-    city = next(
-        (s for s in segs if re.search(r"linn|alev|küla", s, re.I)), segs[0]
-    )
-    out = [address.strip(), "%s, %s" % (street, city), segs[-1]]
+    norm = [_de_apartment(s) for s in segs]
+    street = next((s for s in norm if re.search(r"\d", s)), norm[0])
+    city = next((s for s in norm if _CITY_HINT.search(s)), norm[-1])
+    out = [
+        address.strip(),
+        ", ".join(norm),
+        "%s, %s" % (street, city),
+        street,
+        norm[-1],
+    ]
     seen, deduped = set(), []
     for cand in out:
         if cand not in seen:
@@ -459,17 +486,23 @@ def fetch_geocode_nominatim(address: str, timeout: float = 20.0) -> Optional[Tup
 
 
 def fetch_geocode(address: str, timeout: float = 20.0) -> Optional[Tuple[float, float]]:
-    """address -> (lat, lon): Photon first, Nominatim fallback. None if both miss."""
+    """address -> (lat, lon): Photon first, Nominatim fallback.
+
+    None if both miss. The fallback runs on Photon MISSES too (#81: before,
+    only transport errors fell through, so brittle strings never reached
+    the variant-tolerant Nominatim path); every answer caches 30d.
+    """
     try:
         # Short primary timeout: the fallback covers slow/dead Photon, and
         # every success is cached for 30d anyway.
         hit = fetch_geocode_photon(address, timeout=4.0)
         time.sleep(0.5)  # bulk imports must not hammer free geocoders
-        return hit
+        if hit is not None:
+            return hit
     except httpx.HTTPError as e:
         if getattr(getattr(e, "response", None), "status_code", None) == 429:
             time.sleep(60.0)  # Photon throttle: back off before the fallback
-        return fetch_geocode_nominatim(address, timeout)
+    return fetch_geocode_nominatim(address, timeout)
 
 
 def fetch_pois(lat: float, lon: float, timeout: float = 75.0) -> Optional[List[dict]]:

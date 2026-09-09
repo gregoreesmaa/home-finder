@@ -1,16 +1,19 @@
 """One-off backfill: dims/score/reasons for rows imported before those columns.
 
-Reads ONLY from the ingest file cache (no network): rows whose geocode/POI
-answers are cached get the current-registry recompute; everything else is
-left untouched for the daily cron to converge. Preserves deal/type warning
-reasons at index 0.
+Default reads ONLY from the ingest file cache (no network): rows whose
+geocode/POI answers are cached get the current-registry recompute, the rest
+stay for the daily cron. With --live, cache misses resolve live through the
+same polite pipeline the cron uses (Photon ~1/s, Overpass mirrors+backoff),
+so a small remainder (#81) converges now. Preserves deal/type warnings.
 
-Usage: DATABASE_URL=... HF_CACHE_DIR=/tmp/hf-import python3 scripts/backfill-dims.py
+Usage: DATABASE_URL=... HF_CACHE_DIR=/tmp/hf-import python3 scripts/backfill-dims.py [--live]
 """
 
+import argparse
 import json
 import os
 import sys
+import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "services", "scoring"))
 
@@ -20,6 +23,7 @@ from adapters import _cache_path, read_cache
 
 CACHE_DIR = os.environ.get("HF_CACHE_DIR", "/tmp/hf-import")
 TYPE_WARNINGS = set(ingest.TYPE_REASON.values())
+PHOTON_GAP_S = 1.1  # Photon usage policy: max 1 req/s
 
 
 def cached_geo(address):
@@ -41,6 +45,10 @@ def cached_geo(address):
 
 
 def main():
+    ap = argparse.ArgumentParser(description="backfill dims/score/reasons")
+    ap.add_argument("--live", action="store_true",
+                    help="resolve cache misses live (polite, cron pipeline)")
+    args = ap.parse_args()
     conn = ingest.connect()
     if conn is None:
         print("no DATABASE_URL / unreachable DB")
@@ -55,6 +63,9 @@ def main():
     updated, skipped = 0, 0
     for rid, address, county, reasons in rows:
         geo = cached_geo(address or "")
+        if geo is None and args.live and address:
+            time.sleep(PHOTON_GAP_S)  # Photon: max 1 req/s
+            geo = livability.resolve(address, CACHE_DIR)
         if geo is None:
             skipped += 1
             continue

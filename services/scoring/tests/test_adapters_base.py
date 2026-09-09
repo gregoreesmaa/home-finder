@@ -92,3 +92,14 @@ def test_chrome_extra_args_drops_sandbox_only_as_root(monkeypatch):
     assert adapters.chrome_extra_args() == ["--no-sandbox"]
     monkeypatch.setattr(os, "geteuid", lambda: 1000)
     assert adapters.chrome_extra_args() == []
+
+
+def test_chrome_binary_env_override_wins(monkeypatch, tmp_path):
+    """#87: pinned engine wins when executable; ignored otherwise."""
+    fake = tmp_path / "my-chrome"
+    fake.write_text("#!/bin/sh\n")
+    fake.chmod(0o755)
+    monkeypatch.setenv(adapters.CHROME_BINARY_ENV_VAR, str(fake))
+    assert adapters.find_chrome_binary() == str(fake)
+    monkeypatch.setenv(adapters.CHROME_BINARY_ENV_VAR, "/nonexistent/chrome")
+    assert adapters.find_chrome_binary() != "/nonexistent/chrome"
