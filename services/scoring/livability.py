@@ -440,7 +440,9 @@ def resolve(address: str, cache_dir: Optional[str] = None) -> Optional[dict]:
     key = "%.4f,%.4f" % (lat, lon)
     try:
         raw = cached_fetch(
-            "liv_pois2", key, 1,
+            # v3: v2 holds "null" entries written by the pre-fix version that
+            # swallowed transport errors; "null" is never a real answer.
+            "liv_pois3", key, 1,
             lambda: _dump_pois(fetch_pois(lat, lon)),
             cache_dir, OVERPASS_TTL_S,
         )
