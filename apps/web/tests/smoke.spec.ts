@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 // Smoke: ranked list renders best-to-worst and each sort mode
 // yields its distinct winner (see lib/mockListings.ts).
@@ -56,14 +56,23 @@ test("map shows a data-source badge", async ({ page }) => {
   await expect(page.getByText(/Andmeallikas:/)).toBeVisible();
 });
 
+// Live-stack tests share one serial lane: they hit the same dev server +
+// scoring API, and parallel contention starves page loads into timeouts.
+test.describe("seeded stack", () => {
+  test.describe.configure({ mode: "serial" });
+
+  async function skipWithoutSeed(page: Page) {
+    const res = await page
+      .request.get("http://localhost:8000/listings?sort=combined")
+      .catch(() => null);
+    const api = res ? await res.json().catch(() => null) : null;
+    test.skip(!api?.live || (api.items?.length ?? 0) === 0, "needs seeded stack");
+  }
+
 // C3: seeded local stack renders the live list plus real heat cells.
 // Skips where no PostGIS-backed API runs (CI): the unit suites cover shapes.
 test("seeded stack renders live list plus heat cells", async ({ page }) => {
-  const res = await page
-    .request.get("http://localhost:8000/listings?sort=combined")
-    .catch(() => null);
-  const api = res ? await res.json().catch(() => null) : null;
-  test.skip(!api?.live || (api.items?.length ?? 0) === 0, "needs seeded stack");
+  await skipWithoutSeed(page);
 
   await page.goto("/");
   await expect(page.getByText(/Näitan \d+ \/ \d+ kuulutusest/)).toBeVisible();
@@ -83,6 +92,37 @@ test("seeded stack renders live list plus heat cells", async ({ page }) => {
   expect(await first()).toContain("€");
   void before;
 });
+
+// #71: dragging the map must not snap the camera back to the default view
+// once the bbox cell reload lands (the map mounts once; data swaps layers).
+// Needs the seeded stack so a real bbox reload changes the heat points.
+test("panning the map never snaps the camera back", async ({ page }) => {
+  test.slow(); // software WebGL + deck heatmap need room under parallel load
+  await skipWithoutSeed(page);
+
+  await page.goto("/");
+  const mapBox = page.locator(
+    'section[aria-label="Piirkondade heatmap"] div[role="application"]',
+  );
+  await expect(mapBox).toBeVisible();
+  await expect
+    .poll(async () => mapBox.getAttribute("data-camera"), { timeout: 15000 })
+    .not.toBeNull();
+  const before = (await mapBox.getAttribute("data-camera")) as string;
+  const box = (await mapBox.boundingBox()) as { x: number; y: number; width: number; height: number };
+  const cx = box.x + box.width / 2;
+  const cy = box.y + box.height / 2;
+  await page.mouse.move(cx, cy);
+  await page.mouse.down();
+  await page.mouse.move(cx + 180, cy + 60, { steps: 12 });
+  await page.mouse.up();
+  await page.waitForTimeout(3000); // debounce (600ms) + bbox reload + layer swap
+  const after = (await mapBox.getAttribute("data-camera")) as string;
+  expect(after).not.toBe(before);
+  await page.waitForTimeout(2500); // a late reset would land here
+  expect(await mapBox.getAttribute("data-camera")).toBe(after);
+});
+}); // seeded stack (live-API lane ends here)
 
 // #70 + #76 (deterministic mock fallback): cards link to the original
 // listing and show a photo, or an honest placeholder when unknown.
