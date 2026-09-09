@@ -16,6 +16,11 @@ import {
   type HeatSource,
 } from "../lib/heatmap";
 import type { MockListing } from "../lib/mockListings";
+import type { MapboxOverlay } from "@deck.gl/mapbox";
+import type {
+  HeatmapLayer,
+  HexagonLayer,
+} from "@deck.gl/aggregation-layers";
 
 export { MOCK_HEXES };
 
@@ -25,13 +30,79 @@ const SCORING_URL =
 
 type Mode = "heatmap" | "hex";
 
+type DeckKinds = {
+  HeatmapLayer: typeof HeatmapLayer;
+  HexagonLayer: typeof HexagonLayer;
+};
+
+/**
+ * Red -> amber -> green ramp, shared by both layers and the legend (#72).
+ * The low end is faint: fringe pixels between sparse cells must not read
+ * as solid "bad" — only real low-goodness cores render solid red.
+ */
+const GOODNESS_COLORS: [number, number, number, number][] = [
+  [220, 60, 50, 30],
+  [220, 60, 50, 170],
+  [230, 170, 40, 190],
+  [46, 160, 67, 190],
+];
+
+/**
+ * Build the deck.gl layer for the current mode. Heatmap mode is a continuous
+ * regional overlay (#72): MEAN aggregation so overlapping cells average
+ * instead of piling up, a wide screen-space radius so sparse country-wide
+ * cells join into gradients, and the red->green ramp for goodness.
+ */
+function makeHeatLayers(
+  deck: DeckKinds,
+  mode: Mode,
+  points: HeatPoint[],
+): (HeatmapLayer | HexagonLayer)[] {
+  if (mode === "hex") {
+    return [
+      new deck.HexagonLayer({
+        id: "goodness-hex",
+        data: points,
+        getPosition: (d: HeatPoint) => [d.lon, d.lat],
+        getColorWeight: (d: HeatPoint) => d.weight * 100,
+        getColorValue: (cell: HeatPoint[]) =>
+          cell.reduce((s, p) => s + p.weight * 100, 0) / cell.length,
+        colorRange: GOODNESS_COLORS,
+        radius: 15000,
+        coverage: 0.9,
+        extruded: false,
+        pickable: true,
+        autoHighlight: true,
+      }),
+    ];
+  }
+  return [
+    new deck.HeatmapLayer({
+      id: "goodness-heat",
+      data: points,
+      getPosition: (d: HeatPoint) => [d.lon, d.lat],
+      getWeight: (d: HeatPoint) => d.weight,
+      aggregation: "MEAN",
+      radiusPixels: 150,
+      intensity: 1,
+      threshold: 0.05,
+      colorRange: GOODNESS_COLORS,
+    }),
+  ];
+}
+
 /**
  * MapLibre base (Carto light) + deck.gl layer over H3 area-scores:
- * HeatmapLayer (density, weight = livability goodness) or HexagonLayer
+ * HeatmapLayer (continuous regional goodness overlay) or HexagonLayer
  * (cluster toggle) with legend + click popup.
  *
  * Data: GET /area-scores (GeoJSON). With ?mock=1, when no `hexes` prop is
  * given and the API is unreachable, the bundled mock hexes are used.
+ *
+ * The map instance is created once (#71): data/mode changes only swap the
+ * deck.gl layers via overlay.setProps, so panning never snaps the camera
+ * back to the Estonia default. The container's data-camera attribute
+ * (lng,lat,zoom) exposes the viewport for tests.
  *
  * Note: deck.gl 9.4 logs "luma.gl: Binding weightsTexture not set" on the
  * WebGL path. It is a known benign upstream warning (visgl/deck.gl#10483
@@ -130,6 +201,19 @@ export function ListingMap({
     setSelected(nearestHeatPoint(points, target.lon, target.lat));
   }, [selectedId, listings, points]);
 
+  // Latest points for the click handler + layer swaps without re-init.
+  const pointsRef = useRef<HeatPoint[]>([]);
+  const deckRef = useRef<DeckKinds | null>(null);
+  const overlayRef = useRef<MapboxOverlay | null>(null);
+
+  // Data/mode changes swap layers in place; the camera is never touched.
+  useEffect(() => {
+    pointsRef.current = points;
+    if (deckRef.current && overlayRef.current) {
+      overlayRef.current.setProps({ layers: makeHeatLayers(deckRef.current, mode, points) });
+    }
+  }, [points, mode]);
+
   useEffect(() => {
     let cancelled = false;
     let cleanup = () => {};
@@ -148,6 +232,7 @@ export function ListingMap({
         typeof import("@deck.gl/aggregation-layers"),
       ];
       if (cancelled || !ref.current) return;
+      deckRef.current = { HeatmapLayer, HexagonLayer };
       const map = new maplibregl.Map({
         container: ref.current,
         style: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
@@ -156,45 +241,28 @@ export function ListingMap({
       });
       const overlay = new MapboxOverlay({
         interleaved: true,
-        layers: [
-          mode === "hex"
-            ? new HexagonLayer({
-                id: "goodness-hex",
-                data: points,
-                getPosition: (d: HeatPoint) => [d.lon, d.lat],
-                getColorWeight: (d: HeatPoint) => d.weight * 100,
-                getColorValue: (cell: HeatPoint[]) =>
-                  cell.reduce((s, p) => s + p.weight * 100, 0) / cell.length,
-                colorRange: [
-                  [220, 60, 50],
-                  [230, 170, 40],
-                  [46, 160, 67],
-                ],
-                radius: 15000,
-                coverage: 0.9,
-                extruded: false,
-                pickable: true,
-                autoHighlight: true,
-              })
-            : new HeatmapLayer({
-                id: "goodness-heat",
-                data: points,
-                getPosition: (d: HeatPoint) => [d.lon, d.lat],
-                getWeight: (d: HeatPoint) => d.weight,
-                radiusPixels: 60,
-              }),
-        ],
+        layers: makeHeatLayers(deckRef.current, initialMode, pointsRef.current),
       });
       map.addControl(overlay);
       mapRef.current = map;
+      overlayRef.current = overlay;
+      const stampCamera = () => {
+        const c = map.getCenter();
+        ref.current?.setAttribute(
+          "data-camera",
+          `${c.lng.toFixed(3)},${c.lat.toFixed(3)},${map.getZoom().toFixed(2)}`,
+        );
+      };
+      stampCamera(); // present even before the style finishes loading
       // Click popup works in both modes: select the nearest hex cell.
       const onClick = (e: { lngLat: { lng: number; lat: number } }) => {
-        setSelected(nearestHeatPoint(points, e.lngLat.lng, e.lngLat.lat));
+        setSelected(nearestHeatPoint(pointsRef.current, e.lngLat.lng, e.lngLat.lat));
       };
       map.on("click", onClick);
       // B3: reload cells for the new viewport (debounced in the loader path).
       let moveTimer: ReturnType<typeof setTimeout> | null = null;
       const onMove = () => {
+        stampCamera();
         if (moveTimer) clearTimeout(moveTimer);
         moveTimer = setTimeout(() => {
           const b = map.getBounds();
@@ -204,11 +272,14 @@ export function ListingMap({
         }, 600);
       };
       map.on("moveend", onMove);
+      map.on("load", stampCamera);
       cleanup = () => {
         if (moveTimer) clearTimeout(moveTimer);
         map.off("click", onClick);
         map.off("moveend", onMove);
+        map.off("load", stampCamera);
         mapRef.current = null;
+        overlayRef.current = null;
         map.remove();
       };
     })();
@@ -216,7 +287,8 @@ export function ListingMap({
       cancelled = true;
       cleanup();
     };
-  }, [points, mode]);
+    // Mount-once (#71): points/mode flow through pointsRef + setProps above.
+  }, []);
 
   return (
     <section aria-label="Piirkondade heatmap">
