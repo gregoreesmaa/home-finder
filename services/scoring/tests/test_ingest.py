@@ -263,9 +263,10 @@ def test_upsert_writes_one_row_per_record():
     conn = FakeConn()
     n = ingest.upsert(conn, ingest.enrich([row(), row(id="x-2", price=60000)]))
     assert n == 2
-    schema_sql, _ = conn.cur.calls[0]
-    assert "ADD COLUMN IF NOT EXISTS image_url" in schema_sql
-    upserts = conn.cur.calls[1:]
+    schema_calls = conn.cur.calls[:2]
+    assert "ADD COLUMN IF NOT EXISTS image_url" in schema_calls[0][0]
+    assert "ADD COLUMN IF NOT EXISTS dims" in schema_calls[1][0]
+    upserts = conn.cur.calls[2:]
     assert len(upserts) == 2
     assert conn.committed
     sql, params = upserts[0]

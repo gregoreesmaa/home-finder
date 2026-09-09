@@ -242,12 +242,13 @@ def score(rows: List[dict], cache_dir: Optional[str] = None, resolver=None) -> L
         )
         if geo:
             r["lat"], r["lon"] = geo.get("lat"), geo.get("lon")
-        liv, liv_reasons = livability.enrich_row(
+        liv, liv_reasons, liv_dims = livability.enrich_row(
             r.get("address", ""), r.get("county", ""), cache_dir,
             resolver=resolver, geo=geo,
         )
         r["score_livability"] = liv
         r["reasons"].extend(liv_reasons)
+        r["dims"] = liv_dims
     return rows
 
 
@@ -256,9 +257,10 @@ def enrich(rows: List[dict], modname: str = "", cache_dir: Optional[str] = None,
     return score(classify(rows, modname), cache_dir, resolver=resolver)
 
 
-SCHEMA_SQL = """
-ALTER TABLE listings ADD COLUMN IF NOT EXISTS image_url TEXT
-"""
+SCHEMA_STMTS = (
+    "ALTER TABLE listings ADD COLUMN IF NOT EXISTS image_url TEXT",
+    "ALTER TABLE listings ADD COLUMN IF NOT EXISTS dims JSONB",
+)
 
 
 def ensure_schema(conn) -> None:
@@ -268,7 +270,8 @@ def ensure_schema(conn) -> None:
     new columns here instead of a migration framework.
     """
     cur = conn.cursor()
-    cur.execute(SCHEMA_SQL, {})
+    for stmt in SCHEMA_STMTS:
+        cur.execute(stmt, {})
     conn.commit()
 
 
@@ -276,12 +279,12 @@ UPSERT_SQL = """
 INSERT INTO listings
   (id, source, source_url, address, county, price, price_per_m2,
    rooms, area_m2, lat, lon, score_livability, discount_pct, reasons,
-   image_url)
+   image_url, dims)
 VALUES
   (%(id)s, %(source)s, %(source_url)s, %(address)s, %(county)s, %(price)s,
    %(price_per_m2)s, %(rooms)s, %(area_m2)s, %(lat)s, %(lon)s,
    %(score_livability)s, %(discount_pct)s, %(reasons)s::jsonb,
-   %(image_url)s)
+   %(image_url)s, %(dims)s::jsonb)
 ON CONFLICT (id) DO UPDATE SET
   source_url = EXCLUDED.source_url, address = EXCLUDED.address,
   county = EXCLUDED.county, price = EXCLUDED.price,
@@ -289,7 +292,7 @@ ON CONFLICT (id) DO UPDATE SET
   area_m2 = EXCLUDED.area_m2, lat = EXCLUDED.lat, lon = EXCLUDED.lon,
   score_livability = EXCLUDED.score_livability,
   discount_pct = EXCLUDED.discount_pct, reasons = EXCLUDED.reasons,
-  image_url = EXCLUDED.image_url,
+  image_url = EXCLUDED.image_url, dims = EXCLUDED.dims,
   scraped_at = now()
 """
 
@@ -316,6 +319,7 @@ def upsert(conn, rows: List[dict]) -> int:
                 "discount_pct": r.get("discount_pct", 0.0),
                 "reasons": json.dumps(list(r.get("reasons", []))),
                 "image_url": r.get("image_url"),
+                "dims": json.dumps(r.get("dims") or {}),
             },
         )
     conn.commit()

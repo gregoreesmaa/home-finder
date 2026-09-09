@@ -1,4 +1,4 @@
-"""Livability dimensions for auto-imported listings (issues A1-A10).
+"""Livability dimensions for auto-imported listings (issues A1-A10, #73-#75).
 
 Replaces the blanket neutral-50 with a documented registry: each dimension
 scores 0..100 (or None when its data is missing) with an Estonian reason.
@@ -8,12 +8,23 @@ dims missing -> 50 + an explicit "no data" reason (now rare, never silent).
 
 Data (polite, cached, graceful):
 * Photon geocoding (komoot.io, no key) turns addresses into coordinates;
-* a single Overpass QL query per listing fetches nearby schools, stops,
-  parks, shops and clinics from OpenStreetMap;
-* commute uses haversine to a small table of well-known city centres;
+* a single Overpass QL query per listing fetches nearby schools, stops
+  (bus + rail stations), parks, water, shops and clinics from OpenStreetMap;
+* connect estimates travel TIME (per mode, labelled estimates) to the city
+  centre, the nearest station and the nearest shop — bird-flight distances
+  converted with documented average speeds, never presented as measured;
+* urban scores the calm-countryside <-> busy-city axis from POI density so
+  buyers can weight it themselves (#74);
 * safety uses coarse tiers from national crime reviews (ordinal positions
   corroborated across years: Ida-Viru highest, Harju second, Tartu
   elevated, islands lowest; other counties -> None, never invented).
+
+Considered and dismissed (#73 — no open/consistent source, so excluded
+rather than faked): street noise levels, air/light quality (dim_air stays
+a stub), parking (OSM coverage is city-skewed and would punish the
+countryside unfairly), building energy rating (no open registry), crime
+below county level (no open data), school QUALITY vs proximity (no open
+results data). Revisit when a source exists.
 
 Network lives behind `resolve()`/`fetch_*` (cached 30d, 1s politeness gap
 on uncached Overpass calls); every scorer below is pure and offline-tested.
@@ -79,14 +90,18 @@ SAFETY_TIERS = {
 # Registry weights (sum to 1; renormalized over available dims at combine).
 # NOTE (A9): light / air quality has no open data source yet. It is an
 # explicit stub (dim_air, always None) and stays out of WEIGHTS until
-# sourced — no fake precision.
+# sourced — no fake precision. urban defaults near-neutral: it is a taste
+# axis buyers adjust themselves (#74), not a generic good.
 WEIGHTS = {
-    "schools": 0.20,
-    "transit": 0.15,
-    "services": 0.15,
-    "green": 0.15,
-    "commute": 0.20,
+    "schools": 0.18,
+    "transit": 0.12,
+    "services": 0.12,
+    "green": 0.10,
+    "water": 0.08,
+    "rail": 0.07,
+    "urban": 0.03,
     "safety": 0.15,
+    "connect": 0.15,
 }
 
 
@@ -100,14 +115,29 @@ def haversine_km(a: Tuple[float, float], b: Tuple[float, float]) -> float:
     return 2 * r * math.asin(math.sqrt(h))
 
 
-def _band(meters: Optional[float], bands: List[Tuple[float, int]]) -> Optional[int]:
-    """First score whose threshold covers meters; None stays None."""
-    if meters is None:
+def _band(value: Optional[float], bands: List[Tuple[float, int]]) -> Optional[int]:
+    """First score whose threshold covers the value; None stays None."""
+    if value is None:
         return None
     for limit, pts in bands:
-        if meters <= limit:
+        if value <= limit:
             return pts
     return bands[-1][1]
+
+
+# Estimated travel speeds (km/h, Estonian averages). Times derived from
+# bird-flight distance with these speeds are labelled estimates (#75) —
+# the pipeline has no routing engine, so no measured times are claimed.
+SPEED_WALK_KMH = 4.5
+SPEED_BIKE_KMH = 15.0
+SPEED_CAR_KMH = 35.0
+SPEED_TRAIN_KMH = 55.0
+TRAIN_ACCESS_MIN = 10.0  # walk to the station + waiting, estimated
+
+
+def _minutes(km: float, kmh: float, extra: float = 0.0) -> float:
+    """Bird-flight km -> estimated travel minutes at the given speed."""
+    return km / kmh * 60.0 + extra
 
 
 def _nearest_m(origin: Tuple[float, float], pois: List[dict], kinds: set) -> Optional[float]:
@@ -191,17 +221,81 @@ def commute_target(address: str) -> Optional[Tuple[str, Tuple[float, float]]]:
     return None
 
 
-def dim_commute(origin: Optional[Tuple[float, float]], address: str) -> Tuple[Optional[int], str]:
-    """A8: straight-line distance to the city centre (labelled as such)."""
+def dim_water(origin: Optional[Tuple[float, float]], pois: Optional[List[dict]]) -> Tuple[Optional[int], str]:
+    """#73: sea / lake proximity (OSM natural=beach|water)."""
+    if not origin or pois is None:
+        return None, "Veekogude info puudub"
+    m = _nearest_m(origin, pois, {"beach", "water"})
+    if m is None:
+        return 20, "Meri/järv üle 2 km"
+    s = _band(m, [(500, 100), (1000, 75), (2000, 50)])
+    return s, "Lähim meri/järv %s" % _fmt_m(m)
+
+
+def dim_rail(origin: Optional[Tuple[float, float]], pois: Optional[List[dict]]) -> Tuple[Optional[int], str]:
+    """#73: train station access (OSM railway=station|halt, 2 km window)."""
+    if not origin or pois is None:
+        return None, "Rongiühenduse info puudub"
+    m = _nearest_m(origin, pois, {"rail_station"})
+    if m is None:
+        return 20, "Rongipeatus üle 2 km"
+    s = _band(m, [(800, 100), (1500, 80), (2000, 60)])
+    return s, "Lähim rongipeatus %s" % _fmt_m(m)
+
+
+def dim_urban(origin: Optional[Tuple[float, float]], pois: Optional[List[dict]]) -> Tuple[Optional[int], str]:
+    """#73/#74: calm-countryside (0) <-> busy-city (100) axis from POI density.
+
+    A taste axis, not a generic good: it defaults near-neutral in WEIGHTS so
+    buyers weight it themselves.
+    """
+    if not origin or pois is None:
+        return None, "Asustuse info puudub"
+    n = sum(1 for p in pois if p.get("lat") is not None)
+    s = _band(n, [(0, 10), (5, 25), (15, 40), (30, 60), (60, 80)])
+    return s, "Elu-olu tihedus: %d huvipunkti 1,5 km raadiuses" % n
+
+
+def dim_connect(origin: Optional[Tuple[float, float]], pois: Optional[List[dict]],
+               address: str) -> Tuple[Optional[int], str]:
+    """#75: is the listing well-connected? Best of the travel-time options.
+
+    Options cover the generic question across targets: city centre by car,
+    station (walk + estimated train leg), shop on foot/bike. Distances are
+    bird-flight converted with the documented average speeds above — every
+    time is a labelled estimate, never a measured route (no routing engine
+    in the pipeline).
+    """
     if not origin:
-        return None, "Kauguse info puudub"
-    target = commute_target(address)
-    if target is None:
-        return None, "Linnakeskus teadmata – kaugust ei hinda"
-    label, centre = target
-    km = haversine_km(origin, centre)
-    s = _band(km * 1000.0, [(3000, 100), (6000, 85), (12000, 70), (20000, 55), (35000, 40)])
-    return s, "%s ~%s km (linnulennult)" % (label, _fmt_km(km))
+        return None, "Ühenduse info puudub"
+    opts: List[Tuple[str, float]] = []  # (label, estimated minutes)
+    target = commute_target(address or "")
+    if target is not None:
+        label, centre = target
+        km = haversine_km(origin, centre)
+        opts.append(("%s autoga" % label, _minutes(km, SPEED_CAR_KMH)))
+    if pois is not None:
+        st = _nearest_m(origin, pois, {"rail_station"})
+        if st is not None:
+            opts.append(("rong (peatus +%d min)" % int(TRAIN_ACCESS_MIN),
+                         _minutes(st / 1000.0, SPEED_WALK_KMH, TRAIN_ACCESS_MIN)))
+        shop = _nearest_m(origin, pois, {"supermarket", "convenience"})
+        if shop is not None:
+            km = shop / 1000.0
+            if km <= 1.2:
+                opts.append(("pood jalgsi", _minutes(km, SPEED_WALK_KMH)))
+            else:
+                opts.append(("pood rattaga", _minutes(km, SPEED_BIKE_KMH)))
+    if not opts:
+        return 15, "Keskus, rong ja pood kaugel või teadmata"
+    scored = [
+        (label, mins, _band(mins, [(10, 100), (20, 85), (30, 70),
+                                   (45, 55), (60, 40), (float("inf"), 25)]))
+        for label, mins in opts
+    ]
+    best = max(scored, key=lambda t: t[2] or 0)
+    bits = ["%s ~%d min" % (label, int(round(mins))) for label, mins, _ in scored]
+    return best[2], "Ühendus (hinnang): %s" % " · ".join(bits)
 
 
 def dim_air() -> Tuple[Optional[int], str]:
@@ -233,23 +327,19 @@ def _fmt_m(m: float) -> str:
     return "%d m" % int(round(m)) if m < 1000 else "~%.1f km" % (m / 1000.0)
 
 
-def _fmt_km(km: float) -> str:
-    s = "%.1f" % km
-    return s.replace(".", ",")
-
-
 OVERPASS_QUERY = """[out:json][timeout:25];
 (
   node["amenity"~"school|kindergarten|pharmacy|clinic|doctors"](around:1500,{lat},{lon});
   node["highway"="bus_stop"](around:1500,{lat},{lon});
-  node["railway"="tram_stop"](around:1500,{lat},{lon});
+  node["railway"~"tram_stop|station|halt"](around:2000,{lat},{lon});
   node["leisure"~"park|garden|playground"](around:1500,{lat},{lon});
-  node["natural"~"wood|beach"](around:1500,{lat},{lon});
+  node["natural"~"wood|beach|water"](around:1500,{lat},{lon});
   node["landuse"~"forest|grass|meadow"](around:1500,{lat},{lon});
   node["shop"~"supermarket|convenience"](around:1500,{lat},{lon});
   way["amenity"~"school|kindergarten|pharmacy|clinic|doctors"](around:1500,{lat},{lon});
+  way["railway"~"station|halt"](around:2000,{lat},{lon});
   way["leisure"~"park|garden|playground"](around:1500,{lat},{lon});
-  way["natural"~"wood|beach"](around:1500,{lat},{lon});
+  way["natural"~"wood|beach|water"](around:1500,{lat},{lon});
   way["landuse"~"forest|grass|meadow"](around:1500,{lat},{lon});
   way["shop"~"supermarket|convenience"](around:1500,{lat},{lon});
 );
@@ -259,9 +349,10 @@ _POI_KIND = [
     ("amenity", {"school": "school", "kindergarten": "kindergarten", "pharmacy": "pharmacy",
                  "clinic": "clinic", "doctors": "clinic"}),
     ("highway", {"bus_stop": "bus_stop"}),
-    ("railway", {"tram_stop": "bus_stop"}),
+    ("railway", {"tram_stop": "bus_stop", "station": "rail_station",
+                 "halt": "rail_station"}),
     ("leisure", {"park": "park", "garden": "park", "playground": "park"}),
-    ("natural", {"wood": "forest", "beach": "beach"}),
+    ("natural", {"wood": "forest", "beach": "beach", "water": "water"}),
     ("landuse", {"forest": "forest", "grass": "park", "meadow": "park"}),
     ("shop", {"supermarket": "supermarket", "convenience": "convenience"}),
 ]
@@ -484,11 +575,14 @@ def _load_pois(raw: str) -> Optional[List[dict]]:
 
 def enrich_row(address: str, county: str, cache_dir: Optional[str] = None,
                resolver: Optional[Callable[[str], Optional[dict]]] = None,
-               geo: Optional[dict] = None) -> Tuple[int, List[str]]:
-    """(livability, reasons) for one listing. resolver injects fakes in tests.
+               geo: Optional[dict] = None) -> Tuple[int, List[str], Dict[str, Optional[int]]]:
+    """(livability, reasons, dims) for one listing. resolver injects fakes.
 
-    Pass pre-resolved `geo` to avoid resolving twice (ingest stashes the
-    coordinates on the row for the map); otherwise resolves here.
+    `dims` maps every WEIGHTS key to its score (None when missing) so the UI
+    can re-weight per buyer taste (#74); combined livability stays the
+    weight-renormalized default mean. Pass pre-resolved `geo` to avoid
+    resolving twice (ingest stashes the coordinates on the row for the map);
+    otherwise resolves here.
     """
     if geo is None:
         geo = (resolver or (lambda a: resolve(a, cache_dir)))(address)
@@ -501,7 +595,10 @@ def enrich_row(address: str, county: str, cache_dir: Optional[str] = None,
         ("transit", lambda: dim_transit(origin, pois)),
         ("green", lambda: dim_green(origin, pois)),
         ("services", lambda: dim_services(origin, pois)),
-        ("commute", lambda: dim_commute(origin, address or "")),
+        ("water", lambda: dim_water(origin, pois)),
+        ("rail", lambda: dim_rail(origin, pois)),
+        ("urban", lambda: dim_urban(origin, pois)),
+        ("connect", lambda: dim_connect(origin, pois, address or "")),
     ):
         v, reason = fn()
         dims[name] = v
@@ -513,6 +610,6 @@ def enrich_row(address: str, county: str, cache_dir: Optional[str] = None,
         scored.append(("safety", safety_v, safety_r))
     total = combine(dims)
     if total is None:
-        return 50, ["Elamiskvaliteet arvutamata – asukoha andmed puuduvad"]
+        return 50, ["Elamiskvaliteet arvutamata – asukoha andmed puuduvad"], dims
     reasons = [r for _, _, r in scored]
-    return total, reasons
+    return total, reasons, dims

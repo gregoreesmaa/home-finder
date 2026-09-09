@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS listings (
   county        TEXT NOT NULL,          -- Harju / Tartu / Pärnu / ...
   price         INTEGER NOT NULL,       -- EUR
   image_url     TEXT,                   -- portal thumbnail (#76), NULL when unknown
+  dims          JSONB DEFAULT '{}',     -- per-dim livability scores (#74 weights)
   price_per_m2  INTEGER,
   rooms         NUMERIC,
   area_m2       NUMERIC,
