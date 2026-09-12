@@ -20,6 +20,14 @@ import {
   type TransitDistance,
   type WalkRasterDoc,
 } from "../../lib/layers";
+import {
+  fetchGraphOverlay,
+  needsGraphOverlay,
+  overlayColorFor,
+  overlayLegendFor,
+  selectOverlayPoints,
+  type OverlayPoint,
+} from "../../lib/overlays";
 
 /** Viewport bbox rounded for fetch stability (matches server key rounding). */
 function sameView(a: BBoxLike, b: BBoxLike): boolean {
@@ -144,6 +152,37 @@ export default function LayersPage() {
     };
   }, [layer]);
 
+  // Density layers (walkability/pedinfra/cycling) have no snapshot
+  // points: their overlay is a viewport-capped foot-graph sample that
+  // refetches with the view, same cadence as the points path. Point
+  // layers reuse featurePoints directly (no extra fetch).
+  const [graphPoints, setGraphPoints] = useState<OverlayPoint[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!needsGraphOverlay(layer)) {
+      setGraphPoints(null);
+      return;
+    }
+    fetchGraphOverlay(layer, view).then((pts) => {
+      if (!cancelled) setGraphPoints(pts);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [layer, view]);
+
+  // Per-layer overlay toggle (all visible by default; undefined = on).
+  const [overlayOn, setOverlayOn] = useState<Partial<Record<LayerId, boolean>>>({});
+  const showOverlay = overlayOn[layer] !== false;
+  const pointOverlay: OverlayPoint[] | null =
+    layer === "parks"
+      ? null
+      : needsGraphOverlay(layer)
+        ? graphPoints
+        : selectOverlayPoints(featurePoints ?? [], layer);
+  const overlayCount =
+    layer === "parks" ? (outlines?.length ?? 0) : (pointOverlay?.length ?? 0);
+
   const base =
     provenance === null
       ? "Laadin kihi andmeid…"
@@ -188,12 +227,24 @@ export default function LayersPage() {
         ))}
       </div>
       <p aria-live="polite">{status}</p>
+      <label style={{ display: "block", margin: "8px 0" }}>
+        <input
+          type="checkbox"
+          checked={showOverlay}
+          onChange={(e) => setOverlayOn((prev) => ({ ...prev, [layer]: e.target.checked }))}
+        />{" "}
+        Näita alusandmeid ({overlayCount})
+      </label>
       <ValueHeatMap
         points={featurePoints ?? []}
         radiusKm={radiusKmFor(layer)}
         bonus={bonusSpecFor(layer)}
         raster={raster}
         outlines={outlines}
+        overlayPoints={pointOverlay}
+        overlayColor={overlayColorFor(layer)}
+        overlayLegend={overlayLegendFor(layer)}
+        showOverlay={showOverlay}
         title={def.title}
         goodLabel={def.goodLabel}
         badLabel={def.badLabel}
