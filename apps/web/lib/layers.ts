@@ -19,6 +19,17 @@ import {
   isB1LayerId,
   type B1LayerId,
 } from "./layers_batch1";
+// G07-HOOK(#140): batch G07 (Group 7 env-health) tables live in
+// ./layers_group07 (new file). That module imports layers only as types,
+// so no runtime cycle.
+import {
+  G07_DECAY_KM,
+  G07_LAYERS,
+  G07_TAGS,
+  g07BonusSpecFor,
+  isG07LayerId,
+  type G07LayerId,
+} from "./layers_group07";
 // B5-HOOK(#102): batch B5 (Group 14 public-safety) tables live in
 // ./layers_batch5 (new file). That module imports layers only as types,
 // so no runtime cycle.
@@ -40,6 +51,8 @@ export type LayerId =
   | "grocery"
   | "healthcare"
   | B1LayerId // B1-HOOK(#98)
+  // G07-HOOK (#140): Group 7 env-health ids (defined in ./layers_group07).
+  | G07LayerId
   // B5-HOOK (#102): Group 14 public-safety ids (defined in ./layers_batch5).
   | Batch5LayerId;
 
@@ -118,6 +131,8 @@ const DECAY_KM: Record<LayerId, number> = {
   grocery: 0.3,
   healthcare: 0.8,
   ...B1_DECAY, // B1-HOOK(#98)
+  // G07-HOOK (#140): env-health radii (see layers_group07.ts G07_DECAY_KM).
+  ...G07_DECAY_KM,
   // B5-HOOK (#102): Group 14 radii (see layers_batch5.ts BATCH5_DECAY).
   ...BATCH5_DECAY,
 };
@@ -228,6 +243,8 @@ export const LAYERS: LayerDef[] = [
     ],
   },
   ...B1_LAYERS, // B1-HOOK(#98): Group 11 amenity layers (p86/87/89/108/313)
+  // G07-HOOK (#140): env-health defs (p61/p62) from ./layers_group07.
+  ...G07_LAYERS,
   // B5-HOOK (#102): Group 14 defs (p13/p78/p315/p335/p467) from ./layers_batch5.
   ...BATCH5_DEFS,
 ];
@@ -244,6 +261,8 @@ const TAGS: Record<LayerId, string> = {
   grocery: 'n["shop"~"supermarket|convenience|greengrocer|grocery|marketplace"];',
   healthcare: 'n["amenity"~"pharmacy|doctors|dentist"];',
   ...B1_TAGS, // B1-HOOK(#98)
+  // G07-HOOK (#140): env-health queries (see layers_group07.ts G07_TAGS).
+  ...G07_TAGS,
   // B5-HOOK (#102): Group 14 queries (see layers_batch5.ts BATCH5_TAGS).
   ...BATCH5_TAGS,
 };
@@ -322,11 +341,15 @@ export interface TripsSpec {
 export type BonusSpec =
   | AreaSpec
   | TripsSpec
-  | { kind: "variety"; key: string; values: string[]; per: number; cap: number };
+  | { kind: "variety"; key: string; values: string[]; per: number; cap: number }
+  // G07-HOOK (#140): nearest-source cleanliness (0 on the source, 50 at halfM).
+  | { kind: "quiet"; halfM: number };
 
 export function bonusSpecFor(layer: LayerId): BonusSpec {
   // B1-HOOK(#98): batch B1 specs live in layers_batch1.ts.
   if (isB1LayerId(layer)) return b1BonusSpecFor(layer);
+  // G07-HOOK(#140): env-health specs live in layers_group07.ts.
+  if (isG07LayerId(layer)) return g07BonusSpecFor(layer);
   switch (layer) {
     case "parks":
       // Area-proportional: total nearby hectares, saturating (half = 15).
