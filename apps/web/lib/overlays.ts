@@ -93,6 +93,17 @@ export function overlayColorFor(layer: LayerId): string {
       return "#e11d48";
     case "parks":
       return "#166534";
+    // Batch B1 amenity layers (point overlays, stride-sampled like grocery).
+    case "pets":
+      return "#ea580c";
+    case "community":
+      return "#4f46e5";
+    case "culture":
+      return "#db2777";
+    case "nightlife":
+      return "#ca8a04";
+    case "libraries":
+      return "#92400e";
   }
 }
 
@@ -118,6 +129,18 @@ export function overlayLegendFor(layer: LayerId): string {
       return "Toidupoed · lähedaste poodide arv (küllastus 6)";
     case "healthcare":
       return "Apteegid ja arstid · lähedaste arv (küllastus 20)";
+    // Batch B1 amenity layers: nearby-POI counts, saturating halves from
+    // layers_batch1.ts B1_BONUS (same numbers as bonusSpecFor).
+    case "pets":
+      return "Koerapargid ja loomaarstid · lähedaste arv (küllastus 5,7)";
+    case "community":
+      return "Kogukonnaruumid · lähedaste arv (küllastus 3,3)";
+    case "culture":
+      return "Teatrid ja muuseumid · lähedaste arv (küllastus 4,5)";
+    case "nightlife":
+      return "Baarid ja kinod · lähedaste arv (küllastus 7,5)";
+    case "libraries":
+      return "Raamatukogud · lähedaste arv (küllastus 3)";
   }
 }
 

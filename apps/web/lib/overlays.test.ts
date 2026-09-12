@@ -84,7 +84,7 @@ describe("selectOverlayPoints", () => {
 describe("overlay legend + colors", () => {
   it("explains every layer's markers and weights in Estonian", () => {
     const ids = LAYERS.map((l) => l.id);
-    expect(ids).toHaveLength(8);
+    expect(ids).toHaveLength(13);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -98,11 +98,17 @@ describe("overlay legend + colors", () => {
     expect(overlayLegendFor("cycling")).toContain("3 km");
     expect(overlayLegendFor("grocery")).toContain("6");
     expect(overlayLegendFor("healthcare")).toContain("20");
+    // Batch B1 halves (see B1_BONUS in layers_batch1.ts).
+    expect(overlayLegendFor("pets")).toContain("5,7");
+    expect(overlayLegendFor("community")).toContain("3,3");
+    expect(overlayLegendFor("culture")).toContain("4,5");
+    expect(overlayLegendFor("nightlife")).toContain("7,5");
+    expect(overlayLegendFor("libraries")).toContain("(küllastus 3)");
   });
 
   it("gives every layer a distinct marker color", () => {
     const seen = new Set((LAYERS.map((l) => l.id) as LayerId[]).map(overlayColorFor));
-    expect(seen.size).toBe(8);
+    expect(seen.size).toBe(13);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });
