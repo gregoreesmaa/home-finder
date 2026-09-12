@@ -115,6 +115,15 @@ export function overlayColorFor(layer: LayerId): string {
       return "#57534c";
     case "dispatch":
       return "#6b21a8";
+    // Group G06B heritage-leftover layers (point overlays, stride-sampled).
+    case "plaster":
+      return "#b45309";
+    case "antiques":
+      return "#0f766e";
+    // woodfire marks mapped wooden houses = the risk SOURCES (red family
+    // reads as danger origins; the raster stays green = safe).
+    case "woodfire":
+      return "#991b1b";
   }
 }
 
@@ -165,6 +174,15 @@ export function overlayLegendFor(layer: LayerId): string {
       return "Magistraalteede tihedus (hinnang, küllastus 2 km)";
     case "dispatch":
       return "Politsei/pääste/haigla · lähedaste arv (hinnang, küllastus 3)";
+    // Group G06B heritage-leftover layers: nearby-POI counts with halves
+    // from layers_group06b.ts GROUP06B_BONUS (same numbers as
+    // bonusSpecFor); woodfire is inverse (nearest-distance, pöördskaala).
+    case "plaster":
+      return "Krohvfassaadiga hooned · lähedaste arv (hinnang, küllastus 6)";
+    case "antiques":
+      return "Antiigipoed · lähedaste arv (hinnang, küllastus 1)";
+    case "woodfire":
+      return "Puidust hooned · lähim kaugus, pöördskaala (hinnang, poolväärtus 0,21 km)";
   }
 }
 

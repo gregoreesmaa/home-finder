@@ -222,6 +222,26 @@ export function buildScoredField(
     }
     return { field, bonus, sigmaKm, direct };
   }
+  // G06B-HOOK (#139): inverse ("avoid") proximity — currently only the
+  // G06B woodfire layer (p356). Score = 100·(1−2^(−d/half)) from the
+  // nearest-feature distance field: 0 on top of a feature, 50 at half
+  // km, →100 far away. Mirrors goodnessAt's avoid branch and the
+  // walk-raster stamp, so the Euclidean fallback agrees with the raster
+  // about direction (near wood = low fire-safety score). NaN past the
+  // field (unreachable stays unknown, never faked safe).
+  if (spec.kind === "avoid") {
+    const direct = new Float64Array(cols * rows);
+    for (let k = 0; k < direct.length; k++) {
+      const d = field.distKm[k];
+      if (!Number.isFinite(d)) {
+        direct[k] = NaN;
+        continue;
+      }
+      const raw = 100 * (1 - Math.pow(2, -d / spec.half));
+      direct[k] = raw >= 3 ? Math.min(100, raw) : NaN;
+    }
+    return { field, bonus, sigmaKm, direct };
+  }
   {
     const classes = classSplats(
       points,

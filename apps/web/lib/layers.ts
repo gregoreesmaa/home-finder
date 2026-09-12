@@ -29,6 +29,16 @@ import {
   BATCH5_TAGS,
   bonusSpecForBatch5,
 } from "./layers_batch5";
+// G06B-HOOK (#139): Group 6 leftover tables live in ./layers_group06b
+// (new file). That module imports layers only as types, so no cycle.
+import type { Group06BLayerId } from "./layers_group06b";
+import {
+  GROUP06B_DECAY,
+  GROUP06B_DEFS,
+  GROUP06B_TAGS,
+  bonusSpecForGroup06B,
+  isGroup06BAvoidLayer,
+} from "./layers_group06b";
 
 export type LayerId =
   | "parks"
@@ -41,7 +51,9 @@ export type LayerId =
   | "healthcare"
   | B1LayerId // B1-HOOK(#98)
   // B5-HOOK (#102): Group 14 public-safety ids (defined in ./layers_batch5).
-  | Batch5LayerId;
+  | Batch5LayerId
+  // G06B-HOOK (#139): Group 6 leftover ids (defined in ./layers_group06b).
+  | Group06BLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -120,6 +132,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...B1_DECAY, // B1-HOOK(#98)
   // B5-HOOK (#102): Group 14 radii (see layers_batch5.ts BATCH5_DECAY).
   ...BATCH5_DECAY,
+  // G06B-HOOK (#139): Group 6 leftover radii (see layers_group06b.ts GROUP06B_DECAY).
+  ...GROUP06B_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -230,6 +244,8 @@ export const LAYERS: LayerDef[] = [
   ...B1_LAYERS, // B1-HOOK(#98): Group 11 amenity layers (p86/87/89/108/313)
   // B5-HOOK (#102): Group 14 defs (p13/p78/p315/p335/p467) from ./layers_batch5.
   ...BATCH5_DEFS,
+  // G06B-HOOK (#139): Group 6 leftover defs (p352/p353/p356) from ./layers_group06b.
+  ...GROUP06B_DEFS,
 ];
 
 const TAGS: Record<LayerId, string> = {
@@ -246,6 +262,8 @@ const TAGS: Record<LayerId, string> = {
   ...B1_TAGS, // B1-HOOK(#98)
   // B5-HOOK (#102): Group 14 queries (see layers_batch5.ts BATCH5_TAGS).
   ...BATCH5_TAGS,
+  // G06B-HOOK (#139): Group 6 leftover queries (see layers_group06b.ts GROUP06B_TAGS).
+  ...GROUP06B_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -319,9 +337,25 @@ export interface TripsSpec {
   minModes: number;
 }
 
+/**
+ * Inverse proximity ("avoid") spec: score FALLS with nearness.
+ * score = 100·(1−2^(−d/half)), d = walk/Euclidean km to the nearest
+ * feature: 0 on top of a feature, 50 at `half` km, →100 far away.
+ * Only G06B woodfire (p356 fire-spread attention) uses it: green = far
+ * from mapped wooden houses. Null (no feature in range) stays null —
+ * the raster/window path renders it red as honestly-unknown, same as
+ * every other layer.
+ */
+export interface AvoidSpec {
+  kind: "avoid";
+  /** Walk-km from the nearest feature scoring 50 (woodfire: 0.21). */
+  half: number;
+}
+
 export type BonusSpec =
   | AreaSpec
   | TripsSpec
+  | AvoidSpec
   | { kind: "variety"; key: string; values: string[]; per: number; cap: number };
 
 export function bonusSpecFor(layer: LayerId): BonusSpec {
@@ -370,6 +404,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // B5-HOOK (#102): Group 14 specs live in ./layers_batch5.
   const b5 = bonusSpecForBatch5(layer);
   if (b5) return b5;
+  // G06B-HOOK (#139): Group 6 leftover specs live in ./layers_group06b.
+  const g06b = bonusSpecForGroup06B(layer);
+  if (g06b) return g06b;
   throw new Error(`unknown layer: ${layer}`);
 }
 
@@ -389,6 +426,15 @@ export function goodnessAt(
   for (const p of points) {
     const d = haversineKm(lat, lon, p.lat, p.lon);
     if (d < best) best = d;
+  }
+  // G06B-HOOK (#139): inverse ("avoid") layers score 100·(1−2^(−d/half)):
+  // 0 on top of a feature, 50 at half km, →100 far away. Mirrors the
+  // walk-raster stamp (batch_g06b_heritage.py) and the buildScoredField
+  // branch, so the Euclidean fallback agrees with the raster about
+  // direction (near wood = low fire-safety score).
+  if (isGroup06BAvoidLayer(layer)) {
+    const half = (bonusSpecFor(layer) as AvoidSpec).half;
+    return Math.round(100 * (1 - Math.pow(2, -best / half)));
   }
   return Math.round(100 * Math.exp(-best / DECAY_KM[layer]));
 }
