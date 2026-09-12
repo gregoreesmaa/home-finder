@@ -16,6 +16,8 @@ import { haversineKm } from "../poi";
 import { sampleRaster } from "../walkRaster";
 // B1-HOOK(#98): batch B1 raster files live in layers_batch1.ts.
 import { B1_METRO_PREFIXES, B1_RASTER_FILES } from "../layers_batch1";
+// G11D-HOOK(#135): leftover-B raster files live in layers_group11d.ts.
+import { G11D_METRO_PREFIXES, G11D_RASTER_FILES } from "../layers_group11d";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -295,6 +297,8 @@ const RASTER_FILE: Record<LayerId, string> = {
   grocery: "grocery-walk-raster.json",
   healthcare: "healthcare-walk-raster.json",
   ...B1_RASTER_FILES, // B1-HOOK(#98)
+  // G11D-HOOK (#135): leftover-B rasters (built by scripts/build/batch_g11d_leftovers.py).
+  ...G11D_RASTER_FILES,
   // B5-HOOK (#102): Group 14 rasters (built by scripts/build/batch_b5_safety.py).
   safety: "safety-walk-raster.json",
   emergency: "emergency-walk-raster.json",
@@ -343,6 +347,8 @@ export function matchesContract(
   if (doc.sigma !== radiusKmFor(layer)) return false;
   if (spec.kind === "variety") return doc.per === spec.per && doc.cap === spec.cap;
   if (spec.kind === "area" || spec.kind === "trips") return doc.half === spec.half;
+  // G11D-HOOK (#135): quiet layers carry halfM on the wire as half.
+  if (spec.kind === "quiet") return doc.half === spec.halfM;
   return false;
 }
 
@@ -368,6 +374,9 @@ const METRO_PREFIX: Record<LayerId, string> = {
   grocery: "grocery-metro",
   healthcare: "healthcare-metro",
   ...B1_METRO_PREFIXES, // B1-HOOK(#98)
+  // G11D-HOOK (#135): leftover-B metro prefixes (unbuilt by design --
+  // county-only; windows fall back to county, B5/GENV precedent).
+  ...G11D_METRO_PREFIXES,
   // B5-HOOK (#102): Group 14 metro masters (optional; windows fall back to county).
   safety: "safety-metro",
   emergency: "emergency-metro",
@@ -591,7 +600,9 @@ export async function loadWindowRaster(
     rows: outRows,
     bbox: view,
     step_m: stepM,
-    half: spec.kind === "variety" ? null : (spec as { half: number }).half,
+    half:
+      // G11D-HOOK (#135): quiet layers echo halfM as half (contract probe).
+      spec.kind === "variety" ? null : spec.kind === "quiet" ? spec.halfM : spec.half,
     sigma: radiusKmFor(layer),
     per: spec.kind === "variety" ? spec.per : 0,
     cap: spec.kind === "variety" ? spec.cap : 0,

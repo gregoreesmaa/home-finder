@@ -29,6 +29,17 @@ import {
   BATCH5_TAGS,
   bonusSpecForBatch5,
 } from "./layers_batch5";
+// G11D-HOOK(#135): batch G11D (Group 11 leftovers B: p346/p470/p419/p466;
+// p317 is a documented no-map) tables live in ./layers_group11d (new
+// file). That module imports layers only as types, so no runtime cycle.
+import {
+  G11D_DECAY,
+  G11D_LAYERS,
+  G11D_TAGS,
+  g11dBonusSpecFor,
+  isG11DLayerId,
+  type G11DLayerId,
+} from "./layers_group11d";
 
 export type LayerId =
   | "parks"
@@ -41,7 +52,9 @@ export type LayerId =
   | "healthcare"
   | B1LayerId // B1-HOOK(#98)
   // B5-HOOK (#102): Group 14 public-safety ids (defined in ./layers_batch5).
-  | Batch5LayerId;
+  | Batch5LayerId
+  // G11D-HOOK (#135): Group 11 leftover-B ids (./layers_group11d).
+  | G11DLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -120,6 +133,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...B1_DECAY, // B1-HOOK(#98)
   // B5-HOOK (#102): Group 14 radii (see layers_batch5.ts BATCH5_DECAY).
   ...BATCH5_DECAY,
+  // G11D-HOOK (#135): leftover-B radii (see layers_group11d.ts G11D_DECAY).
+  ...G11D_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -230,6 +245,8 @@ export const LAYERS: LayerDef[] = [
   ...B1_LAYERS, // B1-HOOK(#98): Group 11 amenity layers (p86/87/89/108/313)
   // B5-HOOK (#102): Group 14 defs (p13/p78/p315/p335/p467) from ./layers_batch5.
   ...BATCH5_DEFS,
+  // G11D-HOOK (#135): leftover-B defs (p346/p470/p419/p466) from ./layers_group11d.
+  ...G11D_LAYERS,
 ];
 
 const TAGS: Record<LayerId, string> = {
@@ -246,6 +263,8 @@ const TAGS: Record<LayerId, string> = {
   ...B1_TAGS, // B1-HOOK(#98)
   // B5-HOOK (#102): Group 14 queries (see layers_batch5.ts BATCH5_TAGS).
   ...BATCH5_TAGS,
+  // G11D-HOOK (#135): leftover-B queries (see layers_group11d.ts G11D_TAGS).
+  ...G11D_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -322,7 +341,11 @@ export interface TripsSpec {
 export type BonusSpec =
   | AreaSpec
   | TripsSpec
-  | { kind: "variety"; key: string; values: string[]; per: number; cap: number };
+  | { kind: "variety"; key: string; values: string[]; per: number; cap: number }
+  // G11D-HOOK (#135): nearest-source calmness for inverted badness
+  // layers (trailprivacy): 0 on the source, 50 at halfM (GENV designed
+  // this kind but never wired it; G11D is the first wired use).
+  | { kind: "quiet"; halfM: number };
 
 export function bonusSpecFor(layer: LayerId): BonusSpec {
   // B1-HOOK(#98): batch B1 specs live in layers_batch1.ts.
@@ -370,6 +393,8 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // B5-HOOK (#102): Group 14 specs live in ./layers_batch5.
   const b5 = bonusSpecForBatch5(layer);
   if (b5) return b5;
+  // G11D-HOOK (#135): leftover-B specs live in ./layers_group11d.
+  if (isG11DLayerId(layer)) return g11dBonusSpecFor(layer);
   throw new Error(`unknown layer: ${layer}`);
 }
 

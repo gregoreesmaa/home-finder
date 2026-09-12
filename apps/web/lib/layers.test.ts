@@ -42,6 +42,11 @@ describe("layer registry", () => {
       "hydrants",
       "evac",
       "dispatch",
+      // G11D-HOOK (#135): Group 11 leftover-B ids (p317 is no-map).
+      "mailbox",
+      "postal",
+      "alley",
+      "trailprivacy",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);

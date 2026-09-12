@@ -9,6 +9,8 @@
 // enters. Empty input leaves +Inf everywhere: transparent, never faked.
 
 import { stopMode, type BBoxLike, type BonusSpec } from "./layers";
+// G11D-HOOK(#135): trail-free fallback value for the quiet branch below.
+import { G11D_TRAIL_FAR_SCORE } from "./layers_group11d";
 import { colorForValue } from "./valueScale";
 import { splatValues, splatWeights } from "./valueGrid";
 
@@ -219,6 +221,22 @@ export function buildScoredField(
         if (w[k] > PRESENT) modes++;
       }
       bonus[k] = modes >= spec.minModes ? spec.modeBonus : 0;
+    }
+    return { field, bonus, sigmaKm, direct };
+  }
+  // G11D-HOOK (#135): nearest-source calmness for inverted badness
+  // layers (trailprivacy): 0 on the source, 50 at halfM; featureless
+  // input stays unknown (NaN), never a faked calm 100.
+  if (spec.kind === "quiet") {
+    const direct = new Float64Array(cols * rows);
+    if (points.length === 0) {
+      direct.fill(NaN);
+    } else {
+      const halfKm = spec.halfM / 1000;
+      for (let k = 0; k < direct.length; k++) {
+        const d = field.distKm[k];
+        direct[k] = d === INF ? G11D_TRAIL_FAR_SCORE : (100 * d) / (d + halfKm);
+      }
     }
     return { field, bonus, sigmaKm, direct };
   }

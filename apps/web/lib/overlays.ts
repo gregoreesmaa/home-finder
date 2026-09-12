@@ -115,6 +115,16 @@ export function overlayColorFor(layer: LayerId): string {
       return "#57534c";
     case "dispatch":
       return "#6b21a8";
+    // G11D-HOOK (#135): leftover-B layers (point overlays, stride-sampled
+    // like grocery; alley/trailprivacy plot their derived way samples).
+    case "mailbox":
+      return "#b45309";
+    case "postal":
+      return "#0e7490";
+    case "alley":
+      return "#44403c";
+    case "trailprivacy":
+      return "#15803d";
   }
 }
 
@@ -165,6 +175,16 @@ export function overlayLegendFor(layer: LayerId): string {
       return "Magistraalteede tihedus (hinnang, küllastus 2 km)";
     case "dispatch":
       return "Politsei/pääste/haigla · lähedaste arv (hinnang, küllastus 3)";
+    // G11D-HOOK (#135): leftover-B markers + weights (halves/bonuses from
+    // layers_group11d.ts G11D_BONUS, same numbers as bonusSpecFor).
+    case "mailbox":
+      return "Postkastid · lähedaste arv (hinnang, küllastus 2,5)";
+    case "postal":
+      return "Postkontorid ja pakiautomaadid · lähedaste arv (küllastus 12)";
+    case "alley":
+      return "Taga-teede tihedus · teede km (küllastus 0,3 km)";
+    case "trailprivacy":
+      return "Matkaradade tihedus · teede km, PÖÖRATUD (privaatsus, poolväärtus 1500 m)";
   }
 }
 

@@ -319,3 +319,25 @@ describe("distance field", () => {
     expect(city.rows).toBeGreaterThan(0);
   });
 });
+
+describe("quiet calmness (G11D trailprivacy)", () => {
+  const QUIET: BonusSpec = { kind: "quiet", halfM: 1500 };
+
+  it("reads 0 on the source and ~50 one halfM out", () => {
+    const s = buildScoredField([{ lon: 0.5, lat: 0.5 }], UNIT, 101, 101, 0.5, QUIET);
+    expect(s.direct).not.toBeNull();
+    // Node (50,50) sits on the source; ~1.5 km east reads ~50.
+    // UNIT spans 1 deg lon (~57 km): 1.5 km ~= 2.6 cells.
+    const on = s.direct![50 * 101 + 50];
+    expect(on).toBeLessThan(5);
+    const out = s.direct![50 * 101 + 53];
+    expect(out).toBeGreaterThan(30);
+    expect(out).toBeLessThan(70);
+  });
+
+  it("stays unknown with no features, never a faked calm", () => {
+    const s = buildScoredField([], UNIT, 11, 11, 0.5, QUIET);
+    expect(s.direct).not.toBeNull();
+    for (const v of s.direct!) expect(v).toBeNaN();
+  });
+});
