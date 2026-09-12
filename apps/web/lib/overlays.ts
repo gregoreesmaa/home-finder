@@ -104,6 +104,17 @@ export function overlayColorFor(layer: LayerId): string {
       return "#ca8a04";
     case "libraries":
       return "#92400e";
+    // Batch B5 public-safety layers (point overlays, stride-sampled).
+    case "safety":
+      return "#dc2626";
+    case "emergency":
+      return "#f97316";
+    case "hydrants":
+      return "#0369a1";
+    case "evac":
+      return "#57534c";
+    case "dispatch":
+      return "#6b21a8";
   }
 }
 
@@ -141,6 +152,19 @@ export function overlayLegendFor(layer: LayerId): string {
       return "Baarid ja kinod · lähedaste arv (küllastus 7,5)";
     case "libraries":
       return "Raamatukogud · lähedaste arv (küllastus 3)";
+    // Batch B5 public-safety layers: nearby-POI counts, saturating halves
+    // from layers_batch5.ts B5_BONUS (same numbers as bonusSpecFor).
+    // Evac scores trunk/primary road-km density, hence the km unit.
+    case "safety":
+      return "Politseipunktid · lähedaste arv (hinnang, küllastus 1)";
+    case "emergency":
+      return "Päästekomandod ja haiglad · lähedaste arv (hinnang, küllastus 2)";
+    case "hydrants":
+      return "Tuletõrjehüdrandid · lähedaste arv (küllastus 6)";
+    case "evac":
+      return "Magistraalteede tihedus (hinnang, küllastus 2 km)";
+    case "dispatch":
+      return "Politsei/pääste/haigla · lähedaste arv (hinnang, küllastus 3)";
   }
 }
 

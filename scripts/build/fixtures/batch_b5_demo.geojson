@@ -1,0 +1,9 @@
+{"type": "FeatureCollection", "features": [
+{"type": "Feature", "id": "n101", "properties": {"amenity": "police", "name": "Demo politsei"}, "geometry": {"type": "Point", "coordinates": [24.7536, 59.4372]}},
+{"type": "Feature", "id": "n102", "properties": {"amenity": "fire_station", "name": "Demo komando"}, "geometry": {"type": "Point", "coordinates": [24.76, 59.44]}},
+{"type": "Feature", "id": "n103", "properties": {"amenity": "hospital", "name": "Demo haigla"}, "geometry": {"type": "Point", "coordinates": [24.77, 59.435]}},
+{"type": "Feature", "id": "n104", "properties": {"emergency": "fire_hydrant"}, "geometry": {"type": "Point", "coordinates": [24.755, 59.438]}},
+{"type": "Feature", "id": "n105", "properties": {"amenity": "pharmacy", "name": "Apteek (not B5)"}, "geometry": {"type": "Point", "coordinates": [24.78, 59.44]}},
+{"type": "Feature", "id": "w201", "properties": {"highway": "trunk", "name": "Demo magistraal"}, "geometry": {"type": "LineString", "coordinates": [[24.74, 59.43], [24.75, 59.43], [24.76, 59.43]]}},
+{"type": "Feature", "id": "w202", "properties": {"highway": "residential", "name": "Kõrvaltänav (not B5)"}, "geometry": {"type": "LineString", "coordinates": [[24.74, 59.42], [24.75, 59.42]]}}
+]}

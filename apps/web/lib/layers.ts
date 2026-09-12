@@ -19,6 +19,16 @@ import {
   isB1LayerId,
   type B1LayerId,
 } from "./layers_batch1";
+// B5-HOOK(#102): batch B5 (Group 14 public-safety) tables live in
+// ./layers_batch5 (new file). That module imports layers only as types,
+// so no runtime cycle.
+import type { Batch5LayerId } from "./layers_batch5";
+import {
+  BATCH5_DECAY,
+  BATCH5_DEFS,
+  BATCH5_TAGS,
+  bonusSpecForBatch5,
+} from "./layers_batch5";
 
 export type LayerId =
   | "parks"
@@ -29,7 +39,9 @@ export type LayerId =
   | "cycling"
   | "grocery"
   | "healthcare"
-  | B1LayerId; // B1-HOOK(#98)
+  | B1LayerId // B1-HOOK(#98)
+  // B5-HOOK (#102): Group 14 public-safety ids (defined in ./layers_batch5).
+  | Batch5LayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -50,7 +62,8 @@ export interface LayerPoint {
 }
 
 /** Tag keys worth caching (small, bounded); names/addresses never leave. */
-const TAG_ALLOWLIST = ["amenity", "leisure", "railway", "public_transport", "highway"];
+// B5-HOOK (#102): "emergency" keeps emergency=fire_hydrant tags (p315).
+const TAG_ALLOWLIST = ["amenity", "leisure", "railway", "public_transport", "highway", "emergency"];
 
 /** Pick allowlisted string tags, or undefined when there are none. */
 export function pickFeatureTags(tags: unknown): Record<string, string> | undefined {
@@ -105,6 +118,8 @@ const DECAY_KM: Record<LayerId, number> = {
   grocery: 0.3,
   healthcare: 0.8,
   ...B1_DECAY, // B1-HOOK(#98)
+  // B5-HOOK (#102): Group 14 radii (see layers_batch5.ts BATCH5_DECAY).
+  ...BATCH5_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -213,6 +228,8 @@ export const LAYERS: LayerDef[] = [
     ],
   },
   ...B1_LAYERS, // B1-HOOK(#98): Group 11 amenity layers (p86/87/89/108/313)
+  // B5-HOOK (#102): Group 14 defs (p13/p78/p315/p335/p467) from ./layers_batch5.
+  ...BATCH5_DEFS,
 ];
 
 const TAGS: Record<LayerId, string> = {
@@ -227,6 +244,8 @@ const TAGS: Record<LayerId, string> = {
   grocery: 'n["shop"~"supermarket|convenience|greengrocer|grocery|marketplace"];',
   healthcare: 'n["amenity"~"pharmacy|doctors|dentist"];',
   ...B1_TAGS, // B1-HOOK(#98)
+  // B5-HOOK (#102): Group 14 queries (see layers_batch5.ts BATCH5_TAGS).
+  ...BATCH5_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -348,6 +367,10 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
         cap: 36,
       };
   }
+  // B5-HOOK (#102): Group 14 specs live in ./layers_batch5.
+  const b5 = bonusSpecForBatch5(layer);
+  if (b5) return b5;
+  throw new Error(`unknown layer: ${layer}`);
 }
 
 /**
