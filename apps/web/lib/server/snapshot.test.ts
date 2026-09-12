@@ -1,0 +1,621 @@
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
+import {
+  clearSnapshotCache,
+  intersectsCoverage,
+  loadLayerRaster,
+  loadParkAreas,
+  loadSnapshotPoints,
+  loadWindowRaster,
+  nominalArea,
+  type ParkArea,
+  parksAreas,
+  SNAPSHOT_BBOX,
+  SnapshotUnavailable,
+} from "./snapshot";
+
+/** Self-contained fixture snapshot (never the real ~/hf-data tree). */
+async function fixtureDir(points: unknown, layer = "parks"): Promise<string> {
+  const dir = await mkdtemp(join(tmpdir(), "hf-snap-"));
+  await mkdir(join(dir, "osm"), { recursive: true });
+  await writeFile(join(dir, "osm", `derived-${layer}.json`), JSON.stringify(points));
+  return dir;
+}
+
+afterEach(async () => {
+  clearSnapshotCache();
+});
+
+describe("snapshot loader", () => {
+  it("loads points clipped to the bbox, cleaning tags and skipping junk", async () => {
+    const dir = await fixtureDir([
+      { lat: 59.44, lon: 24.75, tags: { leisure: "park" } },
+      { lat: 59.0, lon: 24.0, tags: { leisure: "playground" } },
+      { lat: 59.4405, lon: 24.7505 },
+      { lat: "x", lon: 24.75 },
+      { lon: 24.75 },
+    ]);
+    try {
+      const pts = await loadSnapshotPoints(
+        "parks",
+        { minlon: 24.5, minlat: 59.35, maxlon: 24.9, maxlat: 59.5 },
+        dir,
+      );
+      expect(pts).toEqual([
+        { lat: 59.44, lon: 24.75, tags: { leisure: "park" }, a: 2 },
+        { lat: 59.4405, lon: 24.7505, a: 0.3 },
+      ]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("throws SnapshotUnavailable for missing dir, bad JSON, or non-array", async () => {
+    await expect(loadSnapshotPoints("parks", SNAPSHOT_BBOX, "/nonexistent-dir-xyz")).rejects.toBeInstanceOf(
+      SnapshotUnavailable,
+    );
+    const bad = await mkdtemp(join(tmpdir(), "hf-snap-bad-"));
+    await mkdir(join(bad, "osm"), { recursive: true });
+    await writeFile(join(bad, "osm", "derived-parks.json"), "{nope");
+    try {
+      await expect(loadSnapshotPoints("parks", SNAPSHOT_BBOX, bad)).rejects.toBeInstanceOf(
+        SnapshotUnavailable,
+      );
+    } finally {
+      await rm(bad, { recursive: true, force: true });
+    }
+    clearSnapshotCache();
+    const obj = await fixtureDir({ elements: [] });
+    try {
+      await expect(loadSnapshotPoints("parks", SNAPSHOT_BBOX, obj)).rejects.toBeInstanceOf(
+        SnapshotUnavailable,
+      );
+    } finally {
+      await rm(obj, { recursive: true, force: true });
+    }
+  });
+
+  it("caches per process (survives the file going away)", async () => {
+    const dir = await fixtureDir([{ lat: 59.44, lon: 24.75 }]);
+    const bbox = { minlon: 24.5, minlat: 59.35, maxlon: 24.9, maxlat: 59.5 };
+    const first = await loadSnapshotPoints("parks", bbox, dir);
+    await rm(dir, { recursive: true, force: true });
+    const second = await loadSnapshotPoints("parks", bbox, dir);
+    expect(second).toEqual(first);
+  });
+});
+
+describe("park area features", () => {
+  const square = [
+    [24.74, 59.43],
+    [24.76, 59.43],
+    [24.76, 59.45],
+    [24.74, 59.45],
+  ];
+  const area63: ParkArea = { b: [24.74, 59.43, 24.76, 59.45], a: 63, r: [square] };
+
+  it("loads area rings for outlines, skipping junk, [] when missing", async () => {
+    const dir = await fixtureDir([{ lat: 1, lon: 1 }], "parks");
+    await writeFile(
+      join(dir, "osm", "park-areas.json"),
+      JSON.stringify([
+        { b: [0, 0, 1, 1], a: 6.4, r: [[[0, 0], [1, 0], [1, 1], [0, 1]]] },
+        { b: [0, 0, 1, 1], a: "huge", r: "not-rings" },
+        null,
+      ]),
+    );
+    try {
+      const areas = await loadParkAreas(dir);
+      expect(areas).toEqual([{ b: [0, 0, 1, 1], a: 6.4, r: [[[0, 0], [1, 0], [1, 1], [0, 1]]] }]);
+      expect(await loadParkAreas(join(dir, "nope"))).toEqual([]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("assigns nominal hectares by leisure type", () => {
+    expect(nominalArea({ leisure: "playground" })).toBe(0.1);
+    expect(nominalArea({ leisure: "garden" })).toBe(0.15);
+    expect(nominalArea({ leisure: "park" })).toBe(2.0);
+    expect(nominalArea(undefined)).toBe(0.3);
+  });
+
+  it("emits polygon areas subdivided, dropping covered points", () => {
+    // 63 ha / 19.6-ha cells (sigma 0.25) -> 4 sub-features of 15.75 ha each.
+    const pts = parksAreas(
+      [
+        { lat: 59.44, lon: 24.75, tags: { leisure: "playground" } },
+        { lat: 59.46, lon: 24.78, tags: { leisure: "park" } },
+      ],
+      [area63],
+    );
+    expect(pts).toEqual([
+      { lon: 24.745, lat: 59.435, a: 15.75 },
+      { lon: 24.745, lat: 59.445, a: 15.75 },
+      { lon: 24.755, lat: 59.435, a: 15.75 },
+      { lon: 24.755, lat: 59.445, a: 15.75 },
+      { lon: 24.78, lat: 59.46, tags: { leisure: "park" }, a: 2 },
+    ]);
+  });
+
+  it("conserves hectares for sparse polygons (diagonal shapes keep all area)", () => {
+    // Thin diagonal strip: few grid centers land in-ring, but the total
+    // stamped area must still equal the polygon's hectares.
+    const strip: ParkArea = {
+      b: [24.8, 59.44, 24.9, 59.45],
+      a: 40,
+      r: [
+        [
+          [24.8, 59.44],
+          [24.9, 59.45],
+          [24.9, 59.448],
+          [24.8, 59.438],
+        ],
+      ],
+    };
+    const pts = parksAreas([], [strip]);
+    expect(pts.length).toBeGreaterThan(0);
+    const total = pts.reduce((s, p) => s + (p.a ?? 0), 0);
+    expect(total).toBeCloseTo(40, 0);
+  });
+
+  it("sums areas inside ~20 m cells", () => {
+    const pts = parksAreas(
+      [
+        { lat: 59.44, lon: 24.75, tags: { leisure: "playground" } },
+        { lat: 59.44, lon: 24.75, tags: { leisure: "garden" } },
+      ],
+      [],
+    );
+    expect(pts).toEqual([{ lat: 59.44, lon: 24.75, tags: { leisure: "playground" }, a: 0.25 }]);
+  });
+
+  it("serves areas end to end for parks, departures for transit", async () => {
+    const dir = await fixtureDir(
+      [
+        { lat: 59.44, lon: 24.75, tags: { leisure: "playground" } },
+        { lat: 59.45, lon: 24.76, tags: { leisure: "park" } },
+      ],
+      "parks",
+    );
+    const tdir = await fixtureDir(
+      [
+        { lat: 59.44, lon: 24.75, tags: { highway: "bus_stop" } },
+        { lat: 59.45, lon: 24.76, tags: { highway: "bus_stop" } },
+        { lat: 59.46, lon: 24.78, tags: { highway: "bus_stop" } },
+        // Same complex as the first stop (~13 m from its GTFS entry):
+        // departures count once, at the nearest node.
+        { lat: 59.4401, lon: 24.7501, tags: { highway: "bus_stop" } },
+      ],
+      "transit",
+    );
+    await writeFile(
+      join(tdir, "osm", "transit-frequency.json"),
+      JSON.stringify({
+        stops: [
+          { lon: 24.75, lat: 59.44, trips: 974 },
+          { lon: 24.76, lat: 59.45, trips: 42 },
+        ],
+      }),
+    );
+    const bbox = { minlon: 24.5, minlat: 59.35, maxlon: 24.9, maxlat: 59.5 };
+    try {
+      expect(await loadSnapshotPoints("parks", bbox, dir)).toEqual([
+        { lat: 59.44, lon: 24.75, tags: { leisure: "playground" }, a: 0.1 },
+        { lat: 59.45, lon: 24.76, tags: { leisure: "park" }, a: 2 },
+      ]);
+      expect(await loadSnapshotPoints("transit", bbox, tdir)).toEqual([
+        { lat: 59.44, lon: 24.75, tags: { highway: "bus_stop" }, t: 974 },
+        { lat: 59.45, lon: 24.76, tags: { highway: "bus_stop" }, t: 42 },
+        { lat: 59.46, lon: 24.78, tags: { highway: "bus_stop" }, t: 100 },
+        { lat: 59.4401, lon: 24.7501, tags: { highway: "bus_stop" }, t: 0 },
+      ]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+      await rm(tdir, { recursive: true, force: true });
+    }
+  });
+
+  it("transit degrades to default departures without a frequency file", async () => {
+    const dir = await fixtureDir([{ lat: 59.44, lon: 24.75 }], "transit");
+    try {
+      const pts = await loadSnapshotPoints(
+        "transit",
+        { minlon: 24.5, minlat: 59.35, maxlon: 24.9, maxlat: 59.5 },
+        dir,
+      );
+      expect(pts).toEqual([{ lat: 59.44, lon: 24.75, t: 100 }]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("layer walk rasters", () => {
+  const rasterDoc = (contract: { half?: number | null; sigma: number; per?: number; cap?: number }) => ({
+    cols: 2,
+    rows: 2,
+    bbox: { minlon: 24.0, minlat: 59.0, maxlon: 24.2, maxlat: 59.1 },
+    step_m: 75,
+    half: contract.half ?? null,
+    sigma: contract.sigma,
+    per: contract.per ?? 0,
+    cap: contract.cap ?? 0,
+    unknown: 255,
+    dtype: "uint8",
+    data: Buffer.from([80, 255, 40, 60]).toString("base64"),
+  });
+
+  it("serves the transit raster when it matches the scoring contract", async () => {
+    const dir = await fixtureDir([{ lat: 59.44, lon: 24.75 }], "transit");
+    await writeFile(
+      join(dir, "osm", "transit-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 1500, sigma: 0.2 })),
+    );
+    try {
+      const { raster, distance } = await loadLayerRaster("transit", dir);
+      expect(distance).toBe("walk");
+      expect(raster?.cols).toBe(2);
+      expect(raster?.data).toBe(Buffer.from([80, 255, 40, 60]).toString("base64"));
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("serves parks and schools rasters under their own contracts", async () => {
+    const pdir = await fixtureDir([{ lat: 59.44, lon: 24.75 }], "parks");
+    await writeFile(
+      join(pdir, "osm", "parks-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 15, sigma: 0.25 })),
+    );
+    try {
+      expect((await loadLayerRaster("parks", pdir)).distance).toBe("walk");
+    } finally {
+      await rm(pdir, { recursive: true, force: true });
+    }
+    const sdir = await fixtureDir([{ lat: 59.44, lon: 24.75 }], "schools");
+    await writeFile(
+      join(sdir, "osm", "schools-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: null, sigma: 0.8, per: 12, cap: 36 })),
+    );
+    try {
+      expect((await loadLayerRaster("schools", sdir)).distance).toBe("walk");
+    } finally {
+      await rm(sdir, { recursive: true, force: true });
+    }
+  });
+
+  it("serves grocery and walkability rasters under the area contract", async () => {
+    const gdir = await fixtureDir([{ lat: 59.44, lon: 24.75, a: 1 }], "grocery");
+    await writeFile(
+      join(gdir, "osm", "grocery-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 6, sigma: 0.3 })),
+    );
+    try {
+      const res = await loadLayerRaster("grocery", gdir);
+      expect(res.distance).toBe("walk");
+      expect(res.raster?.half).toBe(6);
+    } finally {
+      await rm(gdir, { recursive: true, force: true });
+    }
+    const wdir = await fixtureDir([{ lat: 59.44, lon: 24.75, a: 1 }], "walkability");
+    await writeFile(
+      join(wdir, "osm", "walkability-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 300, sigma: 0.2 })),
+    );
+    try {
+      expect((await loadLayerRaster("walkability", wdir)).distance).toBe("walk");
+    } finally {
+      await rm(wdir, { recursive: true, force: true });
+    }
+    // Stale grocery half: rejected.
+    const stale = await fixtureDir([{ lat: 59.44, lon: 24.75, a: 1 }], "grocery");
+    await writeFile(
+      join(stale, "osm", "grocery-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 3, sigma: 0.3 })),
+    );
+    try {
+      expect(await loadLayerRaster("grocery", stale)).toEqual({ raster: null, distance: "euclidean" });
+    } finally {
+      await rm(stale, { recursive: true, force: true });
+    }
+  });
+
+  it("falls back to euclidean when a raster is missing, corrupt, or stale", async () => {
+    const missing = await fixtureDir([{ lat: 59.44, lon: 24.75 }], "transit");
+    try {
+      expect(await loadLayerRaster("transit", missing)).toEqual({ raster: null, distance: "euclidean" });
+    } finally {
+      await rm(missing, { recursive: true, force: true });
+    }
+    const corrupt = await fixtureDir([{ lat: 59.44, lon: 24.75 }], "parks");
+    await writeFile(join(corrupt, "osm", "parks-walk-raster.json"), "{nope");
+    try {
+      expect(await loadLayerRaster("parks", corrupt)).toEqual({ raster: null, distance: "euclidean" });
+    } finally {
+      await rm(corrupt, { recursive: true, force: true });
+    }
+    // Stale calibration (half 500): rejected, never silently rendered.
+    const stale = await fixtureDir([{ lat: 59.44, lon: 24.75 }], "transit");
+    await writeFile(
+      join(stale, "osm", "transit-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 500, sigma: 0.2 })),
+    );
+    try {
+      expect(await loadLayerRaster("transit", stale)).toEqual({ raster: null, distance: "euclidean" });
+    } finally {
+      await rm(stale, { recursive: true, force: true });
+    }
+    // Wrong variety ladder on schools: rejected too.
+    const staleSchools = await fixtureDir([{ lat: 59.44, lon: 24.75 }], "schools");
+    await writeFile(
+      join(staleSchools, "osm", "schools-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: null, sigma: 0.8, per: 6, cap: 30 })),
+    );
+    try {
+      expect(await loadLayerRaster("schools", staleSchools)).toEqual({
+        raster: null,
+        distance: "euclidean",
+      });
+    } finally {
+      await rm(staleSchools, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("raster window serving", () => {
+  // Mini masters: metro 4x4 @ step 1 (bbox 0..4), county 2x2 @ step 2 same extent.
+  const metroMeta = (half: number, sigma: number) => ({
+    bbox: { minlon: 0, minlat: 0, maxlon: 4, maxlat: 4 },
+    step_m: 1,
+    cols: 4,
+    rows: 4,
+    half,
+    sigma,
+    per: 0,
+    cap: 0,
+    unknown: 255,
+    dtype: "uint8",
+  });
+  // Metro values: 90 at x<2, unknown (255) at x>=2.
+  const metroBytes = Buffer.from([90, 90, 255, 255, 80, 80, 255, 255, 70, 70, 255, 255, 60, 60, 255, 255]);
+  const countyDoc = (half: number, sigma: number) => ({
+    cols: 2,
+    rows: 2,
+    bbox: { minlon: 0, minlat: 0, maxlon: 4, maxlat: 4 },
+    step_m: 2,
+    half,
+    sigma,
+    per: 0,
+    cap: 0,
+    unknown: 255,
+    dtype: "uint8",
+    data: Buffer.from([11, 22, 33, 44]).toString("base64"),
+  });
+  const view = { minlon: 0, minlat: 0, maxlon: 4, maxlat: 4 };
+
+  async function fixtureWithMasters(layer: string, half: number, sigma: number) {
+    const dir = await fixtureDir([{ lat: 1, lon: 1, a: 1 }], layer);
+    await writeFile(join(dir, "osm", `${layer}-walk-raster.json`), JSON.stringify(countyDoc(half, sigma)));
+    await writeFile(join(dir, "osm", `${layer}-metro.json`), JSON.stringify(metroMeta(half, sigma)));
+    await writeFile(join(dir, "osm", `${layer}-metro.u8`), metroBytes);
+    return dir;
+  }
+
+  it("composites metro over county, falling back per cell", async () => {
+    const dir = await fixtureWithMasters("grocery", 6, 0.3);
+    try {
+      const win = await loadWindowRaster("grocery", view, 4, 4, dir);
+      expect(win).not.toBeNull();
+      const raw = Buffer.from(win!.data, "base64");
+      // West half reads metro (90/80/70/60 column for rows 0..3... row-major).
+      expect(raw[0]).toBe(90);
+      expect(raw[4]).toBe(80);
+      // East half metro-unknown falls back to county, bilinearly blended:
+      // x=2.5 mixes county 11/22 into (11*.1875+22*.5625)/.75 = 19.25 -> 19,
+      // x=3.5 sees only county 22 -> 22.
+      expect(raw[2]).toBe(19);
+      expect(raw[3]).toBe(22);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("serves county-only windows outside the metro extent", async () => {
+    const dir = await fixtureWithMasters("grocery", 6, 0.3);
+    try {
+      const win = await loadWindowRaster(
+        "grocery",
+        { minlon: 10, minlat: 10, maxlon: 12, maxlat: 12 },
+        2,
+        2,
+        dir,
+      );
+      expect(win).not.toBeNull();
+      expect(Buffer.from(win!.data, "base64").every((v) => v === 255)).toBe(true);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects stale masters and clamps grid sizes", async () => {
+    const dir = await fixtureWithMasters("grocery", 6, 0.3);
+    await writeFile(
+      join(dir, "osm", "grocery-metro.json"),
+      JSON.stringify(metroMeta(999, 0.3)),
+    );
+    try {
+      // Stale metro: county-only window still serves.
+      const win = await loadWindowRaster("grocery", view, 2, 2, dir);
+      expect(win).not.toBeNull();
+      expect(Buffer.from(win!.data, "base64")[0]).toBe(11);
+      // Absurd grid sizes clamp instead of exploding.
+      const big = await loadWindowRaster("grocery", view, 100000, 100000, dir);
+      expect(big!.cols).toBeLessThanOrEqual(512);
+      expect(big!.rows).toBeLessThanOrEqual(512);
+      // Garbage bbox reads null.
+      expect(await loadWindowRaster("grocery", { minlon: 5, minlat: 5, maxlon: 1, maxlat: 1 }, 4, 4, dir)).toBeNull();
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("hole filling", () => {
+  // County-only fixture (no metro files): 6x2 over 0..6/0..4, a 3-wide
+  // unknown gap between a 0-score west edge and a 100-score east edge.
+  // Window cells sit on exact county centers, so the gap survives the
+  // bilinear composite for the hole-fill to resolve two-sided.
+  async function gapFixture() {
+    const dir = await fixtureDir([{ lat: 1, lon: 1, a: 1 }], "grocery");
+    await writeFile(
+      join(dir, "osm", "grocery-walk-raster.json"),
+      JSON.stringify({
+        cols: 6,
+        rows: 2,
+        bbox: { minlon: 0, minlat: 0, maxlon: 6, maxlat: 4 },
+        step_m: 1,
+        half: 6,
+        sigma: 0.3,
+        per: 0,
+        cap: 0,
+        unknown: 255,
+        dtype: "uint8",
+        data: Buffer.from([0, 255, 255, 255, 255, 100, 0, 255, 255, 255, 255, 100]).toString("base64"),
+      }),
+    );
+    return dir;
+  }
+
+  it("fills holes with the distance-weighted average of surroundings", async () => {
+    const dir = await gapFixture();
+    try {
+      const win = await loadWindowRaster(
+        "grocery",
+        { minlon: 0, minlat: 0, maxlon: 6, maxlat: 4 },
+        6,
+        2,
+        dir,
+      );
+      expect(win).not.toBeNull();
+      const raw = Buffer.from(win!.data, "base64");
+      // Gap columns inherit from BOTH sides: strictly inside (0,100),
+      // rising west->east toward the 25/50/75 Laplace gradient.
+      expect(raw[1]).toBeGreaterThan(0);
+      expect(raw[1]).toBeLessThan(raw[2]);
+      expect(raw[2]).toBeLessThan(raw[3]);
+      expect(raw[3]).toBeLessThan(100);
+      const rowSum = raw[1] + raw[2] + raw[3];
+      expect(rowSum).toBeGreaterThan(140);
+      expect(rowSum).toBeLessThan(160);
+      expect(Array.from(raw).every((v) => v !== 255)).toBe(true);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("bilinear-blends county cells instead of snapping to blocks", async () => {
+    // County-only 2x2: west col 0, east col 100. A 1x1 window centered on
+    // the seam must read the average (50), not snap to a block (100).
+    const dir = await fixtureDir([{ lat: 1, lon: 1, a: 1 }], "grocery");
+    await writeFile(
+      join(dir, "osm", "grocery-walk-raster.json"),
+      JSON.stringify({
+        cols: 2,
+        rows: 2,
+        bbox: { minlon: 0, minlat: 0, maxlon: 4, maxlat: 4 },
+        step_m: 2,
+        half: 6,
+        sigma: 0.3,
+        per: 0,
+        cap: 0,
+        unknown: 255,
+        dtype: "uint8",
+        data: Buffer.from([0, 100, 0, 100]).toString("base64"),
+      }),
+    );
+    try {
+      const win = await loadWindowRaster("grocery", { minlon: 0, minlat: 0, maxlon: 4, maxlat: 4 }, 1, 1, dir);
+      expect(win).not.toBeNull();
+      expect(Buffer.from(win!.data, "base64")[0]).toBe(50);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("bilinear county blend skips unknown corners", async () => {
+    // Only diagonal corners known (0 and 100): renormalized blend is 50.
+    const dir = await fixtureDir([{ lat: 1, lon: 1, a: 1 }], "grocery");
+    await writeFile(
+      join(dir, "osm", "grocery-walk-raster.json"),
+      JSON.stringify({
+        cols: 2,
+        rows: 2,
+        bbox: { minlon: 0, minlat: 0, maxlon: 4, maxlat: 4 },
+        step_m: 2,
+        half: 6,
+        sigma: 0.3,
+        per: 0,
+        cap: 0,
+        unknown: 255,
+        dtype: "uint8",
+        data: Buffer.from([0, 255, 255, 100]).toString("base64"),
+      }),
+    );
+    try {
+      const win = await loadWindowRaster("grocery", { minlon: 0, minlat: 0, maxlon: 4, maxlat: 4 }, 1, 1, dir);
+      expect(win).not.toBeNull();
+      expect(Buffer.from(win!.data, "base64")[0]).toBe(50);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("fills near holes but leaves far unknown cells red", async () => {
+    const dir = await fixtureDir([{ lat: 1, lon: 1, a: 1 }], "grocery");
+    await writeFile(
+      join(dir, "osm", "grocery-walk-raster.json"),
+      JSON.stringify({
+        cols: 2,
+        rows: 2,
+        bbox: { minlon: 0, minlat: 0, maxlon: 4, maxlat: 4 },
+        step_m: 2,
+        half: 6,
+        sigma: 0.3,
+        per: 0,
+        cap: 0,
+        unknown: 255,
+        dtype: "uint8",
+        data: Buffer.from([50, 255, 255, 255]).toString("base64"),
+      }),
+    );
+    try {
+      // 400-wide strip: bilinear renormalizing extends the known 50 east
+      // to lon 3.0 (col 300); the 100-cell unknown run past that exceeds
+      // the 64-pass fill reach, so the far end stays red.
+      const win = await loadWindowRaster("grocery", { minlon: 0, minlat: 0, maxlon: 4, maxlat: 1 }, 400, 1, dir);
+      expect(win).not.toBeNull();
+      const raw = Buffer.from(win!.data, "base64");
+      expect(raw[300]).toBe(50);
+      expect(raw[399]).toBe(255);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("snapshot coverage", () => {
+  it("covers Harjumaa but not Tartu", () => {
+    // Balti jaam (Tallinn) is inside; Tartu is outside.
+    expect(
+      intersectsCoverage({ minlon: 24.7, minlat: 59.4, maxlon: 24.8, maxlat: 59.5 }),
+    ).toBe(true);
+    expect(
+      intersectsCoverage({ minlon: 26.6, minlat: 58.3, maxlon: 26.8, maxlat: 58.45 }),
+    ).toBe(false);
+    expect(SNAPSHOT_BBOX.minlon).toBeLessThan(SNAPSHOT_BBOX.maxlon);
+    expect(SNAPSHOT_BBOX.minlat).toBeLessThan(SNAPSHOT_BBOX.maxlat);
+  });
+});
