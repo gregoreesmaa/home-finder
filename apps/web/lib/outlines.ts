@@ -37,10 +37,39 @@ export function clearVectorOverlays(mapObj: OutlineMap): void {
   }
 }
 
-/** First label layer id, so markers stay readable under street names. */
-function beforeLabels(mapObj: OutlineMap): string | undefined {
+/**
+ * Insert after the LAST paint layer (fill/line/circle/heatmap/
+ * fill-extrusion/raster/background/hillshade), so markers sit above
+ * buildings and streets but below the label block and stay readable
+ * under street names. Basemap styles often put an early symbol layer
+ * under their fills — inserting before the FIRST symbol buries markers
+ * under buildings, which is the bug this replaces.
+ */
+const PAINT_TYPES: ReadonlySet<string> = new Set([
+  "fill",
+  "line",
+  "circle",
+  "heatmap",
+  "fill-extrusion",
+  "raster",
+  "background",
+  "hillshade",
+]);
+
+function abovePaint(mapObj: OutlineMap): string | undefined {
   const style = mapObj.getStyle() as { layers?: { id: string; type: string }[] } | null;
-  return style?.layers?.find((l) => l?.type === "symbol")?.id;
+  const layers = style?.layers;
+  if (!layers || layers.length === 0) return undefined;
+  let lastPaint = -1;
+  for (let i = 0; i < layers.length; i++) {
+    const l = layers[i];
+    if (l && typeof l.id === "string" && PAINT_TYPES.has(l.type)) lastPaint = i;
+  }
+  // No paint layers: bottom of the stack (under labels, above nothing).
+  if (lastPaint === -1) return layers[0] && typeof layers[0].id === "string" ? layers[0].id : undefined;
+  // Paint runs to the top: topmost.
+  const next = layers[lastPaint + 1];
+  return next && typeof next.id === "string" ? next.id : undefined;
 }
 
 /**
@@ -140,7 +169,7 @@ export function applyPointOverlay(
     500, 6,
     1500, 8,
   ];
-  const before = beforeLabels(mapObj);
+  const before = abovePaint(mapObj);
   mapObj.addLayer(
     {
       id: POINT_CASING,

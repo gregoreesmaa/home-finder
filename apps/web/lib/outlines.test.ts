@@ -126,6 +126,34 @@ describe("applyPointOverlay", () => {
     expect(map.beforeIds).toEqual(["label", "label"]);
   });
 
+  it("sits above buildings when an early symbol sits under the fills", () => {
+    const map = mockMap({
+      layers: [
+        { id: "early-poi", type: "symbol" },
+        { id: "building", type: "fill" },
+        { id: "road", type: "line" },
+        { id: "label", type: "symbol" },
+      ],
+    });
+    applyPointOverlay(map, [{ lon: 24.75, lat: 59.43 }], { color: "#1d4ed8" });
+    // Before the label block, NOT before the early symbol (that buries dots).
+    expect(map.beforeIds).toEqual(["label", "label"]);
+  });
+
+  it("goes topmost when paint runs to the top, bottom with paint-free styles", () => {
+    const top = mockMap({
+      layers: [
+        { id: "early-poi", type: "symbol" },
+        { id: "building", type: "fill" },
+      ],
+    });
+    applyPointOverlay(top, [{ lon: 24.75, lat: 59.43 }], { color: "#1d4ed8" });
+    expect(top.beforeIds).toEqual([undefined, undefined]);
+    const bare = mockMap({ layers: [{ id: "label", type: "symbol" }] });
+    applyPointOverlay(bare, [{ lon: 24.75, lat: 59.43 }], { color: "#1d4ed8" });
+    expect(bare.beforeIds).toEqual(["label", "label"]);
+  });
+
   it("shares one overlay slot with park outlines (never stacks)", () => {
     const map = mockMap();
     applyOutlines(map, [{ b: [24.7, 59.41, 24.71, 59.42], a: 6.4, r: [RING] }]);
