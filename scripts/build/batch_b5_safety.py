@@ -1,11 +1,17 @@
 """Build network walk-access rasters for Group 14 public-safety layers (batch B5).
 
 Usage (local 2026-09-12 snapshot ONLY — no network; inputs are local files):
-  # 1. Extract Batch-5 features from the snapshot PBF (osmium reads local data):
+  # 1. Extract Batch-5 features from the snapshot PBF (osmium reads local data).
+  # MUST be nwr/ (nodes+ways+relations): police/fire-station/hospital sites
+  # are usually mapped as building/area ways, and a node-only (n/) filter
+  # silently drops ~2/3 of stations (9 police nodes vs 30 objects, 9 fire
+  # nodes vs 49, 0 hospital nodes vs 25 — issue: missing stations on
+  # Turvalisus/Päästeteenistus maps). resolve_pois centroids every geometry
+  # and dedupe_points merges node+area pairs in ~20 m cells.
   osmium tags-filter ~/hf-data/2026-09-12/osm/harjumaa-260911.osm.pbf \\
-      n/emergency=fire_hydrant n/amenity=fire_station n/amenity=police \\
-      n/amenity=hospital -o /tmp/hf-b5-safety.pbf --overwrite
-  osmium export /tmp/hf-b5-safety.pbf -o /tmp/hf-b5-safety.geojson
+      nwr/emergency=fire_hydrant nwr/amenity=fire_station nwr/amenity=police \\
+      nwr/amenity=hospital -o /tmp/hf-b5-safety.pbf --overwrite
+  osmium export -u type_id /tmp/hf-b5-safety.pbf -o /tmp/hf-b5-safety.geojson
   osmium tags-filter ~/hf-data/2026-09-12/osm/harjumaa-260911.osm.pbf \\
       w/highway=motorway w/highway=trunk w/highway=primary \\
       -o /tmp/hf-b5-evac.pbf --overwrite
