@@ -120,6 +120,9 @@ export function overlayColorFor(layer: LayerId): string {
       return "#155e75";
     case "odorsrc":
       return "#713f12";
+    // Group G06 heritage layer (point overlay, stride-sampled).
+    case "heritage":
+      return "#7c2d12";
   }
 }
 
@@ -176,6 +179,10 @@ export function overlayLegendFor(layer: LayerId): string {
       return "Tööstusalad · kaugus lähima alani (hinnang, poolkaugus 500 m)";
     case "odorsrc":
       return "Reoveepuhastid ja prügilad · kaugus lähima allikani (hinnang, poolkaugus 500 m)";
+    // Group G06 heritage layer: nearby-POI count, saturating half from
+    // layers_group06.ts GROUP06_BONUS (same number as bonusSpecFor).
+    case "heritage":
+      return "Muinsusobjektid · lähedaste arv (hinnang, küllastus 2)";
   }
 }
 

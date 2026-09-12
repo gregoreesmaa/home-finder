@@ -45,6 +45,15 @@ import {
 // (new file, five documented no-map verdicts). That module imports
 // nothing, so no runtime cycle.
 import { GROUP02_UNMAPPED_PARAMS } from "./layers_group02";
+// G06-HOOK (#138): Group 6 heritage tables live in ./layers_group06
+// (new file). That module imports layers only as types, so no cycle.
+import type { Group06LayerId } from "./layers_group06";
+import {
+  GROUP06_DECAY,
+  GROUP06_DEFS,
+  GROUP06_TAGS,
+  bonusSpecForGroup06,
+} from "./layers_group06";
 
 export type LayerId =
   | "parks"
@@ -59,7 +68,9 @@ export type LayerId =
   // G07-HOOK (#140): Group 7 env-health ids (defined in ./layers_group07).
   | G07LayerId
   // B5-HOOK (#102): Group 14 public-safety ids (defined in ./layers_batch5).
-  | Batch5LayerId;
+  | Batch5LayerId
+  // G06-HOOK (#138): Group 6 heritage id (defined in ./layers_group06).
+  | Group06LayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -140,6 +151,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...G07_DECAY_KM,
   // B5-HOOK (#102): Group 14 radii (see layers_batch5.ts BATCH5_DECAY).
   ...BATCH5_DECAY,
+  // G06-HOOK (#138): Group 6 radius (see layers_group06.ts GROUP06_DECAY).
+  ...GROUP06_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -252,6 +265,8 @@ export const LAYERS: LayerDef[] = [
   ...G07_LAYERS,
   // B5-HOOK (#102): Group 14 defs (p13/p78/p315/p335/p467) from ./layers_batch5.
   ...BATCH5_DEFS,
+  // G06-HOOK (#138): Group 6 def (p72) from ./layers_group06.
+  ...GROUP06_DEFS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -277,6 +292,8 @@ const TAGS: Record<LayerId, string> = {
   ...G07_TAGS,
   // B5-HOOK (#102): Group 14 queries (see layers_batch5.ts BATCH5_TAGS).
   ...BATCH5_TAGS,
+  // G06-HOOK (#138): Group 6 query (see layers_group06.ts GROUP06_TAGS).
+  ...GROUP06_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -405,6 +422,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // B5-HOOK (#102): Group 14 specs live in ./layers_batch5.
   const b5 = bonusSpecForBatch5(layer);
   if (b5) return b5;
+  // G06-HOOK (#138): Group 6 spec lives in ./layers_group06.
+  const g06 = bonusSpecForGroup06(layer);
+  if (g06) return g06;
   throw new Error(`unknown layer: ${layer}`);
 }
 
