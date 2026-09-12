@@ -69,6 +69,17 @@ def test_lowspec_bands():
     assert dim_lowspec(TALLINN, [])[0] == 90
 
 
+def test_lowspec_extra_kinds_issue131():
+    # Turbines, quarries, motorsport and ranges rumble like industry.
+    for kind in ("wind_turbine", "quarry09b", "motorsport09b", "range09b"):
+        assert dim_lowspec(TALLINN, [poi(kind, 100)])[0] == 33
+        assert dim_lowspec(TALLINN, [poi(kind, 500)])[0] == 50
+    # Vibration stays ground-borne: the new classes do NOT vibrate it.
+    for kind in ("wind_turbine", "quarry09b", "motorsport09b", "range09b"):
+        assert dim_vibration(TALLINN, [poi(kind, 100)])[0] == 85
+    assert dim_lowspec(TALLINN, [])[1].startswith("Raskeliiklus")
+
+
 def test_flightcorr_bands():
     assert dim_flightcorr(TALLINN, [poi("runway", 500)])[0] == 33
     assert dim_flightcorr(TALLINN, [poi("runway", 1500)])[0] == 50
@@ -93,6 +104,17 @@ def test_kinds_from_tags():
     assert kinds_from_tags({"aeroway": "runway"}) == "runway"
     assert kinds_from_tags({"aeroway": "aerodrome"}) == "airfield"
     assert kinds_from_tags({"landuse": "industrial"}) == "industrial09b"
+    # Issue #131 rows: turbines/quarries/tracks/ranges map; heritage
+    # windmills, solar gensets and indoor shooting never do.
+    assert kinds_from_tags({"generator:source": "wind"}) == "wind_turbine"
+    assert kinds_from_tags({"generator:source": "solar"}) is None
+    assert kinds_from_tags({"man_made": "windmill"}) is None
+    assert kinds_from_tags({"landuse": "quarry"}) == "quarry09b"
+    assert kinds_from_tags({"sport": "motocross"}) == "motorsport09b"
+    assert kinds_from_tags({"sport": "karting"}) == "motorsport09b"
+    assert kinds_from_tags({"sport": "running"}) is None
+    assert kinds_from_tags({"military": "range"}) == "range09b"
+    assert kinds_from_tags({"sport": "shooting"}) is None
     assert kinds_from_tags({"amenity": "bar"}) is None
 
 
@@ -108,5 +130,10 @@ def test_fragment_uses_nwr():
     assert "nwr[\"railway\"" in G.GROUP09B_OVERPASS_FRAGMENT
     assert "nwr[\"aeroway\"" in G.GROUP09B_OVERPASS_FRAGMENT
     assert "nwr[\"landuse\"" in G.GROUP09B_OVERPASS_FRAGMENT
+    # Issue #131: the p408-only classes ship nwr/ live-path lines too.
+    assert "nwr[\"generator:source\"=\"wind\"]" in G.GROUP09B_OVERPASS_FRAGMENT
+    assert "nwr[\"landuse\"=\"quarry\"]" in G.GROUP09B_OVERPASS_FRAGMENT
+    assert "nwr[\"sport\"" in G.GROUP09B_OVERPASS_FRAGMENT
+    assert "nwr[\"military\"=\"range\"]" in G.GROUP09B_OVERPASS_FRAGMENT
     for line in G.GROUP09B_OVERPASS_FRAGMENT.strip().splitlines():
         assert line.strip().startswith("nwr["), line

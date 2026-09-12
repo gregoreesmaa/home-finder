@@ -4,7 +4,10 @@ Params (this agent only — sibling batches own disjoint sets):
 * p234 subterranean vibration (maavärina/vibratsiooni proksi (hinnang):
   rail/tram + heavy-road ground-vibration proximity)
 * p408 noise frequency sensitivity (madalsagedusliku müra proksi (hinnang):
-  heavy-spectrum road + rail + industry rumble proximity)
+  heavy-spectrum road + rail + industry rumble proximity, plus mapped
+  heavy outdoor sources from issue #131: wind turbines (53 nodes),
+  quarries (78 areas), motorsport tracks (56 objects) and military
+  shooting ranges (4 polygons))
 * p445 flight path seasonality (lennukoridori proksi (hinnang): Tallinn
   Airport runway-corridor exposure; seasonality itself is NOT in OSM)
 
@@ -27,6 +30,12 @@ p234 vs p301 vs p408 (deliberately distinct, documented judgment):
 * p408 scores the heavy-traffic SPECTRUM a frequency-sensitive person
   notices: motorway/trunk/primary + rail + industrial (half 500 m).
   It shares the half with p301 but adds the heavy-road spectrum.
+  Issue #131 extends p408 (NOT p234) with mapped heavy outdoor rumble:
+  wind_turbine + quarry09b + motorsport09b + range09b, same 500 m half.
+  p234 stays ground-borne-only (rail + heavy roads): turbines/quarries/
+  tracks/ranges are airborne rumble, not continuous ground vibration.
+  Deliberately unmapped: heritage man_made=windmill, solar/diesel
+  gensets, indoor sport=shooting (indoor/outdoor untaggable).
 
 p445 judgment calls: OSM carries no movement counts or seasonal
 schedules, so every runway counts equally within its length tier and
@@ -49,6 +58,17 @@ node-only would silently drop way-mapped carriageways); runways come
 from derived-aeroway.geojson (Tallinn 08/26 E-W runway + Ämari +
 grass strips, LineStrings + area twins).
 
+Tag verification for the issue #131 rows (2026-09-12, osmium against
+~/hf-data/2026-09-12/osm/harjumaa-260911.osm.pbf, NOT at runtime):
+generator:source=wind = 53 nodes + 0 ways (node-complete; the 4
+site=wind_farm relations group the same nodes); landuse=quarry = 74
+closed ways + 4 relations (78 areas); sport=motocross/karting = 53
+ways (40 motocross + 13 karting, 37 closed circuits + 16 open) + 3
+nodes; military=range = 4 ways (Männiku + 3). Zero-mapped (excluded):
+man_made=windmill is heritage, leisure=shooting_ground /
+sport=motorsport / man_made=mineshaft+adit are empty, indoor
+sport=shooting is indoor/outdoor-untaggable.
+
 Integration (deliberately NOT done here): extending livability.OVERPASS_QUERY
 with GROUP09B_OVERPASS_FRAGMENT, livability._POI_KIND with GROUP09B_POI_KIND,
 and rebalancing livability.WEIGHTS (+ apps/web/lib/weights.ts sync) must be
@@ -70,6 +90,10 @@ Score = Tuple[Optional[int], str]  # (score 0..100 | None, Estonian reason)
 # ---------------------------------------------------------------------------
 
 #: Extra (tagkey, {tagvalue: kind}) rows for livability._POI_KIND.
+#: Issue #131 rows (p408-only kinds): generator:source=wind are the 53
+#: mapped turbines (heritage man_made=windmill never maps here);
+#: landuse=quarry the 78 quarry areas; sport=motocross/karting the 56
+#: track objects; military=range the 4 outdoor range polygons.
 GROUP09B_POI_KIND = [
     ("highway", {"motorway": "heavy_road", "trunk": "heavy_road",
                  "primary": "heavy_road"}),
@@ -77,6 +101,11 @@ GROUP09B_POI_KIND = [
                  "narrow_gauge": "vibra_rail", "light_rail": "vibra_rail"}),
     ("aeroway", {"runway": "runway", "aerodrome": "airfield"}),
     ("landuse", {"industrial": "industrial09b"}),
+    ("generator:source", {"wind": "wind_turbine"}),
+    ("landuse", {"quarry": "quarry09b"}),
+    ("sport", {"motocross": "motorsport09b", "karting": "motorsport09b",
+               "motorsport": "motorsport09b"}),
+    ("military", {"range": "range09b"}),
 ]
 
 #: Lines to splice into livability.OVERPASS_QUERY's (...) union on integration.
@@ -84,7 +113,11 @@ GROUP09B_OVERPASS_FRAGMENT = """
   nwr["highway"~"motorway|trunk|primary"](around:2000,{lat},{lon});
   nwr["railway"~"rail|tram|narrow_gauge|light_rail"](around:2000,{lat},{lon});
   nwr["aeroway"~"runway|aerodrome"](around:8000,{lat},{lon});
-  nwr["landuse"="industrial"](around:2000,{lat},{lon});"""
+  nwr["landuse"="industrial"](around:2000,{lat},{lon});
+  nwr["generator:source"="wind"](around:2000,{lat},{lon});
+  nwr["landuse"="quarry"](around:2000,{lat},{lon});
+  nwr["sport"~"motocross|karting|motorsport"](around:2000,{lat},{lon});
+  nwr["military"="range"](around:2000,{lat},{lon});"""
 
 
 def kinds_from_tags(tags: dict) -> Optional[str]:
@@ -117,14 +150,20 @@ def dim_vibration(origin: Optional[Tuple[float, float]],
 # p408: heavy-spectrum rumble proxy (heavy roads + rail + industry, 500 m).
 # ---------------------------------------------------------------------------
 
+#: p408 rumble kinds: roads + rail + industry plus the issue #131
+#: heavy outdoor classes (turbines, quarries, motorsport, ranges).
+LOWSPEC_KINDS = {"heavy_road", "vibra_rail", "industrial09b",
+                 "wind_turbine", "quarry09b", "motorsport09b", "range09b"}
+
+
 def dim_lowspec(origin: Optional[Tuple[float, float]],
                 pois: Optional[List[dict]]) -> Score:
     """p408: calm from distance to heavy-spectrum rumble sources."""
     if not origin or pois is None:
         return None, "Madalasagedusliku müra info puudub (proksi)"
-    m = _nearest_m(origin, pois, {"heavy_road", "vibra_rail", "industrial09b"})
+    m = _nearest_m(origin, pois, LOWSPEC_KINDS)
     if m is None:
-        return 90, "Raskeliiklus/raudtee/tööstus kaugel (madalsagedusliku müra proksi (hinnang): rahulik)"
+        return 90, "Raskeliiklus/raudtee/tööstus/tuulik/karjäär kaugel (madalsagedusliku müra proksi (hinnang): rahulik)"
     s = _band(m, [(250, 33), (500, 50), (1000, 67)])
     assert s is not None
     return s, "Madalsagedusliku müra proksi (hinnang): lähim raskeallikas %s" % _fmt_m(m)

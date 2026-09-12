@@ -59,6 +59,18 @@ describe("genv layer registry", () => {
     expect(GENV_TAGS.vibration).toContain("rail");
     expect(GENV_TAGS.vibration).toContain("motorway");
     expect(GENV_TAGS.vibration).not.toContain("node[");
+    // Issue #131: lowspec covers the extra heavy-source classes with
+    // nwr/ filters (turbines are node-mapped today, the rest are
+    // way-mapped areas — node-only would drop them per PR #118).
+    expect(GENV_TAGS.lowspec).toContain('nwr["generator:source"="wind"]');
+    expect(GENV_TAGS.lowspec).toContain('nwr["landuse"="quarry"]');
+    expect(GENV_TAGS.lowspec).toContain("motocross");
+    expect(GENV_TAGS.lowspec).toContain('nwr["military"="range"]');
+    expect(GENV_TAGS.lowspec).not.toContain("windmill");
+    expect(GENV_TAGS.lowspec).not.toContain("node[");
+    // Vibration stays ground-borne only: no airborne-only sources.
+    expect(GENV_TAGS.vibration).not.toContain("generator");
+    expect(GENV_TAGS.vibration).not.toContain("quarry");
     expect(GENV_TAGS.flightcorr).toContain("aeroway");
     expect(GENV_TAGS.darksky).toContain("street_lamp");
     expect(GENV_TAGS.coolisland).toContain("building");
