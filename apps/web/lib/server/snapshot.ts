@@ -295,6 +295,12 @@ const RASTER_FILE: Record<LayerId, string> = {
   grocery: "grocery-walk-raster.json",
   healthcare: "healthcare-walk-raster.json",
   ...B1_RASTER_FILES, // B1-HOOK(#98)
+  // B5-HOOK (#102): Group 14 rasters (built by scripts/build/batch_b5_safety.py).
+  safety: "safety-walk-raster.json",
+  emergency: "emergency-walk-raster.json",
+  hydrants: "hydrants-walk-raster.json",
+  evac: "evac-walk-raster.json",
+  dispatch: "dispatch-walk-raster.json",
 };
 
 /**
@@ -362,6 +368,12 @@ const METRO_PREFIX: Record<LayerId, string> = {
   grocery: "grocery-metro",
   healthcare: "healthcare-metro",
   ...B1_METRO_PREFIXES, // B1-HOOK(#98)
+  // B5-HOOK (#102): Group 14 metro masters (optional; windows fall back to county).
+  safety: "safety-metro",
+  emergency: "emergency-metro",
+  hydrants: "hydrants-metro",
+  evac: "evac-metro",
+  dispatch: "dispatch-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

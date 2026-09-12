@@ -36,6 +36,12 @@ describe("layer registry", () => {
       "culture",
       "nightlife",
       "libraries",
+      // B5-HOOK (#102): Group 14 public-safety ids.
+      "safety",
+      "emergency",
+      "hydrants",
+      "evac",
+      "dispatch",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
