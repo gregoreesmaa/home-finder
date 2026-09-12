@@ -37,6 +37,15 @@
 //     builder, no join); darksky/coolisland are raster-only (lit +
 //     building points would be ~300k JSON — the raster is the path,
 //     demo fallbackPoints cover the degraded case honestly).
+//   batch_genv_exposure.py build_all (issue #131 lowspec hook,
+//     readers in scripts/build/batch_genv_noise_src.py):
+//       from batch_genv_noise_src import lowspec_extra_points
+//       extra, _ = lowspec_extra_points(snap)
+//       extra_pts = sum(extra.values(), [])
+//     then extend ONLY the lowspec Dijkstra + overlay union:
+//       d_low = dijkstra_km(grid, cells_of_points(grid,
+//           heavy_pts + rail_pts + ind_pts + extra_pts))
+//     (vibration sources unchanged by design — see module docstring).
 // No other shared file needs edits: the window route, fetchWindow and
 // the layers page are all generic over the registry.
 
@@ -94,7 +103,7 @@ export const GENV_LAYERS: GenvLayerDef[] = [
     title: "Madalsageduslik müra (proksi, hinnang)",
     goodLabel: "roheline = raskeliiklus/raudtee/tööstus kaugel (proksi)",
     badLabel: "punane = raskeallikas lähedal (proksi)",
-    source: `${SNAP} (rasketeed + raudtee + tööstusalad; PROKSI, mitte mõõdetud sagedusspekter)`,
+    source: `${SNAP} (rasketeed + raudtee + tööstus + 53 tuulikut + 78 karjääri + 56 motospordiobjekti + 4 lasketiiru; PROKSI, mitte mõõdetud sagedusspekter)`,
     fallbackPoints: [
       { lat: 59.4405, lon: 24.7369 }, // Balti jaam (raudtee + liiklus)
       { lat: 59.51, lon: 24.83 }, // Viimsi (raskeallikatest kaugel)
@@ -143,14 +152,22 @@ export const GENV_LAYERS: GenvLayerDef[] = [
  * snapshot builder consumes them offline — no live fetch in code/tests).
  * nwr/ everywhere ways/areas carry the feature (PR #118: node-only
  * silently drops way-mapped carriageways, runways, lit areas and
- * buildings). Secondary/tertiary streets are local distributors, not
- * heavy corridors; helipads are sporadic rotorcraft, not corridors.
+ * buildings). Turbines are the exception that proves the rule: all 53
+ * generator:source=wind objects are nodes (0 ways, verified by osmium),
+ * but the filter stays nwr/ so a future way-mapped farm is caught.
+ * Secondary/tertiary streets are local distributors, not heavy
+ * corridors; helipads are sporadic rotorcraft, not corridors.
+ * Deliberately NOT in lowspec: man_made=windmill (heritage monuments),
+ * generator:source=solar/diesel (silent/intermittent plant), indoor
+ * sport=shooting ranges (tags cannot tell indoor from outdoor —
+ * only outdoor military=range polygons count), mineshafts/adits and
+ * leisure=shooting_ground (0 mapped in the snapshot).
  */
 export const GENV_TAGS: Record<GenvLayerId, string> = {
   vibration:
     'nwr["railway"~"rail|tram|narrow_gauge|light_rail"];nwr["highway"~"motorway|trunk|primary"];',
   lowspec:
-    'nwr["highway"~"motorway|trunk|primary"];nwr["railway"~"rail|tram|narrow_gauge|light_rail"];nwr["landuse"="industrial"];',
+    'nwr["highway"~"motorway|trunk|primary"];nwr["railway"~"rail|tram|narrow_gauge|light_rail"];nwr["landuse"="industrial"];nwr["generator:source"="wind"];nwr["landuse"="quarry"];nwr["sport"~"motocross|karting|motorsport"];nwr["military"="range"];',
   flightcorr: 'nwr["aeroway"~"runway|aerodrome"];',
   darksky: 'nwr["lit"="yes"];n["highway"="street_lamp"];',
   coolisland: 'nwr["building"];',
