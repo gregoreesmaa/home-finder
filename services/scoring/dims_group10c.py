@@ -64,6 +64,21 @@ Judgment calls (reviewable per AGENTS.md section 7.5):
 * p265 scores nearest mapped broadcast radiator (antenna/radio/TV tags).
   Cellular masts are excluded even though many carry broadcast too —
   that keeps it disjoint from p51/p262; the reason says "ringhääling".
+  Aviation nav aids (airmark=beacon, e.g. airport ILS localizers) are
+  excluded: they are narrow-beam landing aids, not home broadcast
+  (OTA-spread research 2026-09-12: ~40 of 51 exported
+  antenna/radio/TV features are ILS beacons, collapsing to 6 of 17
+  derived-ota.json points — scoring them painted the airport
+  surroundings 100 for runway beams). Tallinna teletorn (the county's
+  dominant high-power DVB-T/FM site) maps as man_made=
+  communications_tower, so by the disjointness rule it scores as
+  telecom, never broadcast — the source set is small masts only.
+  Bands are therefore radio-horizon-order (10/20/30 km, soft 60
+  floor), never a tight proximity gradient: VHF/UHF reception from
+  30–100 m masts reaches tens of km, so any 1–5 km banding would be
+  fake precision. A gradient OTA map cannot be honestly built from
+  this source set (uniform real coverage → flat wash); p265 stays a
+  coarse per-listing proxy only.
 
 Integration (deliberately NOT done here): extending
 livability.OVERPASS_QUERY with GROUP10C_OVERPASS_FRAGMENT,
@@ -134,8 +149,11 @@ def _fmt_m(m: float) -> str:
 
 # ---------------------------------------------------------------------------
 # Live-path wiring: Overpass fragment + tag mapping.
-# Radii are judgment calls: broadcast antennas are sparse (5 km), telecom
-# masts mid-sparse (5 km search, 3 km redundancy count), water points
+# Radii are judgment calls: broadcast antennas are sparse (scorer
+# OTA_RADIUS_M is 30 km radio-horizon-order, but the fragment lines
+# below still query at 5 km — widening them belongs to the joint
+# integration change, see the OTA_RADIUS_M note), telecom masts
+# mid-sparse (5 km search, 3 km redundancy count), water points
 # mid-density (3 km), collection points dense (2 km).
 # Both node[...] and way[...] lines are required (nwr/ parity): collection
 # points and antennas are frequently way-mapped; node-only drops them.
@@ -177,9 +195,13 @@ def kinds_from_tags(tags: dict) -> Optional[str]:
     telecom by definition. Broadcast-aware: man_made=antenna, or any
     feature tagged communication:radio/television=yes, maps to
     "broadcast" (checked before the mast rule so a TV-tagged mast
-    scores as broadcast, not telecom).
+    scores as broadcast, not telecom). Aviation nav aids
+    (airmark=beacon — airport ILS localizers etc.) map to None even
+    when built as man_made=antenna: landing beams are not broadcast.
     """
     tags = tags or {}
+    if str(tags.get("airmark", "")).split(";")[0] == "beacon":
+        return None
     if (str(tags.get("communication:radio", "")).split(";")[0] == "yes"
             or str(tags.get("communication:television", "")).split(";")[0] == "yes"):
         return "broadcast"
@@ -298,8 +320,19 @@ def dim_redundancy(origin: Optional[Tuple[float, float]],
 # p265: over-the-air reception (mapped broadcast-mast proxy).
 # ---------------------------------------------------------------------------
 
-#: Broadcast-mast search radius in metres (sparse tier).
-OTA_RADIUS_M = 5000.0
+#: Broadcast-mast search radius in metres (sparse tier, radio-horizon
+#: order: VHF/UHF radio horizon d ≈ 4.12·(√h_tx + √h_rx) km gives
+#: ~36 km for a 30 m mast / ~45–55 km for 60–100 m masts at 10 m
+#: receive height — mapped heights where present are 30–100 m — so
+#: county-scale tens-of-km bands are the honest order of magnitude.
+#: NOTE for the integration follow-up: the live Overpass fragment above
+#: still queries antenna/radio/TV tags at around:5000; widening those
+#: lines toward ~30000 belongs to the joint hook change, otherwise the
+#: scorer reads the soft floor wherever the query window clips.
+#: A gradient OTA map layer is rejected (see module docstring): with an
+#: honest calibration the county reads near-flat, so p265 stays a
+#: coarse per-listing proxy only.
+OTA_RADIUS_M = 30000.0
 
 
 def dim_ota(origin: Optional[Tuple[float, float]],
@@ -309,9 +342,9 @@ def dim_ota(origin: Optional[Tuple[float, float]],
         return None, "Ringhäälinguinfo puudub"
     m = _nearest_m(origin, pois, {"broadcast"})
     if m is None or m > OTA_RADIUS_M:
-        return 40, ("Kaardistatud ringhäälingumasti 5 km raadiuses pole "
+        return 60, ("Kaardistatud ringhäälingumasti 30 km raadiuses pole "
                     "(OTA-hinnang, mitte mõõdetud väljatugevus)")
-    s = _band(m, [(1000, 100), (2000, 85), (3500, 70)])
+    s = _band(m, [(10000, 100), (20000, 85), (30000, 70)])
     return s, ("Lähim kaardistatud ringhäälingumast %s "
                "(OTA-hinnang, mitte mõõdetud väljatugevus)") % _fmt_m(m)
 
