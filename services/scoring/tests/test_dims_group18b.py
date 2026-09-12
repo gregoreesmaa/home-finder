@@ -1,155 +1,145 @@
-"""Group 18B green-blue/street dims (issue #126): hermetic scorer tests.
+"""Hermetic unit tests for Group 18b environmental-exposure dims (issue #124).
 
-No network, no snapshot reads: scorers run on fixture POIs, the query
-fragment is asserted as text, and tag mapping runs on static tag dicts.
-Run: python3 -m pytest services/scoring/tests/test_dims_group18b.py -q
+No network, no snapshot: all POIs are synthetic. Run from repo root:
+  python3 -m pytest services/scoring/tests/test_dims_group18b.py -q
 """
 
-import dims_group18b as g18b
+import dims_group18b as G
 from dims_group18b import (
-    GROUP18B_DIMS,
-    GROUP18B_OVERPASS_FRAGMENT,
-    LAYER_META,
-    dim_heat,
-    dim_visibility,
+    _count_cells_within_m,
+    dim_coolisland,
+    dim_darksky,
     kinds_from_tags,
     score_group18b,
 )
 
-TALLINN = (59.4372, 24.7536)
+TALLINN = (59.4372, 24.7536)  # city centre reference origin
 
 
-def _poi(kind, dlat, dlon=0.0):
-    return {"kind": kind, "lat": TALLINN[0] + dlat, "lon": TALLINN[1] + dlon}
+def poi(kind, metres_north, lon_off=0.0):
+    """Synthetic POI `metres_north` metres north of TALLINN."""
+    return {"kind": kind, "lat": TALLINN[0] + metres_north / 111320.0,
+            "lon": TALLINN[1] + lon_off}
 
 
-# ~100 m park, ~200 m forest, ~450 m street, ~2.2 km water.
-POIS = [
-    _poi("park", 0.0009),
-    _poi("forest", 0.0018),
-    _poi("street", 0.004),
-    _poi("water", 0.02),
-]
+def test_none_when_missing():
+    for fn in (dim_darksky, dim_coolisland):
+        assert fn(None, [])[0] is None
+        assert fn(TALLINN, None)[0] is None
+        assert fn(None, None)[0] is None
+    dims, reasons = score_group18b(None, None)
+    assert set(dims) == {"darksky", "coolisland"}
+    assert all(v is None for v in dims.values())
+    assert reasons == []
 
 
-# --- tag mapping ----------------------------------------------------------
+def test_reasons_honest():
+    # proksi/(hinnang) everywhere; magnitudes/Celsius/Bortle nowhere.
+    _, reasons = score_group18b(
+        TALLINN, [poi("lit_area", 100), poi("building", 100)])
+    assert len(reasons) == 2
+    for r in reasons:
+        assert "proksi" in r
+        assert "(hinnang" in r
+        for bad in ("magnituud", "Bortle", "°C", "Celsius", "dB"):
+            assert bad not in r
+    for fn in (dim_darksky, dim_coolisland):
+        assert "proksi" in fn(None, None)[1]
 
 
-def test_kinds_highway_corridors():
-    assert kinds_from_tags({"highway": "residential"}) == "street"
-    assert kinds_from_tags({"highway": "primary"}) == "street"
-    assert kinds_from_tags({"highway": "footway"}) == "street"
-    assert kinds_from_tags({"highway": "service"}) == "street"
-    assert kinds_from_tags({"highway": "tertiary_link"}) == "street"
-    assert kinds_from_tags({"highway": "busway"}) == "street"
+def spread(kind, n, step_m=21.0):
+    """n POIs on a step_m grid centred at TALLINN (one 20 m cell each)."""
+    import math
+    side = int(math.ceil(math.sqrt(n)))
+    pts = []
+    for i in range(n):
+        dx = (i % side - side // 2) * step_m
+        dy = (i // side - side // 2) * step_m
+        pts.append({"kind": kind,
+                    "lat": TALLINN[0] + dy / 111320.0,
+                    "lon": TALLINN[1] + dx / (111320.0 * math.cos(math.radians(TALLINN[0])))})
+    return pts
 
 
-def test_kinds_exclude_stops_and_unbuilt():
-    assert kinds_from_tags({"highway": "bus_stop"}) is None
-    assert kinds_from_tags({"highway": "proposed"}) is None
-    assert kinds_from_tags({"highway": "construction"}) is None
+def test_darksky_density():
+    # DARK_HALF = 200 cells/400 m: 200 -> 50 (grids self-check the count).
+    for n in (200, 570, 114):
+        pts = spread("lit_area", n)
+        assert _count_cells_within_m(TALLINN, pts, {"lit_area", "streetlamp"}, 400.0) == n
+    assert dim_darksky(TALLINN, spread("lit_area", 200))[0] == 50
+    # Street lamps share the kind set.
+    assert dim_darksky(TALLINN, spread("streetlamp", 200))[0] == 50
+    # Snapshot scale: Balti ~570 cells -> ~26, Nomme ~114 -> ~64.
+    assert dim_darksky(TALLINN, spread("lit_area", 570))[0] == 26
+    assert dim_darksky(TALLINN, spread("lit_area", 114))[0] == 64
+    # Empty 400 m window IS dark evidence (lamp influence is short-range).
+    assert dim_darksky(TALLINN, [])[0] == 100
+    # Monotone: more lamps never darken.
+    prev = 100
+    for n in (1, 10, 50, 200, 600):
+        s = dim_darksky(TALLINN, spread("lit_area", n))[0]
+        assert s <= prev
+        prev = s
 
 
-def test_kinds_exclude_node_furniture():
-    # A stray node POI must never pose as a corridor.
-    assert kinds_from_tags({"highway": "crossing"}) is None
-    assert kinds_from_tags({"highway": "traffic_signals"}) is None
-    assert kinds_from_tags({"highway": "elevator"}) is None
-    assert kinds_from_tags({"highway": "street_lamp"}) is None
+def test_twin_dedupe():
+    # A lit node sitting exactly on a lit way (same 20 m cell) counts once.
+    dup = [poi("lit_area", 100), poi("streetlamp", 100)]
+    assert _count_cells_within_m(TALLINN, dup, {"lit_area", "streetlamp"}, 400.0) == 1
+    assert dim_darksky(TALLINN, dup)[0] == dim_darksky(TALLINN, [poi("lit_area", 100)])[0]
+    # ...but two lamps 100 m apart count twice.
+    two = [poi("lit_area", 100), poi("lit_area", 200)]
+    assert _count_cells_within_m(TALLINN, two, {"lit_area", "streetlamp"}, 400.0) == 2
 
 
-def test_kinds_reject_garbage():
-    assert kinds_from_tags({}) is None
-    assert kinds_from_tags(None) is None
-    assert kinds_from_tags("highway=residential") is None
-    assert kinds_from_tags({"highway": 42}) is None
-    assert kinds_from_tags({"natural": "wood"}) is None  # forest leg is livability's
+def test_coolisland_density():
+    # COOL_HALF = 50 buildings/250 m: 50 -> 50; absence caps at 90
+    # (heat carries past the window, unlike lamplight).
+    assert dim_coolisland(TALLINN, [poi("building", 100) for _ in range(50)])[0] == 50
+    assert dim_coolisland(TALLINN, [])[0] == 90
+    # One nearby shed can never beat an open field (formula caps at 90).
+    assert dim_coolisland(TALLINN, [poi("building", 100)])[0] == 90
+    # Snapshot scale: Balti ~60 buildings -> 45, Nomme sprawl ~187 -> 21.
+    assert dim_coolisland(TALLINN, [poi("building", 100) for _ in range(60)])[0] == 45
+    assert dim_coolisland(TALLINN, [poi("building", 100) for _ in range(187)])[0] == 21
 
 
-# --- p113 -----------------------------------------------------------------
+def test_coolisland_green_ramp():
+    base = dim_coolisland(TALLINN, [poi("building", 100) for _ in range(50)])[0]
+    assert base == 50
+    # Mapped park next door cools: +8 at 0 m...
+    s, reason = dim_coolisland(
+        TALLINN, [poi("building", 100) for _ in range(50)] + [poi("park", 10)])
+    assert s == 58
+    assert "haljasala" in reason
+    # ...fading to +0 at 500 m; unmapped green never punishes.
+    s2, _ = dim_coolisland(
+        TALLINN, [poi("building", 100) for _ in range(50)] + [poi("park", 600)])
+    assert s2 == 50
+    # Cap: open field + adjacent park reads 98, never above the honest cap.
+    s3, _ = dim_coolisland(TALLINN, [poi("forest", 10)])
+    assert s3 == 98
 
 
-def test_heat_near_green_scores_top_with_honest_reason():
-    v, reason = dim_heat(TALLINN, POIS)  # park ~100 m wins over forest ~200 m
-    assert v == 95
-    assert "hinnang" in reason and "mitte mõõdetud temperatuur" in reason
+def test_kinds_from_tags():
+    assert kinds_from_tags({"lit": "yes"}) == "lit_area"
+    assert kinds_from_tags({"lit": "no"}) is None
+    assert kinds_from_tags({"highway": "street_lamp"}) == "streetlamp"
+    # building=* is open vocabulary: any value but "no" counts.
+    assert kinds_from_tags({"building": "yes"}) == "building"
+    assert kinds_from_tags({"building": "apartments"}) == "building"
+    assert kinds_from_tags({"building": "shed"}) == "building"
+    assert kinds_from_tags({"building": "no"}) is None
+    assert kinds_from_tags({"amenity": "school"}) is None
 
 
-def test_heat_bands_and_far_fallback():
-    assert dim_heat(TALLINN, [_poi("forest", 0.0036)])[0] == 65  # ~400 m
-    assert dim_heat(TALLINN, [_poi("water", 0.008)])[0] == 50  # ~890 m
-    v, reason = dim_heat(TALLINN, [_poi("school", 0.001)])
-    assert v == 30
-    assert "1,5 km" in reason
+def test_param_ids():
+    assert G.GROUP18B_PARAM_IDS == {"darksky": 63, "coolisland": 181}
+    assert set(G.GROUP18B_DIMS) == set(G.GROUP18B_PARAM_IDS)
 
 
-def test_heat_missing_inputs_stay_none():
-    assert dim_heat(None, POIS)[0] is None
-    assert dim_heat(TALLINN, None)[0] is None
-    assert "puudub" in dim_heat(None, POIS)[1]
-
-
-# --- p411 -----------------------------------------------------------------
-
-
-def test_visibility_open_frontage_scores_high():
-    v, reason = dim_visibility(TALLINN, [_poi("street", 0.0012)])  # ~133 m
-    assert v == 75
-    assert "hinnang" in reason
-
-
-def test_visibility_distant_forest_does_not_penalise():
-    v, reason = dim_visibility(TALLINN, POIS)  # street ~450 m + forest ~200 m
-    assert v == 45  # base 45, forest at 200 m is outside the 150 m penalty
-    assert "hinnang" in reason
-
-
-def test_visibility_enclosed_penalty_applies():
-    pois = [_poi("street", 0.0012), _poi("forest", 0.0008)]  # ~133 m + ~89 m
-    v, reason = dim_visibility(TALLINN, pois)
-    assert v == 65  # base 75 - 10
-    assert "puude varjus" in reason
-
-
-def test_visibility_remote_or_unmapped_is_low():
-    v, reason = dim_visibility(TALLINN, [_poi("street", 0.0054)])  # ~600 m
-    assert v == 25
-    assert "hinnang" in reason
-    v2, _ = dim_visibility(TALLINN, [_poi("school", 0.001)])
-    assert v2 == 25
-
-
-def test_visibility_missing_inputs_stay_none():
-    assert dim_visibility(None, POIS)[0] is None
-    assert dim_visibility(TALLINN, None)[0] is None
-    assert "puudub" in dim_visibility(None, POIS)[1]
-
-
-# --- registry + wiring ----------------------------------------------------
-
-
-def test_score_group18b_keys_and_range():
-    out = score_group18b(TALLINN, POIS)
-    assert sorted(out) == ["heat", "visibility"]
-    assert all(v is None or 0 <= v <= 100 for v in out.values())
-    assert {k for k, _, _ in GROUP18B_DIMS} == set(out)
-    assert score_group18b(None, None) == {k: None for k in out}
-
-
-def test_fragment_lists_highway_ways():
-    assert 'way["highway"]' in GROUP18B_OVERPASS_FRAGMENT
-    assert "{lat}" in GROUP18B_OVERPASS_FRAGMENT and "{lon}" in GROUP18B_OVERPASS_FRAGMENT
-
-
-def test_layer_meta_is_honest():
-    assert "hinnang" in LAYER_META["heat"]["title"]
-    assert "mitte mõõdetud temperatuur" in LAYER_META["heat"]["source"]
-    assert "hinnang" in LAYER_META["visibility"]["title"]
-    params = sorted(m["param"] for m in LAYER_META.values())
-    assert params == [113, 411]
-
-
-def test_module_exports_two_dims():
-    assert len(GROUP18B_DIMS) == 2
-    assert [pid for _, pid, _ in GROUP18B_DIMS] == ["p113", "p411"]
-    assert g18b is not None
+def test_fragment_uses_nwr():
+    # PR #118: lit features and buildings are way-mapped; lamps are nodes.
+    assert "nwr[\"lit\"" in G.GROUP18B_OVERPASS_FRAGMENT
+    assert "nwr[\"building\"" in G.GROUP18B_OVERPASS_FRAGMENT
+    assert "node[\"highway\"=\"street_lamp\"]" in G.GROUP18B_OVERPASS_FRAGMENT

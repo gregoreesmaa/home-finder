@@ -1,271 +1,193 @@
-"""Group 18 green-blue/street dimensions batch B (issue #126): p113/p411.
+"""Group 18 leftover dimensions: batch GENV (issue #124).
 
-Params (this agent only — sibling batches own disjoint sets; Group 18 is
-parameters3.md section 5.18, Maa-amet 3D/LiDAR + PVLib + Sentinel/Landsat
-primaries re-derived here from OSM tags because the Group 18 primaries
-carry no street-frontage or shade/cooling signal at listing scale; PR
-#115 owns p82/p83/p166/p350/p441 in dims_group18.py):
-* p113 extreme heat adaptation (green-blue cooling PROXY)
-* p411 street-level visibility (road-frontage + enclosure PROXY)
+Params (this agent only — sibling batches own disjoint sets):
+* p63  light pollution (valgusreostuse proksi (hinnang): lit=yes +
+  street_lamp density -> dark-sky score)
+* p181 urban heat island effect (kuumasaare proksi (hinnang): building
+  density + mapped-green cooling ramp -> cool-island score)
 
-HONESTY (AGENTS.md section 7.2): no thermal imagery, no 3D ray-tracing
-and no measured temperatures are in the snapshot, so p113 is a
-green-blue proximity proxy (closer cooling shade/evaporation -> higher),
-and p411 is a mapped-street-frontage proxy (mapped street near + not
-tree-enclosed -> higher). Every reason says "hinnang" (estimate);
-p113 reasons additionally say "mitte mõõdetud temperatuur" (not measured
-temperature). LAYER_META below carries the same labels for the future web
-layer (title/legend/source).
+HONESTY (load-bearing, AGENTS.md §7.2): NOAA/NASA VIIRS nighttime-lights
+radiance and Landsat thermal UHI mapping are NOT in the 2026-09-12
+snapshot, so neither dim reports magnitudes, Bortle classes, or degrees.
+Both scorers are OSM PROXIMITY/DENSITY proxies: high score = dark/cool
+(green), low score = lit/sealed (red). Every non-None reason says
+"proksi (hinnang)"; no reason mentions magnitudes or Celsius. Unknown
+(origin or POI list missing) stays None — never a faked number.
 
-p113 bands (nearest park|forest|water|beach, metres): <=150: 95,
-<=300: 80, <=500: 65, <=1000: 50, else 30. No green-blue kind in range ->
-30 (beyond the 1.5 km live fetch that is genuinely far, not unknown).
-p411 base bands (nearest mapped street, metres): <=50: 90, <=150: 75,
-<=300: 60, <=500: 45, else 25; dense wood within 150 m -> -10 (limited
-sightlines, "puude varjus" note in the reason), floor 5. No street kind
-in range -> 25. Judgment calls, documented here and in the PR notes:
-* p113 reuses livability's existing kinds (park/forest/water/beach), so
-  no new fetch is needed for it — same precedent as p88 reusing bus_stop
-  in PR #101 and p441 reusing school in PR #115.
-* p411 reads ONLY highway way-centers ("street" kind): a mapped corridor
-  is the frontage signal. highway=bus_stop is excluded (a stop, not a
-  street), as are proposed/construction (not yet streets).
-* p411 ignores water adjacency: waterfront openness belongs to window
-  views (p132, another batch's scope), not street visibility.
+Claim widths (deliberate): the live scorer sees only tagged POIs, so
+* p63 counts mapped light sources (lit=yes tags + street lamps) — new
+  lamps mapped tomorrow change the score, unmapped lamps are invisible;
+  the reason says "kaardistatud valgusallikas".
+* p181 counts mapped buildings (sealed-footprint proxy) plus the
+  mapped-green cooling ramp; the raster refines this with the full
+  road graph (car-graph vertices are not live POIs). The reason says
+  "hoonestustiheduse proksi".
+Unmapped darkness/greenery never punishes: absence in-window reads as
+dark/cool evidence, capped conservatively below 100 (the county raster,
+which sees the full snapshot, scores true absence up to 100).
 
-Style mirrors services/scoring/livability.py: pure scorers,
-(origin, pois) -> (Optional[int 0..100], Estonian reason). Network lives
-only in livability.fetch_pois; this module adds no network calls, only
-the query fragment + tag mapping the live path needs.
+Style mirrors services/scoring/livability.py: pure (origin, pois) ->
+(Optional[int 0..100], Estonian reason), absolute scales, hermetic
+tests. Network lives only in livability.fetch_pois; this module adds no
+network calls, only the query fragment + tag mapping the live path needs.
 
-Helpers are local copies (not imported from livability): a future central
-hook may import this module from livability.py, and importing livability
-here would turn that into a cycle (same precedent as PRs #100/#106/#115).
+Tag verification (2026-09-12 snapshot, done once by the author, NOT at
+runtime): lit=yes x119712 nodes + x25991 ways and highway=street_lamp
+x29473 nodes in harjumaa-260911.osm.pbf (nwr/ filter — PR #118);
+building=* x252589 ways (+236 relations; building-tagged NODES are
+entrances/parts, excluded — see builder). Green kinds (park/forest)
+come from the BASE query (no new fetch).
 
-Tag verification (2026-09-12, done once by the author with osmium against
-~/hf-data/2026-09-12/osm/harjumaa-260911.osm.pbf, NOT at runtime):
-* natural=water: 4645 ways + 170 relations; natural=wood: 4097 ways +
-  106 relations; leisure=park: 7043 nodes + 310 ways + 12 relations;
-  landuse=grass: 20833 ways, meadow: 1799 ways, village_green: 47 ways;
-  leisure=garden: 2531 ways (all nwr/ — node-only extraction would drop
-  thousands of cooling polygons, PR #118 rule).
-* highway ways: 127777 (p411 corridor source); lit ways: 30878 (NOT
-  used here — lit belongs to p350 in PR #115, kept disjoint).
-
-Way geometries need centroid handling (extraction side, staged here as
-documented convention): polygon bbox-center / LineString midpoint, the
-same three cases as batch_b4_common.feature_point. Residual twin risk
-(PR #118): large water/wood polygons export node+area duplicates; both
-scorers below are nearest-only (p411's wood leg is a capped boolean
-penalty, not a count), hence twin-immune — a future count/kernel builder
-MUST dedupe first.
-
-Delivery (stated per the task brief): scorer dims ONLY, no raster masters.
-Why: (1) these dims are way-geometry (corridors/areas), not the
-point-kernel shape the walk-raster pipeline stamps — corridor rasters
-need a new length-weighted builder, not a reuse (same finding as PR
-#115); (2) county+metro masters mean full-Harjumaa stamp runs plus hook
-edits to layers.ts/snapshot.ts, which collide with open sibling PRs;
-(3) the repo precedent (PRs #101/#106/#115) is scorer-first with one
-central integration later. LAYER_META below stages the honest web labels.
-
-Integration (deliberately NOT done here): extending
-livability.OVERPASS_QUERY with GROUP18B_OVERPASS_FRAGMENT, routing
-highway tags through kinds_from_tags in livability._POI_KIND (value-split
-tags need kinds_from_tags — the static table alone cannot exclude
-bus_stop/proposed/construction), and rebalancing livability.WEIGHTS must
-be one joint change across all parameter batches — existing tests pin
-set(WEIGHTS) exactly, so per-batch WEIGHTS edits would break every
-sibling.
+Integration (deliberately NOT done here): extending livability.OVERPASS_QUERY
+with GROUP18B_OVERPASS_FRAGMENT, livability._POI_KIND with GROUP18B_POI_KIND,
+and rebalancing livability.WEIGHTS (+ apps/web/lib/weights.ts sync) must be
+one joint change across all parameter batches — existing tests pin
+set(WEIGHTS) exactly, so per-batch WEIGHTS edits would break every sibling.
 """
 
-import math
-from typing import Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
+
+from livability import _count_within_m, _nearest_m
 
 Score = Tuple[Optional[int], str]  # (score 0..100 | None, Estonian reason)
 
 # ---------------------------------------------------------------------------
-# Local pure helpers (livability-shaped; see module docstring for why local).
+# New POI kinds + Overpass fragment for the live path.
+# nwr/ filters (PR #118): lit features and buildings are usually mapped
+# as ways/areas — node-only would silently drop them. "out center"
+# already returns way centroids for the live path; the builder resolves
+# centroids offline the same way.
 # ---------------------------------------------------------------------------
 
-def _haversine_m(origin: Tuple[float, float], lat: float, lon: float) -> float:
-    """Great-circle distance in metres."""
-    r = 6371000.0
-    la1, lo1, la2, lo2 = map(math.radians, (origin[0], origin[1], lat, lon))
-    h = math.sin((la2 - la1) / 2) ** 2 + math.cos(la1) * math.cos(la2) * math.sin(
-        (lo2 - lo1) / 2
-    ) ** 2
-    return 2 * r * math.asin(math.sqrt(h))
-
-
-def _band(value: Optional[float], bands: List[Tuple[float, int]]) -> Optional[int]:
-    """First score whose threshold covers the value; None stays None."""
-    if value is None:
-        return None
-    for limit, pts in bands:
-        if value <= limit:
-            return pts
-    return bands[-1][1]
-
-
-def _nearest_m(origin: Tuple[float, float], pois: List[dict], kinds: set) -> Optional[float]:
-    best: Optional[float] = None
-    for p in pois:
-        if p.get("kind") in kinds and p.get("lat") is not None:
-            d = _haversine_m(origin, p["lat"], p["lon"])
-            if best is None or d < best:
-                best = d
-    return best
-
-
-def _fmt_m(m: float) -> str:
-    return "%d m" % int(round(m)) if m < 1000 else "~%.1f km" % (m / 1000.0)
-
-
-#: livability kinds reused as the green-blue cooling signal (no new fetch).
-COOL_KINDS = {"park", "forest", "water", "beach"}
-
-#: p113 bands: nearest cooling green-blue (higher = nearer).
-COOL_BANDS = [(150, 95), (300, 80), (500, 65), (1000, 50), (float("inf"), 30)]
-
-#: p411 bands: nearest mapped street (higher = nearer frontage).
-STREET_BANDS = [(50, 90), (150, 75), (300, 60), (500, 45), (float("inf"), 25)]
-
-#: Dense wood inside this radius limits sightlines (p411 penalty, metres).
-ENCLOSE_M = 150.0
-#: Sightline penalty points when tree-enclosed.
-ENCLOSE_PENALTY = 10
-
-
-# ---------------------------------------------------------------------------
-# Live-path wiring: Overpass fragment + tag mapping.
-# The p113 cool legs reuse livability's existing query; only the highway
-# corridor fragment is new. highway=* is value-split (bus_stop, proposed
-# and construction must NOT read as streets), so the central hook must
-# route highway tags through kinds_from_tags below — the static
-# _POI_KIND table alone cannot express the exclusions (same precedent as
-# maxspeed tiers / lit variants in PR #115).
-# ---------------------------------------------------------------------------
+#: Extra (tagkey, {tagvalue: kind}) rows for livability._POI_KIND.
+GROUP18B_POI_KIND = [
+    ("lit", {"yes": "lit_area"}),
+    ("highway", {"street_lamp": "streetlamp"}),
+    # building=* is open vocabulary (yes/house/apartments/...): any value
+    # maps to "building" via kinds_from_tags below, not via this table.
+]
 
 #: Lines to splice into livability.OVERPASS_QUERY's (...) union on integration.
 GROUP18B_OVERPASS_FRAGMENT = """
-  way["highway"](around:1500,{lat},{lon});"""
+  nwr["lit"="yes"](around:400,{lat},{lon});
+  node["highway"="street_lamp"](around:400,{lat},{lon});
+  nwr["building"](around:300,{lat},{lon});"""
 
-#: Linear highway=* values that read as street corridors. Grounded in the
-#: 2026-09-12 Nõmme window (footway 2355, service 1576, path 813,
-#: residential 528, living_street 198, tertiary 193, secondary 183,
-#: cycleway 175, track 110, steps 108, trunk 59, unclassified 51,
-#: pedestrian 11, links, busway 2) plus the standard link/road/raceway set.
-#: *_link values match via suffix so every graded link is covered.
-STREET_HIGHWAY = frozenset({
-    "motorway", "trunk", "primary", "secondary", "tertiary",
-    "unclassified", "residential", "living_street", "service",
-    "pedestrian", "track", "footway", "bridleway", "steps", "path",
-    "cycleway", "busway", "road", "raceway", "corridor", "via_ferrata",
-})
+#: Density halves: score = 100*H/(n+H), n = sources in window.
+#: Locked 2026-09-12 from snapshot probes (buildings = area-assembly
+#: centroids only, 252140 county-wide; lit = 20 m dedupe cells, 74798
+#: county-wide; witness table in scripts/build/batch_genv_exposure.py).
+DARK_HALF = 200.0   # lit 20 m cells / 400 m: Balti 570 -> 26, Nomme 114 -> 64
+COOL_HALF = 50.0    # buildings / 250 m: Balti 60 -> 45, Nomme 187 -> 21
+COOL_BONUS = 8.0    # mapped-green cooling ramp, mirrors raster builder
+COOL_RANGE_M = 500.0
+
+
+def _count_cells_within_m(origin: Tuple[float, float], pois: List[dict],
+                           kinds: set, radius_m: float, cell_m: float = 20.0) -> int:
+    """Distinct ~cell_m location cells within radius (node+area twin guard).
+
+    Lit tags twin: a lit=yes node (stop, signal) sitting on a lit=yes way
+    would otherwise count twice for one lamp row (PR #118 family). The
+    raster builder dedupes the same way before stamping.
+    """
+    from livability import haversine_km
+    seen = set()
+    for p in pois or []:
+        if p.get("kind") in kinds and p.get("lat") is not None:
+            if haversine_km(origin, (p["lat"], p["lon"])) * 1000.0 <= radius_m:
+                seen.add((round(p["lon"] * 57.29 * 1000 / cell_m),
+                          round(p["lat"] * 110.57 * 1000 / cell_m)))
+    return len(seen)
 
 
 def kinds_from_tags(tags: dict) -> Optional[str]:
-    """First Group 18B kind matching the OSM tags, else None. Pure.
-
-    Only linear corridor values read as "street": point furniture
-    (crossing, traffic_signals, bus_stop ...), verticals (elevator) and
-    not-yet streets (proposed, construction) never match, so a stray node
-    POI cannot pose as a corridor. The live fragment fetches way["highway"]
-    only, so way-centroid handling (see module docstring) feeds this.
-    """
-    if not isinstance(tags, dict):
-        return None
-    hw = tags.get("highway", "")
-    hw = hw.split(";")[0].strip() if isinstance(hw, str) else ""
-    if not hw:
-        return None
-    if hw in STREET_HIGHWAY or hw.endswith("_link"):
-        return "street"
+    """First Group 18b kind matching the OSM tags, else None. Pure."""
+    for tagkey, mapping in GROUP18B_POI_KIND:
+        val = (tags or {}).get(tagkey, "").split(";")[0]
+        if val in mapping:
+            return mapping[val]
+    # building=* is open vocabulary: any value (except explicit "no")
+    # is a sealed footprint.
+    b = (tags or {}).get("building", "").split(";")[0]
+    if b and b != "no":
+        return "building"
     return None
 
 
+def _density(half: float, n: int) -> int:
+    return max(0, min(100, int(round(100.0 * half / (n + half)))))
+
+
 # ---------------------------------------------------------------------------
-# p113: extreme heat adaptation — green-blue cooling PROXY.
+# p63: dark-sky proxy (mapped lit sources within 400 m).
 # ---------------------------------------------------------------------------
 
-def dim_heat(origin: Optional[Tuple[float, float]],
-             pois: Optional[List[dict]]) -> Score:
-    """p113: cooling green-blue near (high) vs heat-exposed (low).
-
-    Honest proxy only: nearer park/forest/water reads as more shade and
-    evaporative cooling. Never a temperature statement.
-    """
+def dim_darksky(origin: Optional[Tuple[float, float]],
+                pois: Optional[List[dict]]) -> Score:
+    """p63: darkness from the count of mapped light sources nearby."""
     if not origin or pois is None:
-        return None, "Kuumaleevenduse info puudub"
-    m = _nearest_m(origin, pois, COOL_KINDS)
-    if m is None:
-        return 30, ("Jahutav rohe-/siniala kaugemal kui 1,5 km "
-                    "(kuumaleevenduse hinnang, mitte mõõdetud temperatuur)")
-    s = _band(m, COOL_BANDS)
-    assert s is not None
-    return s, ("Kuumaleevenduse hinnang (mitte mõõdetud temperatuur): "
-               "lähim rohe-/siniala %s" % _fmt_m(m))
+        return None, "Valgusreostuse info puudub (proksi)"
+    # The 400 m window fully covers a lamp row's influence, so an empty
+    # window IS dark evidence (unlike noise, which carries past its
+    # window) — 100, honestly qualified as "kaardistatud".
+    n = _count_cells_within_m(origin, pois, {"lit_area", "streetlamp"}, 400.0)
+    if n == 0:
+        return 100, "Kaardistatud valgusallikas puudub 400 m raadiuses (pimeduse proksi (hinnang): pime)"
+    return (_density(DARK_HALF, n),
+            "Valgusreostuse proksi (hinnang): kaardistatud valgusallikaid %d 400 m raadiuses" % n)
 
 
 # ---------------------------------------------------------------------------
-# p411: street-level visibility — road-frontage + enclosure PROXY.
+# p181: cool-island proxy (mapped buildings within 250 m + green ramp).
 # ---------------------------------------------------------------------------
 
-def dim_visibility(origin: Optional[Tuple[float, float]],
+def dim_coolisland(origin: Optional[Tuple[float, float]],
                    pois: Optional[List[dict]]) -> Score:
-    """p411: legible open street frontage (high) vs remote/enclosed (low).
-
-    Base reads the nearest mapped street; dense wood within ENCLOSE_M
-    caps sightlines (-ENCLOSE_PENALTY, floored). Both legs are proxies.
-    """
+    """p181: coolness from mapped building density + nearby green."""
     if not origin or pois is None:
-        return None, "Tänavavaate info puudub"
-    m = _nearest_m(origin, pois, {"street"})
-    if m is None:
-        return 25, ("Kaardistatud tänav kaugemal kui 1,5 km "
-                    "(nähtavuse hinnang)")
-    s = _band(m, STREET_BANDS)
-    assert s is not None
-    wood = _nearest_m(origin, pois, {"forest"})
-    if wood is not None and wood <= ENCLOSE_M:
-        s = max(s - ENCLOSE_PENALTY, 5)
-        return s, ("Tänavavaate nähtavus (hinnang): lähim tänav %s, "
-                   "puude varjus (%s)" % (_fmt_m(m), _fmt_m(wood)))
-    return s, ("Tänavavaate nähtavus (hinnang): lähim tänav %s"
-               % _fmt_m(m))
+        return None, "Kuumasaare info puudub (proksi)"
+    # Heat influence carries past the 250 m window, so absence caps at 90
+    # (conservative); the formula caps there too, so one nearby shed (n=1
+    # -> 98 raw) can never beat a genuinely open field.
+    n = _count_within_m(origin, pois, {"building"}, 250.0)
+    if n == 0:
+        base = 90
+        txt = "kaardistatud hooneid pole 250 m raadiuses"
+    else:
+        base = min(90, _density(COOL_HALF, n))
+        txt = "kaardistatud hooneid %d 250 m raadiuses" % n
+    m_nat = _nearest_m(origin, pois, {"park", "forest"})
+    if m_nat is not None and m_nat <= COOL_RANGE_M:
+        bonus = round(COOL_BONUS * (1.0 - m_nat / COOL_RANGE_M))
+        score = min(100, base + bonus)
+        return (score,
+                "Kuumasaare proksi (hinnang): %s, haljasala %s" %
+                (txt, "%d m" % int(round(m_nat)) if m_nat < 1000 else "~%.1f km" % (m_nat / 1000.0)))
+    return base, "Kuumasaare proksi (hinnang): %s (kaardistatud haljasala kaugel)" % txt
 
 
-#: Registry for the central weight-rebalance follow-up: (dims key, param id).
-GROUP18B_DIMS = (
-    ("heat", "p113", dim_heat),
-    ("visibility", "p411", dim_visibility),
-)
+#: Registry for UI/API wiring on integration: param -> (Estonian title, fn).
+GROUP18B_DIMS: Dict[str, Tuple[str, Callable[..., Score]]] = {
+    "darksky": ("Valgusreostus / pime taevas (proksi, hinnang)", dim_darksky),
+    "coolisland": ("Kuumasaar / jahedus (proksi, hinnang)", dim_coolisland),
+}
+
+#: Param-id wiring for the central weight-rebalance follow-up.
+GROUP18B_PARAM_IDS = {
+    "darksky": 63,
+    "coolisland": 181,
+}
 
 
 def score_group18b(origin: Optional[Tuple[float, float]],
-                   pois: Optional[List[dict]]) -> Dict[str, Optional[int]]:
-    """Both Group 18B dims for one listing (entry point for the follow-up)."""
-    return {key: fn(origin, pois)[0] for key, _, fn in GROUP18B_DIMS}
-
-
-#: Honest Estonian web labels for the follow-up layers batch. Both titles
-#: say "(hinnang)" — never bare "heat" or "visibility" that implies a
-#: measured simulation.
-LAYER_META = {
-    "heat": {
-        "param": 113,
-        "title": "Kuumaleevendus (roheala hinnang)",
-        "good": "roheline = jahutav rohe-/siniala lähedal (hinnang)",
-        "bad": "punane = rohe-/siniala kaugel (hinnang, mitte mõõdetud temperatuur)",
-        "source": ("kohalik hetktõmmis 2026-09-12 "
-                   "(park/mets/vesi; hinnang, mitte mõõdetud temperatuur)"),
-    },
-    "visibility": {
-        "param": 411,
-        "title": "Tänavavaate nähtavus (hinnang)",
-        "good": "roheline = avatud kaardistatud tänavafront (hinnang)",
-        "bad": "punane = tänav kaugel või puude varjus (hinnang)",
-        "source": "kohalik hetktõmmis 2026-09-12 (highway + mets; hinnang)",
-    },
-}
+                   pois: Optional[List[dict]]) -> Tuple[Dict[str, Optional[int]], List[str]]:
+    """All Group 18b dims at once: ({param: score}, [reasons])."""
+    dims: Dict[str, Optional[int]] = {}
+    reasons: List[str] = []
+    for param, (_, fn) in GROUP18B_DIMS.items():
+        v, reason = fn(origin, pois)
+        dims[param] = v
+        if v is not None:
+            reasons.append(reason)
+    return dims, reasons
