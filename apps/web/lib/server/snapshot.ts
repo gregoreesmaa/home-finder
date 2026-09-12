@@ -14,6 +14,8 @@ import {
 } from "../layers";
 import { haversineKm } from "../poi";
 import { sampleRaster } from "../walkRaster";
+// B1-HOOK(#98): batch B1 raster files live in layers_batch1.ts.
+import { B1_METRO_PREFIXES, B1_RASTER_FILES } from "../layers_batch1";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -292,6 +294,7 @@ const RASTER_FILE: Record<LayerId, string> = {
   cycling: "cycling-walk-raster.json",
   grocery: "grocery-walk-raster.json",
   healthcare: "healthcare-walk-raster.json",
+  ...B1_RASTER_FILES, // B1-HOOK(#98)
 };
 
 /**
@@ -358,6 +361,7 @@ const METRO_PREFIX: Record<LayerId, string> = {
   cycling: "cycling-metro",
   grocery: "grocery-metro",
   healthcare: "healthcare-metro",
+  ...B1_METRO_PREFIXES, // B1-HOOK(#98)
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

@@ -20,7 +20,7 @@ import {
 const TALLINN_BBOX: BBoxLike = { minlon: 24.5, minlat: 59.35, maxlon: 24.9, maxlat: 59.5 };
 
 describe("layer registry", () => {
-  it("binds all eight layers to parameters3 ids", () => {
+  it("binds all layers to parameters3 ids", () => {
     expect(LAYERS.map((l) => l.id)).toEqual([
       "parks",
       "transit",
@@ -30,6 +30,12 @@ describe("layer registry", () => {
       "cycling",
       "grocery",
       "healthcare",
+      // B1-HOOK(#98): batch B1 ids (sibling batches append theirs here).
+      "pets",
+      "community",
+      "culture",
+      "nightlife",
+      "libraries",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);

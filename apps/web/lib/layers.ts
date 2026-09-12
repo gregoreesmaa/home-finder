@@ -9,6 +9,16 @@
 // default instead of a faked zero.
 
 import { haversineKm } from "./poi";
+// B1-HOOK(#98): batch B1 (Group 11 amenity) layers own their tables in
+// layers_batch1.ts; each hook below is one spread/guard line.
+import {
+  B1_DECAY,
+  B1_LAYERS,
+  B1_TAGS,
+  b1BonusSpecFor,
+  isB1LayerId,
+  type B1LayerId,
+} from "./layers_batch1";
 
 export type LayerId =
   | "parks"
@@ -18,7 +28,8 @@ export type LayerId =
   | "pedinfra"
   | "cycling"
   | "grocery"
-  | "healthcare";
+  | "healthcare"
+  | B1LayerId; // B1-HOOK(#98)
 
 export interface BBoxLike {
   minlon: number;
@@ -93,6 +104,7 @@ const DECAY_KM: Record<LayerId, number> = {
   cycling: 0.3,
   grocery: 0.3,
   healthcare: 0.8,
+  ...B1_DECAY, // B1-HOOK(#98)
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -200,6 +212,7 @@ export const LAYERS: LayerDef[] = [
       { lat: 59.412, lon: 24.655 }, // Õismäe
     ],
   },
+  ...B1_LAYERS, // B1-HOOK(#98): Group 11 amenity layers (p86/87/89/108/313)
 ];
 
 const TAGS: Record<LayerId, string> = {
@@ -213,6 +226,7 @@ const TAGS: Record<LayerId, string> = {
   cycling: 'w["highway"="cycleway"];w["cycleway"~"lane|track"];',
   grocery: 'n["shop"~"supermarket|convenience|greengrocer|grocery|marketplace"];',
   healthcare: 'n["amenity"~"pharmacy|doctors|dentist"];',
+  ...B1_TAGS, // B1-HOOK(#98)
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -292,6 +306,8 @@ export type BonusSpec =
   | { kind: "variety"; key: string; values: string[]; per: number; cap: number };
 
 export function bonusSpecFor(layer: LayerId): BonusSpec {
+  // B1-HOOK(#98): batch B1 specs live in layers_batch1.ts.
+  if (isB1LayerId(layer)) return b1BonusSpecFor(layer);
   switch (layer) {
     case "parks":
       // Area-proportional: total nearby hectares, saturating (half = 15).
