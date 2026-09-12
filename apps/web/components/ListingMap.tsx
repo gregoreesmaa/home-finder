@@ -2,16 +2,23 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ESTONIA_BBOX,
   HEAT_SOURCE_ET,
   MOCK_HEXES,
+  buildViewportGrid,
+  heatmapLayerProps,
+  hexRadiusForZoom,
   hexesFromGeoJSON,
   legendBuckets,
   listingsToPoints,
+  mergeHeatData,
   nearestHeatPoint,
   pickHeatInput,
   popupText,
+  resolutionForZoom,
   toHeatPoints,
   type AreaHex,
+  type BBox,
   type HeatPoint,
   type HeatSource,
 } from "../lib/heatmap";
@@ -48,44 +55,52 @@ const GOODNESS_COLORS: [number, number, number, number][] = [
 ];
 
 /**
- * Build the deck.gl layer for the current mode. Heatmap mode is a continuous
- * regional overlay (#72): MEAN aggregation so overlapping cells average
- * instead of piling up, a wide screen-space radius so sparse country-wide
- * cells join into gradients, and the red->green ramp for goodness.
+ * Build the deck.gl layer for the current mode over a continuous gap-free
+ * surface (#72): sparse 0.25-degree cells are resampled onto a full-viewport
+ * IDW grid (finer steps when zoomed in), so every visible pixel maps to a
+ * colored cell instead of isolated blobs. MEAN aggregation so overlapping
+ * cells average instead of piling up, threshold 0 so fringe pixels stay
+ * colored, and the red->green ramp for goodness.
  */
 function makeHeatLayers(
   deck: DeckKinds,
   mode: Mode,
   points: HeatPoint[],
+  zoom: number,
+  bbox: BBox,
+  surfaceParam?: HeatPoint[],
 ): (HeatmapLayer | HexagonLayer)[] {
+  const surface = surfaceParam ?? buildViewportGrid(points, bbox, zoom);
+  const data = surface.length > 0 ? surface : points;
   if (mode === "hex") {
     return [
       new deck.HexagonLayer({
         id: "goodness-hex",
-        data: points,
+        data,
         getPosition: (d: HeatPoint) => [d.lon, d.lat],
         getColorWeight: (d: HeatPoint) => d.weight * 100,
         getColorValue: (cell: HeatPoint[]) =>
           cell.reduce((s, p) => s + p.weight * 100, 0) / cell.length,
         colorRange: GOODNESS_COLORS,
-        radius: 15000,
-        coverage: 0.9,
+        radius: hexRadiusForZoom(zoom),
+        coverage: 1,
         extruded: false,
         pickable: true,
         autoHighlight: true,
       }),
     ];
   }
+  const hp = heatmapLayerProps(zoom);
   return [
     new deck.HeatmapLayer({
       id: "goodness-heat",
-      data: points,
+      data,
       getPosition: (d: HeatPoint) => [d.lon, d.lat],
       getWeight: (d: HeatPoint) => d.weight,
-      aggregation: "MEAN",
-      radiusPixels: 150,
-      intensity: 1,
-      threshold: 0.05,
+      aggregation: hp.aggregation,
+      radiusPixels: hp.radiusPixels,
+      intensity: hp.intensity,
+      threshold: hp.threshold,
       colorRange: GOODNESS_COLORS,
     }),
   ];
@@ -129,6 +144,10 @@ export function ListingMap({
   const [liveCells, setLiveCells] = useState(false);
   const [source, setSource] = useState<HeatSource>("mock");
   const [selected, setSelected] = useState<HeatPoint | null>(null);
+  // Viewport drives the continuous surface: zoom picks the grid granularity
+  // (coarse out, fine in) and bbox bounds the full-viewport resampling.
+  const [zoom, setZoom] = useState(7);
+  const [bbox, setBbox] = useState<BBox>(ESTONIA_BBOX);
 
   const listingPoints = useMemo(() => listingsToPoints(listings ?? []), [listings]);
 
@@ -151,10 +170,12 @@ export function ListingMap({
     setSource(p.source);
   }, [hexes, remote, liveCells, listingPoints]);
 
-  // Fetch live cells (B3: bbox-aware on move, debounced), unless the caller
-  // passes hexes explicitly or ?mock=1 forces the bundled fallback.
-  // The loader lives in a ref so the map-init effect can call it on moveend.
-  const loadRef = useRef<(bbox?: string) => void>(() => {});
+  // Fetch live cells (B3: bbox-aware on move, debounced; resolution-aware
+  // on zoom so the API serves coarse cells out and finer subcells in),
+  // unless the caller passes hexes explicitly or ?mock=1 forces the
+  // bundled fallback. The loader lives in a ref so the map-init effect
+  // can call it on moveend.
+  const loadRef = useRef<(bboxParam?: string, zoomParam?: number) => void>(() => {});
   useEffect(() => {
     if (hexes) return;
     if (
@@ -166,10 +187,11 @@ export function ListingMap({
       return;
     }
     let cancelled = false;
-    loadRef.current = (bbox?: string) => {
-      const url = bbox
-        ? `${SCORING_URL}/heatmap-cells?bbox=${bbox}`
-        : `${SCORING_URL}/area-scores`;
+    loadRef.current = (bboxParam?: string, zoomParam?: number) => {
+      const resolution = resolutionForZoom(zoomParam ?? 7);
+      const url = bboxParam
+        ? `${SCORING_URL}/heatmap-cells?bbox=${bboxParam}&resolution=${resolution}`
+        : `${SCORING_URL}/area-scores?resolution=${resolution}`;
       fetch(url)
         .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
         .then((json: unknown) => {
@@ -190,8 +212,20 @@ export function ListingMap({
     };
   }, [hexes]);
 
-  const points = useMemo(() => toHeatPoints(hexes ?? picked), [hexes, picked]);
-  const legend = useMemo(() => legendBuckets(), []);
+  // Involve all available data: combine cells, listings, and neighborhood benchmarks
+  const combinedPoints = useMemo(
+    () => mergeHeatData(hexes ?? picked, listingPoints),
+    [hexes, picked, listingPoints],
+  );
+  const points = useMemo(() => toHeatPoints(combinedPoints), [combinedPoints]);
+
+  const [localRange, setLocalRange] = useState<{ min: number; max: number } | null>(null);
+  const legend = useMemo(() => {
+    if (localRange && localRange.max > localRange.min) {
+      return legendBuckets(localRange.min, localRange.max);
+    }
+    return legendBuckets();
+  }, [localRange]);
 
   // D3: a ?selected=<id> (from "Näita kaardil") opens the nearest cell popup.
   useEffect(() => {
@@ -211,13 +245,24 @@ export function ListingMap({
   const pickRef = useRef(onPickLocation);
   pickRef.current = onPickLocation;
 
-  // Data/mode changes swap layers in place; the camera is never touched.
+  // Data/mode/viewport changes swap layers in place; the camera is never
+  // touched. Zoom/bbox only resample the surface, never re-create the map.
   useEffect(() => {
     pointsRef.current = points;
     if (deckRef.current && overlayRef.current) {
-      overlayRef.current.setProps({ layers: makeHeatLayers(deckRef.current, mode, points) });
+      const surface = buildViewportGrid(points, bbox, zoom);
+      if (
+        surface.length > 0 &&
+        surface[0].localMin !== undefined &&
+        surface[0].localMax !== undefined
+      ) {
+        setLocalRange({ min: surface[0].localMin, max: surface[0].localMax });
+      }
+      overlayRef.current.setProps({
+        layers: makeHeatLayers(deckRef.current, mode, points, zoom, bbox, surface),
+      });
     }
-  }, [points, mode]);
+  }, [points, mode, zoom, bbox]);
 
   useEffect(() => {
     let cancelled = false;
@@ -246,7 +291,13 @@ export function ListingMap({
       });
       const overlay = new MapboxOverlay({
         interleaved: true,
-        layers: makeHeatLayers(deckRef.current, initialMode, pointsRef.current),
+        layers: makeHeatLayers(
+          deckRef.current,
+          initialMode,
+          pointsRef.current,
+          7,
+          ESTONIA_BBOX,
+        ),
       });
       map.addControl(overlay);
       mapRef.current = map;
@@ -269,15 +320,25 @@ export function ListingMap({
         setSelected(nearestHeatPoint(pointsRef.current, e.lngLat.lng, e.lngLat.lat));
       };
       map.on("click", onClick);
-      // B3: reload cells for the new viewport (debounced in the loader path).
+      // B3: reload cells for the new viewport (debounced in the loader path)
+      // and resample the continuous surface for the new zoom/bbox.
       let moveTimer: ReturnType<typeof setTimeout> | null = null;
       const onMove = () => {
         stampCamera();
+        const b = map.getBounds();
+        const bb: BBox = {
+          minlon: b.getWest(),
+          minlat: b.getSouth(),
+          maxlon: b.getEast(),
+          maxlat: b.getNorth(),
+        };
+        setZoom(map.getZoom());
+        setBbox(bb);
         if (moveTimer) clearTimeout(moveTimer);
         moveTimer = setTimeout(() => {
-          const b = map.getBounds();
           loadRef.current(
-            `${b.getWest()},${b.getSouth()},${b.getEast()},${b.getNorth()}`,
+            `${bb.minlon},${bb.minlat},${bb.maxlon},${bb.maxlat}`,
+            map.getZoom(),
           );
         }, 600);
       };
