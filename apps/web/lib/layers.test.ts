@@ -42,6 +42,10 @@ describe("layer registry", () => {
       "hydrants",
       "evac",
       "dispatch",
+      // B6-HOOK (#133): mobility/access leftover ids (p220/p270/p386).
+      "droneclear",
+      "droneviab",
+      "rentbleed",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);

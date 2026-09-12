@@ -38,7 +38,7 @@ describe("batch B5 registry (#102)", () => {
 
   it("merges into LAYERS via the B5-HOOK (page + routes serve all eighteen)", () => {
     const ids = LAYERS.map((l) => l.id);
-    expect(ids.length).toBe(18);
+    expect(ids.length).toBe(21);
     for (const id of BATCH5_LAYER_IDS) expect(ids).toContain(id);
   });
 

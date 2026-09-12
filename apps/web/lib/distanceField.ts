@@ -222,6 +222,20 @@ export function buildScoredField(
     }
     return { field, bonus, sigmaKm, direct };
   }
+  // B6-HOOK (#133): quiet layers bake nearest-source calmness directly
+  // (0 on the source, 50 at halfM) — the shared proximityValue decay
+  // would render them inverted (green ON the airfield). No bonus splat.
+  // droneviab degrades to its clearance leg here (batch4 rideshare
+  // precedent: the raster carries the full two-signal field, the
+  // fallback the honest subset).
+  if (spec.kind === "quiet") {
+    const direct = new Float64Array(cols * rows);
+    for (let k = 0; k < direct.length; k++) {
+      const d = field.distKm[k];
+      direct[k] = Number.isFinite(d) ? (100 * d * 1000) / (d * 1000 + spec.halfM) : NaN;
+    }
+    return { field, bonus, sigmaKm, direct };
+  }
   {
     const classes = classSplats(
       points,

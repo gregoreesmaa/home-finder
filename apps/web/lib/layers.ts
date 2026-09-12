@@ -29,6 +29,16 @@ import {
   BATCH5_TAGS,
   bonusSpecForBatch5,
 } from "./layers_batch5";
+// B6-HOOK(#133): batch B6 (mobility/access leftovers: p220/p270/p386)
+// tables live in ./layers_batch6 (new file). That module imports layers
+// only as types, so no runtime cycle.
+import type { Batch6LayerId } from "./layers_batch6";
+import {
+  BATCH6_DECAY,
+  BATCH6_DEFS,
+  BATCH6_TAGS,
+  bonusSpecForBatch6,
+} from "./layers_batch6";
 
 export type LayerId =
   | "parks"
@@ -41,7 +51,9 @@ export type LayerId =
   | "healthcare"
   | B1LayerId // B1-HOOK(#98)
   // B5-HOOK (#102): Group 14 public-safety ids (defined in ./layers_batch5).
-  | Batch5LayerId;
+  | Batch5LayerId
+  // B6-HOOK (#133): mobility/access leftover ids (./layers_batch6).
+  | Batch6LayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -120,6 +132,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...B1_DECAY, // B1-HOOK(#98)
   // B5-HOOK (#102): Group 14 radii (see layers_batch5.ts BATCH5_DECAY).
   ...BATCH5_DECAY,
+  // B6-HOOK (#133): mobility/access radii (see layers_batch6.ts BATCH6_DECAY).
+  ...BATCH6_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -230,6 +244,8 @@ export const LAYERS: LayerDef[] = [
   ...B1_LAYERS, // B1-HOOK(#98): Group 11 amenity layers (p86/87/89/108/313)
   // B5-HOOK (#102): Group 14 defs (p13/p78/p315/p335/p467) from ./layers_batch5.
   ...BATCH5_DEFS,
+  // B6-HOOK (#133): mobility/access defs (p220/p270/p386) from ./layers_batch6.
+  ...BATCH6_DEFS,
 ];
 
 const TAGS: Record<LayerId, string> = {
@@ -246,6 +262,8 @@ const TAGS: Record<LayerId, string> = {
   ...B1_TAGS, // B1-HOOK(#98)
   // B5-HOOK (#102): Group 14 queries (see layers_batch5.ts BATCH5_TAGS).
   ...BATCH5_TAGS,
+  // B6-HOOK (#133): mobility/access queries (see layers_batch6.ts BATCH6_TAGS).
+  ...BATCH6_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -322,7 +340,9 @@ export interface TripsSpec {
 export type BonusSpec =
   | AreaSpec
   | TripsSpec
-  | { kind: "variety"; key: string; values: string[]; per: number; cap: number };
+  | { kind: "variety"; key: string; values: string[]; per: number; cap: number }
+  // B6-HOOK (#133): nearest-source calmness (0 on the source, 50 at halfM).
+  | { kind: "quiet"; halfM: number };
 
 export function bonusSpecFor(layer: LayerId): BonusSpec {
   // B1-HOOK(#98): batch B1 specs live in layers_batch1.ts.
@@ -370,6 +390,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // B5-HOOK (#102): Group 14 specs live in ./layers_batch5.
   const b5 = bonusSpecForBatch5(layer);
   if (b5) return b5;
+  // B6-HOOK (#133): mobility/access specs live in ./layers_batch6.
+  const b6 = bonusSpecForBatch6(layer);
+  if (b6) return b6;
   throw new Error(`unknown layer: ${layer}`);
 }
 
