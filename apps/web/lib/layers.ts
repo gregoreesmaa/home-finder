@@ -1,7 +1,8 @@
 // Parameter map layers (parameters3.md): one layer per mappable parameter,
 // green = good areas, red = bad areas. Listing-specific groups (portals,
-// finance, HOA, inspection, subjective taste) are deliberately omitted —
-// they describe a deal, not a place.
+// finance, HOA, inspection, subjective taste) and Group 2 EHR building
+// attributes (G02-HOOK #136) are deliberately omitted — they describe a
+// deal, not a place.
 //
 // Points come from the local 2026-09-12 snapshot via our server proxy.
 // Transit stop positions are OSM nodes joined to Peatus.ee GTFS weekday
@@ -29,6 +30,10 @@ import {
   BATCH5_TAGS,
   bonusSpecForBatch5,
 } from "./layers_batch5";
+// G02-HOOK(#136): Group 2 EHR batch-A verdicts live in ./layers_group02
+// (new file, five documented no-map verdicts). That module imports
+// nothing, so no runtime cycle.
+import { GROUP02_UNMAPPED_PARAMS } from "./layers_group02";
 
 export type LayerId =
   | "parks"
@@ -231,6 +236,13 @@ export const LAYERS: LayerDef[] = [
   // B5-HOOK (#102): Group 14 defs (p13/p78/p315/p335/p467) from ./layers_batch5.
   ...BATCH5_DEFS,
 ];
+
+// G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
+// deliberately NOT layers -- building attributes, not place fields
+// (per-param verdicts in ./layers_group02). Locked by test: none of
+// these ids may appear in any layer's paramIds.
+/** parameters3.md ids with documented no-map verdicts (Group 2 EHR, #136). */
+export const UNMAPPED_PARAMS: readonly number[] = GROUP02_UNMAPPED_PARAMS;
 
 const TAGS: Record<LayerId, string> = {
   parks: 'n["leisure"~"park|garden|playground"];n["landuse"="recreation_ground"];',
