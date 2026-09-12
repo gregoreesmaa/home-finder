@@ -104,11 +104,21 @@ def test_ota_near_broadcast_scores_top_with_honest_reason():
 
 
 def test_ota_ignores_cellular_and_absent_is_soft_floor():
-    assert dim_ota(TALLINN, [_poi("telecom", 0.001)])[0] == 40  # cellular excluded
+    assert dim_ota(TALLINN, [_poi("telecom", 0.001)])[0] == 60  # cellular excluded
     v, reason = dim_ota(TALLINN, [p for p in POIS if p["kind"] != "broadcast"])
-    assert v == 40
-    assert "5 km" in reason
+    assert v == 60
+    assert "30 km" in reason
     assert dim_ota(TALLINN, None)[0] is None
+
+
+def test_ota_wide_bands_radio_horizon_order():
+    # 1° latitude ≈ 111.2 km: 5/15/25/35 km north of the origin.
+    assert dim_ota(TALLINN, [_poi("broadcast", 0.045)])[0] == 100
+    assert dim_ota(TALLINN, [_poi("broadcast", 0.135)])[0] == 85
+    assert dim_ota(TALLINN, [_poi("broadcast", 0.225)])[0] == 70
+    v, reason = dim_ota(TALLINN, [_poi("broadcast", 0.315)])
+    assert v == 60  # beyond radio-horizon-order radius: soft floor, not fail
+    assert "mitte mõõdetud" in reason
 
 
 def test_kinds_from_tags_telecom_broadcast_aware():
@@ -120,6 +130,10 @@ def test_kinds_from_tags_telecom_broadcast_aware():
     assert kinds_from_tags({"man_made": "antenna"}) == "broadcast"
     assert kinds_from_tags({"man_made": "mast", "communication:television": "yes"}) == "broadcast"
     assert kinds_from_tags({"man_made": "mast", "communication:radio": "yes"}) == "broadcast"
+    # Aviation nav aids are not home broadcast, even as antennas.
+    assert kinds_from_tags({"man_made": "antenna", "airmark": "beacon",
+                            "beacon:type": "ILS"}) is None
+    assert kinds_from_tags({"airmark": "beacon"}) is None
     assert kinds_from_tags({"man_made": "water_well"}) == "waterpoint"
     assert kinds_from_tags({"natural": "spring"}) == "waterpoint"
     assert kinds_from_tags({"amenity": "drinking_water"}) == "waterpoint"
@@ -150,4 +164,4 @@ def test_score_group10c_registry_and_aggregate():
     assert all(v is None for v in score_group10c(None, None).values())
     assert set(dims) == {k for k, _, _ in GROUP10C_DIMS}
     assert g10c.INTERNET_RADIUS_M == 5000.0
-    assert g10c.OTA_RADIUS_M == 5000.0
+    assert g10c.OTA_RADIUS_M == 30000.0
