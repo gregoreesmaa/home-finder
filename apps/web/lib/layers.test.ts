@@ -36,6 +36,9 @@ describe("layer registry", () => {
       "culture",
       "nightlife",
       "libraries",
+      // G07D-HOOK (#143): Group 7 env-health D ids.
+      "agrifield",
+      "wildcorr",
       // B5-HOOK (#102): Group 14 public-safety ids.
       "safety",
       "emergency",
@@ -46,6 +49,9 @@ describe("layer registry", () => {
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
     expect(LAYERS.find((l) => l.id === "schools")?.paramIds).toEqual([12, 123]);
+    // G07D-HOOK (#143): env-health D param binding.
+    expect(LAYERS.find((l) => l.id === "agrifield")?.paramIds).toEqual([409]);
+    expect(LAYERS.find((l) => l.id === "wildcorr")?.paramIds).toEqual([450]);
   });
 
   it("every layer explains green=good / red=bad in Estonian", () => {

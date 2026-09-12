@@ -29,6 +29,17 @@ import {
   BATCH5_TAGS,
   bonusSpecForBatch5,
 } from "./layers_batch5";
+// G07D-HOOK(#143): batch G07D (Group 7 env-health D) tables live in
+// ./layers_group07d (new file). That module imports layers only as
+// types, so no runtime cycle.
+import {
+  G07D_DECAY_KM,
+  G07D_LAYERS,
+  G07D_TAGS,
+  g07dBonusSpecFor,
+  isG07DLayerId,
+  type G07DLayerId,
+} from "./layers_group07d";
 
 export type LayerId =
   | "parks"
@@ -40,6 +51,8 @@ export type LayerId =
   | "grocery"
   | "healthcare"
   | B1LayerId // B1-HOOK(#98)
+  // G07D-HOOK (#143): Group 7 env-health D ids (defined in ./layers_group07d).
+  | G07DLayerId
   // B5-HOOK (#102): Group 14 public-safety ids (defined in ./layers_batch5).
   | Batch5LayerId;
 
@@ -118,6 +131,8 @@ const DECAY_KM: Record<LayerId, number> = {
   grocery: 0.3,
   healthcare: 0.8,
   ...B1_DECAY, // B1-HOOK(#98)
+  // G07D-HOOK (#143): env-health D radii (see layers_group07d.ts G07D_DECAY_KM).
+  ...G07D_DECAY_KM,
   // B5-HOOK (#102): Group 14 radii (see layers_batch5.ts BATCH5_DECAY).
   ...BATCH5_DECAY,
 };
@@ -228,6 +243,8 @@ export const LAYERS: LayerDef[] = [
     ],
   },
   ...B1_LAYERS, // B1-HOOK(#98): Group 11 amenity layers (p86/87/89/108/313)
+  // G07D-HOOK (#143): env-health D defs (p409/p450) from ./layers_group07d.
+  ...G07D_LAYERS,
   // B5-HOOK (#102): Group 14 defs (p13/p78/p315/p335/p467) from ./layers_batch5.
   ...BATCH5_DEFS,
 ];
@@ -244,6 +261,8 @@ const TAGS: Record<LayerId, string> = {
   grocery: 'n["shop"~"supermarket|convenience|greengrocer|grocery|marketplace"];',
   healthcare: 'n["amenity"~"pharmacy|doctors|dentist"];',
   ...B1_TAGS, // B1-HOOK(#98)
+  // G07D-HOOK (#143): env-health D queries (see layers_group07d.ts G07D_TAGS).
+  ...G07D_TAGS,
   // B5-HOOK (#102): Group 14 queries (see layers_batch5.ts BATCH5_TAGS).
   ...BATCH5_TAGS,
 };
@@ -322,11 +341,17 @@ export interface TripsSpec {
 export type BonusSpec =
   | AreaSpec
   | TripsSpec
-  | { kind: "variety"; key: string; values: string[]; per: number; cap: number };
+  | { kind: "variety"; key: string; values: string[]; per: number; cap: number }
+  // G07D-HOOK (#143): nearest-source cleanliness (0 on the source, 50 at
+  // halfM). Same kind the G07-A/B batches (#140/#141) add — identical
+  // semantics, shared on purpose; dedupes on rebase.
+  | { kind: "quiet"; halfM: number };
 
 export function bonusSpecFor(layer: LayerId): BonusSpec {
   // B1-HOOK(#98): batch B1 specs live in layers_batch1.ts.
   if (isB1LayerId(layer)) return b1BonusSpecFor(layer);
+  // G07D-HOOK(#143): env-health D specs live in layers_group07d.ts.
+  if (isG07DLayerId(layer)) return g07dBonusSpecFor(layer);
   switch (layer) {
     case "parks":
       // Area-proportional: total nearby hectares, saturating (half = 15).

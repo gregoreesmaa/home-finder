@@ -36,9 +36,10 @@ describe("batch B5 registry (#102)", () => {
     }
   });
 
-  it("merges into LAYERS via the B5-HOOK (page + routes serve all eighteen)", () => {
+  it("merges into LAYERS via the B5-HOOK (page + routes serve all twenty)", () => {
     const ids = LAYERS.map((l) => l.id);
-    expect(ids.length).toBe(18);
+    // G07D-HOOK (#143): two env-health D layers join the eighteen above.
+    expect(ids.length).toBe(20);
     for (const id of BATCH5_LAYER_IDS) expect(ids).toContain(id);
   });
 

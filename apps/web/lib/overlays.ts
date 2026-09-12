@@ -115,6 +115,11 @@ export function overlayColorFor(layer: LayerId): string {
       return "#57534c";
     case "dispatch":
       return "#6b21a8";
+    // Batch G07D env-health layers (point overlays, stride-sampled).
+    case "agrifield":
+      return "#a16207";
+    case "wildcorr":
+      return "#365314";
   }
 }
 
@@ -165,6 +170,12 @@ export function overlayLegendFor(layer: LayerId): string {
       return "Magistraalteede tihedus (hinnang, küllastus 2 km)";
     case "dispatch":
       return "Politsei/pääste/haigla · lähedaste arv (hinnang, küllastus 3)";
+    // Batch G07D env-health layers: nearest-source distance, same halves
+    // as g07dBonusSpecFor in layers_group07d.ts.
+    case "agrifield":
+      return "Põllud, heinamaad ja kasvuhooned · kaugus lähima haritava maani (hinnang, poolkaugus 800 m)";
+    case "wildcorr":
+      return "Metsad, märgalad ja kaitsealad · kaugus lähima elupaigani (hinnang, poolkaugus 500 m)";
   }
 }
 
