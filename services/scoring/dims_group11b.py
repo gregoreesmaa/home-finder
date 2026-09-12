@@ -1,4 +1,4 @@
-"""Group 11 OSM-based livability dimensions (issue #95).
+"""Group 11 OSM-based livability dimensions, batch B3 (issue #95).
 
 Five pure, offline-tested scorers following the `dim_*` pattern in
 livability.py: each takes `(origin, pois)` and returns

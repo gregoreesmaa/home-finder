@@ -4,9 +4,9 @@ No network: scorers run on fixture POIs, the query fragment is asserted
 as text, and parse mapping runs on a static Overpass-style payload.
 """
 
-import dims_group11 as g11
+import dims_group11b as g11
 import livability
-from dims_group11 import (
+from dims_group11b import (
     GROUP11_POI_KIND,
     GROUP11_QUERY_LINES,
     dim_alley,
