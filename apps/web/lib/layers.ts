@@ -29,6 +29,16 @@ import {
   BATCH5_TAGS,
   bonusSpecForBatch5,
 } from "./layers_batch5";
+// G11C-HOOK(#134): batch G11C (Group 11 leftovers A) tables live in
+// ./layers_group11c (new file). That module imports layers only as types,
+// so no runtime cycle.
+import type { Group11CLayerId } from "./layers_group11c";
+import {
+  G11C_DECAY,
+  G11C_DEFS,
+  G11C_TAGS,
+  bonusSpecForGroup11C,
+} from "./layers_group11c";
 
 export type LayerId =
   | "parks"
@@ -41,7 +51,9 @@ export type LayerId =
   | "healthcare"
   | B1LayerId // B1-HOOK(#98)
   // B5-HOOK (#102): Group 14 public-safety ids (defined in ./layers_batch5).
-  | Batch5LayerId;
+  | Batch5LayerId
+  // G11C-HOOK (#134): Group 11 leftover-A ids (./layers_group11c).
+  | Group11CLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -120,6 +132,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...B1_DECAY, // B1-HOOK(#98)
   // B5-HOOK (#102): Group 14 radii (see layers_batch5.ts BATCH5_DECAY).
   ...BATCH5_DECAY,
+  // G11C-HOOK (#134): Group 11 leftover-A radii (layers_group11c.ts G11C_DECAY).
+  ...G11C_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -230,6 +244,8 @@ export const LAYERS: LayerDef[] = [
   ...B1_LAYERS, // B1-HOOK(#98): Group 11 amenity layers (p86/87/89/108/313)
   // B5-HOOK (#102): Group 14 defs (p13/p78/p315/p335/p467) from ./layers_batch5.
   ...BATCH5_DEFS,
+  // G11C-HOOK (#134): Group 11 leftover-A defs (p88/p101/p124/p169/p190).
+  ...G11C_DEFS,
 ];
 
 const TAGS: Record<LayerId, string> = {
@@ -246,6 +262,8 @@ const TAGS: Record<LayerId, string> = {
   ...B1_TAGS, // B1-HOOK(#98)
   // B5-HOOK (#102): Group 14 queries (see layers_batch5.ts BATCH5_TAGS).
   ...BATCH5_TAGS,
+  // G11C-HOOK (#134): Group 11 leftover-A queries (layers_group11c.ts G11C_TAGS).
+  ...G11C_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -370,6 +388,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // B5-HOOK (#102): Group 14 specs live in ./layers_batch5.
   const b5 = bonusSpecForBatch5(layer);
   if (b5) return b5;
+  // G11C-HOOK (#134): Group 11 leftover-A specs live in ./layers_group11c.
+  const g11c = bonusSpecForGroup11C(layer);
+  if (g11c) return g11c;
   throw new Error(`unknown layer: ${layer}`);
 }
 

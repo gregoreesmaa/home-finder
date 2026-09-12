@@ -42,6 +42,12 @@ describe("layer registry", () => {
       "hydrants",
       "evac",
       "dispatch",
+      // G11C-HOOK (#134): Group 11 leftover-A ids.
+      "schoolbus",
+      "recspecial",
+      "medspecial",
+      "worship",
+      "forage",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);

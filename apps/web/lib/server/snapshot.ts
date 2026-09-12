@@ -16,6 +16,8 @@ import { haversineKm } from "../poi";
 import { sampleRaster } from "../walkRaster";
 // B1-HOOK(#98): batch B1 raster files live in layers_batch1.ts.
 import { B1_METRO_PREFIXES, B1_RASTER_FILES } from "../layers_batch1";
+// G11C-HOOK(#134): batch G11C raster files live in layers_group11c.ts.
+import { G11C_METRO_PREFIX, G11C_RASTER_FILE } from "../layers_group11c";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -301,6 +303,8 @@ const RASTER_FILE: Record<LayerId, string> = {
   hydrants: "hydrants-walk-raster.json",
   evac: "evac-walk-raster.json",
   dispatch: "dispatch-walk-raster.json",
+  // G11C-HOOK (#134): Group 11 leftover-A rasters (batch_g11c_amenity.py).
+  ...G11C_RASTER_FILE,
 };
 
 /**
@@ -374,6 +378,9 @@ const METRO_PREFIX: Record<LayerId, string> = {
   hydrants: "hydrants-metro",
   evac: "evac-metro",
   dispatch: "dispatch-metro",
+  // G11C-HOOK (#134): county-only layers (no metro masters; windows fall
+  // back to county cleanly, B5 precedent).
+  ...G11C_METRO_PREFIX,
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */
