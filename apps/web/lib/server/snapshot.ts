@@ -16,6 +16,8 @@ import { haversineKm } from "../poi";
 import { sampleRaster } from "../walkRaster";
 // B1-HOOK(#98): batch B1 raster files live in layers_batch1.ts.
 import { B1_METRO_PREFIXES, B1_RASTER_FILES } from "../layers_batch1";
+// G02B-HOOK (#137): lift-proxy raster file lives in ../layers_group02b.
+import { G02B_RASTER_FILE } from "../layers_group02b";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -301,6 +303,8 @@ const RASTER_FILE: Record<LayerId, string> = {
   hydrants: "hydrants-walk-raster.json",
   evac: "evac-walk-raster.json",
   dispatch: "dispatch-walk-raster.json",
+  // G02B-HOOK (#137): lift-proxy raster (built by scripts/build/batch_g02b_lift.py).
+  ...G02B_RASTER_FILE,
 };
 
 /**
@@ -374,6 +378,9 @@ const METRO_PREFIX: Record<LayerId, string> = {
   hydrants: "hydrants-metro",
   evac: "evac-metro",
   dispatch: "dispatch-metro",
+  // G02B-HOOK (#137): no liftproxy metro master (documented fake
+  // precision — the file is absent, so windows serve county everywhere).
+  liftproxy: "liftproxy-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

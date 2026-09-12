@@ -42,10 +42,22 @@ describe("layer registry", () => {
       "hydrants",
       "evac",
       "dispatch",
+      // G02B-HOOK (#137): Group 2 batch-B lift-proxy id (p196 hinnang).
+      "liftproxy",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
     expect(LAYERS.find((l) => l.id === "schools")?.paramIds).toEqual([12, 123]);
+    expect(LAYERS.find((l) => l.id === "liftproxy")?.paramIds).toEqual([196]);
+  });
+
+  it("wires the G02B lift proxy with locked calibration", () => {
+    // Drift guard: hook specs must equal G02B_HALVES/G02B_DECAY in
+    // layers_group02b.ts and the Python builder (parsed by
+    // test_batch_g02b.py).
+    expect(bonusSpecFor("liftproxy")).toEqual({ kind: "area", half: 2 });
+    expect(radiusKmFor("liftproxy")).toBe(0.3);
+    expect(overpassQueryFor("liftproxy", TALLINN_BBOX)).toContain("building:levels");
   });
 
   it("every layer explains green=good / red=bad in Estonian", () => {

@@ -29,6 +29,16 @@ import {
   BATCH5_TAGS,
   bonusSpecForBatch5,
 } from "./layers_batch5";
+// G02B-HOOK(#137): batch G02B (Group 2 EHR batch B, p196 lift proxy)
+// tables live in ./layers_group02b (new file). That module imports
+// layers only as types, so no runtime cycle.
+import type { Group02bLayerId } from "./layers_group02b";
+import {
+  G02B_DECAY,
+  G02B_DEFS,
+  G02B_TAGS,
+  bonusSpecForGroup02b,
+} from "./layers_group02b";
 
 export type LayerId =
   | "parks"
@@ -41,7 +51,9 @@ export type LayerId =
   | "healthcare"
   | B1LayerId // B1-HOOK(#98)
   // B5-HOOK (#102): Group 14 public-safety ids (defined in ./layers_batch5).
-  | Batch5LayerId;
+  | Batch5LayerId
+  // G02B-HOOK (#137): Group 2 batch-B lift-proxy id (./layers_group02b).
+  | Group02bLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -120,6 +132,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...B1_DECAY, // B1-HOOK(#98)
   // B5-HOOK (#102): Group 14 radii (see layers_batch5.ts BATCH5_DECAY).
   ...BATCH5_DECAY,
+  // G02B-HOOK (#137): lift-proxy radius (see layers_group02b.ts G02B_DECAY).
+  ...G02B_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -230,6 +244,8 @@ export const LAYERS: LayerDef[] = [
   ...B1_LAYERS, // B1-HOOK(#98): Group 11 amenity layers (p86/87/89/108/313)
   // B5-HOOK (#102): Group 14 defs (p13/p78/p315/p335/p467) from ./layers_batch5.
   ...BATCH5_DEFS,
+  // G02B-HOOK (#137): lift-proxy def (p196) from ./layers_group02b.
+  ...G02B_DEFS,
 ];
 
 const TAGS: Record<LayerId, string> = {
@@ -246,6 +262,8 @@ const TAGS: Record<LayerId, string> = {
   ...B1_TAGS, // B1-HOOK(#98)
   // B5-HOOK (#102): Group 14 queries (see layers_batch5.ts BATCH5_TAGS).
   ...BATCH5_TAGS,
+  // G02B-HOOK (#137): lift-proxy query (see layers_group02b.ts G02B_TAGS).
+  ...G02B_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -370,6 +388,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // B5-HOOK (#102): Group 14 specs live in ./layers_batch5.
   const b5 = bonusSpecForBatch5(layer);
   if (b5) return b5;
+  // G02B-HOOK (#137): lift-proxy spec lives in ./layers_group02b.
+  const g02b = bonusSpecForGroup02b(layer);
+  if (g02b) return g02b;
   throw new Error(`unknown layer: ${layer}`);
 }
 

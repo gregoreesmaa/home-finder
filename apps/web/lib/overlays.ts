@@ -115,6 +115,9 @@ export function overlayColorFor(layer: LayerId): string {
       return "#57534c";
     case "dispatch":
       return "#6b21a8";
+    // G02B-HOOK (#137): lift proxy (point overlay, stride-sampled).
+    case "liftproxy":
+      return "#0891b2";
   }
 }
 
@@ -165,6 +168,10 @@ export function overlayLegendFor(layer: LayerId): string {
       return "Magistraalteede tihedus (hinnang, küllastus 2 km)";
     case "dispatch":
       return "Politsei/pääste/haigla · lähedaste arv (hinnang, küllastus 3)";
+    // G02B-HOOK (#137): lift proxy — nearby high-rise count, same half
+    // as bonusSpecFor (see layers_group02b.ts G02B_BONUS).
+    case "liftproxy":
+      return "Kõrghooned (5+ korrust) · lähedaste arv (hinnang, küllastus 2)";
   }
 }
 

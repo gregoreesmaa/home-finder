@@ -36,9 +36,10 @@ describe("batch B5 registry (#102)", () => {
     }
   });
 
-  it("merges into LAYERS via the B5-HOOK (page + routes serve all eighteen)", () => {
+  it("merges into LAYERS via the B5-HOOK (page + routes serve all nineteen)", () => {
     const ids = LAYERS.map((l) => l.id);
-    expect(ids.length).toBe(18);
+    // G02B-HOOK (#137): liftproxy joins the eighteen base+B1+B5 layers.
+    expect(ids.length).toBe(19);
     for (const id of BATCH5_LAYER_IDS) expect(ids).toContain(id);
   });
 
