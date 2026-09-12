@@ -176,6 +176,90 @@ div[role="dialog"] {
   background: #fffbeb;
 }
 
+/* weights tooltips: ⓘ reveals on hover (mouse), focus-within
+   (keyboard) and .wtip-open (tap toggles the class). The text stays in
+   the accessibility tree (clipped, not display:none) so slider
+   aria-describedby works even while visually hidden. */
+.weight-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.weights-legend {
+  flex-basis: 100%;
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin: 2px 0;
+}
+
+.weights-fixed {
+  flex-basis: 100%;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.weights-fixed summary {
+  cursor: pointer;
+  color: var(--accent);
+}
+
+.weights-fixed ul {
+  margin: 4px 0;
+  padding-left: 18px;
+}
+
+.wtip {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+.wtip-btn {
+  border: none;
+  background: transparent;
+  padding: 2px 4px;
+  color: var(--accent);
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.wtip-btn:hover {
+  border: none;
+}
+
+.wtip-text {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  z-index: 20;
+  max-width: 240px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  border-radius: 8px;
+  padding: 6px 10px;
+  white-space: normal;
+  /* visually hidden until hover / focus / tap */
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  height: 1px;
+  width: 1px;
+  overflow: hidden;
+}
+
+.wtip:hover .wtip-text,
+.wtip:focus-within .wtip-text,
+.wtip-open .wtip-text {
+  clip: auto;
+  clip-path: none;
+  height: auto;
+  width: max-content;
+  max-width: 240px;
+  overflow: visible;
+}
+
 /* small screens: list first, tighter map */
 @media (max-width: 768px) {
   main {

@@ -1,0 +1,159 @@
+import { describe, expect, it, vi } from "vitest";
+import {
+  OVERLAY_CAP,
+  fetchGraphOverlay,
+  needsGraphOverlay,
+  overlayColorFor,
+  overlayLegendFor,
+  overlayWeight,
+  selectOverlayPoints,
+} from "./overlays";
+import { LAYERS, type LayerId } from "./layers";
+
+const BBOX = { minlon: 24.5, minlat: 59.35, maxlon: 24.9, maxlat: 59.5 };
+
+describe("overlay layer routing", () => {
+  it("sends only density layers to the graph sidecar", () => {
+    expect(needsGraphOverlay("walkability")).toBe(true);
+    expect(needsGraphOverlay("pedinfra")).toBe(true);
+    expect(needsGraphOverlay("cycling")).toBe(true);
+    for (const l of ["parks", "transit", "schools", "grocery", "healthcare"] as const) {
+      expect(needsGraphOverlay(l)).toBe(false);
+    }
+  });
+});
+
+describe("overlay weights", () => {
+  it("sizes transit by GTFS weekday trips, zero when unknown", () => {
+    expect(overlayWeight({ lat: 0, lon: 0, t: 974 }, "transit")).toBe(974);
+    expect(overlayWeight({ lat: 0, lon: 0 }, "transit")).toBe(0);
+  });
+
+  it("passes area through where the spec scores it", () => {
+    expect(overlayWeight({ lat: 0, lon: 0, a: 6.4 }, "parks")).toBe(6.4);
+    expect(overlayWeight({ lat: 0, lon: 0, a: 1 }, "grocery")).toBe(1);
+  });
+
+  it("weighs unweighted layers at one", () => {
+    expect(overlayWeight({ lat: 0, lon: 0, tags: { amenity: "school" } }, "schools")).toBe(1);
+  });
+});
+
+describe("selectOverlayPoints", () => {
+  it("keeps transit hubs first under the cap", () => {
+    const pts = [
+      { lat: 59.43, lon: 24.75, t: 5 },
+      { lat: 59.44, lon: 24.76, t: 3000 },
+      { lat: 59.45, lon: 24.77, t: 100 },
+    ];
+    const out = selectOverlayPoints(pts, "transit", 2);
+    expect(out.map((p) => p.w)).toEqual([3000, 100]);
+    expect(out).toHaveLength(2);
+  });
+
+  it("stride-samples other layers deterministically within the cap", () => {
+    const pts = Array.from({ length: 10 }, (_, i) => ({ lat: 59 + i / 100, lon: 24.7 }));
+    const out = selectOverlayPoints(pts, "schools", 4);
+    expect(out).toHaveLength(4);
+    expect(out[0]).toEqual({ lon: 24.7, lat: 59, w: 1 });
+    // Same input, same sample (stable across renders/views).
+    expect(selectOverlayPoints(pts, "schools", 4)).toEqual(out);
+    // Spread, not just the head: last sample comes from the tail half.
+    expect(out[3].lat).toBeGreaterThan(59.05);
+  });
+
+  it("passes small sets through and drops coordless junk", () => {
+    const pts = [
+      { lat: 59.43, lon: 24.75 },
+      { lat: NaN, lon: 24.76 },
+      { lat: 59.45, lon: Infinity },
+    ];
+    expect(selectOverlayPoints(pts, "grocery")).toHaveLength(1);
+  });
+
+  it("caps a Harju-wide tile (performance)", () => {
+    const pts = Array.from({ length: 8049 }, (_, i) => ({
+      lat: 59 + (i % 1000) / 2000,
+      lon: 24 + (i % 1000) / 2000,
+      t: i,
+    }));
+    expect(selectOverlayPoints(pts, "transit")).toHaveLength(OVERLAY_CAP);
+  });
+});
+
+describe("overlay legend + colors", () => {
+  it("explains every layer's markers and weights in Estonian", () => {
+    const ids = LAYERS.map((l) => l.id);
+    expect(ids).toHaveLength(13);
+    for (const id of ids) {
+      const legend = overlayLegendFor(id);
+      expect(legend.length).toBeGreaterThan(10);
+    }
+    // Weights match the scoring spec halves/bonuses (see bonusSpecFor).
+    expect(overlayLegendFor("transit")).toContain("1500");
+    expect(overlayLegendFor("parks")).toContain("15 ha");
+    expect(overlayLegendFor("schools")).toContain("+12");
+    expect(overlayLegendFor("walkability")).toContain("300");
+    expect(overlayLegendFor("pedinfra")).toContain("12 km");
+    expect(overlayLegendFor("cycling")).toContain("3 km");
+    expect(overlayLegendFor("grocery")).toContain("6");
+    expect(overlayLegendFor("healthcare")).toContain("20");
+    // Batch B1 halves (see B1_BONUS in layers_batch1.ts).
+    expect(overlayLegendFor("pets")).toContain("5,7");
+    expect(overlayLegendFor("community")).toContain("3,3");
+    expect(overlayLegendFor("culture")).toContain("4,5");
+    expect(overlayLegendFor("nightlife")).toContain("7,5");
+    expect(overlayLegendFor("libraries")).toContain("(küllastus 3)");
+  });
+
+  it("gives every layer a distinct marker color", () => {
+    const seen = new Set((LAYERS.map((l) => l.id) as LayerId[]).map(overlayColorFor));
+    expect(seen.size).toBe(13);
+    for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
+  });
+});
+
+describe("fetchGraphOverlay", () => {
+  it("calls the overlay endpoint with bbox + cap, cleaning junk", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          points: [
+            { lon: 24.75, lat: 59.43, w: 1 },
+            { lon: 24.76, lat: 59.44 },
+            { lon: "x", lat: 59.44 },
+            { lon: 24.77, lat: 59.45, w: -3 },
+            null,
+          ],
+        }),
+    });
+    const pts = await fetchGraphOverlay("walkability", BBOX, 800, fetchImpl);
+    const url = String(fetchImpl.mock.calls[0][0]);
+    expect(url.startsWith("/api/layers/walkability/overlay?")).toBe(true);
+    expect(url).toContain("cap=800");
+    expect(pts).toEqual([
+      { lon: 24.75, lat: 59.43, w: 1 },
+      { lon: 24.76, lat: 59.44 },
+      { lon: 24.77, lat: 59.45 },
+    ]);
+  });
+
+  it("clamps the cap and reads null on failure", async () => {
+    const seen: string[] = [];
+    const fetchImpl = vi.fn().mockImplementation((url: string) => {
+      seen.push(url);
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ points: [] }) });
+    });
+    await fetchGraphOverlay("cycling", BBOX, 99999, fetchImpl);
+    expect(seen[0]).toContain("cap=2000");
+    const bad = vi.fn().mockResolvedValue({ ok: false });
+    await expect(fetchGraphOverlay("pedinfra", BBOX, 800, bad)).resolves.toBeNull();
+    const shape = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: () => Promise.resolve({ points: "nope" }) });
+    await expect(fetchGraphOverlay("pedinfra", BBOX, 800, shape)).resolves.toBeNull();
+    const boom = vi.fn().mockRejectedValue(new Error("down"));
+    await expect(fetchGraphOverlay("pedinfra", BBOX, 800, boom)).resolves.toBeNull();
+  });
+});

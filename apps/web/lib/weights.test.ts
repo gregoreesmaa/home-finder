@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  BALANCE_HINT,
   DEFAULT_BALANCE,
   DIMS,
+  UNCONFIGURABLE_DIMS,
   isDefaultWeights,
   parseBalanceParam,
   parseWeightsParam,
@@ -80,5 +82,53 @@ describe("weights URL params", () => {
     expect(isDefaultWeights({ green: 100 }, DEFAULT_BALANCE)).toBe(true);
     expect(isDefaultWeights({ green: 200 }, DEFAULT_BALANCE)).toBe(false);
     expect(isDefaultWeights({}, 50)).toBe(false);
+  });
+});
+
+describe("weights explainability copy", () => {
+  it("every slider key has a non-empty Estonian hint", () => {
+    expect(DIMS).toHaveLength(9);
+    for (const d of DIMS) {
+      expect(d.hint.trim().length, `${d.key} hint`).toBeGreaterThan(40);
+      // Each hint documents the slider effect (0% removes the dim).
+      expect(d.hint, `${d.key} slider effect`).toMatch(/0%/);
+      // Each hint names points, so users learn the value-to-points map.
+      expect(d.hint, `${d.key} points`).toMatch(/punkti/);
+    }
+  });
+
+  it("hints match the real dim definitions in livability.py", () => {
+    const hint = Object.fromEntries(DIMS.map((d) => [d.key, d.hint]));
+    expect(hint.schools).toMatch(/kooli|lastaed/i);
+    expect(hint.transit).toMatch(/bussipeatus/i);
+    expect(hint.services).toMatch(/pood|apteek|kliinik/i);
+    expect(hint.green).toMatch(/park|mets|rand/i);
+    expect(hint.water).toMatch(/meri|järv/i);
+    expect(hint.rail).toMatch(/rongipeatus/i);
+    // urban is a taste axis, not a generic good.
+    expect(hint.urban).toMatch(/maitse/i);
+    // safety is a coarse county tier; sub-county data does not exist.
+    expect(hint.safety).toMatch(/maakond/i);
+    // connect times are labelled estimates, never measured routes.
+    expect(hint.connect).toMatch(/hinnang/i);
+    expect(hint.connect).toMatch(/sõiduaeg/i);
+  });
+
+  it("balance hint explains the price-vs-quality split", () => {
+    expect(BALANCE_HINT.trim().length).toBeGreaterThan(40);
+    expect(BALANCE_HINT).toMatch(/kvaliteet/i);
+    expect(BALANCE_HINT).toMatch(/hind/i);
+  });
+
+  it("unconfigurable dims are documented with reasons", () => {
+    // dim_air: always-None stub in livability.py, kept out of WEIGHTS.
+    const air = UNCONFIGURABLE_DIMS.find((d) => d.key === "air");
+    expect(air).toBeDefined();
+    expect(air!.label.trim().length).toBeGreaterThan(0);
+    expect(air!.why.trim().length).toBeGreaterThan(40);
+    expect(air!.why).toMatch(/andme/i);
+    for (const d of UNCONFIGURABLE_DIMS) {
+      expect(d.why.trim().length, `${d.key} why`).toBeGreaterThan(40);
+    }
   });
 });

@@ -357,6 +357,19 @@ _POI_KIND = [
     ("shop", {"supermarket": "supermarket", "convenience": "convenience"}),
 ]
 
+# --- HOOK batch3-group11 (#95, Group 11 OSM dims p169/p346/p419/p466/p470) ---
+# New-module plumbing only: fetch + parse the Group 11 tags so the data
+# flows. Scorers/tests live in dims_group11b.py (b2 batch owns
+# dims_group11.py). WEIGHTS/combine/enrich_row are deliberately untouched
+# (pinned by tests; rebalancing is central).
+from dims_group11b import GROUP11_POI_KIND, GROUP11_QUERY_LINES  # noqa: E402
+
+_POI_KIND = _POI_KIND + GROUP11_POI_KIND
+OVERPASS_QUERY = OVERPASS_QUERY.replace(
+    ");\nout center 200;", GROUP11_QUERY_LINES + ");\nout center 200;"
+)
+# --- END HOOK batch3-group11 ---
+
 
 def parse_overpass(payload: dict) -> List[dict]:
     """Overpass JSON -> [{kind, lat, lon}]. Pure; unknown tags skipped."""
