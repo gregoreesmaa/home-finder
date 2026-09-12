@@ -1,0 +1,126 @@
+--- a/apps/web/lib/layers.ts
++++ b/apps/web/lib/layers.ts
+@@ -10,6 +10,11 @@
+ 
+ import { haversineKm } from "./poi";
+ 
++// B5-HOOK (#102): Group 14 public-safety data lives in ./layers_batch5
++// (new file). That module imports layers only as types, so no runtime cycle.
++import type { Batch5LayerId } from "./layers_batch5";
++import { BATCH5_DECAY, BATCH5_DEFS, BATCH5_TAGS, bonusSpecForBatch5 } from "./layers_batch5";
++
+ export type LayerId =
+   | "parks"
+   | "transit"
+@@ -18,7 +23,9 @@
+   | "pedinfra"
+   | "cycling"
+   | "grocery"
+-  | "healthcare";
++  | "healthcare"
++  // B5-HOOK (#102): Group 14 public-safety ids (defined in ./layers_batch5).
++  | Batch5LayerId;
+ 
+ export interface BBoxLike {
+   minlon: number;
+@@ -39,7 +46,8 @@
+ }
+ 
+ /** Tag keys worth caching (small, bounded); names/addresses never leave. */
+-const TAG_ALLOWLIST = ["amenity", "leisure", "railway", "public_transport", "highway"];
++// B5-HOOK (#102): "emergency" keeps emergency=fire_hydrant tags (p315).
++const TAG_ALLOWLIST = ["amenity", "leisure", "railway", "public_transport", "highway", "emergency"];
+ 
+ /** Pick allowlisted string tags, or undefined when there are none. */
+ export function pickFeatureTags(tags: unknown): Record<string, string> | undefined {
+@@ -93,6 +101,8 @@
+   cycling: 0.3,
+   grocery: 0.3,
+   healthcare: 0.8,
++  // B5-HOOK (#102): Group 14 radii (see layers_batch5.ts BATCH5_DECAY).
++  ...BATCH5_DECAY,
+ };
+ 
+ /** Meaningful influence radius in km: drives scoring decay and the map field. */
+@@ -200,6 +210,8 @@
+       { lat: 59.412, lon: 24.655 }, // Õismäe
+     ],
+   },
++  // B5-HOOK (#102): Group 14 defs (p13/p78/p315/p335/p467) from ./layers_batch5.
++  ...BATCH5_DEFS,
+ ];
+ 
+ const TAGS: Record<LayerId, string> = {
+@@ -213,6 +225,8 @@
+   cycling: 'w["highway"="cycleway"];w["cycleway"~"lane|track"];',
+   grocery: 'n["shop"~"supermarket|convenience|greengrocer|grocery|marketplace"];',
+   healthcare: 'n["amenity"~"pharmacy|doctors|dentist"];',
++  // B5-HOOK (#102): Group 14 queries (see layers_batch5.ts BATCH5_TAGS).
++  ...BATCH5_TAGS,
+ };
+ 
+ /** Overpass QL for the layer inside the bbox (south,west,north,east). */
+@@ -332,6 +346,10 @@
+         cap: 36,
+       };
+   }
++  // B5-HOOK (#102): Group 14 specs live in ./layers_batch5.
++  const b5 = bonusSpecForBatch5(layer);
++  if (b5) return b5;
++  throw new Error(`unknown layer: ${layer}`);
+ }
+ 
+ /**
+--- a/apps/web/lib/layers.test.ts
++++ b/apps/web/lib/layers.test.ts
+@@ -20,7 +20,9 @@
+ const TALLINN_BBOX: BBoxLike = { minlon: 24.5, minlat: 59.35, maxlon: 24.9, maxlat: 59.5 };
+ 
+ describe("layer registry", () => {
+-  it("binds all eight layers to parameters3 ids", () => {
++  // B5-HOOK (#102): extended eight -> thirteen; original order preserved,
++  // Group 14 ids appended via the ...BATCH5_DEFS spread (exact pin kept).
++  it("binds all thirteen layers to parameters3 ids", () => {
+     expect(LAYERS.map((l) => l.id)).toEqual([
+       "parks",
+       "transit",
+@@ -30,6 +32,11 @@
+       "cycling",
+       "grocery",
+       "healthcare",
++      "safety",
++      "emergency",
++      "hydrants",
++      "evac",
++      "dispatch",
+     ]);
+     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
+     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
+--- a/apps/web/lib/server/snapshot.ts
++++ b/apps/web/lib/server/snapshot.ts
+@@ -292,6 +292,12 @@
+   cycling: "cycling-walk-raster.json",
+   grocery: "grocery-walk-raster.json",
+   healthcare: "healthcare-walk-raster.json",
++  // B5-HOOK (#102): Group 14 rasters (built by scripts/build/batch_b5_safety.py).
++  safety: "safety-walk-raster.json",
++  emergency: "emergency-walk-raster.json",
++  hydrants: "hydrants-walk-raster.json",
++  evac: "evac-walk-raster.json",
++  dispatch: "dispatch-walk-raster.json",
+ };
+ 
+ /**
+@@ -358,6 +364,12 @@
+   cycling: "cycling-metro",
+   grocery: "grocery-metro",
+   healthcare: "healthcare-metro",
++  // B5-HOOK (#102): Group 14 metro masters (optional; windows fall back to county).
++  safety: "safety-metro",
++  emergency: "emergency-metro",
++  hydrants: "hydrants-metro",
++  evac: "evac-metro",
++  dispatch: "dispatch-metro",
+ };
+ 
+ /** Decoded county payloads (small); metro .u8 stays on disk per request. */
