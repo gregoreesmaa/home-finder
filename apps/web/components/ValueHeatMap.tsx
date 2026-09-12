@@ -10,7 +10,13 @@ import {
   type ScoredField,
 } from "../lib/distanceField";
 import type { BBoxLike, BonusSpec, ParkOutline, WalkRasterDoc } from "../lib/layers";
-import { applyOutlines, type OutlineMap } from "../lib/outlines";
+import {
+  applyOutlines,
+  applyPointOverlay,
+  clearVectorOverlays,
+  type OutlineMap,
+} from "../lib/outlines";
+import type { OverlayPoint } from "../lib/overlays";
 import { decodeRaster, rasterToRgba, sampleRaster, type DecodedRaster } from "../lib/walkRaster";
 import { lutCssGradient } from "../lib/valueScale";
 
@@ -26,6 +32,32 @@ export interface HeatPoint {
 const ESTONIA_CENTER: [number, number] = [25.0, 58.75];
 
 /**
+ * One overlay slot, painted above the raster: point markers win when
+ * present (page guarantees parks-outlines and points never coincide),
+ * otherwise park outlines; hidden clears the slot. Both painters clear
+ * stale layers first, so switches never stack.
+ */
+function paintOverlay(
+  mapObj: OutlineMap,
+  opts: {
+    outlines?: ParkOutline[] | null;
+    overlayPoints?: OverlayPoint[] | null;
+    overlayColor?: string;
+    showOverlay?: boolean;
+  },
+): void {
+  if (opts.showOverlay === false) {
+    clearVectorOverlays(mapObj);
+    return;
+  }
+  if (opts.overlayPoints && opts.overlayPoints.length > 0) {
+    applyPointOverlay(mapObj, opts.overlayPoints, { color: opts.overlayColor ?? "#1d4ed8" });
+    return;
+  }
+  applyOutlines(mapObj, opts.outlines);
+}
+
+/**
  * Single-layer value heatmap: MapLibre base + per-pixel exact shader field.
  * Hover reads the exact interpolated value under the cursor; areas without
  * data stay unpainted and read as "no data", never as zero.
@@ -36,6 +68,10 @@ export function ValueHeatMap({
   bonus,
   raster,
   outlines,
+  overlayPoints,
+  overlayColor,
+  overlayLegend,
+  showOverlay,
   title,
   goodLabel,
   badLabel,
@@ -51,6 +87,13 @@ export function ValueHeatMap({
   raster?: WalkRasterDoc | null;
   /** Park polygon outlines (parks layer only); boundary overlay. */
   outlines?: ParkOutline[] | null;
+  /** Point markers drawn ABOVE the raster (all layers but parks). */
+  overlayPoints?: OverlayPoint[] | null;
+  overlayColor?: string;
+  /** Legend line explaining the markers + their weights (Estonian). */
+  overlayLegend?: string | null;
+  /** Per-layer overlay toggle from the page. */
+  showOverlay?: boolean;
   title: string;
   goodLabel: string;
   badLabel: string;
@@ -69,8 +112,26 @@ export function ValueHeatMap({
   const decodedRef = useRef<{ doc: WalkRasterDoc; raster: DecodedRaster | null } | null>(null);
   const refreshRef = useRef<(() => void) | null>(null);
   const mapRef = useRef<OutlineMap | null>(null);
-  const dataRef = useRef({ points, radiusKm, bonus, raster, outlines });
-  dataRef.current = { points, radiusKm, bonus, raster, outlines };
+  const dataRef = useRef({
+    points,
+    radiusKm,
+    bonus,
+    raster,
+    outlines,
+    overlayPoints,
+    overlayColor,
+    showOverlay,
+  });
+  dataRef.current = {
+    points,
+    radiusKm,
+    bonus,
+    raster,
+    outlines,
+    overlayPoints,
+    overlayColor,
+    showOverlay,
+  };
   const viewCbRef = useRef(onViewChange);
   viewCbRef.current = onViewChange;
   // Mount-time camera only: later prop changes must not yank the camera.
@@ -162,7 +223,7 @@ export function ValueHeatMap({
         }
         mapRef.current = mapObj as unknown as OutlineMap;
         refresh();
-        applyOutlines(mapRef.current, dataRef.current.outlines);
+        paintOverlay(mapRef.current, dataRef.current);
       });
       const schedule = () => {
         if (timer) clearTimeout(timer);
@@ -223,10 +284,12 @@ export function ValueHeatMap({
     refreshRef.current?.();
   }, [points, radiusKm, bonus, raster]);
 
-  // Outlines ride the map lifecycle: paint once loaded, clear on switch.
+  // Overlay rides the map lifecycle: paint once loaded, clear on switch.
   useEffect(() => {
-    if (mapRef.current) applyOutlines(mapRef.current, outlines);
-  }, [outlines]);
+    if (mapRef.current) {
+      paintOverlay(mapRef.current, { outlines, overlayPoints, overlayColor, showOverlay });
+    }
+  }, [outlines, overlayPoints, overlayColor, showOverlay]);
 
   return (
     <section aria-label={title}>
@@ -264,6 +327,23 @@ export function ValueHeatMap({
         <span>{badLabel} · 0</span>
         <span>{goodLabel} · 100</span>
       </div>
+      {showOverlay !== false && overlayLegend ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, marginTop: 4 }}>
+          <span
+            aria-hidden="true"
+            style={{
+              width: 10,
+              height: 10,
+              borderRadius: "50%",
+              background: overlayColor ?? "#1d4ed8",
+              border: "2px solid #ffffff",
+              boxShadow: "0 0 0 1px rgba(0,0,0,0.35)",
+              flexShrink: 0,
+            }}
+          />
+          <span>{overlayLegend}</span>
+        </div>
+      ) : null}
       <div style={{ fontSize: 12, opacity: 0.75 }}>Punane katab ka alasid, kus andmed puuduvad.</div>
       <p>
         <small>{sourceNote}</small>
