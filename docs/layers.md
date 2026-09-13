@@ -139,11 +139,12 @@ precedent).
 
 POSITIVE-verdict P4 slices with point data gain a thin overlay on
 `/layers` — sensor points + the scorer's honest kernel, no parameters3
-id, no raster master (the points-splat kernel IS the field). First:
+id, no raster master (the points-splat kernel IS the field):
 
 | Overlay | Slice | Points | Kernel | Files |
 |---|---|---|---|---|
 | `senscom` (P4-031, #484) | sensor.community DIY-air density | Tallinn extract (`sensor-community-tallinn.json`, cached, never live) | hard ≤500 m witness bands 60/70/80 (== scorer) | `lib/layers_p4_senscom.ts` + `lib/server/senscom.ts` |
+| `ookla_fixed` + `ookla_mobile` (P4-009, #489) | Ookla quarterly tile download (2026-Q1 re-verified live: HEADs 200 + bounded Tallinn range-reads, 971 fixed / 555 mobile qualifying tiles) | Tallinn extract (`ookla-tallinn-2026Q1.json`, cached, never live) | nearest qualifying tile (≥5 tests) ≤1 km → bands 35/55/75/capped-85 (== scorer) | `lib/layers_p4_ookla.ts` + `lib/server/ookla.ts` |
 
 Overlay layers carry `paramIds: []` + `paramLabel` (e.g. `P4-031`):
 parameters3 p31 is Structural integrity (inspection no-map) and must

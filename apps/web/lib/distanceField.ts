@@ -9,6 +9,10 @@
 // enters. Empty input leaves +Inf everywhere: transparent, never faked.
 
 import { stopMode, type BBoxLike, type BonusSpec } from "./layers";
+// OOKLA-HOOK (#489): nearest-tile join for the tileband branch (the
+// module owns the tile payload tags; this import is values-only one
+// way — layers_p4_ookla imports ./layers as types, so no cycle).
+import { ooklaTileAt } from "./layers_p4_ookla";
 import { colorForValue } from "./valueScale";
 import { splatValues, splatWeights } from "./valueGrid";
 
@@ -241,6 +245,30 @@ export function buildScoredField(
         if (d <= radiusKm) n++;
       }
       direct[k] = n <= 0 ? NaN : n <= 1 ? spec.one : n <= 3 ? spec.twoThree : spec.fourPlus;
+    }
+    return { field, bonus, sigmaKm, direct };
+  }
+  // OOKLA-HOOK (#489): nearest-tile download bands (ookla fixed /
+  // mobile) — the map twin of _nearest_tile/_band_d in
+  // services/scoring/dims_p4_ookla.py. Each cell joins the nearest
+  // QUALIFYING tile centroid (download average present, >= minTests
+  // quarterly tests) within radiusM (hard cutoff, equirect km at mid
+  // latitude — same geometry as the "bands"/"cover" branches) and
+  // renders its band. Deliberately NOT a Gaussian splat and NOT an
+  // average: smoothing would fake a gradient between measured
+  // squares. No qualifying tile stays NaN (unknown, never zero — the
+  // scorer reads the same gap as NULL with hinnang + EI OLE).
+  if (spec.kind === "tileband") {
+    const direct = new Float64Array(cols * rows);
+    const spanLon = bbox.maxlon - bbox.minlon;
+    const spanLat = bbox.maxlat - bbox.minlat;
+    for (let k = 0; k < direct.length; k++) {
+      const iy = Math.floor(k / cols);
+      const ix = k % cols;
+      const clon = bbox.minlon + (cols > 1 ? (ix / (cols - 1)) * spanLon : 0);
+      const clat = bbox.minlat + (rows > 1 ? (iy / (rows - 1)) * spanLat : 0);
+      direct[k] =
+        ooklaTileAt(clat, clon, points, spec.radiusM, spec.minTests)?.band ?? NaN;
     }
     return { field, bonus, sigmaKm, direct };
   }

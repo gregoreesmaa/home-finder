@@ -109,6 +109,33 @@ only in NULL reasons (pinned by tests, dims_p4_osm precedent).
   empty-layer NULL naming the cut; re-open #268. Licence
   change away from CC BY-NC-SA → dated-negative re-check.
 
+## Map layer (issue #489, 2026-09-13)
+
+Two `/layers` overlays (`ookla_fixed`, `ookla_mobile`) visualize the
+P4-009 slice both dims score: tile centroids from the Tallinn extract
+served by `apps/web/lib/server/ookla.ts`, colored by the scorer's own
+nearest-tile band kernel (`tileband` spec in
+`apps/web/lib/layers_p4_ookla.ts` — byte parity with `_band_d` /
+`OOKLA_RADIUS_M` / `OOKLA_MIN_TESTS`, pinned by
+`apps/web/lib/layers_p4_ookla.test.ts`). No raster master by
+documented decision (`OOKLA_NO_RASTER`): the points-splat tileband
+kernel IS the field; the window route serves 500 and the client falls
+back to the splat (senscom/GTFS precedent). paramIds stays `[]` with
+`paramLabel: "P4-009"` (parameters3 p9 is an inspection-group fact and
+must never gain a map — senscom P4-031 precedent).
+
+Re-verification for this layer (same day, 2 HEADs + 2 bounded
+range-reads, labelled one-off user-agent `home-finder openness-check
+(one-off, no scrape)`): HEAD fixed Q1-2026 parquet → HTTP 200,
+`Content-Length: 348853499`, `Last-Modified: Mon, 13 Apr 2026`;
+HEAD mobile → HTTP 200, `Content-Length: 175330099`, same date
+(both unchanged from the table above); 2 bounded DuckDB range-reads
+(column chunks only, files never pulled whole) with the scorer's own
+guards (tests ≥ 5, avg_d present) → fixed 971 qualifying tiles /
+21 598 tests (median 164 537 kbps), mobile 555 / 6 856 tests (median
+261 748 kbps). Verdict stays POSITIVE — no dated-negative, no
+synthetic fill.
+
 ## Attribution (CC BY-NC-SA 4.0, kept for any surfacing)
 
 Speedtest® by Ookla® Global Fixed and Mobile Network

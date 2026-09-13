@@ -66,7 +66,7 @@ describe("batch B6 registry (#133)", () => {
     // MARUKOV-HOOK (#486): +4 MARU KOV choropleths join the registry. (90 + 4).
     // FLOOD-HOOK: +1 layers (94 + 1).
     // P4OSM-HOOK: +2 layers (95 + 2).
-    expect(ids.length).toBe(97); // OSMDAILY-HOOK (#482): +6 daily-life layers (77 + 6) + GTFS-HOOK (#483): +1 stop overlay; RSAFE-HOOK (#481): +1 road-safety layer (84 + 1); P4-031-HOOK (#484): +senscom (85 + 1); STATKOV-HOOK (#485): +3 choropleth layers (86 + 3)
+    expect(ids.length).toBe(99); // OSMDAILY-HOOK (#482): +6 daily-life layers (77 + 6) + GTFS-HOOK (#483): +1 stop overlay; RSAFE-HOOK (#481): +1 road-safety layer (84 + 1); P4-031-HOOK (#484): +senscom (85 + 1); STATKOV-HOOK (#485): +3 choropleth layers (86 + 3); OOKLA-HOOK (#489): +2 tile layers (97 + 2)
     for (const id of BATCH6_LAYER_IDS) expect(ids).toContain(id);
   });
 
