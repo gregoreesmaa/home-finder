@@ -45,6 +45,10 @@ describe("layer registry", () => {
       "hydrants",
       "evac",
       "dispatch",
+      // G06B-HOOK (#139): Group 6 leftover ids.
+      "plaster",
+      "antiques",
+      "woodfire",
       // G11C-HOOK (#134): Group 11 leftover-A ids.
       "schoolbus",
       "recspecial",
