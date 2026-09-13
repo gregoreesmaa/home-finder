@@ -41,6 +41,16 @@ import {
   BATCH5_TAGS,
   bonusSpecForBatch5,
 } from "./layers_batch5";
+// G11C-HOOK(#134): batch G11C (Group 11 leftovers A) tables live in
+// ./layers_group11c (new file). That module imports layers only as types,
+// so no runtime cycle.
+import type { Group11CLayerId } from "./layers_group11c";
+import {
+  G11C_DECAY,
+  G11C_DEFS,
+  G11C_TAGS,
+  bonusSpecForGroup11C,
+} from "./layers_group11c";
 // B6-HOOK(#133): batch B6 (mobility/access leftovers: p220/p270/p386)
 // tables live in ./layers_batch6 (new file). That module imports layers
 // only as types, so no runtime cycle.
@@ -89,6 +99,8 @@ export type LayerId =
   | G07LayerId
   // B5-HOOK (#102): Group 14 public-safety ids (defined in ./layers_batch5).
   | Batch5LayerId
+  // G11C-HOOK (#134): Group 11 leftover-A ids (./layers_group11c).
+  | Group11CLayerId
   // B6-HOOK (#133): mobility/access leftover ids (./layers_batch6).
   | Batch6LayerId
   // G06-HOOK (#138): Group 6 heritage id (defined in ./layers_group06).
@@ -175,6 +187,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...G07_DECAY_KM,
   // B5-HOOK (#102): Group 14 radii (see layers_batch5.ts BATCH5_DECAY).
   ...BATCH5_DECAY,
+  // G11C-HOOK (#134): Group 11 leftover-A radii (layers_group11c.ts G11C_DECAY).
+  ...G11C_DECAY,
   // B6-HOOK (#133): mobility/access radii (see layers_batch6.ts BATCH6_DECAY).
   ...BATCH6_DECAY,
   // G06-HOOK (#138): Group 6 radius (see layers_group06.ts GROUP06_DECAY).
@@ -293,6 +307,8 @@ export const LAYERS: LayerDef[] = [
   ...G07_LAYERS,
   // B5-HOOK (#102): Group 14 defs (p13/p78/p315/p335/p467) from ./layers_batch5.
   ...BATCH5_DEFS,
+  // G11C-HOOK (#134): Group 11 leftover-A defs (p88/p101/p124/p169/p190).
+  ...G11C_DEFS,
   // B6-HOOK (#133): mobility/access defs (p220/p270/p386) from ./layers_batch6.
   ...BATCH6_DEFS,
   // G06-HOOK (#138): Group 6 def (p72) from ./layers_group06.
@@ -324,6 +340,8 @@ const TAGS: Record<LayerId, string> = {
   ...G07_TAGS,
   // B5-HOOK (#102): Group 14 queries (see layers_batch5.ts BATCH5_TAGS).
   ...BATCH5_TAGS,
+  // G11C-HOOK (#134): Group 11 leftover-A queries (layers_group11c.ts G11C_TAGS).
+  ...G11C_TAGS,
   // B6-HOOK (#133): mobility/access queries (see layers_batch6.ts BATCH6_TAGS).
   ...BATCH6_TAGS,
   // G06-HOOK (#138): Group 6 query (see layers_group06.ts GROUP06_TAGS).
@@ -459,6 +477,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // B5-HOOK (#102): Group 14 specs live in ./layers_batch5.
   const b5 = bonusSpecForBatch5(layer);
   if (b5) return b5;
+  // G11C-HOOK (#134): Group 11 leftover-A specs live in ./layers_group11c.
+  const g11c = bonusSpecForGroup11C(layer);
+  if (g11c) return g11c;
   // B6-HOOK (#133): mobility/access specs live in ./layers_batch6.
   const b6 = bonusSpecForBatch6(layer);
   if (b6) return b6;

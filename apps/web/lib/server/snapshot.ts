@@ -16,6 +16,8 @@ import { haversineKm } from "../poi";
 import { sampleRaster } from "../walkRaster";
 // B1-HOOK(#98): batch B1 raster files live in layers_batch1.ts.
 import { B1_METRO_PREFIXES, B1_RASTER_FILES } from "../layers_batch1";
+// G11C-HOOK(#134): batch G11C raster files live in layers_group11c.ts.
+import { G11C_METRO_PREFIX, G11C_RASTER_FILE } from "../layers_group11c";
 // B6-HOOK(#133): batch B6 raster files live in layers_batch6.ts.
 import { BATCH6_RASTER_FILE } from "../layers_batch6";
 // G07-HOOK(#140): batch G07 raster files live in layers_group07.ts.
@@ -309,6 +311,8 @@ const RASTER_FILE: Record<LayerId, string> = {
   hydrants: "hydrants-walk-raster.json",
   evac: "evac-walk-raster.json",
   dispatch: "dispatch-walk-raster.json",
+  // G11C-HOOK (#134): Group 11 leftover-A rasters (batch_g11c_amenity.py).
+  ...G11C_RASTER_FILE,
   // B6-HOOK (#133): mobility/access rasters (scripts/build/batch_b6_mobility.py).
   ...BATCH6_RASTER_FILE,
   // G06-HOOK (#138): Group 6 raster (built by scripts/build/batch_g06_heritage.py).
@@ -410,6 +414,9 @@ const METRO_PREFIX: Record<LayerId, string> = {
   hydrants: "hydrants-metro",
   evac: "evac-metro",
   dispatch: "dispatch-metro",
+  // G11C-HOOK (#134): county-only layers (no metro masters; windows fall
+  // back to county cleanly, B5 precedent).
+  ...G11C_METRO_PREFIX,
   // B6-HOOK (#133): no metro masters (documented fake precision — the
   // files are absent, so windows serve county everywhere, like B5).
   droneclear: "droneclear-metro",
