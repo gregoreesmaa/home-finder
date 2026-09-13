@@ -448,6 +448,17 @@ export function overlayColorFor(layer: LayerId): string {
     // every other marker (distinct-color test).
     case "floodzone":
       return "#1e3a8a";
+    // P4OSM-HOOK (#480): walkability + darkness markers (point overlays,
+    // stride-sampled like grocery). #78350f: amber-900 trodden-sidewalk
+    // ochre (NOT #92400e — taken by libraries — and NOT #713f12/#7c2d12
+    // — taken by other batches); #312e81: indigo-900 December night
+    // (NOT #1e40af/#1d4ed8 — taken by earlier layers — and NOT #0f172a
+    // — taken by vectorhabitat). Both distinct from every other marker
+    // (distinct-color test).
+    case "blockwalk":
+      return "#78350f";
+    case "darkness":
+      return "#312e81";
   }
 }
 
@@ -762,6 +773,14 @@ export function overlayLegendFor(layer: LayerId): string {
     // dry — the register carries no T-bands and zero Tallinn polygons.
     case "floodzone":
       return "KAUR üleujutusohuga alad · tsoonis = hinnang (nimeline polügoon), väljaspool = teadmata, mitte kuiv (T-bändid ja Tallinna polügoonid registris puuduvad)";
+    // P4OSM-HOOK (#480): walkability + darkness (P4-029/P4-035) — mapped
+    // evidence counts, saturating halves from layers_p4osm.ts P4OSM_BONUS
+    // (same numbers as bonusSpecFor). Both are hinnangud, never measured:
+    // no Mapillary/KartaView frames, no lamp inventory feed.
+    case "blockwalk":
+      return "Kõnniteed/katted/valgustid · lähedaste arv (küllastus 1000, hinnang — fassaadi-tõde puudub)";
+    case "darkness":
+      return "lit-märgistused · lähedaste arv (küllastus 500, hinnang — lampide loendus puudub)";
   }
 }
 

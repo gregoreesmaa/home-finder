@@ -421,6 +421,16 @@ import {
   FLOOD_TAGS,
   bonusSpecForFlood,
 } from "./layers_flood";
+// P4OSM-HOOK (#480): P4 OSM walkability + darkness (P4-029 blockwalk +
+// P4-035 darkness) tables live in ./layers_p4osm. That module imports
+// layers only as types, so no runtime cycle.
+import type { P4OSMLayerId } from "./layers_p4osm";
+import {
+  P4OSM_DECAY,
+  P4OSM_LAYERS,
+  P4OSM_TAGS,
+  bonusSpecForP4OSM,
+} from "./layers_p4osm";
 
 export type LayerId =
   | "parks"
@@ -509,7 +519,9 @@ export type LayerId =
   // (./layers_maru).
   | MaruKovLayerId
   // FLOOD-HOOK (#487): floodzone id (./layers_flood, p112 KAUR choropleth).
-  | FloodLayerId;
+  | FloodLayerId
+  // P4OSM-HOOK (#480): P4 OSM walkability + darkness ids (./layers_p4osm).
+  | P4OSMLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -555,6 +567,11 @@ export interface LayerDef {
    * #484: P4 buyer-param slices are not parameters3 ids — parameters3
    * p31 is "Structural integrity", so paramIds stays [] and this label
    * names the slice instead). Absent for parameters3 layers.
+   * Non-parameters3 provenance tag for the layer button (P4OSM-HOOK
+   * #480: P4 buyer-param slices are not parameters3 ids — P3 p29/p35
+   * carry global verdict locks, so paramIds stays [] and this label
+   * names the slice instead). Absent for parameters3 layers. Twin of
+   * the #484 senscom wiring — dedupe on rebase, quiet-kind precedent.
    */
   paramLabel?: string;
   title: string;
@@ -584,6 +601,12 @@ export interface LayerHex {
 export function layerParamTag(def: LayerDef): string {
   if (def.paramLabel) return `(${def.paramLabel})`;
   if (def.paramIds.length === 0) return "";
+ * Layer-button tag: "(p19, p15)" for parameters3 layers, "(P4-029)" for
+ * P4 buyer-param slices (P4OSM-HOOK #480 — paramLabel, never a faked
+ * parameters3 id; twin of the #484 senscom helper, dedupe on rebase).
+ */
+export function layerParamTag(def: LayerDef): string {
+  if (def.paramLabel) return `(${def.paramLabel})`;
   return `(p${def.paramIds.join(", p")})`;
 }
 
@@ -684,6 +707,8 @@ const DECAY_KM: Record<LayerId, number> = {
   // FLOOD-HOOK (#487): floodzone radius (see layers_flood.ts FLOOD_DECAY —
   // INERT placeholder, polygons only: zero points, never evaluated).
   ...FLOOD_DECAY,
+  // P4OSM-HOOK (#480): walkability + darkness radii (see layers_p4osm.ts P4OSM_DECAY).
+  ...P4OSM_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -870,6 +895,8 @@ export const LAYERS: LayerDef[] = [
   ...MARUKOV_DEFS,
   // FLOOD-HOOK (#487): floodzone def (p112, KAUR zone choropleth) from ./layers_flood.
   ...FLOOD_DEFS,
+  // P4OSM-HOOK (#480): walkability + darkness defs (P4-029 blockwalk + P4-035 darkness) from ./layers_p4osm.
+  ...P4OSM_LAYERS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -968,6 +995,8 @@ const TAGS: Record<LayerId, string> = {
   // FLOOD-HOOK (#487): floodzone source note (see layers_flood.ts FLOOD_TAGS —
   // WFS provenance, NOT runnable Overpass QL).
   ...FLOOD_TAGS,
+  // P4OSM-HOOK (#480): walkability + darkness queries (see layers_p4osm.ts P4OSM_TAGS).
+  ...P4OSM_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -1273,6 +1302,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // polygons only, never evaluated).
   const flood = bonusSpecForFlood(layer);
   if (flood) return flood;
+  // P4OSM-HOOK (#480): walkability + darkness specs live in ./layers_p4osm.
+  const p4osm = bonusSpecForP4OSM(layer);
+  if (p4osm) return p4osm;
   throw new Error(`unknown layer: ${layer}`);
 }
 

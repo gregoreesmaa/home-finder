@@ -164,6 +164,10 @@ describe("layer registry", () => {
       // FLOOD-HOOK (#487): flood-risk polygon overlay id (p112 floodzone,
       // KAUR zone-membership choropleth, polygons only).
       "floodzone",
+      // P4OSM-HOOK (#480): P4 OSM walkability + darkness ids (P4-029
+      // blockwalk + P4-035 darkness, mapped proxies).
+      "blockwalk",
+      "darkness",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -206,6 +210,12 @@ describe("layer registry", () => {
     expect(LAYERS.find((l) => l.id === "kovkaive")?.paramIds).toEqual([149]);
     expect(LAYERS.find((l) => l.id === "kovedas")?.paramIds).toEqual([43]);
     expect(LAYERS.find((l) => l.id === "kovkiirus")?.paramIds).toEqual([484]);
+    // P4OSM-HOOK (#480): P4 slices ride paramLabel, paramIds stays []
+    // (P3 verdict locks — see layers_p4osm.ts).
+    expect(LAYERS.find((l) => l.id === "blockwalk")?.paramIds).toEqual([]);
+    expect(LAYERS.find((l) => l.id === "blockwalk")?.paramLabel).toBe("P4-029");
+    expect(LAYERS.find((l) => l.id === "darkness")?.paramIds).toEqual([]);
+    expect(LAYERS.find((l) => l.id === "darkness")?.paramLabel).toBe("P4-035");
   });
 
   it("wires the B10C utility layers with locked calibration", () => {
