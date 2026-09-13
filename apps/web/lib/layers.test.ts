@@ -97,6 +97,9 @@ describe("layer registry", () => {
       "buildout",
       // G05D-HOOK (#164): Group 5 plans-D id (p230 strsat).
       "strsat",
+      // G05A-HOOK (#161): Group 5 plans-A ids (p42 ehitus + p44 korterstock).
+      "ehitus",
+      "korterstock",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -212,6 +215,19 @@ describe("layer registry", () => {
     const far = goodnessAt(59.36, 24.66, pts, "strsat") as number;
     expect(far).toBeGreaterThan(90);
     expect(goodnessAt(59.4366, 24.7449, [], "strsat")).toBeNull();
+  });
+
+  it("wires the G05A ehitus + korterstock layers with locked calibration", () => {
+    // Drift guard: hook specs must equal G05A_CAL in layers_group05a.ts
+    // and the Python builder (parsed by test_batch_g05a.py).
+    expect(bonusSpecFor("ehitus")).toEqual({ kind: "area", half: 1 });
+    expect(radiusKmFor("ehitus")).toBe(0.3);
+    expect(LAYERS.find((l) => l.id === "ehitus")?.paramIds).toEqual([42]);
+    expect(overpassQueryFor("ehitus", TALLINN_BBOX)).toContain("construction");
+    expect(bonusSpecFor("korterstock")).toEqual({ kind: "area", half: 15 });
+    expect(radiusKmFor("korterstock")).toBe(0.3);
+    expect(LAYERS.find((l) => l.id === "korterstock")?.paramIds).toEqual([44]);
+    expect(overpassQueryFor("korterstock", TALLINN_BBOX)).toContain("apartments");
   });
 
   it("every layer explains green=good / red=bad in Estonian", () => {

@@ -135,6 +135,16 @@ import {
   bonusSpecForGroup05D,
   isGroup05DAvoidLayer,
 } from "./layers_group05d";
+// G05A-HOOK(#161): batch G05A (Group 5 plans-A ehitus + korterstock)
+// tables live in ./layers_group05a (new file). That module imports
+// layers only as types, so no runtime cycle.
+import type { Group05ALayerId } from "./layers_group05a";
+import {
+  GROUP05A_DECAY,
+  GROUP05A_LAYERS,
+  GROUP05A_TAGS,
+  bonusSpecForGroup05A,
+} from "./layers_group05a";
 // G11D-HOOK(#135): batch G11D (Group 11 leftovers B: p346/p470/p419/p466;
 // p317 is a documented no-map) tables live in ./layers_group11d (new
 // file). That module imports layers only as types, so no runtime cycle.
@@ -269,7 +279,9 @@ export type LayerId =
   // G05B-HOOK (#162): Group 5 plans-B ids (./layers_group05b).
   | Group05BLayerId
   // G05D-HOOK (#164): Group 5 plans-D id (./layers_group05d).
-  | Group05DLayerId;
+  | Group05DLayerId
+  // G05A-HOOK (#161): Group 5 plans-A ids (./layers_group05a).
+  | Group05ALayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -386,6 +398,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...GROUP05B_DECAY,
   // G05D-HOOK (#164): strsat radius (see layers_group05d.ts GROUP05D_DECAY).
   ...GROUP05D_DECAY,
+  // G05A-HOOK (#161): ehitus + korterstock radii (see layers_group05a.ts GROUP05A_DECAY).
+  ...GROUP05A_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -532,6 +546,8 @@ export const LAYERS: LayerDef[] = [
   ...GROUP05B_LAYERS,
   // G05D-HOOK (#164): strsat (p230) def from ./layers_group05d.
   ...GROUP05D_LAYERS,
+  // G05A-HOOK (#161): ehitus (p42) + korterstock (p44) defs from ./layers_group05a.
+  ...GROUP05A_LAYERS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -591,6 +607,8 @@ const TAGS: Record<LayerId, string> = {
   ...GROUP05B_TAGS,
   // G05D-HOOK (#164): strsat query (see layers_group05d.ts GROUP05D_TAGS).
   ...GROUP05D_TAGS,
+  // G05A-HOOK (#161): ehitus + korterstock queries (see layers_group05a.ts GROUP05A_TAGS).
+  ...GROUP05A_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -796,6 +814,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // G05D-HOOK (#164): strsat spec lives in ./layers_group05d.
   const g05d = bonusSpecForGroup05D(layer);
   if (g05d) return g05d;
+  // G05A-HOOK (#161): ehitus + korterstock specs live in ./layers_group05a.
+  const g05a = bonusSpecForGroup05A(layer);
+  if (g05a) return g05a;
   throw new Error(`unknown layer: ${layer}`);
 }
 

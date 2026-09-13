@@ -54,7 +54,8 @@ describe("batch B5 registry (#102)", () => {
     // G08B-HOOK (#168): windtunnel + saltspray join the registry.
     // G05B-HOOK (#162): gardens + buildout join the registry.
     // G05D-HOOK (#164): strsat joins the registry.
-    expect(ids.length).toBe(55);
+    // G05A-HOOK (#161): ehitus + korterstock join the registry.
+    expect(ids.length).toBe(57);
     for (const id of BATCH5_LAYER_IDS) expect(ids).toContain(id);
   });
 

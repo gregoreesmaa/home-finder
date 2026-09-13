@@ -240,6 +240,15 @@ export function overlayColorFor(layer: LayerId): string {
     // (distinct-color test).
     case "strsat":
       return "#e879f9";
+    // G05A-HOOK (#161): ehitus + korterstock markers (point overlays,
+    // stride-sampled like grocery). #fbbf24: amber construction-sign
+    // (cranes); #f9a8d4: soft pink housing (rental stock; NOT #e879f9 —
+    // taken by strsat). Both distinct from every other marker
+    // (distinct-color test).
+    case "ehitus":
+      return "#fbbf24";
+    case "korterstock":
+      return "#f9a8d4";
   }
 }
 
@@ -408,6 +417,13 @@ export function overlayLegendFor(layer: LayerId): string {
     // raster holds the full inverse-saturation field.
     case "strsat":
       return "Turismimajutus (korterid/külalismajad/hostelid/hotellid) · küllastussurve-hinnang (pöörd-lähedus, poolkaugus 350 m, Airbnb loendust mõõdetud pole)";
+    // G05A-HOOK (#161): ehitus (p42) — mapped construction sites, the
+    // raster holds the full count field; korterstock (p44) — mapped
+    // apartment footprints, the raster holds the full count field.
+    case "ehitus":
+      return "Ehitusplatsid (maa-ala + hooned) · arengu-hinnang (lähedaste arv, küllastus 1, planeeringuotsust mõõdetud pole)";
+    case "korterstock":
+      return "Korterelamud · üürituru-hinnang (lähedaste arv, küllastus 15, üürihindu mõõdetud pole)";
   }
 }
 

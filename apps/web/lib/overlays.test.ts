@@ -92,7 +92,8 @@ describe("overlay legend + colors", () => {
     // G08B-HOOK (#168): windtunnel + saltspray join the registry.
     // G05B-HOOK (#162): gardens + buildout join the registry.
     // G05D-HOOK (#164): strsat joins the registry.
-    expect(ids).toHaveLength(55);
+    // G05A-HOOK (#161): ehitus + korterstock join the registry.
+    expect(ids).toHaveLength(57);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -198,7 +199,8 @@ describe("overlay legend + colors", () => {
     // G08B-HOOK (#168): windtunnel + saltspray join the registry.
     // G05B-HOOK (#162): gardens + buildout join the registry.
     // G05D-HOOK (#164): strsat joins the registry.
-    expect(seen.size).toBe(55);
+    // G05A-HOOK (#161): ehitus + korterstock join the registry.
+    expect(seen.size).toBe(57);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });
