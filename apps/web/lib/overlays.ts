@@ -477,6 +477,14 @@ export function overlayColorFor(layer: LayerId): string {
       return "#78350f";
     case "darkness":
       return "#312e81";
+
+    // MAAPARCEL-HOOK (#491): maaparcel polygon casing (omandivorm-class
+    // choropleth, never a gradient). #701a75: fuchsia-900 cadastral
+    // purple (NOT #a21caf — taken by plaster — and NOT #d946ef — taken
+    // by kovehit — and NOT #e879f9 — taken by strsat). Distinct from
+    // every other marker (distinct-color test).
+    case "maaparcel":
+      return "#701a75";
   }
 }
 
@@ -814,6 +822,15 @@ export function overlayLegendFor(layer: LayerId): string {
       return "Kõnniteed/katted/valgustid · lähedaste arv (küllastus 1000, hinnang — fassaadi-tõde puudub)";
     case "darkness":
       return "lit-märgistused · lähedaste arv (küllastus 500, hinnang — lampide loendus puudub)";
+
+    // MAAPARCEL-HOOK (#491): maaparcel (p364, kataster omandivorm-class
+    // choropleth) — register facts, never suspicion scores. The
+    // outside-unknown caveat rides along (OTA PR #131 precedent):
+    // outside the harvested sample window is teadmata, never empty —
+    // and municipal/state land needs the RIK hoonestus-check, never a
+    // verdict off the fill color.
+    case "maaparcel":
+      return "Katastritunnused omandivormi järgi · roheline = era, oranž = munitsipaal, roosa = riigi, hall = muu/teadmata (fakt, mitte hinnang; munitsipaal/riigi → RIK hoonestuse kontroll) · väljaspool = teadmata, mitte tühi (proovivalim: 100 tunnust Kesklinna aknas)";
   }
 }
 

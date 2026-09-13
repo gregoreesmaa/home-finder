@@ -42,6 +42,16 @@ import {
 } from "../../lib/layers_flood";
 // OOKLA-HOOK (#489): tileband status line + suffix (see below).
 import { OOKLA_QUARTER } from "../../lib/layers_p4_ookla";
+
+// MAAPARCEL-HOOK (#491): maaparcel paints kataster parcel polygons
+// (polygons only, never a gradient) instead of points.
+import {
+  fetchMaaParcelAreas,
+  isPolygonOnlyMaaLayer,
+  type MaaParcelArea,
+} from "../../lib/layers_maaparcel";
+
+
 /** Viewport bbox rounded for fetch stability (matches server key rounding). */
 function sameView(a: BBoxLike, b: BBoxLike): boolean {
   return (
@@ -184,6 +194,26 @@ export default function LayersPage() {
     };
   }, [layer]);
 
+  // MAAPARCEL-HOOK (#491): kataster parcel polygons (maaparcel layer
+  // only, fetched once per selection): the choropleth itself — registered
+  // parcel fabric by omandivorm class vs outside/unknown. No points and
+  // no score field are painted for this layer, by design (polygons only,
+  // never a gradient).
+  const [maaAreas, setMaaAreas] = useState<MaaParcelArea[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!isPolygonOnlyMaaLayer(layer)) {
+      setMaaAreas(null);
+      return;
+    }
+    fetchMaaParcelAreas().then((areas) => {
+      if (!cancelled) setMaaAreas(areas);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [layer]);
+
   // Density layers (walkability/pedinfra/cycling) have no snapshot
   // points: their overlay is a viewport-capped foot-graph sample that
   // refetches with the view, same cadence as the points path. Point
@@ -208,13 +238,16 @@ export default function LayersPage() {
   const showOverlay = overlayOn[layer] !== false;
   const pointOverlay: OverlayPoint[] | null =
     // FLOOD-HOOK (#487): floodzone paints polygons, never point markers.
-    layer === "parks" || isPolygonOnlyLayer(layer)
+    // MAAPARCEL-HOOK (#491): maaparcel paints polygons, never point markers.
+    layer === "parks" || isPolygonOnlyLayer(layer) || isPolygonOnlyMaaLayer(layer)
       ? null
       : needsGraphOverlay(layer)
         ? graphPoints
         : selectOverlayPoints(featurePoints ?? [], layer);
   const overlayCount = isPolygonOnlyLayer(layer)
     ? (floodAreas?.length ?? 0)
+    : isPolygonOnlyMaaLayer(layer)
+      ? (maaAreas?.length ?? 0)
     : layer === "parks"
       ? (outlines?.length ?? 0)
       : (pointOverlay?.length ?? 0);
@@ -229,6 +262,14 @@ export default function LayersPage() {
     floodAreas === null
       ? "Laadin KAUR tsoone…"
       : `KAUR üleujutusohuga alad · ${floodAreas.length} tsooni (väljaspool = teadmata, mitte kuiv)`;
+  // MAAPARCEL-HOOK (#491): maaparcel status counts parcels, never
+  // points — the layer serves zero points by design (polygons only). The
+  // KKIS touch tally rides along (coarse puute-liide, never deed depth).
+  const maaTouched = maaAreas?.filter((p) => (p.kkis ?? 0) > 0).length ?? 0;
+  const maaStatus =
+    maaAreas === null
+      ? "Laadin katastritunnuseid…"
+      : `Maa-amet kataster · ${maaAreas.length} tunnust proovialas (${maaTouched} KKIS-puudega; väljaspool = teadmata, mitte tühi)`;
   // OOKLA-HOOK (#489): tileband-layer points ride the Ookla Tallinn
   // extract, not the OSM snapshot — the status names the extract (+
   // its quarter) instead of the snapshot date.
@@ -236,6 +277,8 @@ export default function LayersPage() {
   const base =
     isPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
       ? floodStatus
+      : isPolygonOnlyMaaLayer(layer) && provenance !== null && provenance !== "demo"
+        ? maaStatus
       : provenance === null
       ? "Laadin kihi andmeid…"
       : provenance === "snapshot"
@@ -310,6 +353,9 @@ export default function LayersPage() {
         raster={raster}
         outlines={outlines}
         floodAreas={floodAreas}
+
+        maaParcels={maaAreas}
+
         overlayPoints={pointOverlay}
         overlayColor={overlayColorFor(layer)}
         overlayLegend={overlayLegendFor(layer)}
@@ -327,9 +373,12 @@ export default function LayersPage() {
           // FLOOD-HOOK (#487): floodzone paints no field at all (zero
           // points, null raster) -- "varu" would claim a fallback splat
           // exists. Skip the suffix for polygon-only layers too.
+          // MAAPARCEL-HOOK (#491): maaparcel paints no field at all (zero
+          // points, null raster) -- same skip for the kataster fills.
           (isStatKovLayerId(layer) ||
             isMaruKovLayerId(layer) ||
-            isPolygonOnlyLayer(layer)
+            isPolygonOnlyLayer(layer) ||
+            isPolygonOnlyMaaLayer(layer)
             ? ""
             : distance === "euclidean" && provenance === "snapshot"
               ? raster

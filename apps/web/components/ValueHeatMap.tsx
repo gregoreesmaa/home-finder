@@ -11,8 +11,10 @@ import {
 } from "../lib/distanceField";
 import type { BBoxLike, BonusSpec, ParkOutline, WalkRasterDoc } from "../lib/layers";
 import type { FloodArea } from "../lib/layers_flood";
+import type { MaaParcelArea } from "../lib/layers_maaparcel";
 import {
   applyFloodPolygons,
+  applyMaaParcelPolygons,
   applyOutlines,
   applyPointOverlay,
   clearVectorOverlays,
@@ -35,7 +37,8 @@ const ESTONIA_CENTER: [number, number] = [25.0, 58.75];
 
 /**
  * One overlay slot, painted above the raster: flood polygons win when
- * present, then point markers (page guarantees flood-areas, outlines and
+ * present, then parcel fills, then point markers (page guarantees
+ * flood-areas, maa-parcels, outlines and
  * points never coincide), otherwise park outlines; hidden clears the
  * slot. All painters clear stale layers first, so switches never stack.
  */
@@ -44,6 +47,8 @@ function paintOverlay(
   opts: {
     outlines?: ParkOutline[] | null;
     floodAreas?: FloodArea[] | null;
+
+    maaParcels?: MaaParcelArea[] | null;
     overlayPoints?: OverlayPoint[] | null;
     overlayColor?: string;
     showOverlay?: boolean;
@@ -57,6 +62,13 @@ function paintOverlay(
   // score field is painted for this layer, by design).
   if (opts.floodAreas && opts.floodAreas.length > 0) {
     applyFloodPolygons(mapObj, opts.floodAreas, { color: opts.overlayColor ?? "#1e3a8a" });
+
+    return;
+  }
+  // MAAPARCEL-HOOK (#491): maaparcel class fills (polygons only — no
+  // score field is painted for this layer, by design).
+  if (opts.maaParcels && opts.maaParcels.length > 0) {
+    applyMaaParcelPolygons(mapObj, opts.maaParcels, { casing: opts.overlayColor ?? "#701a75" });
     return;
   }
   if (opts.overlayPoints && opts.overlayPoints.length > 0) {
@@ -78,6 +90,8 @@ export function ValueHeatMap({
   raster,
   outlines,
   floodAreas,
+
+  maaParcels,
   overlayPoints,
   overlayColor,
   overlayLegend,
@@ -99,6 +113,9 @@ export function ValueHeatMap({
   outlines?: ParkOutline[] | null;
   /** KAUR flood-zone fills (floodzone layer only); choropleth overlay. */
   floodAreas?: FloodArea[] | null;
+
+  /** Kataster parcel fills (maaparcel layer only); class choropleth. */
+  maaParcels?: MaaParcelArea[] | null;
   /** Point markers drawn ABOVE the raster (all layers but parks). */
   overlayPoints?: OverlayPoint[] | null;
   overlayColor?: string;
@@ -131,6 +148,8 @@ export function ValueHeatMap({
     raster,
     outlines,
     floodAreas,
+
+    maaParcels,
     overlayPoints,
     overlayColor,
     showOverlay,
@@ -142,6 +161,8 @@ export function ValueHeatMap({
     raster,
     outlines,
     floodAreas,
+
+    maaParcels,
     overlayPoints,
     overlayColor,
     showOverlay,
@@ -302,9 +323,10 @@ export function ValueHeatMap({
   useEffect(() => {
     if (mapRef.current) {
       // FLOOD-HOOK (#487): floodAreas join the painted slot.
-      paintOverlay(mapRef.current, { outlines, floodAreas, overlayPoints, overlayColor, showOverlay });
+      // MAAPARCEL-HOOK (#491): maaParcels join the painted slot.
+      paintOverlay(mapRef.current, { outlines, floodAreas, maaParcels, overlayPoints, overlayColor, showOverlay });
     }
-  }, [outlines, floodAreas, overlayPoints, overlayColor, showOverlay]);
+  }, [outlines, floodAreas, maaParcels, overlayPoints, overlayColor, showOverlay]);
 
   return (
     <section aria-label={title}>

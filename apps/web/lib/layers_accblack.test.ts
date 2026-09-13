@@ -47,8 +47,8 @@ describe("accblack registry (#490)", () => {
   it("merges into LAYERS via the ACCBLACK-HOOK (page + routes serve it)", () => {
     const ids = LAYERS.map((l) => l.id);
     // 99 shipped layers on main (#505 ookla) + 1 accident-blackspot
-    // (ACCBLACK-HOOK #490, 99 + 1).
-    expect(ids.length).toBe(100);
+    // (ACCBLACK-HOOK #490, 99 + 1) + 1 maaparcel (MAAPARCEL-HOOK #491, 100 + 1).
+    expect(ids.length).toBe(101);
     expect(ids).toContain("accblack");
   });
 

@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   applyFloodPolygons,
+
+  applyMaaParcelPolygons,
   applyOutlines,
   applyPointOverlay,
   clearVectorOverlays,
@@ -205,11 +207,16 @@ describe("clearVectorOverlays", () => {
       "park-outline-core",
       "layer-overlay-casing",
       "layer-overlay-core",
+      // MAAPARCEL-HOOK (#491): parcel fill + casing join the cleared slot.
+      "maaparcel-fill",
+      "maaparcel-casing",
     ]) {
       map.layers.add(id);
     }
     map.sources.add("park-outlines");
     map.sources.add("layer-overlay-src");
+    // MAAPARCEL-HOOK (#491): parcel source joins the cleared slot.
+    map.sources.add("maaparcel-polys");
     clearVectorOverlays(map);
     expect(map.layers.size).toBe(0);
     expect(map.sources.size).toBe(0);
@@ -278,6 +285,77 @@ describe("applyFloodPolygons", () => {
   it("no-ops before the style loads", () => {
     const map = mockMap(null);
     applyFloodPolygons(map, [AREA], { color: "#1e3a8a" });
+    expect(map.sources.size).toBe(0);
+    expect(map.layers.size).toBe(0);
+  });
+});
+
+describe("applyMaaParcelPolygons (#491)", () => {
+  const PARCEL = {
+    tunnus: "78401:107:0760",
+    cls: "era" as const,
+    omvorm: "Eraomand",
+    siht1: "ELAMUMAA",
+    pindala: 1281,
+    aadress: "Roosikrantsi tn 4c",
+    kkis: 1,
+    b: [24.74, 59.43, 24.75, 59.44] as [number, number, number, number],
+    r: [
+      [
+        [24.74, 59.43],
+        [24.75, 59.43],
+        [24.75, 59.44],
+        [24.74, 59.44],
+      ],
+    ],
+  };
+
+  it("paints class fills + casing with closed rings", () => {
+    const map = mockMap();
+    applyMaaParcelPolygons(map, [PARCEL], { casing: "#701a75" });
+    expect(map.sources.has("maaparcel-polys")).toBe(true);
+    expect(map.layers.has("maaparcel-fill")).toBe(true);
+    expect(map.layers.has("maaparcel-casing")).toBe(true);
+    const src = map.added[0] as {
+      data: { features: { properties: { cls: string }; geometry: { coordinates: number[][][][] } }[] };
+    };
+    expect(src.data.features).toHaveLength(1);
+    expect(src.data.features[0].properties.cls).toBe("era");
+    const ring = src.data.features[0].geometry.coordinates[0][0];
+    expect(ring[0]).toEqual(ring[ring.length - 1]);
+  });
+
+  it("paints the class match expression (facts, never scores)", () => {
+    const map = mockMap();
+    applyMaaParcelPolygons(map, [PARCEL], { casing: "#701a75" });
+    const fill = map.added.find(
+      (l) => (l as { id?: string }).id === "maaparcel-fill",
+    ) as { paint: { "fill-color": unknown[] } };
+    expect(fill.paint["fill-color"][0]).toBe("match");
+    expect(fill.paint["fill-color"]).toContain("era");
+    expect(fill.paint["fill-color"]).toContain("#22c55e");
+  });
+
+  it("folds unknown classes to muu and skips ringless parcels (never faked)", () => {
+    const map = mockMap();
+    const weird = { ...PARCEL, cls: "feudal" };
+    const ringless = { ...PARCEL, tunnus: "x:2", r: [] as number[][][] };
+    applyMaaParcelPolygons(
+      map,
+      [weird as unknown as typeof PARCEL, ringless],
+      { casing: "#701a75" },
+    );
+    const src = map.added[0] as {
+      data: { features: { properties: { cls: string } }[] };
+    };
+    expect(src.data.features).toHaveLength(1);
+    expect(src.data.features[0].properties.cls).toBe("muu");
+  });
+
+  it("is a no-op on nullish input (outside stays unpainted)", () => {
+    const map = mockMap();
+    applyMaaParcelPolygons(map, null, { casing: "#701a75" });
+    applyMaaParcelPolygons(map, [], { casing: "#701a75" });
     expect(map.sources.size).toBe(0);
     expect(map.layers.size).toBe(0);
   });

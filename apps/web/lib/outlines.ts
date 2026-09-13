@@ -1,5 +1,6 @@
 import type { ParkOutline } from "./layers";
 import type { FloodArea } from "./layers_flood";
+import { MAAPARCEL_CLASS_FILL, type MaaParcelArea } from "./layers_maaparcel";
 import type { OverlayPoint } from "./overlays";
 
 /** Minimal map surface for vector overlays (sources + paint layers). */
@@ -22,6 +23,12 @@ const PARK_CORE = "park-outline-core";
 const FLOOD_SRC = "flood-zone-polys";
 const FLOOD_FILL = "flood-zone-fill";
 const FLOOD_CASING = "flood-zone-casing";
+// MAAPARCEL-HOOK (#491): kataster parcel-class slot (omandivorm fills,
+// never a gradient). Clearing covers these ids too — one overlay slot
+// paints either kind, never stacks (see clearVectorOverlays).
+const MAAPARCEL_SRC = "maaparcel-polys";
+const MAAPARCEL_FILL = "maaparcel-fill";
+const MAAPARCEL_CASING = "maaparcel-casing";
 const POINT_SRC = "layer-overlay-src";
 const POINT_CASING = "layer-overlay-casing";
 const POINT_CORE = "layer-overlay-core";
@@ -29,7 +36,8 @@ const POINT_CORE = "layer-overlay-core";
 /** One overlay slot: painting any kind clears the others, never stacks. */
 export function clearVectorOverlays(mapObj: OutlineMap): void {
   // FLOOD-HOOK (#487): flood fill + casing join the cleared slot.
-  for (const id of [PARK_CASING, PARK_CORE, POINT_CASING, POINT_CORE, FLOOD_FILL, FLOOD_CASING]) {
+  // MAAPARCEL-HOOK (#491): parcel fill + casing join the cleared slot.
+  for (const id of [PARK_CASING, PARK_CORE, POINT_CASING, POINT_CORE, FLOOD_FILL, FLOOD_CASING, MAAPARCEL_FILL, MAAPARCEL_CASING]) {
     try {
       if (mapObj.getLayer(id)) mapObj.removeLayer(id);
     } catch {
@@ -37,7 +45,8 @@ export function clearVectorOverlays(mapObj: OutlineMap): void {
     }
   }
   // FLOOD-HOOK (#487): flood source joins the cleared slot.
-  for (const id of [PARK_SRC, POINT_SRC, FLOOD_SRC]) {
+  // MAAPARCEL-HOOK (#491): parcel source joins the cleared slot.
+  for (const id of [PARK_SRC, POINT_SRC, FLOOD_SRC, MAAPARCEL_SRC]) {
     try {
       if (mapObj.getSource(id)) mapObj.removeSource(id);
     } catch {
@@ -277,6 +286,92 @@ export function applyFloodPolygons(
       type: "line",
       source: FLOOD_SRC,
       paint: { "line-color": "#ffffff", "line-width": 2, "line-opacity": 0.9 },
+    },
+    before,
+  );
+}
+
+// MAAPARCEL-HOOK (#491): kataster parcel-class choropleth fills.
+
+/**
+ * Paint kataster parcel polygons (omandivorm-class fills + white casing)
+ * so the registered-parcel fabric reads at a glance. This is a
+ * CHOROPLETH of register facts, never a gradient: colors encode the
+ * omvorm class (see MAAPARCEL_CLASS_FILL), and no score field is painted
+ * anywhere. Clears stale overlay layers first; no-op when the style is
+ * not loaded yet or parcels is nullish. Malformed rings are skipped,
+ * never faked; unknown classes fall back to muu (never dropped).
+ */
+export function applyMaaParcelPolygons(
+  mapObj: OutlineMap,
+  parcels: MaaParcelArea[] | null | undefined,
+  opts: { casing: string },
+): void {
+  if (!mapObj.getStyle()) return;
+  clearVectorOverlays(mapObj);
+  if (!parcels || parcels.length === 0) return;
+  const features = [];
+  for (const a of parcels) {
+    if (!a || !Array.isArray(a.r)) continue;
+    const polys = [];
+    for (const ring of a.r) {
+      if (!Array.isArray(ring) || ring.length < 3) continue;
+      const pts = ring.filter(
+        (pt) =>
+          Array.isArray(pt) &&
+          pt.length === 2 &&
+          pt.every((n) => typeof n === "number" && Number.isFinite(n)),
+      );
+      if (pts.length < 3) continue;
+      const first = pts[0];
+      const last = pts[pts.length - 1];
+      const closed =
+        first[0] === last[0] && first[1] === last[1] ? pts : [...pts, [first[0], first[1]]];
+      polys.push([closed]);
+    }
+    if (polys.length === 0) continue;
+    const cls =
+      typeof a.cls === "string" && a.cls in MAAPARCEL_CLASS_FILL ? a.cls : "muu";
+    features.push({
+      type: "Feature",
+      properties: {
+        cls,
+        tunnus: typeof a.tunnus === "string" ? a.tunnus : "",
+      },
+      geometry: { type: "MultiPolygon", coordinates: polys },
+    });
+  }
+  if (features.length === 0) return;
+  mapObj.addSource(MAAPARCEL_SRC, {
+    type: "geojson",
+    data: { type: "FeatureCollection", features },
+  });
+  const before = abovePaint(mapObj);
+  mapObj.addLayer(
+    {
+      id: MAAPARCEL_FILL,
+      type: "fill",
+      source: MAAPARCEL_SRC,
+      paint: {
+        "fill-color": [
+          "match",
+          ["get", "cls"],
+          "era", MAAPARCEL_CLASS_FILL.era,
+          "muni", MAAPARCEL_CLASS_FILL.muni,
+          "riik", MAAPARCEL_CLASS_FILL.riik,
+          MAAPARCEL_CLASS_FILL.muu,
+        ],
+        "fill-opacity": 0.45,
+      },
+    },
+    before,
+  );
+  mapObj.addLayer(
+    {
+      id: MAAPARCEL_CASING,
+      type: "line",
+      source: MAAPARCEL_SRC,
+      paint: { "line-color": opts.casing, "line-width": 1, "line-opacity": 0.9 },
     },
     before,
   );

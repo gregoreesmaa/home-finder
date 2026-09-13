@@ -75,7 +75,7 @@ zero: null encodes 255 and renders red (red = bad *or* honestly-unknown).
 | 1 Listing portals (40) | 40 | — | 40: per-listing facts, no area signal | `layers_group01a/b` + `dims_group01a/b` (#202, #203) |
 | 2 EHR registry (9) | 9 | 196 | 21, 30, 33, 35, 48, 79, 154, 495 | `layers_group02/02b` + `dims_group02/02b` (#136, #137) |
 | 3 Cadastre (22) | 22 | 50, 332, 340 | 19 incl. 29, 68, 71, 75 | `layers_group03/03b/03c/03d/03e` (#151–#155) |
-| 4 Title/legal (17) | 17 | — | 17: per-parcel registry facts | `layers_group04` + `dims_group04` (#204) |
+| 4 Title/legal (17) | 17 | 364 (p364 ships twice — dims_overturn_maa scorer hint stands; maaparcel kataster omandivorm-class overlay, polygons only, outside stays unknown) | 16: per-parcel registry facts | `layers_group04` + `dims_group04` (#204) + `layers_maaparcel`/`batch_maaparcel_kataster` (#235, #491) |
 | 5 Plans (27) | 27 | 42, 44, 106, 146, 223, 224, 225, 230, 381, 485 | 17 | `layers_group05a–05f` (#161–#166) |
 | 6 Heritage (12) | 12 | 72, 352, 353, 356 | 8 | `layers_group06/06b` (#138, #139) |
 | 7 Env health (20) | 20 | 61, 62, 189, 202, 227, 257, 409, 450 | 12 | `layers_group07/07b/07c/07d` (#140–#143) |

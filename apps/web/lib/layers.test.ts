@@ -19,6 +19,10 @@ import {
 // FLOOD-HOOK (#487): polygons-only carve-out for the fallback assertion.
 import { isPolygonOnlyLayer } from "./layers_flood";
 
+// MAAPARCEL-HOOK (#491): polygons-only carve-out for the fallback assertion.
+import { isPolygonOnlyMaaLayer } from "./layers_maaparcel";
+
+
 const TALLINN_BBOX: BBoxLike = { minlon: 24.5, minlat: 59.35, maxlon: 24.9, maxlat: 59.5 };
 
 describe("layer registry", () => {
@@ -175,6 +179,11 @@ describe("layer registry", () => {
       // ACCBLACK-HOOK (#490): accident-blackspot id (P4-012 measured
       // slice, empty-on-purpose — parameters4 namespace).
       "accblack",
+
+      // MAAPARCEL-HOOK (#491): kataster parcel overlay id (p364
+      // omandivorm-class choropleth, polygons only).
+      "maaparcel",
+
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -556,7 +565,11 @@ describe("layer registry", () => {
       // FLOOD-HOOK (#487): polygons-only layers carry NO demo points — a
       // demo point would paint a fake gradient splat (pinned by
       // layers_flood.test.ts). Every other layer keeps fallback points.
-      if (!isPolygonOnlyLayer(l.id)) {
+      // MAAPARCEL-HOOK (#491): polygon-only layers carry no demo points
+      // (a demo point would paint a fake gradient splat).
+      if (isPolygonOnlyMaaLayer(l.id)) {
+        expect(l.fallbackPoints).toEqual([]);
+      } else if (!isPolygonOnlyLayer(l.id)) {
         expect(l.fallbackPoints.length).toBeGreaterThan(0);
       }
     }

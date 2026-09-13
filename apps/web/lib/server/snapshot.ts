@@ -104,6 +104,11 @@ import { OOKLA_RASTER_FILE } from "../layers_p4_ookla";
 // layers_accblack.ts (intentionally never built — ACCBLACK_NO_RASTER).
 import { ACCBLACK_RASTER_FILE } from "../layers_accblack";
 
+// MAAPARCEL-HOOK (#491): maaparcel raster file lives in
+// layers_maaparcel.ts (named but NEVER built — polygons-only decision,
+// resolves absent so windows serve honestly-empty, never a gradient).
+import { MAAPARCEL_RASTER_FILE } from "../layers_maaparcel";
+
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
 export const SNAPSHOT_AS_OF_MS = Date.parse(`${SNAPSHOT_AS_OF}T00:00:00Z`);
@@ -282,6 +287,86 @@ export async function loadParkAreas(dir: string): Promise<ParkArea[]> {
     // Optional sidecar: type-only weights below.
   }
   areaCache.set(dir, areas);
+  return areas;
+}
+
+// MAAPARCEL-HOOK (#491): kataster parcel sidecar
+// (`maa/parcel-areas.json`): omandivorm-class polygons as [lon, lat]
+// rings with a prefilter box (ParkOutline precedent — MaaParcelArea
+// mirrors ParkOutline with parcel identity in place of hectares).
+// Written offline by scripts/build/batch_maaparcel_kataster.py off the
+// cached WFS GeoJSON; the per-parcel join itself lives in
+// services/scoring/dims_overturn_maa.py.
+export interface MaaParcelSidecar {
+  tunnus: string;
+  cls: string;
+  omvorm: string;
+  siht1: string;
+  pindala: number | null;
+  aadress: string;
+  kkis: number | null;
+  /** [minlon, minlat, maxlon, maxlat] prefilter box. */
+  b: [number, number, number, number];
+  /** Parcel rings as [lon, lat] pairs (WFS cache is EPSG:4326 GeoJSON). */
+  r: number[][][];
+}
+
+const MAAPARCEL_CLASSES: ReadonlySet<string> = new Set(["era", "muni", "riik", "muu"]);
+
+function isMaaParcelSidecar(v: unknown): v is MaaParcelSidecar {
+  const p = v as Partial<MaaParcelSidecar>;
+  return (
+    typeof p?.tunnus === "string" &&
+    typeof p?.cls === "string" &&
+    MAAPARCEL_CLASSES.has(p.cls) &&
+    typeof p?.omvorm === "string" &&
+    typeof p?.siht1 === "string" &&
+    (typeof p?.pindala === "number" || p?.pindala === null) &&
+    typeof p?.aadress === "string" &&
+    (typeof p?.kkis === "number" || p?.kkis === null) &&
+    Array.isArray(p?.b) &&
+    p.b.length === 4 &&
+    p.b.every((n) => typeof n === "number" && Number.isFinite(n)) &&
+    Array.isArray(p?.r) &&
+    p.r.length > 0 &&
+    p.r.every(
+      (ring) =>
+        Array.isArray(ring) &&
+        ring.length >= 3 &&
+        ring.every(
+          (pt) =>
+            Array.isArray(pt) &&
+            pt.length === 2 &&
+            pt.every((n) => typeof n === "number" && Number.isFinite(n)),
+        ),
+    )
+  );
+}
+
+const maaParcelCache = new Map<string, MaaParcelSidecar[]>();
+
+/**
+ * Kataster parcel sidecar (`maa/parcel-areas.json`): omandivorm-class
+ * polygons. Missing or malformed sidecar degrades to [] (honestly no
+ * polygons — the layer covers a harvested sample window anyway, see
+ * docs/overturn_maa.md #491 addendum), never an error.
+ */
+export async function loadMaaParcelAreas(dir: string): Promise<MaaParcelSidecar[]> {
+  const hit = maaParcelCache.get(dir);
+  if (hit) return hit;
+  let areas: MaaParcelSidecar[] = [];
+  try {
+    const raw = await fs.readFile(path.join(dir, "maa", "parcel-areas.json"), "utf8");
+    const parsed: unknown = JSON.parse(raw);
+    const list: unknown = Array.isArray(parsed)
+      ? parsed
+      : (parsed as { parcels?: unknown } | null)?.parcels;
+    if (Array.isArray(list)) areas = list.filter(isMaaParcelSidecar);
+    else console.warn(`snapshot: ignoring malformed parcel-areas.json in ${dir}`);
+  } catch {
+    // Optional sidecar: honestly no polygons.
+  }
+  maaParcelCache.set(dir, areas);
   return areas;
 }
 
@@ -546,6 +631,11 @@ const RASTER_FILE: Record<LayerId, string> = {
   // decision — the measured set is empty, see ACCBLACK_NO_RASTER; the
   // name resolves to an absent file so rasters degrade to null).
   ...ACCBLACK_RASTER_FILE,
+
+  // MAAPARCEL-HOOK (#491): maaparcel raster name only (never built by
+  // documented polygons-only decision — resolves absent so windows
+  // serve honestly-empty, never a gradient).
+  ...MAAPARCEL_RASTER_FILE,
 };
 
 /**
@@ -977,6 +1067,11 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // decision (see layers_accblack.ts ACCBLACK_NO_RASTER) — the name
   // resolves to an absent file so windows fall back to county cleanly.
   accblack: "accblack-metro",
+
+  // MAAPARCEL-HOOK (#491): no maaparcel metro master (documented, see
+  // layers_maaparcel.ts MAAPARCEL_NO_METRO) -- resolves to an absent
+  // file so windows fall back to county cleanly.
+  maaparcel: "maaparcel-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

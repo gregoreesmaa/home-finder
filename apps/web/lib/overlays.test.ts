@@ -115,7 +115,10 @@ describe("overlay legend + colors", () => {
     // P4OSM-HOOK (#480): blockwalk + darkness join the registry. (95 + 2).
     // OOKLA-HOOK (#489): ookla_fixed + ookla_mobile join the registry (97 + 2).
     // ACCBLACK-HOOK (#490): accblack joins the registry (99 + 1).
-    expect(ids).toHaveLength(100);
+    // MAAPARCEL-HOOK (#491): maaparcel joins the registry (100 + 1).
+
+    expect(ids).toHaveLength(101);
+
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -306,6 +309,13 @@ describe("overlay legend + colors", () => {
     expect(overlayLegendFor("blockwalk")).toContain("hinnang");
     expect(overlayLegendFor("darkness")).toContain("küllastus 500");
     expect(overlayLegendFor("darkness")).toContain("hinnang");
+
+    // MAAPARCEL-HOOK (#491): parcel classes + outside-unknown caveat
+    // (facts, never suspicion scores — see MAAPARCEL_CLASS_FILL).
+    expect(overlayLegendFor("maaparcel")).toContain("omandivormi");
+    expect(overlayLegendFor("maaparcel")).toContain("väljaspool = teadmata, mitte tühi");
+    expect(overlayLegendFor("maaparcel")).toContain("RIK hoonestuse kontroll");
+
   });
 
   it("gives every layer a distinct marker color", () => {
@@ -337,7 +347,10 @@ describe("overlay legend + colors", () => {
     // P4OSM-HOOK (#480): blockwalk + darkness join the registry. (95 + 2).
     // OOKLA-HOOK (#489): ookla_fixed + ookla_mobile join the registry (97 + 2).
     // ACCBLACK-HOOK (#490): accblack joins the registry (99 + 1).
-    expect(seen.size).toBe(100);
+    // MAAPARCEL-HOOK (#491): maaparcel joins the registry (100 + 1).
+
+    expect(seen.size).toBe(101);
+
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });
