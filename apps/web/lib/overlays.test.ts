@@ -103,7 +103,9 @@ describe("overlay legend + colors", () => {
     // G17B-HOOK (#178): lawncare joins the registry.
     // G17R-HOOK (#196): privroad joins the registry.
     // B10C-HOOK (#230): water + waste + fiber + mobile join the registry.
-    expect(ids).toHaveLength(77);
+    // OSMDAILY-HOOK (#482): dailyshop + activity + herd + thirdplace +
+    // taxidoor + lastshop join the registry.
+    expect(ids).toHaveLength(83);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -247,6 +249,19 @@ describe("overlay legend + colors", () => {
     expect(overlayLegendFor("waste")).toContain("küllastus 6");
     expect(overlayLegendFor("fiber")).toContain("küllastus 50");
     expect(overlayLegendFor("mobile")).toContain("mitte mastid");
+    // OSMDAILY-HOOK (#482): daily-life halves (see OSMDAILY_BONUS).
+    expect(overlayLegendFor("dailyshop")).toContain("küllastus 8");
+    expect(overlayLegendFor("dailyshop")).toContain("hinnang");
+    expect(overlayLegendFor("activity")).toContain("küllastus 12");
+    expect(overlayLegendFor("activity")).toContain("mitte turvalisus");
+    expect(overlayLegendFor("herd")).toContain("küllastus 3");
+    expect(overlayLegendFor("herd")).toContain("maitse-hinnang");
+    expect(overlayLegendFor("thirdplace")).toContain("küllastus 12");
+    expect(overlayLegendFor("thirdplace")).toContain("hinnang");
+    expect(overlayLegendFor("taxidoor")).toContain("küllastus 30");
+    expect(overlayLegendFor("taxidoor")).toContain("hinnang");
+    expect(overlayLegendFor("lastshop")).toContain("küllastus 12");
+    expect(overlayLegendFor("lastshop")).toContain("HOIATUS");
   });
 
   it("gives every layer a distinct marker color", () => {
@@ -267,7 +282,8 @@ describe("overlay legend + colors", () => {
     // G17B-HOOK (#178): lawncare joins the registry.
     // G17R-HOOK (#196): privroad joins the registry.
     // B10C-HOOK (#230): water + waste + fiber + mobile join the registry.
-    expect(seen.size).toBe(77);
+    // OSMDAILY-HOOK (#482): six daily-life layers join the registry.
+    expect(seen.size).toBe(83);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

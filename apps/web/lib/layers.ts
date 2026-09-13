@@ -339,6 +339,17 @@ import {
   BATCH10C_TAGS,
   bonusSpecForBatch10C,
 } from "./layers_batch10c";
+// OSMDAILY-HOOK (#482): OSM daily-life overlay (P4-027/032/044/045/049/061
+// proxies: dailyshop + activity + herd + thirdplace + taxidoor +
+// lastshop) tables live in ./layers_osmdaily (new file). That module
+// imports layers only as types, so no runtime cycle.
+import type { OsmdailyLayerId } from "./layers_osmdaily";
+import {
+  OSMDAILY_DECAY,
+  OSMDAILY_DEFS,
+  OSMDAILY_TAGS,
+  bonusSpecForOsmdaily,
+} from "./layers_osmdaily";
 
 export type LayerId =
   | "parks"
@@ -409,7 +420,9 @@ export type LayerId =
   // G17R-HOOK (#196): Group 17 HOA-rest id (./layers_group17rest).
   | Group17RestLayerId
   // B10C-HOOK (#230): Group 10 utility ids (./layers_batch10c).
-  | Batch10CLayerId;
+  | Batch10CLayerId
+  // OSMDAILY-HOOK (#482): OSM daily-life ids (./layers_osmdaily).
+  | OsmdailyLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -548,6 +561,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...GROUP17REST_DECAY,
   // B10C-HOOK (#230): utility radii (see layers_batch10c.ts BATCH10C_DECAY).
   ...BATCH10C_DECAY,
+  // OSMDAILY-HOOK (#482): daily-life radii (see layers_osmdaily.ts OSMDAILY_DECAY).
+  ...OSMDAILY_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -716,6 +731,8 @@ export const LAYERS: LayerDef[] = [
   ...GROUP17REST_LAYERS,
   // B10C-HOOK (#230): utility defs (p53 water + p54 waste + p51 fiber/mobile) from ./layers_batch10c.
   ...BATCH10C_DEFS,
+  // OSMDAILY-HOOK (#482): daily-life defs (P4-027/032/044/045/049/061 proxies) from ./layers_osmdaily.
+  ...OSMDAILY_DEFS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -797,6 +814,8 @@ const TAGS: Record<LayerId, string> = {
   ...GROUP17REST_TAGS,
   // B10C-HOOK (#230): utility queries (see layers_batch10c.ts BATCH10C_TAGS).
   ...BATCH10C_TAGS,
+  // OSMDAILY-HOOK (#482): daily-life queries (see layers_osmdaily.ts OSMDAILY_TAGS).
+  ...OSMDAILY_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -1056,6 +1075,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // B10C-HOOK (#230): utility specs live in ./layers_batch10c.
   const b10c = bonusSpecForBatch10C(layer);
   if (b10c) return b10c;
+  // OSMDAILY-HOOK (#482): daily-life specs live in ./layers_osmdaily.
+  const osmdaily = bonusSpecForOsmdaily(layer);
+  if (osmdaily) return osmdaily;
   throw new Error(`unknown layer: ${layer}`);
 }
 

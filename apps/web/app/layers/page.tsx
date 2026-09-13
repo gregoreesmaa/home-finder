@@ -222,7 +222,11 @@ export default function LayersPage() {
             aria-pressed={layer === l.id}
             onClick={() => setLayer(l.id)}
           >
-            {l.title} (p{l.paramIds.join(", p")})
+            {l.title}
+            {/* OSMDAILY-HOOK (#482): P4 layers carry an empty paramIds
+                (parameters4 namespace — see layers_osmdaily.ts); skip
+                the "(p…)" suffix for them instead of rendering "(p)". */}
+            {l.paramIds.length > 0 ? ` (p${l.paramIds.join(", p")})` : ""}
           </button>
         ))}
       </div>

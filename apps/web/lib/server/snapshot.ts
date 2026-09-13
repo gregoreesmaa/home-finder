@@ -72,6 +72,8 @@ import { G17B_RASTER_FILE } from "../layers_group17b";
 import { G17R_RASTER_FILE } from "../layers_group17rest";
 // B10C-HOOK (#230): batch B10C raster files live in layers_batch10c.ts.
 import { BATCH10C_RASTER_FILE } from "../layers_batch10c";
+// OSMDAILY-HOOK (#482): daily-life raster files live in layers_osmdaily.ts.
+import { OSMDAILY_RASTER_FILE } from "../layers_osmdaily";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -415,6 +417,9 @@ const RASTER_FILE: Record<LayerId, string> = {
   ...G17R_RASTER_FILE,
   // B10C-HOOK (#230): utility rasters (scripts/build/batch_b10c_utility.py).
   ...BATCH10C_RASTER_FILE,
+  // OSMDAILY-HOOK (#482): daily-life rasters (follow-up builds; absent
+  // files degrade to the honest Euclidean fallback, never an error).
+  ...OSMDAILY_RASTER_FILE,
 };
 
 /**
@@ -751,6 +756,15 @@ const METRO_PREFIX: Record<LayerId, string> = {
   waste: "waste-metro",
   fiber: "fiber-metro",
   mobile: "mobile-metro",
+  // OSMDAILY-HOOK (#482): no metro masters (same documented fake
+  // precision — the files are absent, so windows serve county
+  // everywhere, like B10C/G02B/G03).
+  dailyshop: "dailyshop-metro",
+  activity: "activity-metro",
+  herd: "herd-metro",
+  thirdplace: "thirdplace-metro",
+  taxidoor: "taxidoor-metro",
+  lastshop: "lastshop-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

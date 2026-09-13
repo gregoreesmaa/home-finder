@@ -41,7 +41,8 @@ describe("batch B10C registry (#121)", () => {
   it("merges into LAYERS via the B10C-HOOK (page + routes serve all layers)", () => {
     const ids = LAYERS.map((l) => l.id);
     // Rebased onto current main (#230): 73 shipped layers + 4 B10C.
-    expect(ids.length).toBe(77);
+    // OSMDAILY-HOOK (#482): +6 daily-life layers.
+    expect(ids.length).toBe(83);
     for (const id of BATCH10C_LAYER_IDS) expect(ids).toContain(id);
     for (const gone of ["internet", "redundancy", "ota"]) expect(ids).not.toContain(gone);
   });
