@@ -41,11 +41,15 @@ medians as gap scores would fake the join (IA028 refusal precedent,
 - Builder: `scripts/build/batch_maru_choropleth.py` + synthetic
   `maru_kov_tables.example.json` + `test_batch_maru_choropleth.py`
 
-### Verification
+### Verification (final, rebased onto origin/main 6a5fd5e)
 - `pytest scripts/build/test_batch_maru_choropleth.py`: 20 passed
-- `vitest run apps/web/lib`: 75 files / 806 tests green
+- `vitest run apps/web/lib`: 78 files / 844 tests green (93 layers)
 - `pytest services/scoring/tests + builder`: 2308 passed, 4 skipped
 - `tsc --noEmit`: clean; `eslint` on touched files: clean
+- Rebase fallout fixed: recount 89→93 (incl. stale statkov test,
+  sibling-courtesy note); kovkiirus color #06b6d4→#ef4444 (senscom
+  #484 took cyan-500 — caught by the distinct-color test); kept the
+  senscom "bands" branch in the page sourceNote skip-merge.
 - Live smoke (`next dev -p 3106` + headless system Chrome):
   /layers renders all four MARU buttons with (p41)/(p149)/(p43)/
   (p484) suffixes (title+suffix doubling matches page convention,
