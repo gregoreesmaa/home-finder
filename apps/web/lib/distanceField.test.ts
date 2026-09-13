@@ -303,6 +303,26 @@ describe("distance field", () => {
     expect(sampleScored(s, 24.7, 59.42)?.value).toBeLessThanOrEqual(100);
   });
 
+});
+
+describe("quiet calmness fallback (batch B6, #133)", () => {
+  const QUIET: BonusSpec = { kind: "quiet", halfM: 800 };
+
+  it("scores calm far from the source, exposed on it (never inverted)", () => {
+    const s = buildScoredField([{ lon: 0.5, lat: 0.5 }], UNIT, 11, 11, 0.3, QUIET);
+    expect(s.direct).not.toBeNull();
+    const on = scoredAt(s, 5, 5);
+    const far = scoredAt(s, 0, 0);
+    expect(on).not.toBeNull();
+    expect(far).not.toBeNull();
+    // Green FAR (calm), red ON the source — the shared exponential
+    // decay would render this backwards, hence the baked direct field.
+    expect(on as number).toBeLessThan(5);
+    expect(far as number).toBeGreaterThan(on as number);
+  });
+});
+
+describe("field resolution", () => {
   it("resolution adapts to view span and clamps sanely", () => {
     const wide = fieldResolution(
       { minlon: 21.5, minlat: 57.3, maxlon: 28.5, maxlat: 59.9 },
@@ -339,5 +359,45 @@ describe("quiet calmness (G11D trailprivacy)", () => {
     const s = buildScoredField([], UNIT, 11, 11, 0.5, QUIET);
     expect(s.direct).not.toBeNull();
     for (const v of s.direct!) expect(v).toBeNaN();
+  });
+});
+
+describe("quiet-kind cleanliness (G07/G07D env-health)", () => {
+  const QUIET: BonusSpec = { kind: "quiet", halfM: 500 };
+
+  it("reads 0 on the source, ~50 at halfM, near 100 when far", () => {
+    // Source at grid centre; UNIT degree ~ 57x110 km so halfM=500 m is
+    // sub-cell: use a Tallinn-scale bbox instead for real distances.
+    const box: BBoxLike = { minlon: 24.69, minlat: 59.46, maxlon: 24.71, maxlat: 59.47 };
+    const s = buildScoredField([{ lon: 24.7, lat: 59.465 }], box, 41, 41, 0.5, QUIET);
+    expect(scoredAt(s, 20, 20)).toBe(0);
+    const half = sampleScored(s, 24.7 + 0.5 / 57.29, 59.465);
+    expect(half?.value).toBeCloseTo(50, 0);
+    const far = sampleScored(s, 24.69, 59.47);
+    expect(far?.value).toBeGreaterThan(60);
+  });
+
+  it("agrifield halves at 800 m (drift scale)", () => {
+    // Wider box: 800 m east of the source must stay inside the view.
+    const box: BBoxLike = { minlon: 24.69, minlat: 59.46, maxlon: 24.72, maxlat: 59.47 };
+    const s = buildScoredField([{ lon: 24.7, lat: 59.465 }], box, 41, 41, 0.8, {
+      kind: "quiet",
+      halfM: 800,
+    });
+    const half = sampleScored(s, 24.7 + 0.8 / 57.29, 59.465);
+    expect(half?.value).toBeCloseTo(50, 0);
+  });
+
+  it("never exceeds 100 and reads null where nothing is known", () => {
+    const box: BBoxLike = { minlon: 24.69, minlat: 59.46, maxlon: 24.71, maxlat: 59.47 };
+    const s = buildScoredField([{ lon: 24.7, lat: 59.465 }], box, 21, 21, 0.5, QUIET);
+    for (let iy = 0; iy < 21; iy++) {
+      for (let ix = 0; ix < 21; ix++) {
+        expect(scoredAt(s, ix, iy) ?? -1).toBeLessThanOrEqual(100);
+      }
+    }
+    // Points outside the view: the field is all +Inf -> null, never faked.
+    const empty = buildScoredField([{ lon: 0, lat: 0 }], box, 11, 11, 0.5, QUIET);
+    expect(scoredAt(empty, 5, 5)).toBeNull();
   });
 });

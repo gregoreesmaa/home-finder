@@ -1,0 +1,9 @@
+{"type": "FeatureCollection", "features": [
+{"type": "Feature", "id": "n101", "properties": {"building": "yes", "building:material": "plaster", "name": "Demo krohvhoone"}, "geometry": {"type": "Point", "coordinates": [24.7454, 59.4374]}},
+{"type": "Feature", "id": "w201", "properties": {"building": "yes", "building:material": "plaster", "name": "Demo krohvkorter"}, "geometry": {"type": "Polygon", "coordinates": [[[24.75, 59.44], [24.751, 59.44], [24.751, 59.441], [24.75, 59.441], [24.75, 59.44]]]}},
+{"type": "Feature", "id": "n102", "properties": {"building": "house", "building:material": "wood", "name": "Demo puithoone"}, "geometry": {"type": "Point", "coordinates": [24.7138, 59.4295]}},
+{"type": "Feature", "id": "w202", "properties": {"building": "house", "building:material": "wood", "name": "Demo puitmaja"}, "geometry": {"type": "Polygon", "coordinates": [[[24.72, 59.432], [24.721, 59.432], [24.721, 59.433], [24.72, 59.433], [24.72, 59.432]]]}},
+{"type": "Feature", "id": "n103", "properties": {"shop": "antiques", "name": "Demo antiik"}, "geometry": {"type": "Point", "coordinates": [24.7464, 59.439]}},
+{"type": "Feature", "id": "n104", "properties": {"shop": "supermarket", "name": "Pood (not G06B)"}, "geometry": {"type": "Point", "coordinates": [24.78, 59.44]}},
+{"type": "Feature", "id": "n105", "properties": {"building": "yes", "building:material": "brick", "name": "Tellishoone (not G06B)"}, "geometry": {"type": "Point", "coordinates": [24.79, 59.44]}}
+]}
