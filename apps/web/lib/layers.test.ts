@@ -108,6 +108,8 @@ describe("layer registry", () => {
       "equestrian",
       // G05F-HOOK (#166): Group 5 plans-F id (p485 upcycle).
       "upcycle",
+      // G10R-HOOK (#171): Group 10 utilities-rest id (p215 skyview).
+      "skyview",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -277,6 +279,17 @@ describe("layer registry", () => {
     expect(overpassQueryFor("upcycle", TALLINN_BBOX)).toContain("abandoned");
     // Rezoning stock, not nuisance: never the industprox/brownsoil tags.
     expect(overpassQueryFor("upcycle", TALLINN_BBOX)).not.toContain("industrial");
+  });
+
+  it("wires the G10R skyview layer with locked calibration", () => {
+    // G10R-HOOK (#171): drift guard — hook specs must equal G10R_CAL in
+    // layers_group10rest.ts and the Python builder (parsed by
+    // test_batch_g10_rest.py).
+    expect(bonusSpecFor("skyview")).toEqual({ kind: "quiet", halfM: 150 });
+    expect(radiusKmFor("skyview")).toBe(0.3);
+    expect(LAYERS.find((l) => l.id === "skyview")?.paramIds).toEqual([215]);
+    expect(overpassQueryFor("skyview", TALLINN_BBOX)).toContain("building:levels");
+    expect(overpassQueryFor("skyview", TALLINN_BBOX)).toContain("forest");
   });
 
   it("every layer explains green=good / red=bad in Estonian", () => {

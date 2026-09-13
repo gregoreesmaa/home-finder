@@ -680,6 +680,34 @@ describe("layer walk rasters", () => {
     }
   });
 
+  it("serves the G10R skyview raster under its contract", async () => {
+    // G10R-HOOK (#171): skyview quiet contract (halfM 150 on the
+    // wire as half, sigma 0.3); Euclidean-built like windsolar. A
+    // stale half is rejected.
+    const sdir = await fixtureDir([{ lat: 59.44, lon: 24.82 }], "skyview");
+    await writeFile(
+      join(sdir, "osm", "skyview-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 150, sigma: 0.3 })),
+    );
+    try {
+      const res = await loadLayerRaster("skyview", sdir);
+      expect(res.distance).toBe("euclidean");
+      expect(res.raster?.half).toBe(150);
+    } finally {
+      await rm(sdir, { recursive: true, force: true });
+    }
+    const stale = await fixtureDir([{ lat: 59.44, lon: 24.82 }], "skyview");
+    await writeFile(
+      join(stale, "osm", "skyview-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 300, sigma: 0.3 })),
+    );
+    try {
+      expect(await loadLayerRaster("skyview", stale)).toEqual({ raster: null, distance: "euclidean" });
+    } finally {
+      await rm(stale, { recursive: true, force: true });
+    }
+  });
+
   it("serves grocery and walkability rasters under the area contract", async () => {
     const gdir = await fixtureDir([{ lat: 59.44, lon: 24.75, a: 1 }], "grocery");
     await writeFile(

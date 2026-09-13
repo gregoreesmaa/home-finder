@@ -274,6 +274,12 @@ export function overlayColorFor(layer: LayerId): string {
     // from every other marker (distinct-color test).
     case "upcycle":
       return "#2dd4bf";
+    // G10R-HOOK (#171): skyview marker (point overlay, stride-sampled
+    // like grocery). #7dd3fc: sky-300 open-sky blue (the saturated
+    // blues #0ea5e9/#0284c7/#2563eb are taken by earlier layers).
+    // Distinct from every other marker (distinct-color test).
+    case "skyview":
+      return "#7dd3fc";
   }
 }
 
@@ -468,6 +474,10 @@ export function overlayLegendFor(layer: LayerId): string {
     // the raster holds the full count field.
     case "upcycle":
       return "Mahajäetud/kasutusest väljas hooned (punkrid ja vanalipud välja) · lähedaste arv (ümberarenduse-hinnang, küllastus 2, KOV otsus puudub)";
+    // G10R-HOOK (#171): skyview (p215) — mapped tall buildings +
+    // forest, the raster holds the full calmness field.
+    case "skyview":
+      return "Kõrghooned (5+ korrust) + mets · kauguse-hinnang (poolkaugus 150 m, suunatakistust mõõdetud pole)";
   }
 }
 
