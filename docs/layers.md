@@ -92,4 +92,43 @@ zero: null encodes 255 and renders red (red = bad *or* honestly-unknown).
 | 18 Spatial sim (29) | 29 | 7: 34, 63, 181, 305, 405, 468, 479 | 22 (scorer dims: solar/shade/traffic/vegetation proxies + no-map verdicts) | `layers_group18resta/b/c` + `layers_genv` + `dims_group18*` (#113, #122–#124, #172, #173, #197) |
 | 19 Inspection (134) | 134 | — | 134: forensic facts needing presence/meters | `layers_group19a–19d` + `dims_group19a–19d` (#208–#211) |
 | 20 Subjective (38) | 38 | — | 38: buyer-profile inputs, never area scores | `layers_group20a/b` + `dims_group20a/b` (#212, #213) |
-| **Total** | **500** | **97** | **403** | **§4** |
+| **Total** | **500** | **97** | **403** | batch files per-group above |
+
+## 4. P4 buyer params (parameters4.md P4-001–P4-062) — scorer dims, honest shapes
+
+The 62 buyer-question params (`parameters4.md`) are NOT map layers and
+duplicate no §3 layer: each is owned by exactly one verdict note
+(`docs/p4_*.md`, 84 notes — several params draw on multiple sources)
+with a pinned hermetic scorer module
+(`services/scoring/dims_p4_*.py`, 84 modules, doc↔module 1:1;
+11 more `docs/overturn_*.md` + `dims_overturn_*.py` hunts re-tested
+§3-style NULLs against live feeds — see `docs/nomap.md` §5 for the
+full per-source index). Honest shapes, all
+`(origin, pois) -> (score | None, Estonian reason)`, NULL-safe:
+
+- **Exact joins** (never gradients, never interpolation): area-table
+  joins (Stat PX-Web asula/linnaosa/KOV; REL2021 asula fallback —
+  the 1 km grid bulk is a dated negative, so grid joins stay NULL),
+  per-parcel joins (kataster/KKIS/TPR/parking-zone; Maa-amet WFS
+  classes; EELIS/KAUR zones gated by distance, the LABEL scores),
+  per-record joins (EHR/EIS per `ehr_code`, KÜ docs per `ku_code`,
+  AT/taiteur per joined entity rows only, PPA linnaosa tertiles off
+  the open CSVs).
+- **Capped proxies** (`hinnang`, never measured): OSM tag-density
+  proxies (12, capped), Ookla tile download (cap 85, SCORES),
+  sensor.community density (cap 80, SCORES), Kaitsevägi
+  membership/calendar gates, P4-051 arrears flag, dated-notice
+  calendar dims (flat 45/50 while in effect), own-store computed legs
+  (P4-001/022/028/046).
+- **Documented NULLs** (49 notes fully, 6 more partially): gated
+  (OpenCellID key, VIIRS login, RIK paid extracts, EHR/EIS anonymous
+  bulk), human-pages-only (budgets, audits, timetables, tariffs
+  without per-address feeds), or no honest signal (bank surveys,
+  insurer zones, ringkond-grain turnout). Every NULL reason carries
+  `EI OLE` + the buyer-side check; `EI OLE` never appears in a proxy
+  reason (pinned by tests, e.g. `dims_p4_osm`, `dims_p4_senscom`).
+
+Overturn flips that graduated NULL→join dims (Maa-amet parcels,
+MARU per-KOV choropleths, EHR per-code, AT probate, flood zone
+membership) stay scorer-side — no raster follows (OTA PR #131
+precedent).
