@@ -1,7 +1,8 @@
 // Parameter map layers (parameters3.md): one layer per mappable parameter,
 // green = good areas, red = bad areas. Listing-specific groups (portals,
-// finance, HOA, inspection, subjective taste) are deliberately omitted —
-// they describe a deal, not a place.
+// finance, HOA, inspection, subjective taste) and Group 2 EHR building
+// attributes (G02-HOOK #136) are deliberately omitted — they describe a
+// deal, not a place.
 //
 // Points come from the local 2026-09-12 snapshot via our server proxy.
 // Transit stop positions are OSM nodes joined to Peatus.ee GTFS weekday
@@ -30,6 +31,17 @@ import {
   isG07BLayerId,
   type G07BLayerId,
 } from "./layers_group07b";
+// G07-HOOK(#140): batch G07 (Group 7 env-health) tables live in
+// ./layers_group07 (new file). That module imports layers only as types,
+// so no runtime cycle.
+import {
+  G07_DECAY_KM,
+  G07_LAYERS,
+  G07_TAGS,
+  g07BonusSpecFor,
+  isG07LayerId,
+  type G07LayerId,
+} from "./layers_group07";
 // B5-HOOK(#102): batch B5 (Group 14 public-safety) tables live in
 // ./layers_batch5 (new file). That module imports layers only as types,
 // so no runtime cycle.
@@ -40,6 +52,81 @@ import {
   BATCH5_TAGS,
   bonusSpecForBatch5,
 } from "./layers_batch5";
+// G11D-HOOK(#135): batch G11D (Group 11 leftovers B: p346/p470/p419/p466;
+// p317 is a documented no-map) tables live in ./layers_group11d (new
+// file). That module imports layers only as types, so no runtime cycle.
+import {
+  G11D_DECAY,
+  G11D_LAYERS,
+  G11D_TAGS,
+  g11dBonusSpecFor,
+  isG11DLayerId,
+  type G11DLayerId,
+} from "./layers_group11d";
+// G07D-HOOK(#143): batch G07D (Group 7 env-health D) tables live in
+// ./layers_group07d (new file). That module imports layers only as
+// types, so no runtime cycle.
+import {
+  G07D_DECAY_KM,
+  G07D_LAYERS,
+  G07D_TAGS,
+  g07dBonusSpecFor,
+  isG07DLayerId,
+  type G07DLayerId,
+} from "./layers_group07d";
+// G06B-HOOK (#139): Group 6 leftover tables live in ./layers_group06b
+// (new file). That module imports layers only as types, so no cycle.
+import type { Group06BLayerId } from "./layers_group06b";
+import {
+  GROUP06B_DECAY,
+  GROUP06B_DEFS,
+  GROUP06B_TAGS,
+  bonusSpecForGroup06B,
+  isGroup06BAvoidLayer,
+} from "./layers_group06b";
+// G11C-HOOK(#134): batch G11C (Group 11 leftovers A) tables live in
+// ./layers_group11c (new file). That module imports layers only as types,
+// so no runtime cycle.
+import type { Group11CLayerId } from "./layers_group11c";
+import {
+  G11C_DECAY,
+  G11C_DEFS,
+  G11C_TAGS,
+  bonusSpecForGroup11C,
+} from "./layers_group11c";
+// B6-HOOK(#133): batch B6 (mobility/access leftovers: p220/p270/p386)
+// tables live in ./layers_batch6 (new file). That module imports layers
+// only as types, so no runtime cycle.
+import type { Batch6LayerId } from "./layers_batch6";
+import {
+  BATCH6_DECAY,
+  BATCH6_DEFS,
+  BATCH6_TAGS,
+  bonusSpecForBatch6,
+} from "./layers_batch6";
+// G02B-HOOK(#137): batch G02B (Group 2 EHR batch B, p196 lift proxy)
+// tables live in ./layers_group02b (new file). That module imports
+// layers only as types, so no runtime cycle.
+import type { Group02bLayerId } from "./layers_group02b";
+import {
+  G02B_DECAY,
+  G02B_DEFS,
+  G02B_TAGS,
+  bonusSpecForGroup02b,
+} from "./layers_group02b";
+// G02-HOOK(#136): Group 2 EHR batch-A verdicts live in ./layers_group02
+// (new file, five documented no-map verdicts). That module imports
+// nothing, so no runtime cycle.
+import { GROUP02_UNMAPPED_PARAMS } from "./layers_group02";
+// G06-HOOK (#138): Group 6 heritage tables live in ./layers_group06
+// (new file). That module imports layers only as types, so no cycle.
+import type { Group06LayerId } from "./layers_group06";
+import {
+  GROUP06_DECAY,
+  GROUP06_DEFS,
+  GROUP06_TAGS,
+  bonusSpecForGroup06,
+} from "./layers_group06";
 
 export type LayerId =
   | "parks"
@@ -53,8 +140,24 @@ export type LayerId =
   | B1LayerId // B1-HOOK(#98)
   // G07B-HOOK (#141): Group 7 env-health B ids (defined in ./layers_group07b).
   | G07BLayerId
+  // G07D-HOOK (#143): Group 7 env-health D ids (defined in ./layers_group07d).
+  | G07DLayerId
+  // G07-HOOK (#140): Group 7 env-health ids (defined in ./layers_group07).
+  | G07LayerId
   // B5-HOOK (#102): Group 14 public-safety ids (defined in ./layers_batch5).
-  | Batch5LayerId;
+  | Batch5LayerId
+  // G11D-HOOK (#135): Group 11 leftover-B ids (./layers_group11d).
+  | G11DLayerId
+  // G06B-HOOK (#139): Group 6 leftover ids (defined in ./layers_group06b).
+  | Group06BLayerId
+  // G11C-HOOK (#134): Group 11 leftover-A ids (./layers_group11c).
+  | Group11CLayerId
+  // B6-HOOK (#133): mobility/access leftover ids (./layers_batch6).
+  | Batch6LayerId
+  // G06-HOOK (#138): Group 6 heritage id (defined in ./layers_group06).
+  | Group06LayerId
+  // G02B-HOOK (#137): Group 2 batch-B lift-proxy id (./layers_group02b).
+  | Group02bLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -133,8 +236,24 @@ const DECAY_KM: Record<LayerId, number> = {
   ...B1_DECAY, // B1-HOOK(#98)
   // G07B-HOOK (#141): env-health B radii (see layers_group07b.ts G07B_DECAY_KM).
   ...G07B_DECAY_KM,
+  // G07D-HOOK (#143): env-health D radii (see layers_group07d.ts G07D_DECAY_KM).
+  ...G07D_DECAY_KM,
+  // G07-HOOK (#140): env-health radii (see layers_group07.ts G07_DECAY_KM).
+  ...G07_DECAY_KM,
   // B5-HOOK (#102): Group 14 radii (see layers_batch5.ts BATCH5_DECAY).
   ...BATCH5_DECAY,
+  // G11D-HOOK (#135): leftover-B radii (see layers_group11d.ts G11D_DECAY).
+  ...G11D_DECAY,
+  // G06B-HOOK (#139): Group 6 leftover radii (see layers_group06b.ts GROUP06B_DECAY).
+  ...GROUP06B_DECAY,
+  // G11C-HOOK (#134): Group 11 leftover-A radii (layers_group11c.ts G11C_DECAY).
+  ...G11C_DECAY,
+  // B6-HOOK (#133): mobility/access radii (see layers_batch6.ts BATCH6_DECAY).
+  ...BATCH6_DECAY,
+  // G06-HOOK (#138): Group 6 radius (see layers_group06.ts GROUP06_DECAY).
+  ...GROUP06_DECAY,
+  // G02B-HOOK (#137): lift-proxy radius (see layers_group02b.ts G02B_DECAY).
+  ...G02B_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -245,9 +364,32 @@ export const LAYERS: LayerDef[] = [
   ...B1_LAYERS, // B1-HOOK(#98): Group 11 amenity layers (p86/87/89/108/313)
   // G07B-HOOK (#141): env-health B defs (p189/p202/p227) from ./layers_group07b.
   ...G07B_LAYERS,
+  // G07D-HOOK (#143): env-health D defs (p409/p450) from ./layers_group07d.
+  ...G07D_LAYERS,
+  // G07-HOOK (#140): env-health defs (p61/p62) from ./layers_group07.
+  ...G07_LAYERS,
   // B5-HOOK (#102): Group 14 defs (p13/p78/p315/p335/p467) from ./layers_batch5.
   ...BATCH5_DEFS,
+  // G11D-HOOK (#135): leftover-B defs (p346/p470/p419/p466) from ./layers_group11d.
+  ...G11D_LAYERS,
+  // G06B-HOOK (#139): Group 6 leftover defs (p352/p353/p356) from ./layers_group06b.
+  ...GROUP06B_DEFS,
+  // G11C-HOOK (#134): Group 11 leftover-A defs (p88/p101/p124/p169/p190).
+  ...G11C_DEFS,
+  // B6-HOOK (#133): mobility/access defs (p220/p270/p386) from ./layers_batch6.
+  ...BATCH6_DEFS,
+  // G06-HOOK (#138): Group 6 def (p72) from ./layers_group06.
+  ...GROUP06_DEFS,
+  // G02B-HOOK (#137): lift-proxy def (p196) from ./layers_group02b.
+  ...G02B_DEFS,
 ];
+
+// G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
+// deliberately NOT layers -- building attributes, not place fields
+// (per-param verdicts in ./layers_group02). Locked by test: none of
+// these ids may appear in any layer's paramIds.
+/** parameters3.md ids with documented no-map verdicts (Group 2 EHR, #136). */
+export const UNMAPPED_PARAMS: readonly number[] = GROUP02_UNMAPPED_PARAMS;
 
 const TAGS: Record<LayerId, string> = {
   parks: 'n["leisure"~"park|garden|playground"];n["landuse"="recreation_ground"];',
@@ -263,8 +405,24 @@ const TAGS: Record<LayerId, string> = {
   ...B1_TAGS, // B1-HOOK(#98)
   // G07B-HOOK (#141): env-health B queries (see layers_group07b.ts G07B_TAGS).
   ...G07B_TAGS,
+  // G07D-HOOK (#143): env-health D queries (see layers_group07d.ts G07D_TAGS).
+  ...G07D_TAGS,
+  // G07-HOOK (#140): env-health queries (see layers_group07.ts G07_TAGS).
+  ...G07_TAGS,
   // B5-HOOK (#102): Group 14 queries (see layers_batch5.ts BATCH5_TAGS).
   ...BATCH5_TAGS,
+  // G11D-HOOK (#135): leftover-B queries (see layers_group11d.ts G11D_TAGS).
+  ...G11D_TAGS,
+  // G06B-HOOK (#139): Group 6 leftover queries (see layers_group06b.ts GROUP06B_TAGS).
+  ...GROUP06B_TAGS,
+  // G11C-HOOK (#134): Group 11 leftover-A queries (layers_group11c.ts G11C_TAGS).
+  ...G11C_TAGS,
+  // B6-HOOK (#133): mobility/access queries (see layers_batch6.ts BATCH6_TAGS).
+  ...BATCH6_TAGS,
+  // G06-HOOK (#138): Group 6 query (see layers_group06.ts GROUP06_TAGS).
+  ...GROUP06_TAGS,
+  // G02B-HOOK (#137): lift-proxy query (see layers_group02b.ts G02B_TAGS).
+  ...G02B_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -338,6 +496,21 @@ export interface TripsSpec {
   minModes: number;
 }
 
+/**
+ * Inverse proximity ("avoid") spec: score FALLS with nearness.
+ * score = 100·(1−2^(−d/half)), d = walk/Euclidean km to the nearest
+ * feature: 0 on top of a feature, 50 at `half` km, →100 far away.
+ * Only G06B woodfire (p356 fire-spread attention) uses it: green = far
+ * from mapped wooden houses. Null (no feature in range) stays null —
+ * the raster/window path renders it red as honestly-unknown, same as
+ * every other layer.
+ */
+export interface AvoidSpec {
+  kind: "avoid";
+  /** Walk-km from the nearest feature scoring 50 (woodfire: 0.21). */
+  half: number;
+}
+
 export type BonusSpec =
   | AreaSpec
   | TripsSpec
@@ -346,6 +519,16 @@ export type BonusSpec =
   // halfM). Same kind the G07-A batch (#140) adds — identical semantics,
   // shared on purpose; if #140 lands first this union member dedupes on
   // rebase.
+  // G11D-HOOK (#135): nearest-source calmness for inverted badness
+  // layers (trailprivacy): 0 on the source, 50 at halfM (GENV designed
+  // this kind but never wired it; G11D is the first wired use).
+  // G07D-HOOK (#143): nearest-source cleanliness (0 on the source, 50 at
+  // halfM). Same kind the G07-A/B batches (#140/#141) add — identical
+  // semantics, shared on purpose; dedupes on rebase.
+  | AvoidSpec
+  | { kind: "variety"; key: string; values: string[]; per: number; cap: number }
+  // B6-HOOK (#133) + G07-HOOK (#140): nearest-source calmness/cleanliness
+  // (0 on the source, 50 at halfM).
   | { kind: "quiet"; halfM: number };
 
 export function bonusSpecFor(layer: LayerId): BonusSpec {
@@ -353,6 +536,10 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   if (isB1LayerId(layer)) return b1BonusSpecFor(layer);
   // G07B-HOOK(#141): env-health B specs live in layers_group07b.ts.
   if (isG07BLayerId(layer)) return g07bBonusSpecFor(layer);
+  // G07D-HOOK(#143): env-health D specs live in layers_group07d.ts.
+  if (isG07DLayerId(layer)) return g07dBonusSpecFor(layer);
+  // G07-HOOK(#140): env-health specs live in layers_group07.ts.
+  if (isG07LayerId(layer)) return g07BonusSpecFor(layer);
   switch (layer) {
     case "parks":
       // Area-proportional: total nearby hectares, saturating (half = 15).
@@ -396,6 +583,23 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // B5-HOOK (#102): Group 14 specs live in ./layers_batch5.
   const b5 = bonusSpecForBatch5(layer);
   if (b5) return b5;
+  // G11D-HOOK (#135): leftover-B specs live in ./layers_group11d.
+  if (isG11DLayerId(layer)) return g11dBonusSpecFor(layer);
+  // G06B-HOOK (#139): Group 6 leftover specs live in ./layers_group06b.
+  const g06b = bonusSpecForGroup06B(layer);
+  if (g06b) return g06b;
+  // G11C-HOOK (#134): Group 11 leftover-A specs live in ./layers_group11c.
+  const g11c = bonusSpecForGroup11C(layer);
+  if (g11c) return g11c;
+  // B6-HOOK (#133): mobility/access specs live in ./layers_batch6.
+  const b6 = bonusSpecForBatch6(layer);
+  if (b6) return b6;
+  // G06-HOOK (#138): Group 6 spec lives in ./layers_group06.
+  const g06 = bonusSpecForGroup06(layer);
+  if (g06) return g06;
+  // G02B-HOOK (#137): lift-proxy spec lives in ./layers_group02b.
+  const g02b = bonusSpecForGroup02b(layer);
+  if (g02b) return g02b;
   throw new Error(`unknown layer: ${layer}`);
 }
 
@@ -415,6 +619,15 @@ export function goodnessAt(
   for (const p of points) {
     const d = haversineKm(lat, lon, p.lat, p.lon);
     if (d < best) best = d;
+  }
+  // G06B-HOOK (#139): inverse ("avoid") layers score 100·(1−2^(−d/half)):
+  // 0 on top of a feature, 50 at half km, →100 far away. Mirrors the
+  // walk-raster stamp (batch_g06b_heritage.py) and the buildScoredField
+  // branch, so the Euclidean fallback agrees with the raster about
+  // direction (near wood = low fire-safety score).
+  if (isGroup06BAvoidLayer(layer)) {
+    const half = (bonusSpecFor(layer) as AvoidSpec).half;
+    return Math.round(100 * (1 - Math.pow(2, -best / half)));
   }
   return Math.round(100 * Math.exp(-best / DECAY_KM[layer]));
 }
