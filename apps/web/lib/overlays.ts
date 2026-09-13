@@ -317,6 +317,13 @@ export function overlayColorFor(layer: LayerId): string {
       return "#a8a29e";
     case "leafdrop":
       return "#fb923c";
+    // G17B-HOOK (#178): lawncare marker (point overlay,
+    // stride-sampled like grocery). #bef264: lime-200 fresh-cut grass
+    // (NOT #a3e635 — taken by compost — and NOT #4ade80 — taken by
+    // gardens — and NOT #84cc16 — taken by agriland). Distinct from
+    // every other marker (distinct-color test).
+    case "lawncare":
+      return "#bef264";
   }
 }
 
@@ -543,6 +550,10 @@ export function overlayLegendFor(layer: LayerId): string {
       return "Liivakastid · lähedaste arv (talihoolduse-hinnang, küllastus 1, sahaplaan puudub)";
     case "leafdrop":
       return "Haljasjäätmete punktid · lähedaste arv (kogumise-hinnang, küllastus 1, veograafik puudub)";
+    // G17B-HOOK (#178): lawncare (p469) — mapped mown lawns, the
+    // raster holds the full count field.
+    case "lawncare":
+      return "Niidetavad murualad (aasad välja) · lähedaste arv (hooldusnähtavuse-hinnang, küllastus 20, niitmiskontrolli register puudub)";
   }
 }
 

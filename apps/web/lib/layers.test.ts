@@ -121,6 +121,8 @@ describe("layer registry", () => {
       "compost",
       "gritbin",
       "leafdrop",
+      // G17B-HOOK (#178): Group 17 municipal-services-B id (p469 lawncare).
+      "lawncare",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -351,6 +353,16 @@ describe("layer registry", () => {
     expect(radiusKmFor("leafdrop")).toBe(0.3);
     expect(LAYERS.find((l) => l.id === "leafdrop")?.paramIds).toEqual([312]);
     expect(overpassQueryFor("leafdrop", TALLINN_BBOX)).toContain("waste_disposal");
+  });
+
+  it("wires the G17B lawncare layer with locked calibration", () => {
+    // G17B-HOOK (#178): drift guard — hook specs must equal G17B_CAL in
+    // layers_group17b.ts and the Python builder (parsed by
+    // test_batch_g17_b.py).
+    expect(bonusSpecFor("lawncare")).toEqual({ kind: "area", half: 20 });
+    expect(radiusKmFor("lawncare")).toBe(0.3);
+    expect(LAYERS.find((l) => l.id === "lawncare")?.paramIds).toEqual([469]);
+    expect(overpassQueryFor("lawncare", TALLINN_BBOX)).toContain("grass");
   });
 
   it("every layer explains green=good / red=bad in Estonian", () => {

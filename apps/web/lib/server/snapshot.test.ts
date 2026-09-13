@@ -837,6 +837,34 @@ describe("layer walk rasters", () => {
     }
   });
 
+  it("serves the G17B lawncare raster under its contract", async () => {
+    // G17B-HOOK (#178): lawncare AREA contract (half 20 on the wire,
+    // sigma 0.3, viewshed/G17A shape with a density half); Euclidean
+    // count kernel. A stale half is rejected.
+    const ldir = await fixtureDir([{ lat: 59.412, lon: 24.655 }], "lawncare");
+    await writeFile(
+      join(ldir, "osm", "lawncare-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 20, sigma: 0.3 })),
+    );
+    try {
+      const res = await loadLayerRaster("lawncare", ldir);
+      expect(res.distance).toBe("euclidean");
+      expect(res.raster?.half).toBe(20);
+    } finally {
+      await rm(ldir, { recursive: true, force: true });
+    }
+    const stale = await fixtureDir([{ lat: 59.412, lon: 24.655 }], "lawncare");
+    await writeFile(
+      join(stale, "osm", "lawncare-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 1, sigma: 0.3 })),
+    );
+    try {
+      expect(await loadLayerRaster("lawncare", stale)).toEqual({ raster: null, distance: "euclidean" });
+    } finally {
+      await rm(stale, { recursive: true, force: true });
+    }
+  });
+
   it("serves grocery and walkability rasters under the area contract", async () => {
     const gdir = await fixtureDir([{ lat: 59.44, lon: 24.75, a: 1 }], "grocery");
     await writeFile(
