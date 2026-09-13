@@ -35,8 +35,9 @@ describe("statkov registry (#485)", () => {
   it("merges into LAYERS via the STATKOV-HOOK (page + routes serve it)", () => {
     const ids = LAYERS.map((l) => l.id);
     // 86 shipped layers on main (77 + 6 osmdaily #482 + 1 gtfs #483 +
-    // 1 roadsafety #481 + 1 senscom #484) + 3 statkov layers (86 + 3).
-    expect(ids.length).toBe(89);
+    // 1 roadsafety #481 + 1 senscom #484) + 3 statkov layers (86 + 3) +
+    // 1 parking layer (P4PARK-HOOK #479, 89 + 1).
+    expect(ids.length).toBe(90);
     for (const id of STATKOV_LAYER_IDS) expect(ids).toContain(id);
   });
 

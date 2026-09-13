@@ -944,6 +944,34 @@ describe("layer walk rasters", () => {
     }
   });
 
+  it("serves the P4 parking raster under its contract", async () => {
+    // P4PARK-HOOK (#479): parking AREA contract (half 150 on the
+    // wire, sigma 0.8 — the P4-013 800 m tier); Euclidean count
+    // kernel. A stale half is rejected.
+    const pdir = await fixtureDir([{ lat: 59.4374, lon: 24.7454 }], "parking");
+    await writeFile(
+      join(pdir, "osm", "parking-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 75, sigma: 0.8 })),
+    );
+    try {
+      const res = await loadLayerRaster("parking", pdir);
+      expect(res.distance).toBe("euclidean");
+      expect(res.raster?.half).toBe(75);
+    } finally {
+      await rm(pdir, { recursive: true, force: true });
+    }
+    const stale = await fixtureDir([{ lat: 59.4374, lon: 24.7454 }], "parking");
+    await writeFile(
+      join(stale, "osm", "parking-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 20, sigma: 0.8 })),
+    );
+    try {
+      expect(await loadLayerRaster("parking", stale)).toEqual({ raster: null, distance: "euclidean" });
+    } finally {
+      await rm(stale, { recursive: true, force: true });
+    }
+  });
+
   it("serves the G17R privroad raster under its contract", async () => {
     // G17R-HOOK (#196): privroad QUIET contract (halfM 200 on the
     // wire half field, sigma 0.3); exact-grid Dijkstra Euclidean

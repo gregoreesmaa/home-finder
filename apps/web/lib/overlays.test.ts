@@ -109,7 +109,8 @@ describe("overlay legend + colors", () => {
     // RSAFE-HOOK (#481): roadsafety joins the registry.
     // P4-031-HOOK (#484): senscom joins the registry.
     // STATKOV-HOOK (#485): kovmigr + kovehit + kovfisc join the registry (86 + 3).
-    expect(ids).toHaveLength(89);
+    // P4PARK-HOOK (#479): parking joins the registry. (89 + 1).
+    expect(ids).toHaveLength(90);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -282,6 +283,9 @@ describe("overlay legend + colors", () => {
     expect(overlayLegendFor("kovmigr")).toContain("EI OLE");
     expect(overlayLegendFor("kovehit")).toContain("lagi 70");
     expect(overlayLegendFor("kovfisc")).toContain("lagi 70");
+    // P4PARK-HOOK (#479): parking joins the registry.
+    expect(overlayLegendFor("parking")).toContain("küllastus 75");
+    expect(overlayLegendFor("parking")).toContain("hinnang");
   });
 
   it("gives every layer a distinct marker color", () => {
@@ -307,7 +311,8 @@ describe("overlay legend + colors", () => {
     // RSAFE-HOOK (#481): roadsafety joins the registry.
     // P4-031-HOOK (#484): senscom joins the registry.
     // STATKOV-HOOK (#485): kovmigr + kovehit + kovfisc join the registry (86 + 3).
-    expect(seen.size).toBe(89);
+    // P4PARK-HOOK (#479): parking joins the registry. (89 + 1).
+    expect(seen.size).toBe(90);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

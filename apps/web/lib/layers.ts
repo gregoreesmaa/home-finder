@@ -391,6 +391,16 @@ import {
   STATKOV_TAGS,
   bonusSpecForStatKov,
 } from "./layers_statkov";
+// P4PARK-HOOK (#479): P4 OSM parking tables live in ./layers_p4_parking
+// (P4-013 bays+lots count proxy). That module imports layers only as
+// types, so no runtime cycle.
+import type { P4ParkingLayerId } from "./layers_p4_parking";
+import {
+  P4PARK_DECAY,
+  P4PARK_DEFS,
+  P4PARK_TAGS,
+  bonusSpecForP4Parking,
+} from "./layers_p4_parking";
 
 export type LayerId =
   | "parks"
@@ -472,7 +482,9 @@ export type LayerId =
   | SenscomLayerId
   // STATKOV-HOOK (#485): Statamet per-KOV choropleth ids
   // (./layers_statkov).
-  | StatKovLayerId;
+  | StatKovLayerId
+  // P4PARK-HOOK (#479): P4 OSM parking id (./layers_p4_parking).
+  | P4ParkingLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -640,6 +652,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...SENSCOM_DECAY_KM,
   // STATKOV-HOOK (#485): choropleth fallback widths (see layers_statkov.ts).
   ...STATKOV_DECAY,
+  // P4PARK-HOOK (#479): parking radius (see layers_p4_parking.ts P4PARK_DECAY).
+  ...P4PARK_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -820,6 +834,8 @@ export const LAYERS: LayerDef[] = [
   ...SENSCOM_LAYERS,
   // STATKOV-HOOK (#485): choropleth defs (P4-025/050/019 proxies) from ./layers_statkov.
   ...STATKOV_DEFS,
+  // P4PARK-HOOK (#479): parking def (P4-013 bays+lots proxy) from ./layers_p4_parking.
+  ...P4PARK_DEFS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -911,6 +927,8 @@ const TAGS: Record<LayerId, string> = {
   ...SENSCOM_TAGS,
   // STATKOV-HOOK (#485): KOV polygon queries (see layers_statkov.ts STATKOV_TAGS).
   ...STATKOV_TAGS,
+  // P4PARK-HOOK (#479): parking query (see layers_p4_parking.ts P4PARK_TAGS).
+  ...P4PARK_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -1206,6 +1224,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // STATKOV-HOOK (#485): choropleth specs live in ./layers_statkov.
   const statkov = bonusSpecForStatKov(layer);
   if (statkov) return statkov;
+  // P4PARK-HOOK (#479): parking spec lives in ./layers_p4_parking.
+  const p4park = bonusSpecForP4Parking(layer);
+  if (p4park) return p4park;
   throw new Error(`unknown layer: ${layer}`);
 }
 
