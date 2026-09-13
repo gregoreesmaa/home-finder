@@ -260,6 +260,13 @@ export function overlayColorFor(layer: LayerId): string {
       return "#facc15";
     case "viewshed":
       return "#f43f5e";
+    // G05E-HOOK (#165): equestrian marker (point overlay,
+    // stride-sampled like grocery). #8b4513: saddle brown (stables;
+    // NOT #92400e — taken by libraries — and NOT #713f12/#7c2d12 —
+    // taken by other batches). Distinct from every other marker
+    // (distinct-color test).
+    case "equestrian":
+      return "#8b4513";
   }
 }
 
@@ -446,6 +453,10 @@ export function overlayLegendFor(layer: LayerId): string {
       return "Tuulikud + maapealsed päikesepargid (katusepaneelid välja) · kauguse-hinnang (poolkaugus 800 m, tootmisregister puudub)";
     case "viewshed":
       return "Vaatepunktid · lähedaste arv (vaatekaitse-hinnang, küllastus 1, kõrguspiirangute register puudub)";
+    // G05E-HOOK (#165): equestrian (p381) — mapped riding campuses,
+    // the raster holds the full count field.
+    case "equestrian":
+      return "Ratsakeskused + maneežid + tallid + ratsateed · lähedaste arv (juurdepääsu-hinnang, küllastus 1, KOV planeeringuotsus puudub)";
   }
 }
 
