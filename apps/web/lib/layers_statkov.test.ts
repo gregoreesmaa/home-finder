@@ -37,7 +37,8 @@ describe("statkov registry (#485)", () => {
     // 86 shipped layers on main (77 + 6 osmdaily #482 + 1 gtfs #483 +
     // 1 roadsafety #481 + 1 senscom #484) + 3 statkov layers (86 + 3) +
     // 1 parking layer (P4PARK-HOOK #479, 89 + 1).
-    expect(ids.length).toBe(90);
+    // MARUKOV-HOOK (#486): +4 MARU KOV choropleths join the registry (90 + 4).
+    expect(ids.length).toBe(94);
     for (const id of STATKOV_LAYER_IDS) expect(ids).toContain(id);
   });
 

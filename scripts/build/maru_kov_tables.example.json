@@ -1,0 +1,16 @@
+{
+  "_note": "SYNTHETIC DEMO ONLY (issue #486): invented medians and deal counts under FAKE kov names (Näidisvald/Testlinn/Langusvald), shaped like the maintainer-placed MARU quarterly KOV export (kov;quarter;median_eur_m2;deals). NEVER MARU data, NEVER scraped, NEVER joinable to real KOV polygons (fail-closed by construction: building this against the real extract aborts on fixture-KOVs-without-polygons). Production masters require the maintainer export via --tables. Expected bands: Näidisvald kasv 40 / kaive 65 / edas 70 / kiirus 55; Testlinn kasv NULL / kaive 35 / edas NULL / kiirus 70; Langusvald kasv 75 / kaive 35 / edas 35 / kiirus 40.",
+  "synthetic": true,
+  "period": "demo-2025-Q1..2026-Q2",
+  "rows": [
+    {"kov": "Näidisvald", "quarter": "2025-Q1", "median_eur_m2": 3000, "deals": 120},
+    {"kov": "Näidisvald", "quarter": "2025-Q2", "median_eur_m2": 3100, "deals": 140},
+    {"kov": "Näidisvald", "quarter": "2026-Q1", "median_eur_m2": 3200, "deals": 150},
+    {"kov": "Näidisvald", "quarter": "2026-Q2", "median_eur_m2": 3300, "deals": 160},
+    {"kov": "Testlinn", "quarter": "2026-Q1", "median_eur_m2": 1900, "deals": 7},
+    {"kov": "Testlinn", "quarter": "2026-Q2", "median_eur_m2": 2000, "deals": 8},
+    {"kov": "Langusvald", "quarter": "2025-Q2", "median_eur_m2": 1500, "deals": 14},
+    {"kov": "Langusvald", "quarter": "2026-Q1", "median_eur_m2": 1450, "deals": 16},
+    {"kov": "Langusvald", "quarter": "2026-Q2", "median_eur_m2": 1400, "deals": 12}
+  ]
+}
