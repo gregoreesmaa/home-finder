@@ -115,6 +115,16 @@ export function overlayColorFor(layer: LayerId): string {
       return "#57534c";
     case "dispatch":
       return "#6b21a8";
+    // G11D-HOOK (#135): leftover-B layers (point overlays, stride-sampled
+    // like grocery; alley/trailprivacy plot their derived way samples).
+    case "mailbox":
+      return "#c2410c";
+    case "postal":
+      return "#2563eb";
+    case "alley":
+      return "#44403c";
+    case "trailprivacy":
+      return "#3f6212";
     // Batch G07D env-health layers (point overlays, stride-sampled).
     case "agrifield":
       return "#16a34a";
@@ -208,6 +218,16 @@ export function overlayLegendFor(layer: LayerId): string {
       return "Magistraalteede tihedus (hinnang, küllastus 2 km)";
     case "dispatch":
       return "Politsei/pääste/haigla · lähedaste arv (hinnang, küllastus 3)";
+    // G11D-HOOK (#135): leftover-B markers + weights (halves/bonuses from
+    // layers_group11d.ts G11D_BONUS, same numbers as bonusSpecFor).
+    case "mailbox":
+      return "Postkastid · lähedaste arv (hinnang, küllastus 2,5)";
+    case "postal":
+      return "Postkontorid ja pakiautomaadid · lähedaste arv (küllastus 12)";
+    case "alley":
+      return "Taga-teede tihedus · teede km (küllastus 0,3 km)";
+    case "trailprivacy":
+      return "Matkaradade tihedus · teede km, PÖÖRATUD (privaatsus, poolväärtus 1500 m)";
     // Batch G07D env-health layers: nearest-source distance, same halves
     // as g07dBonusSpecFor in layers_group07d.ts.
     case "agrifield":

@@ -323,6 +323,44 @@ describe("layer walk rasters", () => {
     }
   });
 
+  it("serves G11D leftover-B rasters under area + quiet contracts", async () => {
+    // G11D-HOOK (#135): mailbox area contract (half 2.5, sigma 0.5).
+    const mdir = await fixtureDir([{ lat: 59.44, lon: 24.75, a: 1 }], "mailbox");
+    await writeFile(
+      join(mdir, "osm", "mailbox-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 2.5, sigma: 0.5 })),
+    );
+    try {
+      const res = await loadLayerRaster("mailbox", mdir);
+      expect(res.distance).toBe("walk");
+      expect(res.raster?.half).toBe(2.5);
+    } finally {
+      await rm(mdir, { recursive: true, force: true });
+    }
+    // G11D-HOOK (#135): trailprivacy quiet contract (halfM 1500 on the
+    // wire as half, sigma 0.5); a stale half is rejected.
+    const tdir = await fixtureDir([{ lat: 59.44, lon: 24.75, a: 1 }], "trailprivacy");
+    await writeFile(
+      join(tdir, "osm", "trailprivacy-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 1500, sigma: 0.5 })),
+    );
+    try {
+      expect((await loadLayerRaster("trailprivacy", tdir)).distance).toBe("walk");
+    } finally {
+      await rm(tdir, { recursive: true, force: true });
+    }
+    const stale = await fixtureDir([{ lat: 59.44, lon: 24.75, a: 1 }], "postal");
+    await writeFile(
+      join(stale, "osm", "postal-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 4, sigma: 0.8 })),
+    );
+    try {
+      expect(await loadLayerRaster("postal", stale)).toEqual({ raster: null, distance: "euclidean" });
+    } finally {
+      await rm(stale, { recursive: true, force: true });
+    }
+  });
+
   it("serves G07 quiet rasters under the halfM contract", async () => {
     const idir = await fixtureDir([{ lat: 59.466, lon: 24.698 }], "industprox");
     await writeFile(

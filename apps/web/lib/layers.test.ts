@@ -48,6 +48,11 @@ describe("layer registry", () => {
       "hydrants",
       "evac",
       "dispatch",
+      // G11D-HOOK (#135): Group 11 leftover-B ids (p317 is no-map).
+      "mailbox",
+      "postal",
+      "alley",
+      "trailprivacy",
       // G06B-HOOK (#139): Group 6 leftover ids.
       "plaster",
       "antiques",

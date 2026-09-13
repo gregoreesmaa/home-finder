@@ -222,6 +222,9 @@ export function buildScoredField(
     }
     return { field, bonus, sigmaKm, direct };
   }
+  // G11D-HOOK (#135): nearest-source calmness for inverted badness
+  // layers (trailprivacy): 0 on the source, 50 at halfM; featureless
+  // input stays unknown (NaN), never a faked calm 100.
   // G06B-HOOK (#139): inverse ("avoid") proximity — currently only the
   // G06B woodfire layer (p356). Score = 100·(1−2^(−d/half)) from the
   // nearest-feature distance field: 0 on top of a feature, 50 at half

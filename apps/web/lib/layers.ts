@@ -41,6 +41,17 @@ import {
   BATCH5_TAGS,
   bonusSpecForBatch5,
 } from "./layers_batch5";
+// G11D-HOOK(#135): batch G11D (Group 11 leftovers B: p346/p470/p419/p466;
+// p317 is a documented no-map) tables live in ./layers_group11d (new
+// file). That module imports layers only as types, so no runtime cycle.
+import {
+  G11D_DECAY,
+  G11D_LAYERS,
+  G11D_TAGS,
+  g11dBonusSpecFor,
+  isG11DLayerId,
+  type G11DLayerId,
+} from "./layers_group11d";
 // G07D-HOOK(#143): batch G07D (Group 7 env-health D) tables live in
 // ./layers_group07d (new file). That module imports layers only as
 // types, so no runtime cycle.
@@ -122,6 +133,8 @@ export type LayerId =
   | G07LayerId
   // B5-HOOK (#102): Group 14 public-safety ids (defined in ./layers_batch5).
   | Batch5LayerId
+  // G11D-HOOK (#135): Group 11 leftover-B ids (./layers_group11d).
+  | G11DLayerId
   // G06B-HOOK (#139): Group 6 leftover ids (defined in ./layers_group06b).
   | Group06BLayerId
   // G11C-HOOK (#134): Group 11 leftover-A ids (./layers_group11c).
@@ -214,6 +227,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...G07_DECAY_KM,
   // B5-HOOK (#102): Group 14 radii (see layers_batch5.ts BATCH5_DECAY).
   ...BATCH5_DECAY,
+  // G11D-HOOK (#135): leftover-B radii (see layers_group11d.ts G11D_DECAY).
+  ...G11D_DECAY,
   // G06B-HOOK (#139): Group 6 leftover radii (see layers_group06b.ts GROUP06B_DECAY).
   ...GROUP06B_DECAY,
   // G11C-HOOK (#134): Group 11 leftover-A radii (layers_group11c.ts G11C_DECAY).
@@ -338,6 +353,8 @@ export const LAYERS: LayerDef[] = [
   ...G07_LAYERS,
   // B5-HOOK (#102): Group 14 defs (p13/p78/p315/p335/p467) from ./layers_batch5.
   ...BATCH5_DEFS,
+  // G11D-HOOK (#135): leftover-B defs (p346/p470/p419/p466) from ./layers_group11d.
+  ...G11D_LAYERS,
   // G06B-HOOK (#139): Group 6 leftover defs (p352/p353/p356) from ./layers_group06b.
   ...GROUP06B_DEFS,
   // G11C-HOOK (#134): Group 11 leftover-A defs (p88/p101/p124/p169/p190).
@@ -375,6 +392,8 @@ const TAGS: Record<LayerId, string> = {
   ...G07_TAGS,
   // B5-HOOK (#102): Group 14 queries (see layers_batch5.ts BATCH5_TAGS).
   ...BATCH5_TAGS,
+  // G11D-HOOK (#135): leftover-B queries (see layers_group11d.ts G11D_TAGS).
+  ...G11D_TAGS,
   // G06B-HOOK (#139): Group 6 leftover queries (see layers_group06b.ts GROUP06B_TAGS).
   ...GROUP06B_TAGS,
   // G11C-HOOK (#134): Group 11 leftover-A queries (layers_group11c.ts G11C_TAGS).
@@ -477,6 +496,9 @@ export type BonusSpec =
   | AreaSpec
   | TripsSpec
   | { kind: "variety"; key: string; values: string[]; per: number; cap: number }
+  // G11D-HOOK (#135): nearest-source calmness for inverted badness
+  // layers (trailprivacy): 0 on the source, 50 at halfM (GENV designed
+  // this kind but never wired it; G11D is the first wired use).
   // G07D-HOOK (#143): nearest-source cleanliness (0 on the source, 50 at
   // halfM). Same kind the G07-A/B batches (#140/#141) add — identical
   // semantics, shared on purpose; dedupes on rebase.
@@ -536,6 +558,8 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // B5-HOOK (#102): Group 14 specs live in ./layers_batch5.
   const b5 = bonusSpecForBatch5(layer);
   if (b5) return b5;
+  // G11D-HOOK (#135): leftover-B specs live in ./layers_group11d.
+  if (isG11DLayerId(layer)) return g11dBonusSpecFor(layer);
   // G06B-HOOK (#139): Group 6 leftover specs live in ./layers_group06b.
   const g06b = bonusSpecForGroup06B(layer);
   if (g06b) return g06b;

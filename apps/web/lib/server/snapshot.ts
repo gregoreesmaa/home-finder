@@ -16,6 +16,8 @@ import { haversineKm } from "../poi";
 import { sampleRaster } from "../walkRaster";
 // B1-HOOK(#98): batch B1 raster files live in layers_batch1.ts.
 import { B1_METRO_PREFIXES, B1_RASTER_FILES } from "../layers_batch1";
+// G11D-HOOK(#135): leftover-B raster files live in layers_group11d.ts.
+import { G11D_METRO_PREFIXES, G11D_RASTER_FILES } from "../layers_group11d";
 // G07D-HOOK(#143): batch G07D raster files live in layers_group07d.ts.
 import { G07D_RASTER_FILE } from "../layers_group07d";
 // G06B-HOOK (#139): Group 6 leftover raster files live in layers_group06b.ts.
@@ -307,6 +309,8 @@ const RASTER_FILE: Record<LayerId, string> = {
   grocery: "grocery-walk-raster.json",
   healthcare: "healthcare-walk-raster.json",
   ...B1_RASTER_FILES, // B1-HOOK(#98)
+  // G11D-HOOK (#135): leftover-B rasters (built by scripts/build/batch_g11d_leftovers.py).
+  ...G11D_RASTER_FILES,
   // G07D-HOOK (#143): env-health D rasters (built by scripts/build/batch_g07d_envhealth.py).
   ...G07D_RASTER_FILE,
   // G07-HOOK (#140): env-health rasters (built by scripts/build/batch_g07_envhealth.py).
@@ -368,6 +372,7 @@ export function matchesContract(
   const spec = bonusSpecFor(layer);
   if (doc.sigma !== radiusKmFor(layer)) return false;
   if (spec.kind === "variety") return doc.per === spec.per && doc.cap === spec.cap;
+  // G11D-HOOK (#135): quiet layers carry halfM on the wire as half.
   // G07D-HOOK (#143): nearest-source cleanliness (0 on the source, 50 at halfM).
   // G06B-HOOK (#139): the "avoid" kind carries the same half contract as
   // area/trips (50-score walk-km); only the score SHAPE differs (inverse).
@@ -415,6 +420,9 @@ const METRO_PREFIX: Record<LayerId, string> = {
   grocery: "grocery-metro",
   healthcare: "healthcare-metro",
   ...B1_METRO_PREFIXES, // B1-HOOK(#98)
+  // G11D-HOOK (#135): leftover-B metro prefixes (unbuilt by design --
+  // county-only; windows fall back to county, B5/GENV precedent).
+  ...G11D_METRO_PREFIXES,
   // G07D-HOOK (#143): no metro masters by documented decision (see
   // layers_group07d.ts G07D_NO_METRO) — names resolve to absent files so
   // windows fall back to county cleanly.
