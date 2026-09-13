@@ -89,6 +89,9 @@ describe("layer registry", () => {
       // G08C-HOOK (#169): Group 8 flood/climate-C ids (p334 surgeroad + p336 slidebuf).
       "surgeroad",
       "slidebuf",
+      // G08B-HOOK (#168): Group 8 flood/climate-B ids (p255 windtunnel + p333 saltspray).
+      "windtunnel",
+      "saltspray",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -170,6 +173,19 @@ describe("layer registry", () => {
     expect(radiusKmFor("slidebuf")).toBe(0.3);
     expect(LAYERS.find((l) => l.id === "slidebuf")?.paramIds).toEqual([336]);
     expect(overpassQueryFor("slidebuf", TALLINN_BBOX)).toContain("cliff");
+  });
+
+  it("wires the G08B windtunnel + saltspray layers with locked calibration", () => {
+    // Drift guard: hook specs must equal G08B_CAL in layers_group08b.ts
+    // and the Python builder (parsed by test_batch_g08b.py).
+    expect(bonusSpecFor("windtunnel")).toEqual({ kind: "quiet", halfM: 200 });
+    expect(radiusKmFor("windtunnel")).toBe(0.2);
+    expect(LAYERS.find((l) => l.id === "windtunnel")?.paramIds).toEqual([255]);
+    expect(overpassQueryFor("windtunnel", TALLINN_BBOX)).toContain("building:levels");
+    expect(bonusSpecFor("saltspray")).toEqual({ kind: "quiet", halfM: 500 });
+    expect(radiusKmFor("saltspray")).toBe(0.5);
+    expect(LAYERS.find((l) => l.id === "saltspray")?.paramIds).toEqual([333]);
+    expect(overpassQueryFor("saltspray", TALLINN_BBOX)).toContain("coastline");
   });
 
   it("every layer explains green=good / red=bad in Estonian", () => {

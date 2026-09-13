@@ -43,7 +43,7 @@ describe("batch G06B registry (#139)", () => {
     for (const v of GROUP06B_NO_MAP) expect(v.reason.length).toBeGreaterThan(20);
   });
 
-  it("merges into LAYERS via the G06B-HOOK (page + routes serve all fifty)", () => {
+  it("merges into LAYERS via the G06B-HOOK (page + routes serve all fifty-two)", () => {
     const ids = LAYERS.map((l) => l.id);
     // G03-HOOK (#151): drainage joined the registry (stale 42 pin fixed).
     // G07C-HOOK(#142): vectorhabitat joins the registry.
@@ -51,7 +51,8 @@ describe("batch G06B registry (#139)", () => {
     // G08A-HOOK (#167): wildfire joins the registry.
     // G08D-HOOK (#170): vernalpool joins the registry.
     // G08C-HOOK (#169): surgeroad + slidebuf join the registry.
-    expect(ids.length).toBe(50);
+    // G08B-HOOK (#168): windtunnel + saltspray join the registry.
+    expect(ids.length).toBe(52);
     for (const id of GROUP06B_LAYER_IDS) expect(ids).toContain(id);
   });
 

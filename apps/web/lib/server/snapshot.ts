@@ -44,6 +44,8 @@ import { G03D_RASTER_FILE } from "../layers_group03d";
 import { G08D_RASTER_FILE } from "../layers_group08d";
 // G08C-HOOK(#169): batch G08C raster files live in layers_group08c.ts.
 import { G08C_RASTER_FILE } from "../layers_group08c";
+// G08B-HOOK(#168): batch G08B raster files live in layers_group08b.ts.
+import { G08B_RASTER_FILE } from "../layers_group08b";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -359,6 +361,8 @@ const RASTER_FILE: Record<LayerId, string> = {
   ...G08D_RASTER_FILE,
   // G08C-HOOK (#169): surgeroad + slidebuf rasters (scripts/build/batch_g08c_flood.py).
   ...G08C_RASTER_FILE,
+  // G08B-HOOK (#168): windtunnel + saltspray rasters (scripts/build/batch_g08b_flood.py).
+  ...G08B_RASTER_FILE,
 };
 
 /**
@@ -449,6 +453,10 @@ const G08D_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["vernalpool"]);
 // both are exact-grid Dijkstra fields by construction (same story as
 // drainage/shoredist, see scripts/build/batch_g08c_flood.py).
 const G08C_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["surgeroad", "slidebuf"]);
+// G08B-HOOK (#168): Euclidean-built G08B masters ride "euclidean" —
+// windtunnel + saltspray (same Dijkstra-by-construction story as
+// drainage/shoredist — see batch_g08b_flood.py).
+const G08B_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["windtunnel", "saltspray"]);
 
 export async function loadLayerRaster(
   layer: LayerId,
@@ -462,7 +470,8 @@ export async function loadLayerRaster(
       G03D_EUCLIDEAN_MASTER.has(layer) ||
       G08A_EUCLIDEAN_MASTER.has(layer) ||
       G08D_EUCLIDEAN_MASTER.has(layer) || // G08D-HOOK (#170)
-      G08C_EUCLIDEAN_MASTER.has(layer); // G08C-HOOK (#169)
+      G08C_EUCLIDEAN_MASTER.has(layer) || // G08C-HOOK (#169)
+      G08B_EUCLIDEAN_MASTER.has(layer); // G08B-HOOK (#168)
     return { raster: doc, distance: euclidean ? "euclidean" : "walk" };
   }
   return { raster: null, distance: "euclidean" };
@@ -544,6 +553,11 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // everywhere, like G02B/G03/G03D).
   surgeroad: "surgeroad-metro",
   slidebuf: "slidebuf-metro",
+  // G08B-HOOK (#168): no windtunnel/saltspray metro masters (documented
+  // fake precision — the files are absent, so windows serve county
+  // everywhere, like G02B/G03/G03D).
+  windtunnel: "windtunnel-metro",
+  saltspray: "saltspray-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

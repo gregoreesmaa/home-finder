@@ -215,6 +215,14 @@ export function overlayColorFor(layer: LayerId): string {
       return "#64748b";
     case "slidebuf":
       return "#78716c";
+    // G08B-HOOK (#168): windtunnel + saltspray markers (point overlays,
+    // stride-sampled like grocery). #71717a: zinc concrete (towers; NOT
+    // #475569 — taken by vernalpool); #0ea5e9: sky-500 spray. Both
+    // distinct from every other marker (distinct-color test).
+    case "windtunnel":
+      return "#71717a";
+    case "saltspray":
+      return "#0ea5e9";
   }
 }
 
@@ -365,6 +373,13 @@ export function overlayLegendFor(layer: LayerId): string {
       return "Lainetustsooni tänavad (rannast ≤150 m) · kauguse-hinnang (kõrgvee proksi, poolkaugus 150 m)";
     case "slidebuf":
       return "Pangad ja järsakud (jõed/märgalad välja) · kauguse-hinnang (varingu proksi, poolkaugus 100 m)";
+    // G08B-HOOK (#168): windtunnel (p255) — mapped 5+-storey towers,
+    // the raster holds the full calmness field; saltspray (p333) —
+    // mapped SEA shore only, the raster holds the full field.
+    case "windtunnel":
+      return "Kõrghooned (5+ korrust) · tuuletunneli-hinnang (lähedus, poolkaugus 200 m, ilmajaama mõõtmine puudub)";
+    case "saltspray":
+      return "Mererannajoon (järved välja) · soolapritsme kauguse-hinnang (poolkaugus 500 m, korrosioonikiirust mõõdetud pole)";
   }
 }
 

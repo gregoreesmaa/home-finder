@@ -51,7 +51,8 @@ describe("batch B5 registry (#102)", () => {
     // G08A-HOOK (#167): wildfire joins the registry.
     // G08D-HOOK (#170): vernalpool joins the registry.
     // G08C-HOOK (#169): surgeroad + slidebuf join the registry.
-    expect(ids.length).toBe(50);
+    // G08B-HOOK (#168): windtunnel + saltspray join the registry.
+    expect(ids.length).toBe(52);
     for (const id of BATCH5_LAYER_IDS) expect(ids).toContain(id);
   });
 
