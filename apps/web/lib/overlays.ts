@@ -290,6 +290,20 @@ export function overlayColorFor(layer: LayerId): string {
       return "#38bdf6";
     case "glassglare":
       return "#fb7185";
+    // G18B-HOOK (#173): fishbowl + mossrisk + daylight markers (point
+    // overlays, stride-sampled like grocery). #0f172a: slate-900 asphalt
+    // (street corners; NOT #334155 oiltank / #475569 saltspray / #64748b
+    // slidebuf — the darkest slate, clearly separated); #052e16:
+    // green-950 deep moss shade (forest stands; NOT #166534 parks /
+    // #365314 trailprivacy — the darkest green); #67e8f9: cyan-300
+    // morning sky (daylight; NOT #0ea5e9 saltspray sky-500 — clearly
+    // lighter). All distinct from every other marker (distinct-color test).
+    case "fishbowl":
+      return "#0f172a";
+    case "mossrisk":
+      return "#052e16";
+    case "daylight":
+      return "#67e8f9";
   }
 }
 
@@ -495,6 +509,16 @@ export function overlayLegendFor(layer: LayerId): string {
       return "Kõrghooned (korruseid ≥4) · kauguse-hinnang (päevavalguse avatus, poolkaugus 150 m, päikesetunde mõõdetud pole)";
     case "glassglare":
       return "Klaas/peegelfassaadid · kauguse-hinnang (peegeldus-surve, poolkaugus 200 m, lukse mõõdetud pole)";
+    // G18B-HOOK (#173): fishbowl (p468) — settled junctions, the raster
+    // holds the full calmness field; mossrisk (p479) — mapped forest
+    // stands, the raster holds the full field; daylight (p405) — mapped
+    // buildings, the raster holds the full inverted-count field.
+    case "fishbowl":
+      return "Asustatud ristmikud (≥3 haru, hoonete lähedal) · kauguse-hinnang (nurgakrundi-privaatsusproksi, poolkaugus 150 m, katastritunnistus puudub)";
+    case "mossrisk":
+      return "Metsapolügoonid + puuderead (tänavapuud välja) · kauguse-hinnang (samblarisk-proksi, poolkaugus 250 m, niiskusmõõtmine puudub)";
+    case "daylight":
+      return "Hooned (valim) · PÖÖRATUD tihedus-hinnang (päevavalguse avarus, küllastus 150, luksimõõtmine puudub)";
   }
 }
 
