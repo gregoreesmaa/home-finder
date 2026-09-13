@@ -39,8 +39,9 @@ describe("marukov registry (#486)", () => {
   it("merges into LAYERS via the MARUKOV-HOOK (page + routes serve it)", () => {
     const ids = LAYERS.map((l) => l.id);
     // 90 shipped layers (main at #500: +parking) + 4 maru (90 + 4) +
-    // 1 floodzone layer (FLOOD-HOOK #487, 94 + 1) + 2 P4OSM (P4OSM-HOOK #480, 95 + 2).
-    expect(ids.length).toBe(97);
+    // 1 floodzone layer (FLOOD-HOOK #487, 94 + 1) + 2 P4OSM (P4OSM-HOOK #480, 95 + 2) +
+    // 2 ookla tile layers (OOKLA-HOOK #489, 97 + 2).
+    expect(ids.length).toBe(99);
     for (const id of MARUKOV_LAYER_IDS) expect(ids).toContain(id);
   });
 

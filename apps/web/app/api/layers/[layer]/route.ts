@@ -3,6 +3,9 @@ import { LAYERS, tileForView, type BBoxLike, type LayerPoint } from "../../../..
 import { isSenscomLayerId } from "../../../../lib/layers_p4_senscom";
 // FLOOD-HOOK (#487): polygons-only branch guard (see below).
 import { isFloodLayerId } from "../../../../lib/layers_flood";
+// OOKLA-HOOK (#489): ookla tile points come from the Ookla Tallinn
+// extract (never the OSM snapshot, never live).
+import { isOoklaLayerId } from "../../../../lib/layers_p4_ookla";
 import {
   intersectsCoverage,
   loadLayerRaster,
@@ -11,6 +14,7 @@ import {
   SnapshotUnavailable,
 } from "../../../../lib/server/snapshot";
 import { loadSenscomSnapshot, senscomPointsIn } from "../../../../lib/server/senscom";
+import { loadOoklaSnapshot, ooklaPointsIn } from "../../../../lib/server/ookla";
 
 export const dynamic = "force-dynamic";
 
@@ -83,6 +87,24 @@ export async function GET(
       provenance: "snapshot",
       ageMs: Date.now() - SNAPSHOT_AS_OF_MS,
       distance,
+    });
+  }
+  // OOKLA-HOOK (#489): ookla points come from the Ookla Tallinn
+  // extract (never the OSM snapshot, never live). A missing or
+  // corrupt extract is a 500 (client shows labeled demo); a valid
+  // extract with no tiles in view is honestly-empty. The extract
+  // carries no fetch date (quarter label lives in OOKLA_QUARTER), so
+  // ageMs stays null.
+  if (isOoklaLayerId(def.id)) {
+    const snap = await loadOoklaSnapshot();
+    if (!snap) {
+      return NextResponse.json({ error: "no ookla snapshot data" }, { status: 500 });
+    }
+    const points = ooklaPointsIn(snap, def.id === "ookla_fixed" ? "fixed" : "mobile", bbox);
+    return NextResponse.json({
+      points,
+      provenance: points.length > 0 ? "snapshot" : "empty",
+      ageMs: null,
     });
   }
   try {

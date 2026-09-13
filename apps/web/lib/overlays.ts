@@ -351,6 +351,17 @@ export function overlayColorFor(layer: LayerId): string {
     // other marker (distinct-color test).
     case "senscom":
       return "#06b6d4";
+    // OOKLA-HOOK (#489): ookla tile markers (point overlay,
+    // stride-sampled like grocery). #1e3a8a: blue-900 wired broadband
+    // (NOT #1e40af — taken by drainage — and NOT #1d4ed8 — taken by
+    // transit); #be185d: pink-700 airwaves mobile
+    // (NOT #be123c — taken — and NOT #9d174d — and NOT #db2777 —
+    // taken by culture — and NOT #ec4899 — taken by activity).
+    // Distinct from every other marker (distinct-color test).
+    case "ookla_fixed":
+      return "#1e3a8a";
+    case "ookla_mobile":
+      return "#be185d";
     case "water":
       return "#075985";
     case "waste":
@@ -741,6 +752,16 @@ export function overlayLegendFor(layer: LayerId): string {
     // hoov stays unknown (scorer NULL: hinnang + EI OLE).
     case "senscom":
       return "DIY-välisandurid (Tallinna väljavõte) · tunnistajate arv 500 m raadiuses (1 -> 60, 2-3 -> 70, 4+ -> 80, lagi; kalibreerimata, mitte mõõtmine)";
+    // OOKLA-HOOK (#489): ookla fixed/mobile (P4-009) — quarterly tile
+    // download averages from the Tallinn extract; the band field (not
+    // the dots) is the score: nearest qualifying tile (≥5 testi)
+    // <= 1 km -> <30 Mbit/s 35, <100 55, <300 75, muidu 85 (lagi);
+    // ruuduta ala stays unknown (scorer NULL: hinnang + EI OLE).
+    // Throughput only — power cuts and contract speeds unmeasured.
+    case "ookla_fixed":
+      return "Ookla fikseeritud kvartaliruudud (2026-Q1 väljavõte) · lähiruut 1 km raadiuses (≥5 testi): <30 Mbit/s -> 35, <100 -> 55, <300 -> 75, muidu 85 (lagi; läbilase, mitte lepingukiirus — katkestused teadmata)";
+    case "ookla_mobile":
+      return "Ookla mobiilsed kvartaliruudud (2026-Q1 väljavõte) · lähiruut 1 km raadiuses (≥5 testi): <30 Mbit/s -> 35, <100 -> 55, <300 -> 75, muidu 85 (lagi; läbilase, mitte levikaart — katkestused teadmata)";
     // STATKOV-HOOK (#485): choropleth legends (P4-025/050/019) -- each
     // KOV one flat colour off its 2025 PX-table band; rida puudu = EI
     // OLE (punane = halb VÕI tundmatu, mitte null-hinne). No markers:

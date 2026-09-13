@@ -50,7 +50,8 @@ describe("batch B10C registry (#121)", () => {
     // MARUKOV-HOOK (#486): +4 MARU KOV choropleths join the registry (90 + 4).
     // FLOOD-HOOK (#487): +1 flood-risk polygon overlay (89 + 1). (94 + 1).
     // P4OSM-HOOK (#480): +2 walkability/darkness layers. (95 + 2).
-    expect(ids.length).toBe(97);
+    // OOKLA-HOOK (#489): +2 quarterly-tile layers join the registry (97 + 2).
+    expect(ids.length).toBe(99);
     for (const id of BATCH10C_LAYER_IDS) expect(ids).toContain(id);
     for (const gone of ["internet", "redundancy", "ota"]) expect(ids).not.toContain(gone);
   });

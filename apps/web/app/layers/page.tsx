@@ -40,7 +40,8 @@ import {
   isPolygonOnlyLayer,
   type FloodArea,
 } from "../../lib/layers_flood";
-
+// OOKLA-HOOK (#489): tileband status line + suffix (see below).
+import { OOKLA_QUARTER } from "../../lib/layers_p4_ookla";
 /** Viewport bbox rounded for fetch stability (matches server key rounding). */
 function sameView(a: BBoxLike, b: BBoxLike): boolean {
   return (
@@ -228,6 +229,10 @@ export default function LayersPage() {
     floodAreas === null
       ? "Laadin KAUR tsoone…"
       : `KAUR üleujutusohuga alad · ${floodAreas.length} tsooni (väljaspool = teadmata, mitte kuiv)`;
+  // OOKLA-HOOK (#489): tileband-layer points ride the Ookla Tallinn
+  // extract, not the OSM snapshot — the status names the extract (+
+  // its quarter) instead of the snapshot date.
+  const isTileband = bonusSpecFor(layer).kind === "tileband";
   const base =
     isPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
       ? floodStatus
@@ -235,9 +240,11 @@ export default function LayersPage() {
       ? "Laadin kihi andmeid…"
       : provenance === "snapshot"
         ? pointCount > 0 || !raster
-          ? isBands
-            ? `sensor.community väljavõte${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
-            : `Kohalik hetktõmmis (2026-09-12) · ${pointCount} punkti`
+          ? isTileband
+            ? `Ookla Tallinna väljavõte (${OOKLA_QUARTER}) · ${pointCount} ruutu`
+            : isBands
+              ? `sensor.community väljavõte${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
+              : `Kohalik hetktõmmis (2026-09-12) · ${pointCount} punkti`
           : "Kohalik hetktõmmis (2026-09-12) · rasterkiht"
         : provenance === "empty"
           ? "Selle piirkonna kohta hetktõmmises andmed puuduvad"
@@ -333,9 +340,14 @@ export default function LayersPage() {
                 // P4-031-HOOK (#484): the senscom band kernel counts in a
                 // hard Euclidean radius by design (DIY witnesses, no walk
                 // graph involved) — "varu" would claim a walk version exists.
-                : bonusSpecFor(layer).kind === "bands"
-                  ? " · otsekaugus kõvas raadiuses (DIY-tunnistajad, mitte kõnnivõrk)"
-                  : " · euclidiline varu (kõndimisvõrk puudub)"
+                // OOKLA-HOOK (#489): the tileband kernel joins the nearest
+                // tile in a hard Euclidean radius by design (quarterly
+                // tile centroids, no walk graph involved).
+                : isTileband
+                  ? " · lähiruut kõvas raadiuses (Ookla kvartaliruudud, mitte kõnnivõrk)"
+                  : bonusSpecFor(layer).kind === "bands"
+                    ? " · otsekaugus kõvas raadiuses (DIY-tunnistajad, mitte kõnnivõrk)"
+                    : " · euclidiline varu (kõndimisvõrk puudub)"
               : "")
         }
         onViewChange={(b) => setView((prev) => (sameView(prev, b) ? prev : b))}

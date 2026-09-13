@@ -55,7 +55,8 @@ describe("gtfsstops registry (#483)", () => {
     // P4PARK-HOOK (#479): +1 parking layer (89 + 1).
     // MARUKOV-HOOK (#486): +4 MARU KOV choropleths (90 + 4).
     // FLOOD-HOOK (#487): +1 flood-risk polygon overlay (94 + 1) + 2 P4OSM (P4OSM-HOOK #480, 95 + 2).
-    expect(ids.length).toBe(97);
+    // OOKLA-HOOK (#489): +2 quarterly-tile layers (97 + 2).
+    expect(ids.length).toBe(99);
   });
 
   it("labels schedules honestly in Estonian (never ridership)", () => {

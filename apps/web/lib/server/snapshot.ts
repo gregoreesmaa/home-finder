@@ -97,7 +97,9 @@ import { MARUKOV_RASTER_FILE } from "../layers_maru";
 import { FLOOD_RASTER_FILE } from "../layers_flood";
 // P4OSM-HOOK (#480): P4OSM raster files live in layers_p4osm.ts.
 import { P4OSM_RASTER_FILE } from "../layers_p4osm";
-
+// OOKLA-HOOK (#489): ookla raster filenames live in layers_p4_ookla.ts
+// (intentionally never built — OOKLA_NO_RASTER).
+import { OOKLA_RASTER_FILE } from "../layers_p4_ookla";
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
 export const SNAPSHOT_AS_OF_MS = Date.parse(`${SNAPSHOT_AS_OF}T00:00:00Z`);
@@ -533,8 +535,9 @@ const RASTER_FILE: Record<LayerId, string> = {
   ...FLOOD_RASTER_FILE,
   // P4OSM-HOOK (#480): walkability + darkness rasters
   // (scripts/build/batch_p4_osmwalk.py; absent files fall back cleanly).
-  ...P4OSM_RASTER_FILE,
-};
+  ...P4OSM_RASTER_FILE,  // OOKLA-HOOK (#489): ookla raster names only (no masters built —
+  // overlay-only; absent files degrade to the tileband points kernel).
+  ...OOKLA_RASTER_FILE,};
 
 /**
  * One layer's walk-access raster for the whole snapshot bbox, or null when
@@ -599,6 +602,10 @@ export function matchesContract(
   // documented decision (SENSCOM_NO_RASTER) — any raster on disk is
   // stale by definition and must never render under the band legend.
   if (spec.kind === "bands") return false;
+  // OOKLA-HOOK (#489): "tileband" (ookla) has no raster master by
+  // documented decision (OOKLA_NO_RASTER) — same stale-by-definition
+  // contract as bands.
+  if (spec.kind === "tileband") return false;
   return false;
 }
 
@@ -952,8 +959,11 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // fake precision — the files are absent, so windows serve county
   // everywhere, like G02B/G03/G03D/G05B).
   blockwalk: "blockwalk-metro",
-  darkness: "darkness-metro",
-};
+  darkness: "darkness-metro",  // OOKLA-HOOK (#489): no ookla metro masters by documented decision
+  // (see layers_p4_ookla.ts OOKLA_NO_RASTER) — names resolve to absent
+  // files so windows fall back to the client tileband splat.
+  ookla_fixed: "ookla-fixed-metro",
+  ookla_mobile: "ookla-mobile-metro",};
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */
 const countyBytes = new Map<string, Uint8Array>();

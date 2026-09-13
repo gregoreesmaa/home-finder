@@ -168,7 +168,10 @@ describe("layer registry", () => {
       // blockwalk + P4-035 darkness, mapped proxies).
       "blockwalk",
       "darkness",
-    ]);
+      // OOKLA-HOOK (#489): Ookla quarterly-tile ids (P4-009 fixed/
+      // mobile bands; paramIds empty — parameters4 namespace).
+      "ookla_fixed",
+      "ookla_mobile",    ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
     expect(LAYERS.find((l) => l.id === "schools")?.paramIds).toEqual([12, 123]);
@@ -216,7 +219,11 @@ describe("layer registry", () => {
     expect(LAYERS.find((l) => l.id === "blockwalk")?.paramLabel).toBe("P4-029");
     expect(LAYERS.find((l) => l.id === "darkness")?.paramIds).toEqual([]);
     expect(LAYERS.find((l) => l.id === "darkness")?.paramLabel).toBe("P4-035");
-  });
+    // OOKLA-HOOK (#489): P4 tile layers bind NO parameters3 number
+    // (namespace lock — parameters3 p9 is an inspection-group fact).
+    for (const id of ["ookla_fixed", "ookla_mobile"]) {
+      expect(LAYERS.find((l) => l.id === id)?.paramIds).toEqual([]);
+    }  });
 
   it("wires the B10C utility layers with locked calibration", () => {
     // Drift guard: hook specs must equal BATCH10C_BONUS/BATCH10C_DECAY in
@@ -475,6 +482,31 @@ describe("layer registry", () => {
     expect(LAYERS.find((l) => l.id === "roadsafety")?.paramIds).toEqual([13]);
     expect(overpassQueryFor("roadsafety", TALLINN_BBOX)).toContain("crossing");
     expect(overpassQueryFor("roadsafety", TALLINN_BBOX)).toContain("traffic_calming");
+  });
+
+  it("wires the OOKLA quarterly-tile layers with locked calibration", () => {
+    // OOKLA-HOOK (#489): drift guard — hook specs must equal
+    // OOKLA_BANDS/OOKLA_RADIUS_M/OOKLA_MIN_TESTS in layers_p4_ookla.ts
+    // and _SPEED_BANDS/OOKLA_RADIUS_M/OOKLA_MIN_TESTS in
+    // services/scoring/dims_p4_ookla.py (pinned by
+    // layers_p4_ookla.test.ts too).
+    const spec = {
+      kind: "tileband",
+      radiusM: 1000,
+      minTests: 5,
+      weak: 35,
+      mid: 55,
+      strong: 75,
+      top: 85,
+    };
+    expect(bonusSpecFor("ookla_fixed")).toEqual(spec);
+    expect(bonusSpecFor("ookla_mobile")).toEqual(spec);
+    expect(radiusKmFor("ookla_fixed")).toBe(1.0);
+    expect(radiusKmFor("ookla_mobile")).toBe(1.0);
+    expect(LAYERS.find((l) => l.id === "ookla_fixed")?.paramIds).toEqual([]);
+    expect(LAYERS.find((l) => l.id === "ookla_mobile")?.paramIds).toEqual([]);
+    expect(overpassQueryFor("ookla_fixed", TALLINN_BBOX)).toContain("ookla-open-data");
+    expect(overpassQueryFor("ookla_mobile", TALLINN_BBOX)).toContain("type=mobile");
   });
 
   it("wires the G17B lawncare layer with locked calibration", () => {

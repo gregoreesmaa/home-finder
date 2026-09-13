@@ -113,7 +113,8 @@ describe("overlay legend + colors", () => {
     // MARUKOV-HOOK (#486): kovkasv + kovkaive + kovedas + kovkiirus join the registry (90 + 4).
     // FLOOD-HOOK (#487): floodzone joins the registry (89 + 1). (94 + 1).
     // P4OSM-HOOK (#480): blockwalk + darkness join the registry. (95 + 2).
-    expect(ids).toHaveLength(97);
+    // OOKLA-HOOK (#489): ookla_fixed + ookla_mobile join the registry (97 + 2).
+    expect(ids).toHaveLength(99);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -333,7 +334,8 @@ describe("overlay legend + colors", () => {
     // MARUKOV-HOOK (#486): kovkasv + kovkaive + kovedas + kovkiirus join the registry (90 + 4).
     // FLOOD-HOOK (#487): floodzone joins the registry (89 + 1). (94 + 1).
     // P4OSM-HOOK (#480): blockwalk + darkness join the registry. (95 + 2).
-    expect(seen.size).toBe(97);
+    // OOKLA-HOOK (#489): ookla_fixed + ookla_mobile join the registry (97 + 2).
+    expect(seen.size).toBe(99);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

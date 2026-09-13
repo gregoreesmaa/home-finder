@@ -431,7 +431,18 @@ import {
   P4OSM_TAGS,
   bonusSpecForP4OSM,
 } from "./layers_p4osm";
-
+// OOKLA-HOOK (#489): Ookla quarterly-tile overlay (P4-009 fixed/mobile
+// download bands) tables live in ./layers_p4_ookla (new file). That
+// module imports layers only as types, so no runtime cycle.
+import type { OoklaLayerId } from "./layers_p4_ookla";
+import {
+  OOKLA_DECAY_KM,
+  OOKLA_LAYERS,
+  OOKLA_TAGS,
+  isOoklaLayerId,
+  ooklaBonusSpecFor,
+  ooklaTileAt,
+} from "./layers_p4_ookla";
 export type LayerId =
   | "parks"
   | "transit"
@@ -521,8 +532,10 @@ export type LayerId =
   // FLOOD-HOOK (#487): floodzone id (./layers_flood, p112 KAUR choropleth).
   | FloodLayerId
   // P4OSM-HOOK (#480): P4 OSM walkability + darkness ids (./layers_p4osm).
-  | P4OSMLayerId;
-
+  | P4OSMLayerId
+  // OOKLA-HOOK (#489): Ookla quarterly-tile ids
+  // (./layers_p4_ookla).
+  | OoklaLayerId;
 export interface BBoxLike {
   minlon: number;
   minlat: number;
@@ -706,6 +719,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...FLOOD_DECAY,
   // P4OSM-HOOK (#480): walkability + darkness radii (see layers_p4osm.ts P4OSM_DECAY).
   ...P4OSM_DECAY,
+  // OOKLA-HOOK (#489): tileband join radii (see layers_p4_ookla.ts OOKLA_DECAY_KM).
+  ...OOKLA_DECAY_KM,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -894,6 +909,9 @@ export const LAYERS: LayerDef[] = [
   ...FLOOD_DEFS,
   // P4OSM-HOOK (#480): walkability + darkness defs (P4-029 blockwalk + P4-035 darkness) from ./layers_p4osm.
   ...P4OSM_LAYERS,
+  // OOKLA-HOOK (#489): quarterly-tile defs (P4-009 fixed/mobile bands,
+  // no parameters3 id) from ./layers_p4_ookla.
+  ...OOKLA_LAYERS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -994,6 +1012,8 @@ const TAGS: Record<LayerId, string> = {
   ...FLOOD_TAGS,
   // P4OSM-HOOK (#480): walkability + darkness queries (see layers_p4osm.ts P4OSM_TAGS).
   ...P4OSM_TAGS,
+  // OOKLA-HOOK (#489): tile source notes (see layers_p4_ookla.ts OOKLA_TAGS).
+  ...OOKLA_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -1130,7 +1150,14 @@ export type BonusSpec =
   // cutoff, no smoothing) and map to one/twoThree/fourPlus — byte
   // parity with the dims_p4_senscom scorer bands. Zero witnesses stays
   // unknown (renders red, never zero).
-  | BandsSpec;
+  | BandsSpec
+  // OOKLA-HOOK (#489): nearest-tile download bands (ookla fixed /
+  // mobile): cells join the nearest QUALIFYING tile centroid within
+  // radiusM (hard cutoff, no smoothing — byte parity with the
+  // dims_p4_ookla scorer) and map its download average to
+  // weak/mid/strong/top. No qualifying tile stays unknown (renders
+  // red, never zero).
+  | TilebandSpec;
 
 /**
  * Hard-radius witness-count band spec (P4-031-HOOK #484 — senscom DIY
@@ -1146,6 +1173,27 @@ export interface BandsSpec {
   twoThree: number;
   /** Band for 4+ witnesses (senscom: 80, cap). */
   fourPlus: number;
+}
+
+/**
+ * Nearest-tile download-band spec (OOKLA-HOOK #489 — ookla fixed /
+ * mobile, first use). Values live in ./layers_p4_ookla (OOKLA_BANDS,
+ * OOKLA_RADIUS_M, OOKLA_MIN_TESTS).
+ */
+export interface TilebandSpec {
+  kind: "tileband";
+  /** Hard join radius in metres (ookla: 1000). */
+  radiusM: number;
+  /** Minimum quarterly tests for a tile to qualify (ookla: 5). */
+  minTests: number;
+  /** Band below 30 Mbit/s (ookla: 35). */
+  weak: number;
+  /** Band below 100 Mbit/s (ookla: 55). */
+  mid: number;
+  /** Band below 300 Mbit/s (ookla: 75). */
+  strong: number;
+  /** Band at/above 300 Mbit/s, the cap (ookla: 85). */
+  top: number;
 }
 
 export function bonusSpecFor(layer: LayerId): BonusSpec {
@@ -1302,6 +1350,8 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // P4OSM-HOOK (#480): walkability + darkness specs live in ./layers_p4osm.
   const p4osm = bonusSpecForP4OSM(layer);
   if (p4osm) return p4osm;
+  // OOKLA-HOOK (#489): tileband specs live in ./layers_p4_ookla.
+  if (isOoklaLayerId(layer)) return ooklaBonusSpecFor(layer);
   throw new Error(`unknown layer: ${layer}`);
 }
 
@@ -1332,6 +1382,16 @@ export function goodnessAt(
   if (isGroup06BAvoidLayer(layer) || isGroup05DAvoidLayer(layer)) {
     const half = (bonusSpecFor(layer) as AvoidSpec).half;
     return Math.round(100 * (1 - Math.pow(2, -best / half)));
+  }
+  // OOKLA-HOOK (#489): nearest-tile download bands (ookla fixed /
+  // mobile) — the band of the nearest QUALIFYING tile centroid within
+  // the hard radius (mirrors ooklaTileAt / the dims_p4_ookla scorer),
+  // never the exponential proximity falloff (a fast tile 900 m out
+  // does not decay — the whole square shares its band; past the
+  // radius is unknown, never a faked low score).
+  if (isOoklaLayerId(layer)) {
+    const spec = ooklaBonusSpecFor(layer);
+    return ooklaTileAt(lat, lon, points, spec.radiusM, spec.minTests)?.band ?? null;
   }
   return Math.round(100 * Math.exp(-best / DECAY_KM[layer]));
 }
@@ -1462,7 +1522,10 @@ export async function fetchWindow(
   // (SENSCOM_NO_RASTER) — skip the window fetch so the map goes
   // straight to the points-splat band kernel instead of a designed 500
   // (which only litters the console; the fallback renders identically).
+  // OOKLA-HOOK (#489): tileband layers have no raster master by
+  // decision (OOKLA_NO_RASTER) — same skip, same reason.
   if (bonusSpecFor(layer).kind === "bands") return null;
+  if (bonusSpecFor(layer).kind === "tileband") return null;
   try {
     const spanM = (view.maxlon - view.minlon) * 57300;
     const latM = (view.maxlat - view.minlat) * 110570;
