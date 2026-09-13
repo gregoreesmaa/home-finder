@@ -98,6 +98,8 @@ zero: null encodes 255 and renders red (red = bad *or* honestly-unknown).
 
 The 62 buyer-question params (`parameters4.md`) are scorer dims, not
 §3 map layers, and duplicate no §3 layer: each is owned by exactly one verdict note
+(shipped map-proxy exceptions include P4-029 `blockwalk` + P4-035 `darkness`, #480 — OSM
+mapped proxies, honestly labelled)
 (`docs/p4_*.md`, 84 notes — several params draw on multiple sources)
 with a pinned hermetic scorer module
 (`services/scoring/dims_p4_*.py`, 84 modules, doc↔module 1:1;

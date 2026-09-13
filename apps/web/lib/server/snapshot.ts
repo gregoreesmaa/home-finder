@@ -95,6 +95,8 @@ import { MARUKOV_RASTER_FILE } from "../layers_maru";
 // (named but NEVER built — polygons-only decision, resolves absent so
 // windows serve honestly-empty, never a gradient).
 import { FLOOD_RASTER_FILE } from "../layers_flood";
+// P4OSM-HOOK (#480): P4OSM raster files live in layers_p4osm.ts.
+import { P4OSM_RASTER_FILE } from "../layers_p4osm";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -529,6 +531,9 @@ const RASTER_FILE: Record<LayerId, string> = {
   // FLOOD-HOOK (#487): floodzone raster name only (no master built —
   // polygons-only; absent file serves honestly-empty, never a gradient).
   ...FLOOD_RASTER_FILE,
+  // P4OSM-HOOK (#480): walkability + darkness rasters
+  // (scripts/build/batch_p4_osmwalk.py; absent files fall back cleanly).
+  ...P4OSM_RASTER_FILE,
 };
 
 /**
@@ -717,6 +722,10 @@ const MARUKOV_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set([
   "kovedas",
   "kovkiirus",
 ]);
+// P4OSM-HOOK (#480): Euclidean-built P4OSM masters ride "euclidean" —
+// blockwalk + darkness (Euclidean count kernels, viewshed/moorage/
+// G05B precedent — see scripts/build/batch_p4_osmwalk.py).
+const P4OSM_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["blockwalk", "darkness"]);
 
 export async function loadLayerRaster(
   layer: LayerId,
@@ -748,7 +757,8 @@ export async function loadLayerRaster(
       RSAFE_EUCLIDEAN_MASTER.has(layer) || // RSAFE-HOOK (#481)
       STATKOV_EUCLIDEAN_MASTER.has(layer) || // STATKOV-HOOK (#485)
       P4PARK_EUCLIDEAN_MASTER.has(layer) || // P4PARK-HOOK (#479)
-      MARUKOV_EUCLIDEAN_MASTER.has(layer); // MARUKOV-HOOK (#486)
+      MARUKOV_EUCLIDEAN_MASTER.has(layer) || // MARUKOV-HOOK (#486)
+      P4OSM_EUCLIDEAN_MASTER.has(layer); // P4OSM-HOOK (#480)
     return { raster: doc, distance: euclidean ? "euclidean" : "walk" };
   }
   return { raster: null, distance: "euclidean" };
@@ -938,6 +948,11 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // FLOOD-HOOK (#487): no floodzone metro master (polygons-only — the
   // file is absent, so windows serve county everywhere, honestly-empty).
   floodzone: "floodzone-metro",
+  // P4OSM-HOOK (#480): no blockwalk/darkness metro masters (documented
+  // fake precision — the files are absent, so windows serve county
+  // everywhere, like G02B/G03/G03D/G05B).
+  blockwalk: "blockwalk-metro",
+  darkness: "darkness-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

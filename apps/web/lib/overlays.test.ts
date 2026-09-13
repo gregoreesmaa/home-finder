@@ -112,7 +112,8 @@ describe("overlay legend + colors", () => {
     // P4PARK-HOOK (#479): parking joins the registry. (89 + 1).
     // MARUKOV-HOOK (#486): kovkasv + kovkaive + kovedas + kovkiirus join the registry (90 + 4).
     // FLOOD-HOOK (#487): floodzone joins the registry (89 + 1). (94 + 1).
-    expect(ids).toHaveLength(95);
+    // P4OSM-HOOK (#480): blockwalk + darkness join the registry. (95 + 2).
+    expect(ids).toHaveLength(97);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -298,6 +299,11 @@ describe("overlay legend + colors", () => {
     // (polygons only, never a gradient).
     expect(overlayLegendFor("floodzone")).toContain("tsoonis = hinnang");
     expect(overlayLegendFor("floodzone")).toContain("väljaspool = teadmata");
+    // P4OSM-HOOK (#480): walkability + darkness halves (see P4OSM_BONUS).
+    expect(overlayLegendFor("blockwalk")).toContain("küllastus 1000");
+    expect(overlayLegendFor("blockwalk")).toContain("hinnang");
+    expect(overlayLegendFor("darkness")).toContain("küllastus 500");
+    expect(overlayLegendFor("darkness")).toContain("hinnang");
   });
 
   it("gives every layer a distinct marker color", () => {
@@ -326,7 +332,8 @@ describe("overlay legend + colors", () => {
     // P4PARK-HOOK (#479): parking joins the registry. (89 + 1).
     // MARUKOV-HOOK (#486): kovkasv + kovkaive + kovedas + kovkiirus join the registry (90 + 4).
     // FLOOD-HOOK (#487): floodzone joins the registry (89 + 1). (94 + 1).
-    expect(seen.size).toBe(95);
+    // P4OSM-HOOK (#480): blockwalk + darkness join the registry. (95 + 2).
+    expect(seen.size).toBe(97);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

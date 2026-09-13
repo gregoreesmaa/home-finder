@@ -282,6 +282,8 @@ export default function LayersPage() {
                 (parameters4 namespace -- see layers_statkov.ts), so
                 layerParamTag returns "" for them too -- no suffix. */}
             {layerParamTag(l) === "" ? "" : ` ${layerParamTag(l)}`}
+            {/* P4OSM-HOOK (#480): blockwalk + darkness carry empty
+                paramIds too -- the generic empty-tag skip covers them. */}
           </button>
         ))}
       </div>
