@@ -267,6 +267,13 @@ export function overlayColorFor(layer: LayerId): string {
     // (distinct-color test).
     case "equestrian":
       return "#8b4513";
+    // G05F-HOOK (#166): upcycle marker (point overlay, stride-sampled
+    // like grocery). #2dd4bf: verdigris teal (weathered copper on
+    // derelict roofs; lighter than walkability #0d9488, antiques
+    // #0f766e, schoolbus #0e7490 and liftproxy #0891b2). Distinct
+    // from every other marker (distinct-color test).
+    case "upcycle":
+      return "#2dd4bf";
   }
 }
 
@@ -457,6 +464,10 @@ export function overlayLegendFor(layer: LayerId): string {
     // the raster holds the full count field.
     case "equestrian":
       return "Ratsakeskused + maneežid + tallid + ratsateed · lähedaste arv (juurdepääsu-hinnang, küllastus 1, KOV planeeringuotsus puudub)";
+    // G05F-HOOK (#166): upcycle (p485) — mapped derelict buildings,
+    // the raster holds the full count field.
+    case "upcycle":
+      return "Mahajäetud/kasutusest väljas hooned (punkrid ja vanalipud välja) · lähedaste arv (ümberarenduse-hinnang, küllastus 2, KOV otsus puudub)";
   }
 }
 

@@ -167,6 +167,16 @@ import {
   GROUP05E_TAGS,
   bonusSpecForGroup05E,
 } from "./layers_group05e";
+// G05F-HOOK(#166): batch G05F (Group 5 plans-F upcycle; p389
+// documented no-map) tables live in ./layers_group05f (new file).
+// That module imports layers only as types, so no runtime cycle.
+import type { Group05FLayerId } from "./layers_group05f";
+import {
+  GROUP05F_DECAY,
+  GROUP05F_LAYERS,
+  GROUP05F_TAGS,
+  bonusSpecForGroup05F,
+} from "./layers_group05f";
 // G11D-HOOK(#135): batch G11D (Group 11 leftovers B: p346/p470/p419/p466;
 // p317 is a documented no-map) tables live in ./layers_group11d (new
 // file). That module imports layers only as types, so no runtime cycle.
@@ -307,7 +317,9 @@ export type LayerId =
   // G05C-HOOK (#163): Group 5 plans-C ids (./layers_group05c).
   | Group05CLayerId
   // G05E-HOOK (#165): Group 5 plans-E id (./layers_group05e).
-  | Group05ELayerId;
+  | Group05ELayerId
+  // G05F-HOOK (#166): Group 5 plans-F id (./layers_group05f).
+  | Group05FLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -430,6 +442,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...GROUP05C_DECAY,
   // G05E-HOOK (#165): equestrian radius (see layers_group05e.ts GROUP05E_DECAY).
   ...GROUP05E_DECAY,
+  // G05F-HOOK (#166): upcycle radius (see layers_group05f.ts GROUP05F_DECAY).
+  ...GROUP05F_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -582,6 +596,8 @@ export const LAYERS: LayerDef[] = [
   ...GROUP05C_LAYERS,
   // G05E-HOOK (#165): equestrian (p381) def from ./layers_group05e.
   ...GROUP05E_LAYERS,
+  // G05F-HOOK (#166): upcycle (p485) def from ./layers_group05f.
+  ...GROUP05F_LAYERS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -647,6 +663,8 @@ const TAGS: Record<LayerId, string> = {
   ...GROUP05C_TAGS,
   // G05E-HOOK (#165): equestrian query (see layers_group05e.ts GROUP05E_TAGS).
   ...GROUP05E_TAGS,
+  // G05F-HOOK (#166): upcycle query (see layers_group05f.ts GROUP05F_TAGS).
+  ...GROUP05F_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -861,6 +879,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // G05E-HOOK (#165): equestrian spec lives in ./layers_group05e.
   const g05e = bonusSpecForGroup05E(layer);
   if (g05e) return g05e;
+  // G05F-HOOK (#166): upcycle spec lives in ./layers_group05f.
+  const g05f = bonusSpecForGroup05F(layer);
+  if (g05f) return g05f;
   throw new Error(`unknown layer: ${layer}`);
 }
 

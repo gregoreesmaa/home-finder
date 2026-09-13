@@ -56,6 +56,8 @@ import { G05A_RASTER_FILE } from "../layers_group05a";
 import { G05C_RASTER_FILE } from "../layers_group05c";
 // G05E-HOOK(#165): batch G05E raster file lives in layers_group05e.ts.
 import { G05E_RASTER_FILE } from "../layers_group05e";
+// G05F-HOOK(#166): batch G05F raster file lives in layers_group05f.ts.
+import { G05F_RASTER_FILE } from "../layers_group05f";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -383,6 +385,8 @@ const RASTER_FILE: Record<LayerId, string> = {
   ...G05C_RASTER_FILE,
   // G05E-HOOK (#165): equestrian raster (scripts/build/batch_g05e_plans.py).
   ...G05E_RASTER_FILE,
+  // G05F-HOOK (#166): upcycle raster (scripts/build/batch_g05f_plans.py).
+  ...G05F_RASTER_FILE,
 };
 
 /**
@@ -500,6 +504,10 @@ const G05C_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["commbleed", "windso
 // equestrian (Euclidean count kernel, viewshed/moorage precedent —
 // see scripts/build/batch_g05e_plans.py).
 const G05E_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["equestrian"]);
+// G05F-HOOK (#166): Euclidean-built G05F master rides "euclidean" —
+// upcycle (Euclidean count kernel, buildout precedent — see
+// scripts/build/batch_g05f_plans.py).
+const G05F_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["upcycle"]);
 
 export async function loadLayerRaster(
   layer: LayerId,
@@ -519,7 +527,8 @@ export async function loadLayerRaster(
       G05D_EUCLIDEAN_MASTER.has(layer) || // G05D-HOOK (#164)
       G05A_EUCLIDEAN_MASTER.has(layer) || // G05A-HOOK (#161)
       G05C_EUCLIDEAN_MASTER.has(layer) || // G05C-HOOK (#163)
-      G05E_EUCLIDEAN_MASTER.has(layer); // G05E-HOOK (#165)
+      G05E_EUCLIDEAN_MASTER.has(layer) || // G05E-HOOK (#165)
+      G05F_EUCLIDEAN_MASTER.has(layer); // G05F-HOOK (#166)
     return { raster: doc, distance: euclidean ? "euclidean" : "walk" };
   }
   return { raster: null, distance: "euclidean" };
@@ -630,6 +639,10 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // precision — the file is absent, so windows serve county
   // everywhere, like G02B/G03/G03D/G08B/G05C).
   equestrian: "equestrian-metro",
+  // G05F-HOOK (#166): no upcycle metro master (documented fake
+  // precision — the file is absent, so windows serve county
+  // everywhere, like G02B/G03/G03D/G08B/G05B/G05C).
+  upcycle: "upcycle-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

@@ -95,7 +95,8 @@ describe("overlay legend + colors", () => {
     // G05A-HOOK (#161): ehitus + korterstock join the registry.
     // G05C-HOOK (#163): commbleed + windsolar + viewshed join the registry.
     // G05E-HOOK (#165): equestrian joins the registry.
-    expect(ids).toHaveLength(61);
+    // G05F-HOOK (#166): upcycle joins the registry.
+    expect(ids).toHaveLength(62);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -202,6 +203,9 @@ describe("overlay legend + colors", () => {
     // G05E-HOOK (#165): equestrian joins the registry.
     expect(overlayLegendFor("equestrian")).toContain("küllastus 1");
     expect(overlayLegendFor("equestrian")).toContain("hinnang");
+    // Batch G05F half (see G05F_CAL in layers_group05f.ts).
+    expect(overlayLegendFor("upcycle")).toContain("küllastus 2");
+    expect(overlayLegendFor("upcycle")).toContain("hinnang");
   });
 
   it("gives every layer a distinct marker color", () => {
@@ -214,7 +218,8 @@ describe("overlay legend + colors", () => {
     // G05A-HOOK (#161): ehitus + korterstock join the registry.
     // G05C-HOOK (#163): commbleed + windsolar + viewshed join the registry.
     // G05E-HOOK (#165): equestrian joins the registry.
-    expect(seen.size).toBe(61);
+    // G05F-HOOK (#166): upcycle joins the registry.
+    expect(seen.size).toBe(62);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });
