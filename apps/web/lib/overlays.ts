@@ -348,6 +348,29 @@ export function overlayColorFor(layer: LayerId): string {
       return "#164e63";
     case "mobile":
       return "#831843";
+    // OSMDAILY-HOOK (#482): daily-life markers (point overlays,
+    // stride-sampled like grocery). #f59e0b: amber-500 market basket
+    // (NOT #d97706 — taken by grocery — and NOT #fbbf24 — taken by
+    // ehitus); #ec4899: pink-500 evening buzz (NOT #db2777 — taken by
+    // culture — and NOT #f43f5e); #7c3aed: violet-600 gallery wall
+    // (NOT #9333ea — taken by schools — and NOT #6d28d9); #b91c1c:
+    // red-700 cafe hearth (NOT #dc2626 — taken by safety — and NOT
+    // #991b1b); #1e293b: slate-800 doorstep key (NOT #0f172a — taken
+    // by fishbowl — and NOT #334155); #854d0e: yellow-900 fringe
+    // warning (NOT #713f12 — and NOT #a16207). All distinct from every
+    // other marker (distinct-color test).
+    case "dailyshop":
+      return "#f59e0b";
+    case "activity":
+      return "#ec4899";
+    case "herd":
+      return "#7c3aed";
+    case "thirdplace":
+      return "#b91c1c";
+    case "taxidoor":
+      return "#1e293b";
+    case "lastshop":
+      return "#854d0e";
   }
 }
 
@@ -596,6 +619,23 @@ export function overlayLegendFor(layer: LayerId): string {
       return "Fiiber-katvusega aadresside valim · tihedus (teatatud, küllastus 50)";
     case "mobile":
       return "Mõõtmiskohad (mitte mastid!) · tugevaima kärje leviala";
+    // OSMDAILY-HOOK (#482): daily-life layers (P4-027/032/044/045/049/
+    // 061) — mapped shop/culture/doorstep counts. The communal
+    // networks (delivery windows, opening hours, closure calendars)
+    // are NOT on these maps — the dots are the mapped points
+    // themselves; lastshop red is a warning (absence), never measured.
+    case "dailyshop":
+      return "Toidupoed (valik kaardistatuid) · lähedaste arv (hinnang, küllastus 8, tarneaken puudub)";
+    case "activity":
+      return "Õhtuse kasutusega kohad · lähedaste arv (kasutus-hinnang, küllastus 12, mitte turvalisus)";
+    case "herd":
+      return "Galeriid/muuseumid · lähedaste arv (maitse-hinnang, küllastus 3, mitte väärtushinnang)";
+    case "thirdplace":
+      return "Kohvikud/saunad/raamatukogud · lähedaste arv (kuuluvus-hinnang, küllastus 12, lahtiolekuajad teadmata)";
+    case "taxidoor":
+      return "Sissepääsud (sh trepikojad) · lähedaste arv (leitavuse-hinnang, küllastus 30, parkimisreeglid puuduvad)";
+    case "lastshop":
+      return "Pood/apteek/sularaha · lähedaste arv (HOIATUS-hinnang, küllastus 12, sulgemine mõõtmata)";
   }
 }
 

@@ -131,6 +131,14 @@ describe("layer registry", () => {
       "waste",
       "fiber",
       "mobile",
+      // OSMDAILY-HOOK (#482): OSM daily-life ids (P4-027/032/044/045/
+      // 049/061 proxies; paramIds empty — parameters4 namespace).
+      "dailyshop",
+      "activity",
+      "herd",
+      "thirdplace",
+      "taxidoor",
+      "lastshop",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -154,6 +162,11 @@ describe("layer registry", () => {
     expect(LAYERS.find((l) => l.id === "waste")?.paramIds).toEqual([54]);
     expect(LAYERS.find((l) => l.id === "fiber")?.paramIds).toEqual([51]);
     expect(LAYERS.find((l) => l.id === "mobile")?.paramIds).toEqual([51]);
+    // OSMDAILY-HOOK (#482): P4 layers bind NO parameters3 number
+    // (namespace lock — 44 is korterstock, 61 is industprox).
+    for (const id of ["dailyshop", "activity", "herd", "thirdplace", "taxidoor", "lastshop"]) {
+      expect(LAYERS.find((l) => l.id === id)?.paramIds).toEqual([]);
+    }
   });
 
   it("wires the B10C utility layers with locked calibration", () => {
@@ -171,6 +184,25 @@ describe("layer registry", () => {
     expect(radiusKmFor("mobile")).toBe(1.0);
     expect(overpassQueryFor("waste", TALLINN_BBOX)).toContain("waste_disposal");
     expect(overpassQueryFor("water", TALLINN_BBOX)).toContain("drinking_water");
+  });
+
+  it("wires the OSMDAILY daily-life layers with locked calibration", () => {
+    // Drift guard: hook specs must equal OSMDAILY_BONUS/OSMDAILY_DECAY
+    // in layers_osmdaily.ts (probe-locked 2026-09-13, see its header).
+    expect(bonusSpecFor("dailyshop")).toEqual({ kind: "area", half: 8 });
+    expect(bonusSpecFor("activity")).toEqual({ kind: "area", half: 12 });
+    expect(bonusSpecFor("herd")).toEqual({ kind: "area", half: 3 });
+    expect(bonusSpecFor("thirdplace")).toEqual({ kind: "area", half: 12 });
+    expect(bonusSpecFor("taxidoor")).toEqual({ kind: "area", half: 30 });
+    expect(bonusSpecFor("lastshop")).toEqual({ kind: "area", half: 12 });
+    expect(radiusKmFor("dailyshop")).toBe(0.5);
+    expect(radiusKmFor("activity")).toBe(0.4);
+    expect(radiusKmFor("herd")).toBe(1.0);
+    expect(radiusKmFor("thirdplace")).toBe(0.5);
+    expect(radiusKmFor("taxidoor")).toBe(0.3);
+    expect(radiusKmFor("lastshop")).toBe(0.5);
+    expect(overpassQueryFor("lastshop", TALLINN_BBOX)).toContain("pharmacy");
+    expect(overpassQueryFor("herd", TALLINN_BBOX)).toContain("museum");
   });
 
   it("wires the G02B lift proxy with locked calibration", () => {
