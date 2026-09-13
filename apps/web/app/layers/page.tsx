@@ -72,6 +72,11 @@ import {
   PLANKTPR_DECREE_STAGE,
 } from "../../lib/layers_planktpr";
 import type { UseFillPolygon } from "../../lib/outlines";
+// PAASTE-HOOK (#493): bands status label is senscom-only (see base
+// below) — paaste rides the generic snapshot branch. Honest-empty
+// fetch handling (see effect below) needs the paaste guard.
+import { isSenscomLayerId } from "../../lib/layers_p4_senscom";
+import { isPaasteLayerId } from "../../lib/layers_paaste";
 
 /** Viewport bbox rounded for fetch stability (matches server key rounding). */
 function sameView(a: BBoxLike, b: BBoxLike): boolean {
@@ -147,6 +152,23 @@ export default function LayersPage() {
     fetchLayerPoints(layer, view)
       .then((res) => {
         if (!fresh()) return;
+        // PAASTE-HOOK (#493): paaste is honest-empty — its fetch NEVER
+        // succeeds (no sidecar by dated-negative verdict), so the
+        // generic stale-while-revalidate above would keep the PREVIOUS
+        // layer's points under the paaste bands kernel and paint
+        // fabricated "komando coverage". Demo-empty (zero markers +
+        // "DEMO-varu · 0 punkti") IS the honest state: take it even
+        // when older layers already put data on screen.
+        if (isPaasteLayerId(layer)) {
+          setProvenance("demo");
+          setAgeMs(null);
+          setPointCount(0);
+          setFeaturePoints([]);
+          setDistance("euclidean");
+          hasDataRef.current = true;
+          setLoading(false);
+          return;
+        }
         // Points belong to exactly one layer (PLANKTPR-HOOK #492: the
         // previous layer's points reset on switch below, so accepting
         // here can never leak stale dots under a new layer's legend —
@@ -167,6 +189,18 @@ export default function LayersPage() {
       .catch(() => {
         if (!fresh()) return;
         setLoading(false);
+        // PAASTE-HOOK (#493): same honest-empty state on transport
+        // error (see above) — never another layer's stale points,
+        // never demo markers (fallbackPoints is [] by honesty).
+        if (isPaasteLayerId(layer)) {
+          setProvenance("demo");
+          setAgeMs(null);
+          setPointCount(0);
+          setFeaturePoints([]);
+          setDistance("euclidean");
+          hasDataRef.current = true;
+          return;
+        }
         if (!hasDataRef.current) {
           setProvenance("demo");
           setFeaturePoints([]);
@@ -396,7 +430,12 @@ export default function LayersPage() {
         ? pointCount > 0 || !raster
           ? isTileband
             ? `Ookla Tallinna väljavõte (${OOKLA_QUARTER}) · ${pointCount} ruutu`
-            : isBands
+            // PAASTE-HOOK (#493): the extract label is senscom-only.
+            // isBands alone would mislabel paaste (the other bands layer)
+            // as "sensor.community väljavõte" — paaste rides the generic
+            // snapshot branch (its own fetch never succeeds: no sidecar,
+            // no raster — the designed 500 → demo-empty path).
+            : isBands && isSenscomLayerId(layer)
               ? `sensor.community väljavõte${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
               : isQbands
                 ? `Terviseameti väljavõte (suplusvesi, seis 2026-09-14)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`

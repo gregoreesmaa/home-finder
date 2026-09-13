@@ -109,3 +109,59 @@ $ python3 -m pytest services/scoring/tests -q
   `services/scoring/tests/test_dims_p4_paaste.py`, `docs/p4_paaste.md`.
   No edits to shared files (`livability.py`, WEIGHTS, layers,
   `docs/layers.md`, `docs/nomap.md`, `parameters4.md` — untouched).
+
+## 6. Layer #493: komando-point overlay (dated-NEGATIVE feed → honest-empty layer)
+
+Group B verify-first follow-up: are station locations open, build a
+point overlay; response-time gradients are NOT mappable either way.
+Verdict 2026-09-13: **stations NOT open as a machine feed — the layer
+ships honest-empty (zero points, never invented stations).**
+
+Four polite single GETs (probe UA
+`home-finder-p4-paaste-probe/1.0`, `--max-time 20`, no retries,
+cache `/tmp/hf-paaste-feed`):
+
+| # | URL | Result |
+|---|-----|--------|
+| 1 | `https://avaandmed.eesti.ee/datasets?ih=paasteamet` | **301 → new Teabevärav** (`https://andmed.eesti.ee/datasets?ih=paasteamet`): HTTP 200, 75 497 bytes, `<title>Teabevärav</title>` — JS app shell, **zero server-rendered dataset records**, zero `komando/station` mentions, zero dataset/download/api hrefs. No machine list without browser rendering (out of scope per polite-automation rules). |
+| 2 | `https://www.rescue.ee/et/kontaktid` | **OPEN, human HTML org tree, no key.** HTTP 200, 131 740 bytes, `<title>Kontaktid - Päästeamet</title>`. Links per päästekeskus (`pohja/laane/louna/ida_paastekeskus`), zero coordinates/geojson. |
+| 3 | `https://www.rescue.ee/et/kontaktid/pohja_paastekeskus` | **OPEN, addresses WITHOUT coordinates (dated negative).** HTTP 200, 133 950 bytes: komando names + street addresses (`Erika tn 3, Tallinn`), `latitude/longitude` × 0, map embeds × 0. Addresses are not points — hand-geocoding them would invent stations. |
+| 4 | Response-time gradient feed | **NOT mappable (dated negative, kept).** No routed-time source located in pulls 1–3; the P4-012 scorer keeps the straight-line penalty only and says `linnulennult (hinnang, mitte marsruudi-aeg)`. |
+
+What ships (`apps/web/lib/layers_paaste.ts`, `PAASTE-HOOK (#493)` blocks
+in `layers.ts`/`overlays.ts`/`server/snapshot.ts`):
+
+* Layer `paaste` (`paramIds: []` + `paramLabel: "P4-012"` — the
+  senscom #484 precedent; parameters3 p12 stays schools): bands spec
+  `{radiusM: 5000, 60/60/60}` — the coverage twin of the scorer's
+  komando leg (`STATION_FAR_KM` parity; flat 60 because response comes
+  from the NEAREST komando, extras do not stack; capped because
+  proximity is coverage, never safety). PROVISIONAL + dormant (zero
+  points → all-NaN unknown everywhere, pinned by test).
+* `fallbackPoints: []` BY HONESTY — the demo fallback plots zero
+  markers; absence renders as absence. `PAASTE_TAGS` is prose, NOT an
+  Overpass fragment (Päästeamet data is not OSM data). No
+  `derived-paaste.json` sidecar, no builder, no raster/metro master:
+  the route takes the designed 500 → demo-empty path (pinned:
+  `SnapshotUnavailable` + null raster in `layers_paaste.test.ts`).
+* Title/source/legend all say `hinnang` + `EI OLE` + the buyer-side
+  check (rescue.ee kontaktid + Tark Tee + kohapeal).
+
+## 7. Reopening checklist (when feeds change)
+
+* Päästeamet publishes komando coordinates (Teabevärav dataset with
+  geometry, or a rescue.ee machine list) → add a polite adapter +
+  `derived-paaste.json` sidecar, recalibrate the provisional 60-band,
+  joint WEIGHTS rebalancing (per-batch rebalancing stays one joint
+  change) — PLUS revisit the two paaste-specific page paths that are
+  correct ONLY while the fetch never succeeds: the demo-empty branch
+  in `app/layers/page.tsx` (stale points become legitimate again) and
+  the bands distance suffix (currently the generic branch; a komando
+  wording replaces the DIY one).
+* Real routed response times appear → NEW param work; never backfill
+  drive time from straight-line distance (a komando 3 km away across
+  the bay is not 3 km away by road).
+* OSM `amenity=fire_station` stays OUT of scope for this layer even
+  then: community-mapped furniture is not the official komando
+  inventory (same rule as §1 row 4 — inventing the fragment would be
+  dishonest plumbing).

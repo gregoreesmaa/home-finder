@@ -716,7 +716,7 @@ carries its own re-probe checklist.
 | Operator levikaardid | P4-009 | no-map (JS marketing maps; no bulk/API) | docs/p4_opmaps.md |
 | OSM extracts | P4-012, 013, 027, 029, 032, 035, 040, 042, 044, 045, 049, 061 + NULLs 018, 026, 031, 039, 047, 048, 062 | mixed (12 capped proxies / 7 NULLs) | docs/p4_osm.md |
 | Own listing store | P4-001, 002, 003, 005, 007, 021, 022, 028, 029, 034, 038, 040, 041, 043, 046, 049, 051, 052, 057, 059 | mixed (P4-001/022/028/043/046 computed or partial; rest NULL incl. P4-051 hard NULL) | docs/p4_own_store.md |
-| Päästeamet | P4-012, 015, 042, 047, 058, 059, 062 | proxy join-gated (point/calendar/zone joins; machine feed negative) | docs/p4_paaste.md |
+| Päästeamet | P4-012, 015, 042, 047, 058, 059, 062 | proxy join-gated (point/calendar/zone joins; machine feed negative; komando points ride the honest-empty `paaste` overlay, 2026-09-13 — #493) | docs/p4_paaste.md |
 | Parkimine regime | P4-013, 037, 049 | proxy (per-parcel zone join; bulk polygons negative) | docs/p4_park.md |
 | Peatus.ee GTFS | P4-037, 045, 048, 049, 061 | no-map (zip dead; NULL until feed reopens; city stop positions ride the `gtfsstops` overlay from the TLT snapshot vintage) | docs/p4_peatus.md |
 | PLANK WFS | P4-006 | no-map (endpoint gone → SPA shell; re-verified 2026-09-13 for #492, see docs/p4_planktpr.md) | docs/p4_plank.md |

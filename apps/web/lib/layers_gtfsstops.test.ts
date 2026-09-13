@@ -63,7 +63,8 @@ describe("gtfsstops registry (#483)", () => {
     // PLANKTPR-HOOK (#492): +1 designated-use polygon layer (104 + 1).
     // TERVISE-HOOK (#494): +1 tervise bathing-water layer (105 + 1).
     // ASUMEDIA-HOOK (#495): +1 per-asum median layer (106 + 1).
-    expect(ids.length).toBe(107);
+    // PAASTE-HOOK (#493): +1 komando overlay (107 + 1).
+    expect(ids.length).toBe(108);
   });
 
   it("labels schedules honestly in Estonian (never ridership)", () => {

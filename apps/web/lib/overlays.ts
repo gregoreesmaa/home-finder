@@ -529,6 +529,15 @@ export function overlayColorFor(layer: LayerId): string {
     // (distinct-color test).
     case "asumedia":
       return "#fda4af";
+    // PAASTE-HOOK (#493): paaste markers (honest-empty point overlay,
+    // stride-sampled like grocery — today zero markers). #450a0a:
+    // red-950 deep ember (NOT #7f1d1d — taken by accblack on main #490,
+    // merge-order precedent — and NOT #b91c1c — taken by thirdplace —
+    // and NOT #dc2626 — taken by safety — and NOT #ef4444 — taken by
+    // kovkiirus — and NOT #991b1b — taken). Distinct from every other
+    // marker (distinct-color test).
+    case "paaste":
+      return "#450a0a";
   }
 }
 
@@ -905,6 +914,10 @@ export function overlayLegendFor(layer: LayerId): string {
     // per-asum N (no bands, no fills, never a faked median).
     case "asumedia":
       return "Asumite küsi-mediaanid oma snapshotitest (ootel-hinnang: 2026-09-14 loendus 30 kirjet, 0 asumivõtmega, 0/84 asumi MIN_N=5 täis — õhukese N-iga asumeid EI FEIGITA; korduskontroll: geokodeeritud snapshotid + asumiliide)";
+    // PAASTE-HOOK (#493): paaste (P4-012) — komando coverage, honestly
+    // empty until a machine feed exists (see layers_paaste.ts).
+    case "paaste":
+      return "Päästekomandod (P4-012) · kaetud ≤5 km (hinnang 60, sõiduaeg mõõtmata — EI OLE masinloetavat komandode asukoha-voogu, asukohad rescue.ee kontaktidest)";
   }
 }
 

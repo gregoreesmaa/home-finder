@@ -121,7 +121,8 @@ describe("overlay legend + colors", () => {
     // PLANKTPR-HOOK (#492): planktpr joins the registry (104 + 1).
     // TERVISE-HOOK (#494): tervise joins the registry. (105 + 1).
     // ASUMEDIA-HOOK (#495): asumedia joins the registry (106 + 1).
-    expect(ids).toHaveLength(107);
+    // PAASTE-HOOK (#493): paaste joins the registry (107 + 1).
+    expect(ids).toHaveLength(108);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -335,6 +336,11 @@ describe("overlay legend + colors", () => {
     expect(overlayLegendFor("asumedia")).toContain("EI FEIGITA");
     expect(overlayLegendFor("asumedia")).toContain("2026-09-14");
     expect(overlayLegendFor("asumedia")).toContain("0/84");
+    // PAASTE-HOOK (#493): paaste legend carries the radius + honesty
+    // (coverage, never response time — see PAASTE_BANDS).
+    expect(overlayLegendFor("paaste")).toContain("5 km");
+    expect(overlayLegendFor("paaste")).toContain("60");
+    expect(overlayLegendFor("paaste")).toContain("EI OLE");
   });
 
   it("gives every layer a distinct marker color", () => {
@@ -372,7 +378,8 @@ describe("overlay legend + colors", () => {
     // PLANKTPR-HOOK (#492): planktpr joins the registry (104 + 1).
     // TERVISE-HOOK (#494): tervise joins the registry. (105 + 1).
     // ASUMEDIA-HOOK (#495): asumedia joins the registry (106 + 1).
-    expect(seen.size).toBe(107);
+    // PAASTE-HOOK (#493): paaste joins the registry (107 + 1).
+    expect(seen.size).toBe(108);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });
