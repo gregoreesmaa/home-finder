@@ -652,6 +652,34 @@ describe("layer walk rasters", () => {
     }
   });
 
+  it("serves the G05F upcycle raster under its contract", async () => {
+    // G05F-HOOK (#166): upcycle AREA contract (half 2 on the wire,
+    // sigma 0.3, buildout precedent); Euclidean count kernel. A stale
+    // half is rejected.
+    const udir = await fixtureDir([{ lat: 59.43205, lon: 24.76142 }], "upcycle");
+    await writeFile(
+      join(udir, "osm", "upcycle-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 2, sigma: 0.3 })),
+    );
+    try {
+      const res = await loadLayerRaster("upcycle", udir);
+      expect(res.distance).toBe("euclidean");
+      expect(res.raster?.half).toBe(2);
+    } finally {
+      await rm(udir, { recursive: true, force: true });
+    }
+    const stale = await fixtureDir([{ lat: 59.43205, lon: 24.76142 }], "upcycle");
+    await writeFile(
+      join(stale, "osm", "upcycle-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 1, sigma: 0.3 })),
+    );
+    try {
+      expect(await loadLayerRaster("upcycle", stale)).toEqual({ raster: null, distance: "euclidean" });
+    } finally {
+      await rm(stale, { recursive: true, force: true });
+    }
+  });
+
   it("serves grocery and walkability rasters under the area contract", async () => {
     const gdir = await fixtureDir([{ lat: 59.44, lon: 24.75, a: 1 }], "grocery");
     await writeFile(

@@ -106,6 +106,8 @@ describe("layer registry", () => {
       "viewshed",
       // G05E-HOOK (#165): Group 5 plans-E id (p381 equestrian).
       "equestrian",
+      // G05F-HOOK (#166): Group 5 plans-F id (p485 upcycle).
+      "upcycle",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -263,6 +265,18 @@ describe("layer registry", () => {
     expect(LAYERS.find((l) => l.id === "equestrian")?.paramIds).toEqual([381]);
     expect(overpassQueryFor("equestrian", TALLINN_BBOX)).toContain("horse_riding");
     expect(overpassQueryFor("equestrian", TALLINN_BBOX)).toContain("bridleway");
+  });
+
+  it("wires the G05F upcycle layer with locked calibration", () => {
+    // G05F-HOOK (#166): drift guard — hook specs must equal G05F_CAL in
+    // layers_group05f.ts and the Python builder (parsed by
+    // test_batch_g05f.py).
+    expect(bonusSpecFor("upcycle")).toEqual({ kind: "area", half: 2 });
+    expect(radiusKmFor("upcycle")).toBe(0.3);
+    expect(LAYERS.find((l) => l.id === "upcycle")?.paramIds).toEqual([485]);
+    expect(overpassQueryFor("upcycle", TALLINN_BBOX)).toContain("abandoned");
+    // Rezoning stock, not nuisance: never the industprox/brownsoil tags.
+    expect(overpassQueryFor("upcycle", TALLINN_BBOX)).not.toContain("industrial");
   });
 
   it("every layer explains green=good / red=bad in Estonian", () => {
