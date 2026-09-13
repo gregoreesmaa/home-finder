@@ -64,6 +64,8 @@ import { G10R_RASTER_FILE } from "../layers_group10rest";
 import { G18A_RASTER_FILE } from "../layers_group18resta";
 // G18B-HOOK(#173): batch G18B raster files live in layers_group18restb.ts.
 import { G18B_RASTER_FILE } from "../layers_group18restb";
+// G17A-HOOK(#177): batch G17A raster files live in layers_group17a.ts.
+import { G17A_RASTER_FILE } from "../layers_group17a";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -399,6 +401,8 @@ const RASTER_FILE: Record<LayerId, string> = {
   ...G18A_RASTER_FILE,
   // G18B-HOOK (#173): fishbowl + mossrisk + daylight rasters (scripts/build/batch_g18_restb.py).
   ...G18B_RASTER_FILE,
+  // G17A-HOOK (#177): compost + gritbin + leafdrop rasters (scripts/build/batch_g17_a.py).
+  ...G17A_RASTER_FILE,
 };
 
 /**
@@ -537,6 +541,10 @@ const G18A_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["dayopen", "glassgla
 // daylight (Euclidean inverted count kernel — see
 // scripts/build/batch_g18_restb.py).
 const G18B_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["fishbowl", "mossrisk", "daylight"]);
+// G17A-HOOK (#177): Euclidean-built G17A masters ride "euclidean" —
+// compost + gritbin + leafdrop (Euclidean count kernels, viewshed/
+// moorage precedent — see scripts/build/batch_g17_a.py).
+const G17A_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["compost", "gritbin", "leafdrop"]);
 
 export async function loadLayerRaster(
   layer: LayerId,
@@ -560,7 +568,8 @@ export async function loadLayerRaster(
       G05F_EUCLIDEAN_MASTER.has(layer) || // G05F-HOOK (#166)
       G10R_EUCLIDEAN_MASTER.has(layer) || // G10R-HOOK (#171)
       G18A_EUCLIDEAN_MASTER.has(layer) || // G18A-HOOK (#172)
-      G18B_EUCLIDEAN_MASTER.has(layer); // G18B-HOOK (#173)
+      G18B_EUCLIDEAN_MASTER.has(layer) || // G18B-HOOK (#173)
+      G17A_EUCLIDEAN_MASTER.has(layer); // G17A-HOOK (#177)
     return { raster: doc, distance: euclidean ? "euclidean" : "walk" };
   }
   return { raster: null, distance: "euclidean" };
@@ -690,6 +699,12 @@ const METRO_PREFIX: Record<LayerId, string> = {
   fishbowl: "fishbowl-metro",
   mossrisk: "mossrisk-metro",
   daylight: "daylight-metro",
+  // G17A-HOOK (#177): no compost/gritbin/leafdrop metro masters
+  // (documented fake precision — the files are absent, so windows
+  // serve county everywhere, like G02B/G03/G03D/G08B/G05C).
+  compost: "compost-metro",
+  gritbin: "gritbin-metro",
+  leafdrop: "leafdrop-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */
