@@ -370,6 +370,17 @@ import {
   RSAFE_TAGS,
   bonusSpecForRsafe,
 } from "./layers_roadsafety";
+// ACCBLACK-HOOK (#490): accident-blackspot tables live in
+// ./layers_accblack (P4-012 measured slice, empty-on-purpose). That
+// module imports layers only as types, so no runtime cycle.
+import type { AccBlackLayerId } from "./layers_accblack";
+import {
+  ACCBLACK_DECAY,
+  ACCBLACK_DEFS,
+  ACCBLACK_TAGS,
+  bonusSpecForAccBlack,
+  isAccBlackLayerId,
+} from "./layers_accblack";
 // P4-031-HOOK (#484): senscom DIY-air overlay (P4-031 slice) tables live
 // in ./layers_p4_senscom (new file). That module imports layers only as
 // types, so no runtime cycle.
@@ -519,6 +530,9 @@ export type LayerId =
   | GtfsstopsLayerId
   // RSAFE-HOOK (#481): road-safety id (./layers_roadsafety, P4-012 proxy).
   | RsafeLayerId
+  // ACCBLACK-HOOK (#490): accident-blackspot id (./layers_accblack,
+  // P4-012 measured slice, empty-on-purpose).
+  | AccBlackLayerId
   // P4-031-HOOK (#484): senscom DIY-air id (./layers_p4_senscom).
   | SenscomLayerId
   // STATKOV-HOOK (#485): Statamet per-KOV choropleth ids
@@ -706,6 +720,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...GTFSSTOPS_DECAY,
   // RSAFE-HOOK (#481): blackspot kernel radius (see layers_roadsafety.ts RSAFE_DECAY).
   ...RSAFE_DECAY,
+  // ACCBLACK-HOOK (#490): blackspot window (see layers_accblack.ts ACCBLACK_DECAY).
+  ...ACCBLACK_DECAY,
   // P4-031-HOOK (#484): senscom radius (see layers_p4_senscom.ts SENSCOM_DECAY_KM).
   ...SENSCOM_DECAY_KM,
   // STATKOV-HOOK (#485): choropleth fallback widths (see layers_statkov.ts).
@@ -912,6 +928,8 @@ export const LAYERS: LayerDef[] = [
   // OOKLA-HOOK (#489): quarterly-tile defs (P4-009 fixed/mobile bands,
   // no parameters3 id) from ./layers_p4_ookla.
   ...OOKLA_LAYERS,
+  // ACCBLACK-HOOK (#490): accblack def (P4-012 measured slice) from ./layers_accblack.
+  ...ACCBLACK_DEFS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -999,6 +1017,8 @@ const TAGS: Record<LayerId, string> = {
   ...GTFSSTOPS_TAGS,
   // RSAFE-HOOK (#481): roadsafety query (see layers_roadsafety.ts RSAFE_TAGS).
   ...RSAFE_TAGS,
+  // ACCBLACK-HOOK (#490): accblack source note (see layers_accblack.ts ACCBLACK_TAGS).
+  ...ACCBLACK_TAGS,
   // P4-031-HOOK (#484): senscom source note (see layers_p4_senscom.ts SENSCOM_TAGS).
   ...SENSCOM_TAGS,
   // STATKOV-HOOK (#485): KOV polygon queries (see layers_statkov.ts STATKOV_TAGS).
@@ -1199,6 +1219,9 @@ export interface TilebandSpec {
 export function bonusSpecFor(layer: LayerId): BonusSpec {
   // P4-031-HOOK (#484): senscom band spec lives in layers_p4_senscom.ts.
   if (isSenscomLayerId(layer)) return senscomBonusSpecFor(layer);
+  // ACCBLACK-HOOK (#490): accblack avoid spec lives in layers_accblack.ts.
+  const accblack = bonusSpecForAccBlack(layer);
+  if (accblack) return accblack;
   // B1-HOOK(#98): batch B1 specs live in layers_batch1.ts.
   if (isB1LayerId(layer)) return b1BonusSpecFor(layer);
   // G07B-HOOK(#141): env-health B specs live in layers_group07b.ts.
@@ -1379,7 +1402,8 @@ export function goodnessAt(
   // direction (near wood = low fire-safety score).
   // G05D-HOOK (#164): strsat rides the same inverse branch (near mapped
   // beds = saturated = low score).
-  if (isGroup06BAvoidLayer(layer) || isGroup05DAvoidLayer(layer)) {
+  // ACCBLACK-HOOK (#490): accblack is avoid-kind (red on blackspots).
+  if (isGroup06BAvoidLayer(layer) || isGroup05DAvoidLayer(layer) || isAccBlackLayerId(layer)) {
     const half = (bonusSpecFor(layer) as AvoidSpec).half;
     return Math.round(100 * (1 - Math.pow(2, -best / half)));
   }

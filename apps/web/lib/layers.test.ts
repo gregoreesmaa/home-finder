@@ -171,7 +171,11 @@ describe("layer registry", () => {
       // OOKLA-HOOK (#489): Ookla quarterly-tile ids (P4-009 fixed/
       // mobile bands; paramIds empty — parameters4 namespace).
       "ookla_fixed",
-      "ookla_mobile",    ]);
+      "ookla_mobile",
+      // ACCBLACK-HOOK (#490): accident-blackspot id (P4-012 measured
+      // slice, empty-on-purpose — parameters4 namespace).
+      "accblack",
+    ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
     expect(LAYERS.find((l) => l.id === "schools")?.paramIds).toEqual([12, 123]);
@@ -223,7 +227,11 @@ describe("layer registry", () => {
     // (namespace lock — parameters3 p9 is an inspection-group fact).
     for (const id of ["ookla_fixed", "ookla_mobile"]) {
       expect(LAYERS.find((l) => l.id === id)?.paramIds).toEqual([]);
-    }  });
+    }
+    // ACCBLACK-HOOK (#490): the P4-012 slice binds NO parameters3
+    // number either (parameters4 namespace, senscom/statkov precedent).
+    expect(LAYERS.find((l) => l.id === "accblack")?.paramIds).toEqual([]);
+  });
 
   it("wires the B10C utility layers with locked calibration", () => {
     // Drift guard: hook specs must equal BATCH10C_BONUS/BATCH10C_DECAY in

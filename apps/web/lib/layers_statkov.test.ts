@@ -41,7 +41,9 @@ describe("statkov registry (#485)", () => {
     // FLOOD-HOOK (#487): +1 flood-risk polygon overlay (94 + 1) + 2 P4OSM (P4OSM-HOOK #480, 95 + 2).
     // 1 roadsafety #481 + 1 senscom #484) + 3 statkov layers (86 + 3).
     // OOKLA-HOOK (#489): +2 quarterly-tile layers (97 + 2).
-    expect(ids.length).toBe(99);
+    // 1 roadsafety #481 + 1 senscom #484) + 3 statkov layers (86 + 3)
+    // + 1 accblack layer (ACCBLACK-HOOK #490, 89 + 1).
+    expect(ids.length).toBe(100);
     for (const id of STATKOV_LAYER_IDS) expect(ids).toContain(id);
   });
 

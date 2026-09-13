@@ -409,6 +409,12 @@ export function overlayColorFor(layer: LayerId): string {
     // (distinct-color test).
     case "roadsafety":
       return "#fde047";
+    // ACCBLACK-HOOK (#490): accblack marker (measured blackspots, none
+    // plotted yet). #7f1d1d: red-900 crash red (NOT #b91c1c / #991b1b /
+    // #881337 / #be123c / #dc2626 — all taken). Distinct from every
+    // other marker (distinct-color test).
+    case "accblack":
+      return "#7f1d1d";
     // STATKOV-HOOK (#485): choropleth colors (registry contract --
     // these layers are raster-only exact fills with NO point markers,
     // so the overlay slot stays empty and the toggle reads (0); the
@@ -747,6 +753,11 @@ export function overlayLegendFor(layer: LayerId): string {
     // mapping usage, never accident truth.
     case "roadsafety":
       return "Märgistatud ülekäigud + rahustid · lähedaste arv (kasutus-hinnang, küllastus 60, õnnetusstatistika puudub)";
+    // ACCBLACK-HOOK (#490): accblack (P4-012 measured slice) — the
+    // empty-on-purpose verdict rides along: zero projected points, so
+    // the field is unknown everywhere until the L-EST97 reopen.
+    case "accblack":
+      return "Rasked liiklusõnnetused (mõõdetud mustad punktid) · 300 m aken (mõõdetud punkte kaardil pole — L-EST97 teisendamata, EI OLE projitseeritud asukohti)";
     // P4-031-HOOK (#484): senscom (P4-031) — DIY outdoor locations from
     // the Tallinn extract; the band field (not the dots) is the score:
     // 1 andur <=500 m -> 60, 2-3 -> 70, 4+ -> 80 (lagi); anduriteta

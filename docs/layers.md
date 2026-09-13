@@ -145,6 +145,7 @@ id, no raster master (the points-splat kernel IS the field):
 |---|---|---|---|---|
 | `senscom` (P4-031, #484) | sensor.community DIY-air density | Tallinn extract (`sensor-community-tallinn.json`, cached, never live) | hard ≤500 m witness bands 60/70/80 (== scorer) | `lib/layers_p4_senscom.ts` + `lib/server/senscom.ts` |
 | `ookla_fixed` + `ookla_mobile` (P4-009, #489) | Ookla quarterly tile download (2026-Q1 re-verified live: HEADs 200 + bounded Tallinn range-reads, 971 fixed / 555 mobile qualifying tiles) | Tallinn extract (`ookla-tallinn-2026Q1.json`, cached, never live) | nearest qualifying tile (≥5 tests) ≤1 km → bands 35/55/75/capped-85 (== scorer) | `lib/layers_p4_ookla.ts` + `lib/server/ookla.ts` |
+| `accblack` (P4-012, #490) | Transpordiamet casualty-accident blackspots, measured slice | monthly `lo_2011_2026.csv` — **empty on purpose**: X/Y are L-EST97 metres (older rows blank), no vendored projection, so zero points plotted rather than misplotted (verdict 2026-09-13) | 300 m avoid window (== scorer `BLACKSPOT_WINDOW_M`; unknown everywhere until the L-EST97 reopen) | `lib/layers_accblack.ts` + `scripts/build/batch_accblack.py` |
 
 Overlay layers carry `paramIds: []` + `paramLabel` (e.g. `P4-031`):
 parameters3 p31 is Structural integrity (inspection no-map) and must
