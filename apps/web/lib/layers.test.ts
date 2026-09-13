@@ -196,6 +196,10 @@ describe("layer registry", () => {
 
       // PLANKTPR-HOOK (#492): designated-use polygon id (p47 exact fills).
       "planktpr",
+
+      // TERVISE-HOOK (#494): Terviseamet bathing-water id (P4-024
+      // tervise, measured slice — paramIds empty, parameters4 slice).
+      "tervise",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -262,6 +266,11 @@ describe("layer registry", () => {
     // PLANKTPR-HOOK (#492): planktpr binds p47 (designated use — the
     // G05A no-map row it graduates; OSM landuse stays out by design).
     expect(LAYERS.find((l) => l.id === "planktpr")?.paramIds).toEqual([47]);
+
+    // TERVISE-HOOK (#494): tervise rides paramLabel, paramIds stays []
+    // (parameters4 P4-024 slice, no parameters3 number).
+    expect(LAYERS.find((l) => l.id === "tervise")?.paramIds).toEqual([]);
+    expect(LAYERS.find((l) => l.id === "tervise")?.paramLabel).toBe("P4-024");
   });
 
   it("wires the B10C utility layers with locked calibration", () => {

@@ -60,7 +60,8 @@ describe("floodzone registry (#487)", () => {
     // 2 ookla tile layers (OOKLA-HOOK #489, 97 + 2) +
     // 1 accblack layer (ACCBLACK-HOOK #490, 99 + 1) + 1 maaparcel (MAAPARCEL-HOOK #491, 100 + 1) +
     // 3 eelis (EELIS-HOOK #488, 101 + 3) + 1 planktpr (PLANKTPR-HOOK #492, 104 + 1).
-    expect(ids.length).toBe(105);
+    // TERVISE-HOOK (#494): +1 tervise bathing-water layer (105 + 1).
+    expect(ids.length).toBe(106);
     expect(ids).toContain("floodzone");
   });
 

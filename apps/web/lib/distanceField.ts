@@ -130,6 +130,11 @@ export interface ScoredPoint {
   t?: number;
   /** Hectares for the "area" score (parks); absent means no area. */
   a?: number;
+  /**
+   * Coarse quality band for the "qbands" score (TERVISE-HOOK #494);
+   * absent means quality NULL.
+   */
+  q?: number;
 }
 
 export interface ScoredField {
@@ -137,7 +142,7 @@ export interface ScoredField {
   /** Bonus per node (same geometry as field). */
   bonus: Float64Array;
   sigmaKm: number;
-  /** Direct per-node score (NaN = unknown) for direct kinds (area/sparse/trips/avoid/quiet/cover/bands); else null. */
+  /** Direct per-node score (NaN = unknown) for direct kinds (area/sparse/trips/avoid/quiet/cover/bands/qbands); else null. */
   direct: Float64Array | null;
 }
 
@@ -269,6 +274,40 @@ export function buildScoredField(
       const clat = bbox.minlat + (rows > 1 ? (iy / (rows - 1)) * spanLat : 0);
       direct[k] =
         ooklaTileAt(clat, clon, points, spec.radiusM, spec.minTests)?.band ?? NaN;
+    }
+    return { field, bonus, sigmaKm, direct };
+  }
+  // TERVISE-HOOK (#494): nearest-point quality bands (Terviseamet
+  // bathing water) — the map twin of terviseBandAt in
+  // ./layers_tervise. Each cell takes the NEAREST point's q within
+  // radiusM (hard cutoff, equirect km at mid latitude — same geometry
+  // as the "bands" branch above) and renders that band. Deliberately
+  // NOT a Gaussian splat: a beach 2 km away says nothing about the
+  // backyard, so smoothing would fake a gradient between monitored
+  // shores. No point in radius, or nearest q absent, stays NaN
+  // (unknown, never zero — the scorer reads the same gap as NULL).
+  if (spec.kind === "qbands") {
+    const direct = new Float64Array(cols * rows);
+    const spanLon = bbox.maxlon - bbox.minlon;
+    const spanLat = bbox.maxlat - bbox.minlat;
+    const kx = 111.32 * Math.cos((((bbox.minlat + bbox.maxlat) / 2) * Math.PI) / 180);
+    const radiusKm = spec.radiusM / 1000;
+    for (let k = 0; k < direct.length; k++) {
+      const iy = Math.floor(k / cols);
+      const ix = k % cols;
+      const clon = bbox.minlon + (cols > 1 ? (ix / (cols - 1)) * spanLon : 0);
+      const clat = bbox.minlat + (rows > 1 ? (iy / (rows - 1)) * spanLat : 0);
+      let best = Infinity;
+      let band = NaN;
+      for (const p of points) {
+        const d = Math.hypot((clon - p.lon) * kx, (clat - p.lat) * 110.57);
+        if (d <= radiusKm && d < best) {
+          best = d;
+          const q = (p as ScoredPoint).q;
+          band = typeof q === "number" && Number.isFinite(q) ? q : NaN;
+        }
+      }
+      direct[k] = band;
     }
     return { field, bonus, sigmaKm, direct };
   }

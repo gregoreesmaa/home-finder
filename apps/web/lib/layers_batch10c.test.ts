@@ -56,7 +56,8 @@ describe("batch B10C registry (#121)", () => {
 
     // EELIS-HOOK (#488): +3 nature-polygon layers join the registry (101 + 3).
     // PLANKTPR-HOOK (#492): +1 designated-use polygon layer (104 + 1).
-    expect(ids.length).toBe(105);
+    // TERVISE-HOOK (#494): +1 tervise bathing-water layer (105 + 1).
+    expect(ids.length).toBe(106);
     for (const id of BATCH10C_LAYER_IDS) expect(ids).toContain(id);
     for (const gone of ["internet", "redundancy", "ota"]) expect(ids).not.toContain(gone);
   });

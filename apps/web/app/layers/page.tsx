@@ -355,6 +355,10 @@ export default function LayersPage() {
   // extract, not the OSM snapshot — the status names the extract (+ its
   // age) instead of the snapshot date.
   const isBands = bonusSpecFor(layer).kind === "bands";
+  // TERVISE-HOOK (#494): qbands-layer points ride the committed
+  // Terviseamet extract, not the OSM snapshot — the status names the
+  // extract vintage (+ its age) instead of the snapshot date.
+  const isQbands = bonusSpecFor(layer).kind === "qbands";
   // FLOOD-HOOK (#487): floodzone status counts polygons, never points —
   // the layer serves zero points by design (polygons only).
   const floodStatus =
@@ -394,6 +398,8 @@ export default function LayersPage() {
             ? `Ookla Tallinna väljavõte (${OOKLA_QUARTER}) · ${pointCount} ruutu`
             : isBands
               ? `sensor.community väljavõte${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
+              : isQbands
+                ? `Terviseameti väljavõte (suplusvesi, seis 2026-09-14)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
               : `Kohalik hetktõmmis (2026-09-12) · ${pointCount} punkti`
           : "Kohalik hetktõmmis (2026-09-12) · rasterkiht"
         : provenance === "empty"
@@ -513,6 +519,8 @@ export default function LayersPage() {
                   ? " · lähiruut kõvas raadiuses (Ookla kvartaliruudud, mitte kõnnivõrk)"
                   : bonusSpecFor(layer).kind === "bands"
                     ? " · otsekaugus kõvas raadiuses (DIY-tunnistajad, mitte kõnnivõrk)"
+                    : bonusSpecFor(layer).kind === "qbands"
+                      ? " · otsekaugus kõvas raadiuses (lähim seirepunkt, mitte kõnnivõrk)"
                     : " · euclidiline varu (kõndimisvõrk puudub)"
               : "")
         }

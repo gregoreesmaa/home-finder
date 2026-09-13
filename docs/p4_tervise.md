@@ -63,6 +63,55 @@ refuses (AGENTS.md §5).
   parameters4.md P4-017/P4-024), and graduate that dim to a
   per-parcel join (P4-017) or coarse hinnang cells (P4-024).
 
+## Correction 2026-09-14 — the #494 bathing-water slice IS open (issue #494 rework)
+
+PR #510's "no machine feed" verdict for monitoring-point LOCATIONS was
+wrong. The vtiav.sm.ee "Avaandmed" tab is not just a JS label: it
+serves bulk yearly XML + XSD + PDF per dataset. The 2026-09-13 check
+stopped at the query UI (headers + visible-text keyword scope, no file
+links off the tab) and never requested the bulk URLs the saved tab
+render lists — that is the exact miss. The #289/#362 verdict above
+(drinking-water seire, tick stats) STANDS: neither has a bulk export.
+
+Harvest (2026-09-14, polite: custom UA
+`home-finder-494-tervise-xml/1.0`, 5 s pacing, single GETs, HTTP 429 as
+stop; raw XML in `/tmp/hf-494-xml/` only — fixtures only, AGENTS.md §5):
+
+| File | Observed | Meaning |
+|---|---|---|
+| `opendata/supluskohad.xml` (HTTP 200, 313862 B) | 211 `<supluskoht>` rows, each with `<koordinaadid><x>/<y>`, address, `<proovivotukohad>` sampling points, `<veekvaliteet>` grade, `<viimane_proovivott>` date | Plottable monitoring-point register |
+| `opendata/supluskoha_veeproovid_2026.xml` (HTTP 200, 918975 B) | 758 `<proovivott>` with `supluskoht_id`, `proovivotu_aeg`, per-protocol `<hinnang>` (vastab / ei vasta noutele) | Dated per-point quality feed |
+| `opendata/supluskoha_veeproovid_2025.xml` (HTTP 200, 931177 B) | 793 `<proovivott>`, same shape (vintage leg) | Dated per-point quality feed |
+| `opendata/supluskohad.xsd` (HTTP 200, 5325 B) | Register schema (names no CRS) | Structure pin, not a CRS source |
+
+Build (`scripts/build/batch_tervise.py`, stdlib only, yearly TTL):
+211 sites -> 205 plotted WGS84 points, 6 dropped (no `<x>/<y>`,
+counted — Haapsalu pair 124/165 shares identical raw coords, a
+feed-side duplication both rows keep), 37 quality-NULL. Bands:
+80 x143 (vaga hea), 70 x14, 60 x5, 45 x0, 30 x6, NULL x37.
+Pirita (119), Stroomi (120), Kakumae (118) all 80 with dated passing
+2026 samples. The P4-017 drinking-water dim stays NULL
+(dims_p4_tervise.py untouched — no bulk export exists for it).
+
+Transform (labeled, ~1 m): `<x>` northing / `<y>` easting are L-EST97
+metres (EPSG:3301 magnitudes + #490 family precedent), projected by
+inverse Lambert Conformal Conic 2SP (Maa-amet/EPSG constants, stdlib).
+Verified two ways: pyproj EPSG:3301->EPSG:4326 agrees to <1 mm on all
+320 feed coordinates, and Pirita/Stroomi/Kakumae land on their beaches.
+Remaining budget is the GRS80~WGS84 datum gap (~1 m) — stamped on the
+extract and the layer module, never hidden.
+
+Layer shape (`apps/web/lib/layers_tervise.ts`, `TERVISE-HOOK (#494)`):
+`tervise` (parameters4 `P4-024`, paramIds `[]`) serves the 205
+committed projected points from the route (never the OSM snapshot,
+never live); the `qbands` kernel paints the NEAREST site's band inside
+a hard 1 km radius (no smoothing; outside stays unknown). Per-point
+quality where the samples support it, NULLs where they do not — never
+fake precision. Registry: `qbands` kind in `BonusSpec` +
+`buildScoredField`, `q` on `LayerPoint`/`ScoredPoint`, route branch,
+status line, marker `#34d399`, legend. Annual re-harvest re-runs the
+builder and re-embeds the extract (TTL per parameters4.md P4-024).
+
 ## Why demo + coverage share one PR
 
 The coverage body (#362) states it extends the demoed ingestion

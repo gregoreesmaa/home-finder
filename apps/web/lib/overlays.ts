@@ -512,6 +512,14 @@ export function overlayColorFor(layer: LayerId): string {
     // (distinct-color test).
     case "planktpr":
       return "#4c1d95";
+    // TERVISE-HOOK (#494): tervise marker (point overlay,
+    // stride-sampled like grocery). #34d399: emerald-400 lagoon water
+    // (NOT #059669 — taken — and NOT #06b6d4 — taken by senscom — and
+    // NOT #2dd4bf — taken by upcycle — and NOT #14b8a6 — taken by
+    // kovehit — and NOT #0d9488 — taken by walkability). Distinct from
+    // every other marker (distinct-color test).
+    case "tervise":
+      return "#34d399";
   }
 }
 
@@ -849,7 +857,6 @@ export function overlayLegendFor(layer: LayerId): string {
       return "Kõnniteed/katted/valgustid · lähedaste arv (küllastus 1000, hinnang — fassaadi-tõde puudub)";
     case "darkness":
       return "lit-märgistused · lähedaste arv (küllastus 500, hinnang — lampide loendus puudub)";
-
     // MAAPARCEL-HOOK (#491): maaparcel (p364, kataster omandivorm-class
     // choropleth) — register facts, never suspicion scores. The
     // outside-unknown caveat rides along (OTA PR #131 precedent):
@@ -877,6 +884,12 @@ export function overlayLegendFor(layer: LayerId): string {
     // faked score; OSM landuse is never painted as zoning).
     case "planktpr":
       return "Sihtotstarbe-polügoonid (kehtestatud, hinnang: elamu roheline 80 / sega 60 / äri 35 / piirang punane 20, lagi 80; PLANK-WFS 2026-09-13 seisuga MAAS, TPR-il liidest EI OLE — väljaspool polügoone hinnangut pole)";
+    // TERVISE-HOOK (#494): tervise (P4-024) — Terviseameti seirepunktid
+    // projekteeritud väljavõttest; lähima punkti kvaliteedibänd
+    // 1 km raadiuses (80 väga hea … 30 halb, lagi; kvaliteet teadmata
+    // = hinnangut pole, mitte keskmine).
+    case "tervise":
+      return "Suplusvee seirepunktid (Terviseameti väljavõte) · lähima punkti kvaliteet 1 km raadiuses (80 väga hea, 70 hea, 60 piisav/teadmata, 45 kesine, 30 halb; lagi 80, joogivee seire puudub)";
   }
 }
 

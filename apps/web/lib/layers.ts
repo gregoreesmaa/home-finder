@@ -489,6 +489,17 @@ import {
   PLANKTPR_TAGS,
   bonusSpecForPlanktpr,
 } from "./layers_planktpr";
+// TERVISE-HOOK (#494): Terviseamet bathing-water tables live in
+// ./layers_tervise. That module imports layers only as types, so no
+// runtime cycle.
+import type { TerviseLayerId } from "./layers_tervise";
+import {
+  TERVISE_DECAY,
+  TERVISE_LAYERS,
+  TERVISE_TAGS,
+  isTerviseLayerId,
+  terviseBonusSpecFor,
+} from "./layers_tervise";
 
 export type LayerId =
   | "parks"
@@ -594,7 +605,9 @@ export type LayerId =
   | EelisLayerId
   // PLANKTPR-HOOK (#492): designated-use polygon id
   // (./layers_planktpr, p47 exact fills).
-  | PlanktprLayerId;
+  | PlanktprLayerId
+  // TERVISE-HOOK (#494): Terviseamet bathing-water id (./layers_tervise).
+  | TerviseLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -612,6 +625,11 @@ export interface LayerPoint {
   t?: number;
   /** Hectares for the "area" score (parks); absent means no area. */
   a?: number;
+  /**
+   * Coarse quality band for the "qbands" score (TERVISE-HOOK #494 —
+   * Terviseamet bathing-water grade); absent means quality NULL.
+   */
+  q?: number;
 }
 
 /** Tag keys worth caching (small, bounded); names/addresses never leave. */
@@ -795,6 +813,8 @@ const DECAY_KM: Record<LayerId, number> = {
 
   // PLANKTPR-HOOK (#492): polygon fallback width (see layers_planktpr.ts).
   ...PLANKTPR_DECAY,
+  // TERVISE-HOOK (#494): bathing-water radius (see layers_tervise.ts TERVISE_DECAY).
+  ...TERVISE_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -1000,6 +1020,8 @@ export const LAYERS: LayerDef[] = [
   // PLANKTPR-HOOK (#492): designated-use polygon def (p47 exact fills)
   // from ./layers_planktpr.
   ...PLANKTPR_DEFS,
+  // TERVISE-HOOK (#494): bathing-water def (P4-024 tervise) from ./layers_tervise.
+  ...TERVISE_LAYERS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -1116,6 +1138,8 @@ const TAGS: Record<LayerId, string> = {
 
   // PLANKTPR-HOOK (#492): WFS source note (see layers_planktpr.ts PLANKTPR_TAGS).
   ...PLANKTPR_TAGS,
+  // TERVISE-HOOK (#494): bathing-water source note (see layers_tervise.ts TERVISE_TAGS).
+  ...TERVISE_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -1259,7 +1283,13 @@ export type BonusSpec =
   // dims_p4_ookla scorer) and map its download average to
   // weak/mid/strong/top. No qualifying tile stays unknown (renders
   // red, never zero).
-  | TilebandSpec;
+  | TilebandSpec
+  // TERVISE-HOOK (#494): nearest-point quality bands (Terviseamet
+  // bathing water): each cell takes the NEAREST point's q within
+  // radiusM (hard cutoff, no smoothing) — byte parity with
+  // batch_tervise.py quality_band. No point in radius, or nearest q
+  // absent, stays unknown (renders red, never zero).
+  | QbandsSpec;
 
 /**
  * Hard-radius witness-count band spec (P4-031-HOOK #484 — senscom DIY
@@ -1298,7 +1328,20 @@ export interface TilebandSpec {
   top: number;
 }
 
+/**
+ * Nearest-point quality-band spec (TERVISE-HOOK #494 — Terviseamet
+ * bathing water, first use). Values live in ./layers_tervise
+ * (TERVISE_RADIUS_M; bands ride per-point q from batch_tervise.py).
+ */
+export interface QbandsSpec {
+  kind: "qbands";
+  /** Hard join radius in metres (tervise: 1000). */
+  radiusM: number;
+}
+
 export function bonusSpecFor(layer: LayerId): BonusSpec {
+  // TERVISE-HOOK (#494): tervise quality-band spec lives in layers_tervise.ts.
+  if (isTerviseLayerId(layer)) return terviseBonusSpecFor(layer);
   // P4-031-HOOK (#484): senscom band spec lives in layers_p4_senscom.ts.
   if (isSenscomLayerId(layer)) return senscomBonusSpecFor(layer);
   // ACCBLACK-HOOK (#490): accblack avoid spec lives in layers_accblack.ts.
@@ -1651,6 +1694,10 @@ export async function fetchWindow(
   // (polygons only — the sidecar carries the data). Skip the window
   // fetch for the same reason: a designed 500 only litters the console.
   if (isPolygonOnlyMaaLayer(layer)) return null;
+
+  // TERVISE-HOOK (#494): qbands layers have no raster master by decision
+  // (TERVISE_NO_RASTER) — same skip for the quality kernel.
+  if (bonusSpecFor(layer).kind === "qbands") return null;
   try {
     const spanM = (view.maxlon - view.minlon) * 57300;
     const latM = (view.maxlat - view.minlat) * 110570;
@@ -1772,15 +1819,26 @@ function cleanArea(p: unknown): number | undefined {
   return a;
 }
 
+// TERVISE-HOOK (#494): quality band passes through like trips/area
+// (0..100 coarse grade; absent/non-finite stays quality-NULL, never a
+// faked middle).
+function cleanQuality(p: unknown): number | undefined {
+  const q = (p as Partial<LayerPoint>)?.q;
+  if (typeof q !== "number" || !Number.isFinite(q) || q < 0 || q > 100) return undefined;
+  return q;
+}
+
 export function toPoint(p: unknown): LayerPoint | null {
   if (!isPoint(p)) return null;
   const tags = cleanTags(p);
   const t = cleanTrips(p);
   const a = cleanArea(p);
+  const q = cleanQuality(p);
   const pt: LayerPoint = { lat: p.lat as number, lon: p.lon as number };
   if (tags) pt.tags = tags;
   if (t !== undefined) pt.t = t;
   if (a !== undefined) pt.a = a;
+  if (q !== undefined) pt.q = q;
   return pt;
 }
 
