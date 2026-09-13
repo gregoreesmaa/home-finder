@@ -369,7 +369,29 @@ describe("field resolution", () => {
   });
 });
 
-describe("quiet-kind cleanliness (G07 env-health)", () => {
+describe("quiet calmness (G11D trailprivacy)", () => {
+  const QUIET: BonusSpec = { kind: "quiet", halfM: 1500 };
+
+  it("reads 0 on the source and ~50 one halfM out", () => {
+    const s = buildScoredField([{ lon: 0.5, lat: 0.5 }], UNIT, 101, 101, 0.5, QUIET);
+    expect(s.direct).not.toBeNull();
+    // Node (50,50) sits on the source; ~1.5 km east reads ~50.
+    // UNIT spans 1 deg lon (~57 km): 1.5 km ~= 2.6 cells.
+    const on = s.direct![50 * 101 + 50];
+    expect(on).toBeLessThan(5);
+    const out = s.direct![50 * 101 + 53];
+    expect(out).toBeGreaterThan(30);
+    expect(out).toBeLessThan(70);
+  });
+
+  it("stays unknown with no features, never a faked calm", () => {
+    const s = buildScoredField([], UNIT, 11, 11, 0.5, QUIET);
+    expect(s.direct).not.toBeNull();
+    for (const v of s.direct!) expect(v).toBeNaN();
+  });
+});
+
+describe("quiet-kind cleanliness (G07/G07D env-health)", () => {
   const QUIET: BonusSpec = { kind: "quiet", halfM: 500 };
 
   it("reads 0 on the source, ~50 at halfM, near 100 when far", () => {
@@ -382,6 +404,28 @@ describe("quiet-kind cleanliness (G07 env-health)", () => {
     expect(half?.value).toBeCloseTo(50, 0);
     const far = sampleScored(s, 24.69, 59.47);
     expect(far?.value).toBeGreaterThan(60);
+  });
+
+  it("agriland halves at 800 m (spray-drift scale)", () => {
+    // Wider box: the 800 m half-offset must stay inside the view.
+    const box: BBoxLike = { minlon: 24.67, minlat: 59.45, maxlon: 24.73, maxlat: 59.48 };
+    const s = buildScoredField([{ lon: 24.7, lat: 59.465 }], box, 61, 31, 0.8, {
+      kind: "quiet",
+      halfM: 800,
+    });
+    const half = sampleScored(s, 24.7 + 0.8 / 57.29, 59.465);
+    expect(half?.value).toBeCloseTo(50, 0);
+  });
+
+  it("agrifield halves at 800 m (drift scale)", () => {
+    // Wider box: 800 m east of the source must stay inside the view.
+    const box: BBoxLike = { minlon: 24.69, minlat: 59.46, maxlon: 24.72, maxlat: 59.47 };
+    const s = buildScoredField([{ lon: 24.7, lat: 59.465 }], box, 41, 41, 0.8, {
+      kind: "quiet",
+      halfM: 800,
+    });
+    const half = sampleScored(s, 24.7 + 0.8 / 57.29, 59.465);
+    expect(half?.value).toBeCloseTo(50, 0);
   });
 
   it("never exceeds 100 and reads null where nothing is known", () => {

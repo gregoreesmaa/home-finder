@@ -41,10 +41,10 @@ describe("batch G06 registry (#138)", () => {
     for (const v of GROUP06_NO_MAP) expect(v.reason.length).toBeGreaterThan(20);
   });
 
-  it("merges into LAYERS via the G06-HOOK (page + routes serve all thirty-one)", () => {
+  it("merges into LAYERS via the G06-HOOK (page + routes serve all forty-three)", () => {
     const ids = LAYERS.map((l) => l.id);
     // G03-HOOK (#151): drainage joins the registry.
-    expect(ids.length).toBe(31);
+    expect(ids.length).toBe(43);
     for (const id of GROUP06_LAYER_IDS) expect(ids).toContain(id);
   });
 

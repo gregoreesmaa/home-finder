@@ -231,6 +231,38 @@ export function buildScoredField(
   // droneviab degrades to its clearance leg here (batch4 rideshare
   // precedent: the raster carries the full two-signal field, the
   // fallback the honest subset). +Inf stays NaN (unknown, never faked).
+  // G11D-HOOK (#135): nearest-source calmness for inverted badness
+  // layers (trailprivacy): 0 on the source, 50 at halfM; featureless
+  // input stays unknown (NaN), never a faked calm 100.
+  // G06B-HOOK (#139): inverse ("avoid") proximity — currently only the
+  // G06B woodfire layer (p356). Score = 100·(1−2^(−d/half)) from the
+  // nearest-feature distance field: 0 on top of a feature, 50 at half
+  // km, →100 far away. Mirrors goodnessAt's avoid branch and the
+  // walk-raster stamp, so the Euclidean fallback agrees with the raster
+  // about direction (near wood = low fire-safety score). NaN past the
+  // field (unreachable stays unknown, never faked safe).
+  if (spec.kind === "avoid") {
+    const direct = new Float64Array(cols * rows);
+    for (let k = 0; k < direct.length; k++) {
+      const d = field.distKm[k];
+      if (!Number.isFinite(d)) {
+        direct[k] = NaN;
+        continue;
+      }
+      const raw = 100 * (1 - Math.pow(2, -d / spec.half));
+      direct[k] = raw >= 3 ? Math.min(100, raw) : NaN;
+    }
+    return { field, bonus, sigmaKm, direct };
+  }
+  // B6-HOOK (#133) + G07-HOOK (#140): quiet layers bake nearest-source
+  // calmness/cleanliness directly 100·d/(d+halfM) — 0 on the source,
+  // 50 at halfM. The shared proximityValue decay would render them
+  // inverted (green ON the airfield), and without this branch quiet
+  // layers would fall into the variety path below and crash on
+  // spec.key. No bonus splat. droneviab degrades to its clearance leg
+  // here (batch4 rideshare precedent: the raster carries the full
+  // two-signal field, the fallback the honest subset). +Inf stays NaN
+  // (unknown, never faked).
   if (spec.kind === "quiet") {
     const direct = new Float64Array(cols * rows);
     for (let k = 0; k < direct.length; k++) {

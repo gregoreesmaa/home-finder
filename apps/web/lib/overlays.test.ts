@@ -84,7 +84,7 @@ describe("selectOverlayPoints", () => {
 describe("overlay legend + colors", () => {
   it("explains every layer's markers and weights in Estonian", () => {
     const ids = LAYERS.map((l) => l.id);
-    expect(ids).toHaveLength(31);
+    expect(ids).toHaveLength(43);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -110,6 +110,22 @@ describe("overlay legend + colors", () => {
     expect(overlayLegendFor("hydrants")).toContain("küllastus 6");
     expect(overlayLegendFor("evac")).toContain("2 km");
     expect(overlayLegendFor("dispatch")).toContain("küllastus 3");
+    // Batch G07B halves (see g07bBonusSpecFor in layers_group07b.ts).
+    expect(overlayLegendFor("brownsoil")).toContain("500 m");
+    expect(overlayLegendFor("oiltank")).toContain("500 m");
+    expect(overlayLegendFor("agriland")).toContain("800 m");
+    // G11D halves (see G11D_BONUS in layers_group11d.ts).
+    expect(overlayLegendFor("mailbox")).toContain("2,5");
+    expect(overlayLegendFor("postal")).toContain("küllastus 12");
+    expect(overlayLegendFor("alley")).toContain("0,3 km");
+    expect(overlayLegendFor("trailprivacy")).toContain("PÖÖRATUD");
+    // Batch G07D halves (see g07dBonusSpecFor in layers_group07d.ts).
+    expect(overlayLegendFor("agrifield")).toContain("800 m");
+    expect(overlayLegendFor("wildcorr")).toContain("500 m");
+    // Group G06B halves (see GROUP06B_BONUS in layers_group06b.ts).
+    expect(overlayLegendFor("plaster")).toContain("küllastus 6");
+    expect(overlayLegendFor("antiques")).toContain("küllastus 1");
+    expect(overlayLegendFor("woodfire")).toContain("pöördskaala");
     // Batch G11C halves (see G11C_BONUS in layers_group11c.ts).
     expect(overlayLegendFor("schoolbus")).toContain("küllastus 4");
     expect(overlayLegendFor("schoolbus")).toContain("hinnang");
@@ -138,7 +154,7 @@ describe("overlay legend + colors", () => {
 
   it("gives every layer a distinct marker color", () => {
     const seen = new Set((LAYERS.map((l) => l.id) as LayerId[]).map(overlayColorFor));
-    expect(seen.size).toBe(31);
+    expect(seen.size).toBe(43);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

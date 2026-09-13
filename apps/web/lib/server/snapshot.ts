@@ -18,6 +18,14 @@ import { sampleRaster } from "../walkRaster";
 import { B1_METRO_PREFIXES, B1_RASTER_FILES } from "../layers_batch1";
 // G03-HOOK(#151): batch G03 raster file lives in layers_group03.ts.
 import { G03_RASTER_FILE } from "../layers_group03";
+// G07B-HOOK(#141): batch G07B raster files live in layers_group07b.ts.
+import { G07B_RASTER_FILE } from "../layers_group07b";
+// G11D-HOOK(#135): leftover-B raster files live in layers_group11d.ts.
+import { G11D_METRO_PREFIXES, G11D_RASTER_FILES } from "../layers_group11d";
+// G07D-HOOK(#143): batch G07D raster files live in layers_group07d.ts.
+import { G07D_RASTER_FILE } from "../layers_group07d";
+// G06B-HOOK (#139): Group 6 leftover raster files live in layers_group06b.ts.
+import { GROUP06B_METRO_PREFIXES, GROUP06B_RASTER_FILES } from "../layers_group06b";
 // G11C-HOOK(#134): batch G11C raster files live in layers_group11c.ts.
 import { G11C_METRO_PREFIX, G11C_RASTER_FILE } from "../layers_group11c";
 // B6-HOOK(#133): batch B6 raster files live in layers_batch6.ts.
@@ -305,6 +313,12 @@ const RASTER_FILE: Record<LayerId, string> = {
   grocery: "grocery-walk-raster.json",
   healthcare: "healthcare-walk-raster.json",
   ...B1_RASTER_FILES, // B1-HOOK(#98)
+  // G07B-HOOK (#141): env-health B rasters (built by scripts/build/batch_g07b_envhealth.py).
+  ...G07B_RASTER_FILE,
+  // G11D-HOOK (#135): leftover-B rasters (built by scripts/build/batch_g11d_leftovers.py).
+  ...G11D_RASTER_FILES,
+  // G07D-HOOK (#143): env-health D rasters (built by scripts/build/batch_g07d_envhealth.py).
+  ...G07D_RASTER_FILE,
   // G07-HOOK (#140): env-health rasters (built by scripts/build/batch_g07_envhealth.py).
   ...G07_RASTER_FILE,
   // B5-HOOK (#102): Group 14 rasters (built by scripts/build/batch_b5_safety.py).
@@ -313,6 +327,8 @@ const RASTER_FILE: Record<LayerId, string> = {
   hydrants: "hydrants-walk-raster.json",
   evac: "evac-walk-raster.json",
   dispatch: "dispatch-walk-raster.json",
+  // G06B-HOOK (#139): Group 6 leftover rasters (built by scripts/build/batch_g06b_heritage.py).
+  ...GROUP06B_RASTER_FILES,
   // G11C-HOOK (#134): Group 11 leftover-A rasters (batch_g11c_amenity.py).
   ...G11C_RASTER_FILE,
   // B6-HOOK (#133): mobility/access rasters (scripts/build/batch_b6_mobility.py).
@@ -364,9 +380,16 @@ export function matchesContract(
   const spec = bonusSpecFor(layer);
   if (doc.sigma !== radiusKmFor(layer)) return false;
   if (spec.kind === "variety") return doc.per === spec.per && doc.cap === spec.cap;
-  if (spec.kind === "area" || spec.kind === "trips") return doc.half === spec.half;
   // B6-HOOK (#133) + G03-HOOK (#151): "quiet" carries halfM on the wire
   // half field.
+  // G07B-HOOK (#141): nearest-source cleanliness (0 on the source, 50 at halfM).
+  // G11D-HOOK (#135): quiet layers carry halfM on the wire as half.
+  // G07D-HOOK (#143): nearest-source cleanliness (0 on the source, 50 at halfM).
+  // G06B-HOOK (#139): the "avoid" kind carries the same half contract as
+  // area/trips (50-score walk-km); only the score SHAPE differs (inverse).
+  if (spec.kind === "area" || spec.kind === "trips" || spec.kind === "avoid")
+    return doc.half === spec.half;
+  // B6-HOOK (#133): "quiet" carries halfM on the wire half field.
   // G07-HOOK (#140): nearest-source cleanliness (0 on the source, 50 at halfM).
   if (spec.kind === "quiet") return doc.half === spec.halfM;
   return false;
@@ -412,6 +435,20 @@ const METRO_PREFIX: Record<LayerId, string> = {
   grocery: "grocery-metro",
   healthcare: "healthcare-metro",
   ...B1_METRO_PREFIXES, // B1-HOOK(#98)
+  // G07B-HOOK (#141): no metro masters by documented decision (see
+  // layers_group07b.ts G07B_NO_METRO) — names resolve to absent files so
+  // windows fall back to county cleanly.
+  brownsoil: "brownsoil-metro",
+  oiltank: "oiltank-metro",
+  agriland: "agriland-metro",
+  // G11D-HOOK (#135): leftover-B metro prefixes (unbuilt by design --
+  // county-only; windows fall back to county, B5/GENV precedent).
+  ...G11D_METRO_PREFIXES,
+  // G07D-HOOK (#143): no metro masters by documented decision (see
+  // layers_group07d.ts G07D_NO_METRO) — names resolve to absent files so
+  // windows fall back to county cleanly.
+  agrifield: "agrifield-metro",
+  wildcorr: "wildcorr-metro",
   // G07-HOOK (#140): no metro masters by documented decision (see
   // layers_group07.ts G07_NO_METRO) — names resolve to absent files so
   // windows fall back to county cleanly.
@@ -423,6 +460,8 @@ const METRO_PREFIX: Record<LayerId, string> = {
   hydrants: "hydrants-metro",
   evac: "evac-metro",
   dispatch: "dispatch-metro",
+  // G06B-HOOK (#139): Group 6 leftover metro prefixes (optional; county-only like B5).
+  ...GROUP06B_METRO_PREFIXES,
   // G11C-HOOK (#134): county-only layers (no metro masters; windows fall
   // back to county cleanly, B5 precedent).
   ...G11C_METRO_PREFIX,
@@ -657,6 +696,9 @@ export async function loadWindowRaster(
     bbox: view,
     step_m: stepM,
     // B6-HOOK (#133) + G03-HOOK (#151): "quiet" specs carry halfM, not half.
+    // G07B-HOOK (#141): quiet specs carry halfM, not half.
+    // G07D-HOOK (#143): quiet specs carry halfM, not half.
+    // B6-HOOK (#133): "quiet" specs carry halfM, not half.
     // G07-HOOK (#140): quiet specs carry halfM, not half.
     half:
       spec.kind === "variety"

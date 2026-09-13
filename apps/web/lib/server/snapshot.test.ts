@@ -352,6 +352,44 @@ describe("layer walk rasters", () => {
     }
   });
 
+  it("serves G11D leftover-B rasters under area + quiet contracts", async () => {
+    // G11D-HOOK (#135): mailbox area contract (half 2.5, sigma 0.5).
+    const mdir = await fixtureDir([{ lat: 59.44, lon: 24.75, a: 1 }], "mailbox");
+    await writeFile(
+      join(mdir, "osm", "mailbox-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 2.5, sigma: 0.5 })),
+    );
+    try {
+      const res = await loadLayerRaster("mailbox", mdir);
+      expect(res.distance).toBe("walk");
+      expect(res.raster?.half).toBe(2.5);
+    } finally {
+      await rm(mdir, { recursive: true, force: true });
+    }
+    // G11D-HOOK (#135): trailprivacy quiet contract (halfM 1500 on the
+    // wire as half, sigma 0.5); a stale half is rejected.
+    const tdir = await fixtureDir([{ lat: 59.44, lon: 24.75, a: 1 }], "trailprivacy");
+    await writeFile(
+      join(tdir, "osm", "trailprivacy-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 1500, sigma: 0.5 })),
+    );
+    try {
+      expect((await loadLayerRaster("trailprivacy", tdir)).distance).toBe("walk");
+    } finally {
+      await rm(tdir, { recursive: true, force: true });
+    }
+    const stale = await fixtureDir([{ lat: 59.44, lon: 24.75, a: 1 }], "postal");
+    await writeFile(
+      join(stale, "osm", "postal-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 4, sigma: 0.8 })),
+    );
+    try {
+      expect(await loadLayerRaster("postal", stale)).toEqual({ raster: null, distance: "euclidean" });
+    } finally {
+      await rm(stale, { recursive: true, force: true });
+    }
+  });
+
   it("serves G07 quiet rasters under the halfM contract", async () => {
     const idir = await fixtureDir([{ lat: 59.466, lon: 24.698 }], "industprox");
     await writeFile(
@@ -686,4 +724,178 @@ describe("snapshot coverage", () => {
     expect(SNAPSHOT_BBOX.minlon).toBeLessThan(SNAPSHOT_BBOX.maxlon);
     expect(SNAPSHOT_BBOX.minlat).toBeLessThan(SNAPSHOT_BBOX.maxlat);
   });
+});
+
+describe("G07B quiet rasters (brownsoil/oiltank/agriland)", () => {
+describe("G07D quiet rasters (agrifield/wildcorr)", () => {
+  const rasterDoc = (contract: { half?: number | null; sigma: number }) => ({
+    cols: 2,
+    rows: 2,
+    bbox: { minlon: 24.0, minlat: 59.0, maxlon: 24.2, maxlat: 59.1 },
+    step_m: 75,
+    half: contract.half ?? null,
+    sigma: contract.sigma,
+    per: 0,
+    cap: 0,
+    unknown: 255,
+    dtype: "uint8",
+    data: Buffer.from([80, 255, 40, 60]).toString("base64"),
+  });
+
+  it("serves G07B quiet rasters under the halfM contract", async () => {
+    const idir = await fixtureDir([{ lat: 59.4513, lon: 24.7222 }], "brownsoil");
+    await writeFile(
+      join(idir, "osm", "brownsoil-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 500, sigma: 0.5 })),
+    );
+    try {
+      const res = await loadLayerRaster("brownsoil", idir);
+      expect(res.distance).toBe("walk");
+      expect(res.raster?.half).toBe(500);
+    } finally {
+      await rm(idir, { recursive: true, force: true });
+    }
+    // Stale tank half (area-half scale): rejected.
+    const stale = await fixtureDir([{ lat: 59.4983, lon: 24.937 }], "oiltank");
+    await writeFile(
+      join(stale, "osm", "oiltank-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 120, sigma: 0.5 })),
+    );
+    try {
+      expect(await loadLayerRaster("oiltank", stale)).toEqual({ raster: null, distance: "euclidean" });
+    } finally {
+      await rm(stale, { recursive: true, force: true });
+    }
+    // Agriland halves at the 800 m spray-drift scale.
+    const adir = await fixtureDir([{ lat: 59.44, lon: 24.9261 }], "agriland");
+    await writeFile(
+      join(adir, "osm", "agriland-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 800, sigma: 0.8 })),
+    );
+    try {
+      const res = await loadLayerRaster("agriland", adir);
+      expect(res.distance).toBe("walk");
+      expect(res.raster?.half).toBe(800);
+    } finally {
+      await rm(adir, { recursive: true, force: true });
+    }
+  });
+
+  it("echoes the quiet halfM on G07B county-only windows (no metro)", async () => {
+    const countyDoc = (half: number, sigma: number) => ({
+      cols: 2,
+      rows: 2,
+      bbox: { minlon: 0, minlat: 0, maxlon: 4, maxlat: 4 },
+      step_m: 2,
+      half,
+      sigma,
+      per: 0,
+      cap: 0,
+      unknown: 255,
+      dtype: "uint8",
+      data: Buffer.from([11, 22, 33, 44]).toString("base64"),
+    });
+    const dir = await fixtureDir([{ lat: 1, lon: 1 }], "agriland");
+    await writeFile(join(dir, "osm", "agriland-walk-raster.json"), JSON.stringify(countyDoc(800, 0.8)));
+    try {
+      const win = await loadWindowRaster("agriland", { minlon: 0, minlat: 0, maxlon: 4, maxlat: 4 }, 2, 2, dir);
+      expect(win).not.toBeNull();
+      expect(win?.half).toBe(800);
+      expect(win?.sigma).toBe(0.8);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("serves G07D quiet rasters under the halfM contract", async () => {
+    const idir = await fixtureDir([{ lat: 59.4407, lon: 24.8041 }], "agrifield");
+    await writeFile(
+      join(idir, "osm", "agrifield-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 800, sigma: 0.8 })),
+    );
+    try {
+      const res = await loadLayerRaster("agrifield", idir);
+      expect(res.distance).toBe("walk");
+      expect(res.raster?.half).toBe(800);
+    } finally {
+      await rm(idir, { recursive: true, force: true });
+    }
+    // Stale wildcorr half (parcel scale is 500, not 800): rejected.
+    const stale = await fixtureDir([{ lat: 59.4364, lon: 24.7489 }], "wildcorr");
+    await writeFile(
+      join(stale, "osm", "wildcorr-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 800, sigma: 0.5 })),
+    );
+    try {
+      expect(await loadLayerRaster("wildcorr", stale)).toEqual({ raster: null, distance: "euclidean" });
+    } finally {
+      await rm(stale, { recursive: true, force: true });
+    }
+    // Wildcorr halves at the 500 m parcel scale.
+    const wdir = await fixtureDir([{ lat: 59.4364, lon: 24.7489 }], "wildcorr");
+    await writeFile(
+      join(wdir, "osm", "wildcorr-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 500, sigma: 0.5 })),
+    );
+    try {
+      const res = await loadLayerRaster("wildcorr", wdir);
+      expect(res.distance).toBe("walk");
+      expect(res.raster?.half).toBe(500);
+    } finally {
+      await rm(wdir, { recursive: true, force: true });
+    }
+  });
+
+  it("echoes the quiet halfM on G07D county-only windows (no metro)", async () => {
+    const countyDoc = (half: number, sigma: number) => ({
+      cols: 2,
+      rows: 2,
+      bbox: { minlon: 0, minlat: 0, maxlon: 4, maxlat: 4 },
+      step_m: 2,
+      half,
+      sigma,
+      per: 0,
+      cap: 0,
+      unknown: 255,
+      dtype: "uint8",
+      data: Buffer.from([11, 22, 33, 44]).toString("base64"),
+    });
+    const dir = await fixtureDir([{ lat: 1, lon: 1 }], "agriland");
+    await writeFile(join(dir, "osm", "agriland-walk-raster.json"), JSON.stringify(countyDoc(800, 0.8)));
+    try {
+      const win = await loadWindowRaster("agriland", { minlon: 0, minlat: 0, maxlon: 4, maxlat: 4 }, 2, 2, dir);
+      expect(win).not.toBeNull();
+      expect(win?.half).toBe(800);
+      expect(win?.sigma).toBe(0.8);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("echoes the quiet halfM on G07D county-only windows (no metro)", async () => {
+    const countyDoc = (half: number, sigma: number) => ({
+      cols: 2,
+      rows: 2,
+      bbox: { minlon: 0, minlat: 0, maxlon: 4, maxlat: 4 },
+      step_m: 2,
+      half,
+      sigma,
+      per: 0,
+      cap: 0,
+      unknown: 255,
+      dtype: "uint8",
+      data: Buffer.from([11, 22, 33, 44]).toString("base64"),
+    });
+    const dir = await fixtureDir([{ lat: 1, lon: 1 }], "agrifield");
+    await writeFile(join(dir, "osm", "agrifield-walk-raster.json"), JSON.stringify(countyDoc(800, 0.8)));
+    try {
+      const win = await loadWindowRaster("agrifield", { minlon: 0, minlat: 0, maxlon: 4, maxlat: 4 }, 2, 2, dir);
+      expect(win).not.toBeNull();
+      expect(win?.half).toBe(800);
+      expect(win?.sigma).toBe(0.8);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
 });

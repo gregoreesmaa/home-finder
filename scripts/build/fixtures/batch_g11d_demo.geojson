@@ -1,0 +1,11 @@
+{"type": "Feature", "id": "node/1", "properties": {"amenity": "post_box"}, "geometry": {"type": "Point", "coordinates": [24.75, 59.4372]}}
+{"type": "Feature", "id": "node/2", "properties": {"amenity": "letter_box"}, "geometry": {"type": "Point", "coordinates": [24.752, 59.4375]}}
+{"type": "Feature", "id": "node/3", "properties": {"amenity": "post_box"}, "geometry": {"type": "Point", "coordinates": [24.75, 59.4372]}}
+{"type": "Feature", "id": "node/4", "properties": {"amenity": "post_office"}, "geometry": {"type": "Point", "coordinates": [24.76, 59.44]}}
+{"type": "Feature", "id": "node/5", "properties": {"amenity": "parcel_locker"}, "geometry": {"type": "Point", "coordinates": [24.762, 59.4405]}}
+{"type": "Feature", "id": "node/6", "properties": {"amenity": "pharmacy"}, "geometry": {"type": "Point", "coordinates": [24.77, 59.45]}}
+{"type": "Feature", "id": "way/10", "properties": {"service": "alley"}, "geometry": {"type": "LineString", "coordinates": [[24.7, 59.43], [24.701, 59.4305], [24.702, 59.431]]}}
+{"type": "Feature", "id": "way/11", "properties": {"service": "driveway"}, "geometry": {"type": "LineString", "coordinates": [[24.71, 59.43], [24.711, 59.4305]]}}
+{"type": "Feature", "id": "way/12", "properties": {"highway": "path"}, "geometry": {"type": "LineString", "coordinates": [[24.69, 59.42], [24.691, 59.4205], [24.692, 59.421]]}}
+{"type": "Feature", "id": "way/13", "properties": {"highway": "footway"}, "geometry": {"type": "LineString", "coordinates": [[24.693, 59.421], [24.694, 59.4215]]}}
+{"type": "Feature", "id": "way/14", "properties": {"highway": "path", "service": "alley"}, "geometry": {"type": "LineString", "coordinates": [[24.695, 59.422], [24.696, 59.4225]]}}
