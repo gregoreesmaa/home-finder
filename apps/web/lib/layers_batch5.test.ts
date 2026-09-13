@@ -56,7 +56,8 @@ describe("batch B5 registry (#102)", () => {
     // G05D-HOOK (#164): strsat joins the registry.
     // G05A-HOOK (#161): ehitus + korterstock join the registry.
     // G05C-HOOK (#163): commbleed + windsolar + viewshed join the registry.
-    expect(ids.length).toBe(60);
+    // G05E-HOOK (#165): equestrian joins the registry.
+    expect(ids.length).toBe(61);
     for (const id of BATCH5_LAYER_IDS) expect(ids).toContain(id);
   });
 

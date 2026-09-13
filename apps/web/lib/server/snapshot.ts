@@ -54,6 +54,8 @@ import { G05D_RASTER_FILE } from "../layers_group05d";
 import { G05A_RASTER_FILE } from "../layers_group05a";
 // G05C-HOOK(#163): batch G05C raster files live in layers_group05c.ts.
 import { G05C_RASTER_FILE } from "../layers_group05c";
+// G05E-HOOK(#165): batch G05E raster file lives in layers_group05e.ts.
+import { G05E_RASTER_FILE } from "../layers_group05e";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -379,6 +381,8 @@ const RASTER_FILE: Record<LayerId, string> = {
   ...G05A_RASTER_FILE,
   // G05C-HOOK (#163): commbleed + windsolar + viewshed rasters (scripts/build/batch_g05c_plans.py).
   ...G05C_RASTER_FILE,
+  // G05E-HOOK (#165): equestrian raster (scripts/build/batch_g05e_plans.py).
+  ...G05E_RASTER_FILE,
 };
 
 /**
@@ -492,6 +496,10 @@ const G05A_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["ehitus", "kortersto
 // viewshed (Euclidean count kernel, moorage precedent — see
 // scripts/build/batch_g05c_plans.py).
 const G05C_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["commbleed", "windsolar", "viewshed"]);
+// G05E-HOOK (#165): Euclidean-built G05E master rides "euclidean" —
+// equestrian (Euclidean count kernel, viewshed/moorage precedent —
+// see scripts/build/batch_g05e_plans.py).
+const G05E_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["equestrian"]);
 
 export async function loadLayerRaster(
   layer: LayerId,
@@ -510,7 +518,8 @@ export async function loadLayerRaster(
       G05B_EUCLIDEAN_MASTER.has(layer) || // G05B-HOOK (#162)
       G05D_EUCLIDEAN_MASTER.has(layer) || // G05D-HOOK (#164)
       G05A_EUCLIDEAN_MASTER.has(layer) || // G05A-HOOK (#161)
-      G05C_EUCLIDEAN_MASTER.has(layer); // G05C-HOOK (#163)
+      G05C_EUCLIDEAN_MASTER.has(layer) || // G05C-HOOK (#163)
+      G05E_EUCLIDEAN_MASTER.has(layer); // G05E-HOOK (#165)
     return { raster: doc, distance: euclidean ? "euclidean" : "walk" };
   }
   return { raster: null, distance: "euclidean" };
@@ -617,6 +626,10 @@ const METRO_PREFIX: Record<LayerId, string> = {
   commbleed: "commbleed-metro",
   windsolar: "windsolar-metro",
   viewshed: "viewshed-metro",
+  // G05E-HOOK (#165): no equestrian metro master (documented fake
+  // precision — the file is absent, so windows serve county
+  // everywhere, like G02B/G03/G03D/G08B/G05C).
+  equestrian: "equestrian-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

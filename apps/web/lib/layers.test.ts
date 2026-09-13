@@ -104,6 +104,8 @@ describe("layer registry", () => {
       "commbleed",
       "windsolar",
       "viewshed",
+      // G05E-HOOK (#165): Group 5 plans-E id (p381 equestrian).
+      "equestrian",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -250,6 +252,17 @@ describe("layer registry", () => {
     expect(radiusKmFor("viewshed")).toBe(0.3);
     expect(LAYERS.find((l) => l.id === "viewshed")?.paramIds).toEqual([225]);
     expect(overpassQueryFor("viewshed", TALLINN_BBOX)).toContain("viewpoint");
+  });
+
+  it("wires the G05E equestrian layer with locked calibration", () => {
+    // G05E-HOOK (#165): drift guard — hook specs must equal G05E_CAL in
+    // layers_group05e.ts and the Python builder (parsed by
+    // test_batch_g05e.py).
+    expect(bonusSpecFor("equestrian")).toEqual({ kind: "area", half: 1 });
+    expect(radiusKmFor("equestrian")).toBe(0.3);
+    expect(LAYERS.find((l) => l.id === "equestrian")?.paramIds).toEqual([381]);
+    expect(overpassQueryFor("equestrian", TALLINN_BBOX)).toContain("horse_riding");
+    expect(overpassQueryFor("equestrian", TALLINN_BBOX)).toContain("bridleway");
   });
 
   it("every layer explains green=good / red=bad in Estonian", () => {

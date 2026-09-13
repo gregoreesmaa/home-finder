@@ -624,6 +624,34 @@ describe("layer walk rasters", () => {
     }
   });
 
+  it("serves the G05E equestrian raster under its contract", async () => {
+    // G05E-HOOK (#165): equestrian AREA contract (half 1 on the wire,
+    // sigma 0.3, viewshed precedent); Euclidean count kernel. A stale
+    // half is rejected.
+    const edir = await fixtureDir([{ lat: 59.42642, lon: 24.66428 }], "equestrian");
+    await writeFile(
+      join(edir, "osm", "equestrian-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 1, sigma: 0.3 })),
+    );
+    try {
+      const res = await loadLayerRaster("equestrian", edir);
+      expect(res.distance).toBe("euclidean");
+      expect(res.raster?.half).toBe(1);
+    } finally {
+      await rm(edir, { recursive: true, force: true });
+    }
+    const stale = await fixtureDir([{ lat: 59.42642, lon: 24.66428 }], "equestrian");
+    await writeFile(
+      join(stale, "osm", "equestrian-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 2, sigma: 0.3 })),
+    );
+    try {
+      expect(await loadLayerRaster("equestrian", stale)).toEqual({ raster: null, distance: "euclidean" });
+    } finally {
+      await rm(stale, { recursive: true, force: true });
+    }
+  });
+
   it("serves grocery and walkability rasters under the area contract", async () => {
     const gdir = await fixtureDir([{ lat: 59.44, lon: 24.75, a: 1 }], "grocery");
     await writeFile(
