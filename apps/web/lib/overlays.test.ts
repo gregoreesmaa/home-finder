@@ -106,7 +106,8 @@ describe("overlay legend + colors", () => {
     // OSMDAILY-HOOK (#482): dailyshop + activity + herd + thirdplace +
     // taxidoor + lastshop join the registry.
     // GTFS-HOOK (#483): gtfsstops joins the registry.
-    expect(ids).toHaveLength(84);
+    // RSAFE-HOOK (#481): roadsafety joins the registry.
+    expect(ids).toHaveLength(85);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -268,6 +269,9 @@ describe("overlay legend + colors", () => {
     expect(overlayLegendFor("gtfsstops")).toContain("1500");
     expect(overlayLegendFor("gtfsstops")).toContain("sõiduplaan");
     expect(overlayLegendFor("gtfsstops")).toContain("EI OLE");
+    // RSAFE-HOOK (#481): roadsafety half + usage-not-safety caveat.
+    expect(overlayLegendFor("roadsafety")).toContain("küllastus 60");
+    expect(overlayLegendFor("roadsafety")).toContain("kasutus-hinnang");
   });
 
   it("gives every layer a distinct marker color", () => {
@@ -290,7 +294,8 @@ describe("overlay legend + colors", () => {
     // B10C-HOOK (#230): water + waste + fiber + mobile join the registry.
     // OSMDAILY-HOOK (#482): six daily-life layers join the registry.
     // GTFS-HOOK (#483): gtfsstops joins the registry.
-    expect(seen.size).toBe(84);
+    // RSAFE-HOOK (#481): roadsafety joins the registry.
+    expect(seen.size).toBe(85);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

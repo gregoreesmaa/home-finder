@@ -360,6 +360,16 @@ import {
   GTFSSTOPS_TAGS,
   bonusSpecForGtfsstops,
 } from "./layers_gtfsstops";
+// RSAFE-HOOK (#481): road-safety tables live in ./layers_roadsafety
+// (P4-012 crossing/calming proxy). That module imports layers only as
+// types, so no runtime cycle.
+import type { RsafeLayerId } from "./layers_roadsafety";
+import {
+  RSAFE_DECAY,
+  RSAFE_DEFS,
+  RSAFE_TAGS,
+  bonusSpecForRsafe,
+} from "./layers_roadsafety";
 
 export type LayerId =
   | "parks"
@@ -434,7 +444,9 @@ export type LayerId =
   // OSMDAILY-HOOK (#482): OSM daily-life ids (./layers_osmdaily).
   | OsmdailyLayerId
   // GTFS-HOOK (#483): GTFS stop overlay id (./layers_gtfsstops).
-  | GtfsstopsLayerId;
+  | GtfsstopsLayerId
+  // RSAFE-HOOK (#481): road-safety id (./layers_roadsafety, P4-012 proxy).
+  | RsafeLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -577,6 +589,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...OSMDAILY_DECAY,
   // GTFS-HOOK (#483): gtfsstops radius (see layers_gtfsstops.ts GTFSSTOPS_DECAY).
   ...GTFSSTOPS_DECAY,
+  // RSAFE-HOOK (#481): blackspot kernel radius (see layers_roadsafety.ts RSAFE_DECAY).
+  ...RSAFE_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -750,6 +764,8 @@ export const LAYERS: LayerDef[] = [
   // GTFS-HOOK (#483): gtfsstops def (p15, shared with transit — measured-only
   // point set vs default-filled set) from ./layers_gtfsstops.
   ...GTFSSTOPS_DEFS,
+  // RSAFE-HOOK (#481): roadsafety def (p13, P4-012 proxy) from ./layers_roadsafety.
+  ...RSAFE_DEFS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -835,6 +851,8 @@ const TAGS: Record<LayerId, string> = {
   ...OSMDAILY_TAGS,
   // GTFS-HOOK (#483): gtfsstops query (see layers_gtfsstops.ts GTFSSTOPS_TAGS).
   ...GTFSSTOPS_TAGS,
+  // RSAFE-HOOK (#481): roadsafety query (see layers_roadsafety.ts RSAFE_TAGS).
+  ...RSAFE_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -1100,6 +1118,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // GTFS-HOOK (#483): gtfsstops spec lives in ./layers_gtfsstops.
   const gtfs = bonusSpecForGtfsstops(layer);
   if (gtfs) return gtfs;
+  // RSAFE-HOOK (#481): roadsafety spec lives in ./layers_roadsafety.
+  const rsafe = bonusSpecForRsafe(layer);
+  if (rsafe) return rsafe;
   throw new Error(`unknown layer: ${layer}`);
 }
 
