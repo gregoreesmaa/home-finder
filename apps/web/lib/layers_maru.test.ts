@@ -38,8 +38,8 @@ describe("marukov registry (#486)", () => {
 
   it("merges into LAYERS via the MARUKOV-HOOK (page + routes serve it)", () => {
     const ids = LAYERS.map((l) => l.id);
-    // 89 shipped layers (senscom #484 + statkov #485 on main) + 4 maru.
-    expect(ids.length).toBe(93);
+    // 90 shipped layers (main at #500: +parking) + 4 maru (90 + 4).
+    expect(ids.length).toBe(94);
     for (const id of MARUKOV_LAYER_IDS) expect(ids).toContain(id);
   });
 

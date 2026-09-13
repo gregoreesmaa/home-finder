@@ -1,61 +1,25 @@
-# #486 — MARU per-KOV market choropleth (5 flipped G16 params)
+# #482 — OSM daily-life overlay (P4-027/032/044/045/049/061 proxies)
 
-## Status: implemented, verifying (live smoke next)
+## Status: implemented, verified, PR opened
 
 ### What
-Four honest MARU-derived per-KOV choropleth map layers
-(`apps/web/lib/layers_maru.ts`): kovkasv (p41 YoY appreciation),
-kovkaive (p149 quarterly deal count), kovedas (p43 resale composite),
-kovkiirus (p484 deal-velocity QoQ, weak flip cap 70). Exact KOV fills
-on open OSM admin_level=7 polygons (KOV-identity join or NULL/255,
-never kernels, never smoothing, never forward-fill) — the map twin of
-the dims_overturn_maru.py NULLs.
+Six honest OSM-derived PROXY map layers (`apps/web/lib/layers_osmdaily.ts`):
+dailyshop (P4-027), activity (P4-032), herd (P4-044), thirdplace (P4-045),
+taxidoor (P4-049), lastshop (P4-061). Sparse-but-real count kernels with
+caps + caveats; last-shop absence = warning (HOIATUS), never measured.
 
-p421 REFUSED for the map (pinned in test): the appraisal-gap band needs
-the listing asking price, so no per-KOV cell value exists; painting KOV
-medians as gap scores would fake the join (IA028 refusal precedent,
-#485). p421 stays a per-listing registry join.
+### Wiring (OSMDAILY-HOOK blocks only, sibling batches disjoint)
+- `lib/layers.ts`: LayerId union + DECAY_KM + LAYERS + TAGS + bonusSpecFor
+- `lib/overlays.ts`: 6 distinct marker colors + Estonian legends
+- `lib/server/snapshot.ts`: RASTER_FILE + METRO_PREFIX entries
+- `app/layers/page.tsx`: skip `(p…)` suffix for empty paramIds
+- paramIds stays EMPTY (parameters4 namespace; 44/61 belong to parameters3 audit)
 
-### Gray areas (reviewable, AGENTS.md §7.5)
-- 4 map layers, not 5: p421 has no per-KOV value (asking=NULL at KOV
-  grain). Refusal pinned (`not.toContain("kovgap")` + hook marker).
-- paramIds carry the REAL G16 numbers [41]/[149]/[43]/[484] (these ARE
-  the flipped params; OSMDAILY empty-paramIds precedent is P4-only).
-  GROUP16A/B verdict files untouched (they refuse GRADIENT maps; the
-  exact fill is the overturn's new shape; docs-index PR owns nomap.md).
-- Committed fixture is SYNTHETIC under FAKE kov names (no MARU bulk
-  contract exists to harvest); building it against the real extract
-  fails closed by construction. Masters stay unbuilt until the
-  maintainer places the quarterly export → layers render honestly
-  unknown until then.
-- Geometry (Grid/fill/DP) copied from the #485 builder pattern with
-  attribution, not imported: #485 is unmerged, an import would dangle
-  on main.
-
-### Wiring (MARUKOV-HOOK (#486) blocks only, siblings disjoint)
-- `lib/layers.ts`: LayerId + DECAY + LAYERS + TAGS + bonusSpecFor
-- `lib/overlays.ts`: 4 distinct marker colors + Estonian legends
-- `lib/server/snapshot.ts`: RASTER_FILE + EUCLIDEAN_MASTER + METRO_PREFIX
-- `app/layers/page.tsx`: skip otsekaugus/varu suffix (exact fills,
-  not distances); button `(p…)` suffix needs no change (paramIds set)
-- Builder: `scripts/build/batch_maru_choropleth.py` + synthetic
-  `maru_kov_tables.example.json` + `test_batch_maru_choropleth.py`
-
-### Verification (final, rebased onto origin/main 6a5fd5e)
-- `pytest scripts/build/test_batch_maru_choropleth.py`: 20 passed
-- `vitest run apps/web/lib`: 78 files / 844 tests green (93 layers)
-- `pytest services/scoring/tests + builder`: 2308 passed, 4 skipped
+### Verification (2026-09-13, worktree 482-osm-daily)
+- `vitest run apps/web/lib`: 72 files / 766 tests green
 - `tsc --noEmit`: clean; `eslint` on touched files: clean
-- Rebase fallout fixed: recount 89→93 (incl. stale statkov test,
-  sibling-courtesy note); kovkiirus color #06b6d4→#ef4444 (senscom
-  #484 took cyan-500 — caught by the distinct-color test); kept the
-  senscom "bands" branch in the page sourceNote skip-merge.
-- Live smoke (`next dev -p 3106` + headless system Chrome):
-  /layers renders all four MARU buttons with (p41)/(p149)/(p43)/
-  (p484) suffixes (title+suffix doubling matches page convention,
-  e.g. `(proksi, hinnang) (p409)`); DOM contains all four titles;
-  map + legend healthy, no page errors with software WebGL.
-  Screenshots: /tmp/hf-486-layers-full.png (DoD evidence for PR).
-  Note: one transient "1 error" badge under --disable-gpu is the
-  headless-no-GPU WebGL-init artifact (maplibre-gl, affects any
-  layer, absent with --enable-unsafe-swiftshader) — not this change.
+- Live smoke (`next dev -p 3101` + system Chrome): /layers shows all six
+  P4 buttons; dailyshop renders 477 snapshot points (points-splat fallback;
+  window raster 500 → client fallback, by design until follow-up raster build)
+- Derived snapshot counts match module header: 477/1840/149/1211/4085/840
+- Screenshot: /tmp/hf-482-layers.png (attached in PR as DoD evidence)
