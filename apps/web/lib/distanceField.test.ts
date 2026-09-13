@@ -161,6 +161,35 @@ describe("quiet-kind drainage goodness (G03)", () => {
   });
 });
 
+describe("sparse-kind daylight openness (G18B)", () => {
+  // Score = 100·half/(S+half) over the plain nearby-building count:
+  // green where SPARSE (open sky), the mirror image of the area kind.
+  const sparse: BonusSpec = { kind: "sparse", half: 150 };
+  const lon = 24.5 + (50 / 99) * (BBOX.maxlon - BBOX.minlon);
+  const lat = 59.35 + (18 / 39) * (BBOX.maxlat - BBOX.minlat);
+
+  it("reads ~99 under a lone house, 50 at half-count, ~20 where dense", () => {
+    const one = buildScoredField([{ lon, lat }], BBOX, 100, 40, 0.3, sparse);
+    // S≈1 on the node: 100*150/151 ≈ 99.3 (one house barely shades).
+    expect(scoredAt(one, 50, 18)).toBeCloseTo(99.3, 0);
+    const half = buildScoredField(Array.from({ length: 150 }, () => ({ lon, lat })), BBOX, 100, 40, 0.3, sparse);
+    expect(scoredAt(half, 50, 18)).toBeCloseTo(50, 0);
+    const dense = buildScoredField(Array.from({ length: 600 }, () => ({ lon, lat })), BBOX, 100, 40, 0.3, sparse);
+    // 100*150/750 = 20.
+    expect(scoredAt(dense, 50, 18)).toBeCloseTo(20, 0);
+  });
+
+  it("reads measured-open 100 far from buildings, null on empty input", () => {
+    const one = buildScoredField([{ lon, lat }], BBOX, 100, 40, 0.3, sparse);
+    // Far corner: nothing splats there — measured open, honestly 100.
+    expect(scoredAt(one, 5, 35)).toBe(100);
+    // Empty input is unknown (never a faked open 100).
+    const empty = buildScoredField([], BBOX, 100, 40, 0.3, sparse);
+    expect(scoredAt(empty, 50, 18)).toBeNull();
+    expect(scoredAt(empty, 5, 35)).toBeNull();
+  });
+});
+
 describe("distance field", () => {
   it("is zero at a feature and rises with distance", () => {
     const f = buildDistanceField([{ lon: 24.7, lat: 59.42 }], BBOX, 200, 75);

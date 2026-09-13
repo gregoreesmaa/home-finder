@@ -113,6 +113,10 @@ describe("layer registry", () => {
       // G18A-HOOK (#172): Group 18 rest-A ids (p34 dayopen + p305 glassglare).
       "dayopen",
       "glassglare",
+      // G18B-HOOK (#173): Group 18 rest-B ids (p468 fishbowl + p479 mossrisk + p405 daylight).
+      "fishbowl",
+      "mossrisk",
+      "daylight",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -307,6 +311,24 @@ describe("layer registry", () => {
     expect(radiusKmFor("glassglare")).toBe(0.3);
     expect(LAYERS.find((l) => l.id === "glassglare")?.paramIds).toEqual([305]);
     expect(overpassQueryFor("glassglare", TALLINN_BBOX)).toContain("building:material");
+  });
+
+  it("wires the G18B fishbowl + mossrisk + daylight layers with locked calibration", () => {
+    // G18B-HOOK (#173): drift guard — hook specs must equal G18B_CAL in
+    // layers_group18restb.ts and the Python builder (parsed by
+    // test_batch_g18_restb.py).
+    expect(bonusSpecFor("fishbowl")).toEqual({ kind: "quiet", halfM: 150 });
+    expect(radiusKmFor("fishbowl")).toBe(0.3);
+    expect(LAYERS.find((l) => l.id === "fishbowl")?.paramIds).toEqual([468]);
+    expect(overpassQueryFor("fishbowl", TALLINN_BBOX)).toContain("highway");
+    expect(bonusSpecFor("mossrisk")).toEqual({ kind: "quiet", halfM: 250 });
+    expect(radiusKmFor("mossrisk")).toBe(0.3);
+    expect(LAYERS.find((l) => l.id === "mossrisk")?.paramIds).toEqual([479]);
+    expect(overpassQueryFor("mossrisk", TALLINN_BBOX)).toContain("forest");
+    expect(bonusSpecFor("daylight")).toEqual({ kind: "sparse", half: 150 });
+    expect(radiusKmFor("daylight")).toBe(0.3);
+    expect(LAYERS.find((l) => l.id === "daylight")?.paramIds).toEqual([405]);
+    expect(overpassQueryFor("daylight", TALLINN_BBOX)).toContain("building");
   });
 
   it("every layer explains green=good / red=bad in Estonian", () => {

@@ -750,6 +750,63 @@ describe("layer walk rasters", () => {
     }
   });
 
+  it("serves G18B fishbowl + mossrisk + daylight rasters under their contracts", async () => {
+    // G18B-HOOK (#173): fishbowl quiet contract (halfM 150 on the
+    // wire as half, sigma 0.3); Euclidean-built like drainage. A stale
+    // half is rejected.
+    const fdir = await fixtureDir([{ lat: 59.4374, lon: 24.7454 }], "fishbowl");
+    await writeFile(
+      join(fdir, "osm", "fishbowl-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 150, sigma: 0.3 })),
+    );
+    try {
+      const res = await loadLayerRaster("fishbowl", fdir);
+      expect(res.distance).toBe("euclidean");
+      expect(res.raster?.half).toBe(150);
+    } finally {
+      await rm(fdir, { recursive: true, force: true });
+    }
+    // G18B-HOOK (#173): mossrisk quiet contract (halfM 250 on the
+    // wire as half, sigma 0.3); Euclidean-built like windsolar.
+    const mdir = await fixtureDir([{ lat: 59.36, lon: 24.66 }], "mossrisk");
+    await writeFile(
+      join(mdir, "osm", "mossrisk-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 250, sigma: 0.3 })),
+    );
+    try {
+      const res = await loadLayerRaster("mossrisk", mdir);
+      expect(res.distance).toBe("euclidean");
+      expect(res.raster?.half).toBe(250);
+    } finally {
+      await rm(mdir, { recursive: true, force: true });
+    }
+    // G18B-HOOK (#173): daylight SPARSE contract (half 150 on the wire,
+    // sigma 0.3 — inverted count, green where sparse); Euclidean-built.
+    // A stale half is rejected like every other layer.
+    const ddir = await fixtureDir([{ lat: 59.4405, lon: 24.7369 }], "daylight");
+    await writeFile(
+      join(ddir, "osm", "daylight-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 150, sigma: 0.3 })),
+    );
+    try {
+      const res = await loadLayerRaster("daylight", ddir);
+      expect(res.distance).toBe("euclidean");
+      expect(res.raster?.half).toBe(150);
+    } finally {
+      await rm(ddir, { recursive: true, force: true });
+    }
+    const stale = await fixtureDir([{ lat: 59.4405, lon: 24.7369 }], "daylight");
+    await writeFile(
+      join(stale, "osm", "daylight-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 50, sigma: 0.3 })),
+    );
+    try {
+      expect(await loadLayerRaster("daylight", stale)).toEqual({ raster: null, distance: "euclidean" });
+    } finally {
+      await rm(stale, { recursive: true, force: true });
+    }
+  });
+
   it("serves grocery and walkability rasters under the area contract", async () => {
     const gdir = await fixtureDir([{ lat: 59.44, lon: 24.75, a: 1 }], "grocery");
     await writeFile(

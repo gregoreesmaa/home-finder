@@ -62,6 +62,8 @@ import { G05F_RASTER_FILE } from "../layers_group05f";
 import { G10R_RASTER_FILE } from "../layers_group10rest";
 // G18A-HOOK(#172): batch G18A raster files live in layers_group18resta.ts.
 import { G18A_RASTER_FILE } from "../layers_group18resta";
+// G18B-HOOK(#173): batch G18B raster files live in layers_group18restb.ts.
+import { G18B_RASTER_FILE } from "../layers_group18restb";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -395,6 +397,8 @@ const RASTER_FILE: Record<LayerId, string> = {
   ...G10R_RASTER_FILE,
   // G18A-HOOK (#172): dayopen + glassglare rasters (scripts/build/batch_g18_resta.py).
   ...G18A_RASTER_FILE,
+  // G18B-HOOK (#173): fishbowl + mossrisk + daylight rasters (scripts/build/batch_g18_restb.py).
+  ...G18B_RASTER_FILE,
 };
 
 /**
@@ -445,6 +449,10 @@ export function matchesContract(
   // area/trips (50-score walk-km); only the score SHAPE differs (inverse).
   if (spec.kind === "area" || spec.kind === "trips" || spec.kind === "avoid")
     return doc.half === spec.half;
+  // G18B-HOOK (#173): the "sparse" kind carries the same half contract
+  // as area/trips (inverted-count score 50); only the score SHAPE
+  // differs (green where sparse).
+  if (spec.kind === "sparse") return doc.half === spec.half;
   // B6-HOOK (#133): "quiet" carries halfM on the wire half field.
   // G07-HOOK (#140): nearest-source cleanliness (0 on the source, 50 at halfM).
   if (spec.kind === "quiet") return doc.half === spec.halfM;
@@ -524,6 +532,11 @@ const G10R_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["skyview"]);
 // dayopen + glassglare (exact-grid Dijkstra by construction — see
 // scripts/build/batch_g18_resta.py).
 const G18A_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["dayopen", "glassglare"]);
+// G18B-HOOK (#173): Euclidean-built G18B masters ride "euclidean" —
+// fishbowl + mossrisk (exact-grid Dijkstra by construction) and
+// daylight (Euclidean inverted count kernel — see
+// scripts/build/batch_g18_restb.py).
+const G18B_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["fishbowl", "mossrisk", "daylight"]);
 
 export async function loadLayerRaster(
   layer: LayerId,
@@ -546,7 +559,8 @@ export async function loadLayerRaster(
       G05E_EUCLIDEAN_MASTER.has(layer) || // G05E-HOOK (#165)
       G05F_EUCLIDEAN_MASTER.has(layer) || // G05F-HOOK (#166)
       G10R_EUCLIDEAN_MASTER.has(layer) || // G10R-HOOK (#171)
-      G18A_EUCLIDEAN_MASTER.has(layer); // G18A-HOOK (#172)
+      G18A_EUCLIDEAN_MASTER.has(layer) || // G18A-HOOK (#172)
+      G18B_EUCLIDEAN_MASTER.has(layer); // G18B-HOOK (#173)
     return { raster: doc, distance: euclidean ? "euclidean" : "walk" };
   }
   return { raster: null, distance: "euclidean" };
@@ -670,6 +684,12 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // serve county everywhere, like G02B/G03/G03D/G08B/G05C).
   dayopen: "dayopen-metro",
   glassglare: "glassglare-metro",
+  // G18B-HOOK (#173): no fishbowl/mossrisk/daylight metro masters
+  // (documented fake precision — the files are absent, so windows
+  // serve county everywhere, like G02B/G03/G03D/G08B/G05C).
+  fishbowl: "fishbowl-metro",
+  mossrisk: "mossrisk-metro",
+  daylight: "daylight-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

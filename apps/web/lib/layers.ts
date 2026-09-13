@@ -198,6 +198,17 @@ import {
   GROUP18ARESTA_TAGS,
   bonusSpecForGroup18ARestA,
 } from "./layers_group18resta";
+// G18B-HOOK(#173): batch G18B (Group 18 rest-B fishbowl + mossrisk +
+// daylight; p394/p403 documented no-map) tables live in
+// ./layers_group18restb (new file). That module imports layers only as
+// types, so no runtime cycle.
+import type { Group18BLayerId } from "./layers_group18restb";
+import {
+  GROUP18B_DECAY,
+  GROUP18B_LAYERS,
+  GROUP18B_TAGS,
+  bonusSpecForGroup18B,
+} from "./layers_group18restb";
 // G11D-HOOK(#135): batch G11D (Group 11 leftovers B: p346/p470/p419/p466;
 // p317 is a documented no-map) tables live in ./layers_group11d (new
 // file). That module imports layers only as types, so no runtime cycle.
@@ -344,7 +355,9 @@ export type LayerId =
   // G10R-HOOK (#171): Group 10 utilities-rest id (./layers_group10rest).
   | Group10RestLayerId
   // G18A-HOOK (#172): Group 18 rest-A ids (./layers_group18resta).
-  | Group18ARestALayerId;
+  | Group18ARestALayerId
+  // G18B-HOOK (#173): Group 18 rest-B ids (./layers_group18restb).
+  | Group18BLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -473,6 +486,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...GROUP10REST_DECAY,
   // G18A-HOOK (#172): dayopen + glassglare radii (see layers_group18resta.ts GROUP18ARESTA_DECAY).
   ...GROUP18ARESTA_DECAY,
+  // G18B-HOOK (#173): fishbowl + mossrisk + daylight radii (see layers_group18restb.ts GROUP18B_DECAY).
+  ...GROUP18B_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -631,6 +646,8 @@ export const LAYERS: LayerDef[] = [
   ...GROUP10REST_LAYERS,
   // G18A-HOOK (#172): dayopen (p34) + glassglare (p305) defs from ./layers_group18resta.
   ...GROUP18ARESTA_LAYERS,
+  // G18B-HOOK (#173): fishbowl (p468) + mossrisk (p479) + daylight (p405) defs from ./layers_group18restb.
+  ...GROUP18B_LAYERS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -702,6 +719,8 @@ const TAGS: Record<LayerId, string> = {
   ...GROUP10REST_TAGS,
   // G18A-HOOK (#172): dayopen + glassglare queries (see layers_group18resta.ts GROUP18ARESTA_TAGS).
   ...GROUP18ARESTA_TAGS,
+  // G18B-HOOK (#173): fishbowl + mossrisk + daylight queries (see layers_group18restb.ts GROUP18B_TAGS).
+  ...GROUP18B_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -791,6 +810,19 @@ export interface AvoidSpec {
   half: number;
 }
 
+/**
+ * Inverse count-kernel ("sparse") spec: score FALLS with density.
+ * score = 100·half/(S+half), S = Gaussian count (sigma = radiusKmFor):
+ * half-count scores 50, empty reads 100 (measured open, honestly known
+ * — NOT unknown like area-kind deserts). G18B daylight (p405 open-sky
+ * proxy, #173) is the first use: green = sparse buildings = open sky.
+ */
+export interface SparseSpec {
+  kind: "sparse";
+  /** Gaussian count scoring 50 (daylight: 150). */
+  half: number;
+}
+
 export type BonusSpec =
   | AreaSpec
   | TripsSpec
@@ -808,6 +840,9 @@ export type BonusSpec =
   // halfM). Same kind the G07-A/B batches (#140/#141) add — identical
   // semantics, shared on purpose; dedupes on rebase.
   | AvoidSpec
+  // G18B-HOOK (#173): inverse count-kernel spec (green where sparse —
+  // daylight p405 open-sky proxy, first use).
+  | SparseSpec
   | { kind: "variety"; key: string; values: string[]; per: number; cap: number }
   // B6-HOOK (#133) + G07-HOOK (#140): nearest-source calmness/cleanliness
   // (0 on the source, 50 at halfM).
@@ -925,6 +960,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // G18A-HOOK (#172): dayopen + glassglare specs live in ./layers_group18resta.
   const g18a = bonusSpecForGroup18ARestA(layer);
   if (g18a) return g18a;
+  // G18B-HOOK (#173): fishbowl + mossrisk + daylight specs live in ./layers_group18restb.
+  const g18b = bonusSpecForGroup18B(layer);
+  if (g18b) return g18b;
   throw new Error(`unknown layer: ${layer}`);
 }
 

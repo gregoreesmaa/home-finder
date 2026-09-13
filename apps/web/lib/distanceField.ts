@@ -194,6 +194,26 @@ export function buildScoredField(
     }
     return { field, bonus, sigmaKm, direct };
   }
+  // G18B-HOOK (#173): inverse count-kernel ("sparse") — the mirror
+  // image of the area branch: score = 100·half/(S+half) over the plain
+  // nearby-point count (weight 1 each), green where SPARSE. First use:
+  // daylight (p405 open-sky proxy — open sky, not amenity). Zero count
+  // reads 100 (measured open, honestly known — buildings ARE the
+  // obstruction and the inventory is near-complete). EMPTY input stays
+  // all-NaN (nothing loaded is unknown — never a faked open 100).
+  if (spec.kind === "sparse") {
+    const direct = new Float64Array(cols * rows);
+    if (points.length === 0) {
+      direct.fill(NaN);
+      return { field, bonus, sigmaKm, direct };
+    }
+    const density = splatValues(points, bbox, cols, rows, sigmaKm, () => 1, 5);
+    for (let k = 0; k < direct.length; k++) {
+      const s = density[k];
+      direct[k] = Math.min(100, (100 * spec.half) / (s + spec.half));
+    }
+    return { field, bonus, sigmaKm, direct };
+  }
   if (spec.kind === "trips") {
     // Total nearby weekday departures, saturating: score = 100·S/(S+half),
     // linear in service (two 500-trip stops equal one 1000-trip stop) with
