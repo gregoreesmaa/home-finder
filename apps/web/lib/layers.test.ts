@@ -45,6 +45,10 @@ describe("layer registry", () => {
       "hydrants",
       "evac",
       "dispatch",
+      // B6-HOOK (#133): mobility/access leftover ids (p220/p270/p386).
+      "droneclear",
+      "droneviab",
+      "rentbleed",
       // G06-HOOK (#138): Group 6 heritage id.
       "heritage",
       // G02B-HOOK (#137): Group 2 batch-B lift-proxy id (p196 hinnang).

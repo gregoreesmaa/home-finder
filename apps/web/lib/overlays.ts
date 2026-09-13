@@ -115,6 +115,13 @@ export function overlayColorFor(layer: LayerId): string {
       return "#57534c";
     case "dispatch":
       return "#6b21a8";
+    // Batch B6 mobility/access layers (point overlays, stride-sampled).
+    case "droneclear":
+      return "#a16207";
+    case "droneviab":
+      return "#15803d";
+    case "rentbleed":
+      return "#9d174d";
     // Batch G07 env-health layers (point overlays, stride-sampled).
     case "industprox":
       return "#155e75";
@@ -176,6 +183,16 @@ export function overlayLegendFor(layer: LayerId): string {
       return "Magistraalteede tihedus (hinnang, küllastus 2 km)";
     case "dispatch":
       return "Politsei/pääste/haigla · lähedaste arv (hinnang, küllastus 3)";
+    // Batch B6 mobility/access layers (p220/p270/p386): source features,
+    // honestly labeled proksi/hinnang; halves from layers_batch6.ts
+    // B6_CAL (same numbers as bonusSpecFor). droneviab dots mark the
+    // airspace sites — the park yard leg lives raster-side only.
+    case "droneclear":
+      return "Lennuväljad ja helikopteriväljakud · kauguse-hinnang (proksi, mitte EANS DroneMap, küllastus 1300 m)";
+    case "droneviab":
+      return "Lennuväljad ja maandumisalad · min-hinnang (proksi, mitte EANS DroneMap, küllastus 800 m)";
+    case "rentbleed":
+      return "Ülikoolid, kolledžid ja ühiselamud · kauguse-hinnang (proksi, mitte üüriregister, küllastus 800 m)";
     // Batch G07 env-health layers: nearest-source distance, same halves
     // as g07BonusSpecFor in layers_group07.ts.
     case "industprox":

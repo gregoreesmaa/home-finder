@@ -84,7 +84,7 @@ describe("selectOverlayPoints", () => {
 describe("overlay legend + colors", () => {
   it("explains every layer's markers and weights in Estonian", () => {
     const ids = LAYERS.map((l) => l.id);
-    expect(ids).toHaveLength(22);
+    expect(ids).toHaveLength(25);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -110,6 +110,12 @@ describe("overlay legend + colors", () => {
     expect(overlayLegendFor("hydrants")).toContain("küllastus 6");
     expect(overlayLegendFor("evac")).toContain("2 km");
     expect(overlayLegendFor("dispatch")).toContain("küllastus 3");
+    // Batch B6 halves/tiers (see B6_CAL in layers_batch6.ts).
+    expect(overlayLegendFor("droneclear")).toContain("1300 m");
+    expect(overlayLegendFor("droneviab")).toContain("800 m");
+    expect(overlayLegendFor("rentbleed")).toContain("800 m");
+    expect(overlayLegendFor("droneclear")).toContain("mitte EANS DroneMap");
+    expect(overlayLegendFor("rentbleed")).toContain("mitte üüriregister");
     // Batch G07 halves (see g07BonusSpecFor in layers_group07.ts).
     expect(overlayLegendFor("industprox")).toContain("500 m");
     expect(overlayLegendFor("odorsrc")).toContain("500 m");
@@ -122,7 +128,7 @@ describe("overlay legend + colors", () => {
 
   it("gives every layer a distinct marker color", () => {
     const seen = new Set((LAYERS.map((l) => l.id) as LayerId[]).map(overlayColorFor));
-    expect(seen.size).toBe(22);
+    expect(seen.size).toBe(25);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

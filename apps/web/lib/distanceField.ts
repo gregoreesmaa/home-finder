@@ -222,11 +222,15 @@ export function buildScoredField(
     }
     return { field, bonus, sigmaKm, direct };
   }
-  // G07-HOOK (#140): nearest-source cleanliness 100·d/(d+halfM) —
-  // far reads green (high), on-source reads exposed (0). Uses the
-  // exact distance field above (no splat needed); +Inf stays NaN
-  // (unknown, never faked). Without this branch quiet layers would
-  // fall into the variety path below and crash on spec.key.
+  // B6-HOOK (#133) + G07-HOOK (#140): quiet layers bake nearest-source
+  // calmness/cleanliness directly 100·d/(d+halfM) — 0 on the source,
+  // 50 at halfM. The shared proximityValue decay would render them
+  // inverted (green ON the airfield), and without this branch quiet
+  // layers would fall into the variety path below and crash on
+  // spec.key. No bonus splat. droneviab degrades to its clearance leg
+  // here (batch4 rideshare precedent: the raster carries the full
+  // two-signal field, the fallback the honest subset). +Inf stays NaN
+  // (unknown, never faked).
   if (spec.kind === "quiet") {
     const direct = new Float64Array(cols * rows);
     for (let k = 0; k < direct.length; k++) {

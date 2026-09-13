@@ -41,6 +41,16 @@ import {
   BATCH5_TAGS,
   bonusSpecForBatch5,
 } from "./layers_batch5";
+// B6-HOOK(#133): batch B6 (mobility/access leftovers: p220/p270/p386)
+// tables live in ./layers_batch6 (new file). That module imports layers
+// only as types, so no runtime cycle.
+import type { Batch6LayerId } from "./layers_batch6";
+import {
+  BATCH6_DECAY,
+  BATCH6_DEFS,
+  BATCH6_TAGS,
+  bonusSpecForBatch6,
+} from "./layers_batch6";
 // G02B-HOOK(#137): batch G02B (Group 2 EHR batch B, p196 lift proxy)
 // tables live in ./layers_group02b (new file). That module imports
 // layers only as types, so no runtime cycle.
@@ -79,6 +89,8 @@ export type LayerId =
   | G07LayerId
   // B5-HOOK (#102): Group 14 public-safety ids (defined in ./layers_batch5).
   | Batch5LayerId
+  // B6-HOOK (#133): mobility/access leftover ids (./layers_batch6).
+  | Batch6LayerId
   // G06-HOOK (#138): Group 6 heritage id (defined in ./layers_group06).
   | Group06LayerId
   // G02B-HOOK (#137): Group 2 batch-B lift-proxy id (./layers_group02b).
@@ -163,6 +175,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...G07_DECAY_KM,
   // B5-HOOK (#102): Group 14 radii (see layers_batch5.ts BATCH5_DECAY).
   ...BATCH5_DECAY,
+  // B6-HOOK (#133): mobility/access radii (see layers_batch6.ts BATCH6_DECAY).
+  ...BATCH6_DECAY,
   // G06-HOOK (#138): Group 6 radius (see layers_group06.ts GROUP06_DECAY).
   ...GROUP06_DECAY,
   // G02B-HOOK (#137): lift-proxy radius (see layers_group02b.ts G02B_DECAY).
@@ -279,6 +293,8 @@ export const LAYERS: LayerDef[] = [
   ...G07_LAYERS,
   // B5-HOOK (#102): Group 14 defs (p13/p78/p315/p335/p467) from ./layers_batch5.
   ...BATCH5_DEFS,
+  // B6-HOOK (#133): mobility/access defs (p220/p270/p386) from ./layers_batch6.
+  ...BATCH6_DEFS,
   // G06-HOOK (#138): Group 6 def (p72) from ./layers_group06.
   ...GROUP06_DEFS,
   // G02B-HOOK (#137): lift-proxy def (p196) from ./layers_group02b.
@@ -308,6 +324,8 @@ const TAGS: Record<LayerId, string> = {
   ...G07_TAGS,
   // B5-HOOK (#102): Group 14 queries (see layers_batch5.ts BATCH5_TAGS).
   ...BATCH5_TAGS,
+  // B6-HOOK (#133): mobility/access queries (see layers_batch6.ts BATCH6_TAGS).
+  ...BATCH6_TAGS,
   // G06-HOOK (#138): Group 6 query (see layers_group06.ts GROUP06_TAGS).
   ...GROUP06_TAGS,
   // G02B-HOOK (#137): lift-proxy query (see layers_group02b.ts G02B_TAGS).
@@ -389,7 +407,8 @@ export type BonusSpec =
   | AreaSpec
   | TripsSpec
   | { kind: "variety"; key: string; values: string[]; per: number; cap: number }
-  // G07-HOOK (#140): nearest-source cleanliness (0 on the source, 50 at halfM).
+  // B6-HOOK (#133) + G07-HOOK (#140): nearest-source calmness/cleanliness
+  // (0 on the source, 50 at halfM).
   | { kind: "quiet"; halfM: number };
 
 export function bonusSpecFor(layer: LayerId): BonusSpec {
@@ -440,6 +459,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // B5-HOOK (#102): Group 14 specs live in ./layers_batch5.
   const b5 = bonusSpecForBatch5(layer);
   if (b5) return b5;
+  // B6-HOOK (#133): mobility/access specs live in ./layers_batch6.
+  const b6 = bonusSpecForBatch6(layer);
+  if (b6) return b6;
   // G06-HOOK (#138): Group 6 spec lives in ./layers_group06.
   const g06 = bonusSpecForGroup06(layer);
   if (g06) return g06;
