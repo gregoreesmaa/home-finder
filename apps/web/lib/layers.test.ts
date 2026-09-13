@@ -36,18 +36,27 @@ describe("layer registry", () => {
       "culture",
       "nightlife",
       "libraries",
+      // G07-HOOK (#140): Group 7 env-health ids.
+      "industprox",
+      "odorsrc",
       // B5-HOOK (#102): Group 14 public-safety ids.
       "safety",
       "emergency",
       "hydrants",
       "evac",
       "dispatch",
+      // G06-HOOK (#138): Group 6 heritage id.
+      "heritage",
       // G02B-HOOK (#137): Group 2 batch-B lift-proxy id (p196 hinnang).
       "liftproxy",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
     expect(LAYERS.find((l) => l.id === "schools")?.paramIds).toEqual([12, 123]);
+    // G07-HOOK (#140): env-health param binding.
+    expect(LAYERS.find((l) => l.id === "industprox")?.paramIds).toEqual([61]);
+    expect(LAYERS.find((l) => l.id === "odorsrc")?.paramIds).toEqual([62]);
+    // G02B-HOOK (#137): lift-proxy param binding.
     expect(LAYERS.find((l) => l.id === "liftproxy")?.paramIds).toEqual([196]);
   });
 
