@@ -19,8 +19,10 @@ import {
   applyEelisPolygons,
   applyOutlines,
   applyPointOverlay,
+  applyUsePolygons,
   clearVectorOverlays,
   type OutlineMap,
+  type UseFillPolygon,
 } from "../lib/outlines";
 import type { OverlayPoint } from "../lib/overlays";
 import { decodeRaster, rasterToRgba, sampleRaster, type DecodedRaster } from "../lib/walkRaster";
@@ -39,10 +41,12 @@ const ESTONIA_CENTER: [number, number] = [25.0, 58.75];
 
 /**
  * One overlay slot, painted above the raster: flood polygons win when
- * present, then parcel fills, then eelis polygons, then point markers
- * (page guarantees flood-areas, maa-parcels, eelis-areas, outlines and
- * points never coincide), otherwise park outlines; hidden clears the
- * slot. All painters clear stale layers first, so switches never stack.
+ * present, then parcel fills, then eelis polygons, then point markers,
+ * then use-fills (page guarantees flood-areas, maa-parcels,
+ * eelis-areas, outlines and points never coincide — and fills and
+ * points never coincide either), otherwise park outlines; hidden
+ * clears the slot. All painters clear stale layers first, so switches
+ * never stack.
  */
 function paintOverlay(
   mapObj: OutlineMap,
@@ -54,6 +58,7 @@ function paintOverlay(
 
     eelisAreas?: EelisArea[] | null;
     overlayPoints?: OverlayPoint[] | null;
+    usePolygons?: UseFillPolygon[] | null;
     overlayColor?: string;
     showOverlay?: boolean;
   },
@@ -86,6 +91,12 @@ function paintOverlay(
     applyPointOverlay(mapObj, opts.overlayPoints, { color: opts.overlayColor ?? "#1d4ed8" });
     return;
   }
+  // PLANKTPR-HOOK (#492): designated-use fills win over the (empty)
+  // unknown field; an empty harvest falls through to no outlines.
+  if (opts.usePolygons && opts.usePolygons.length > 0) {
+    applyUsePolygons(mapObj, opts.usePolygons);
+    return;
+  }
   applyOutlines(mapObj, opts.outlines);
 }
 
@@ -106,6 +117,7 @@ export function ValueHeatMap({
 
   eelisAreas,
   overlayPoints,
+  usePolygons,
   overlayColor,
   overlayLegend,
   showOverlay,
@@ -134,6 +146,8 @@ export function ValueHeatMap({
   eelisAreas?: EelisArea[] | null;
   /** Point markers drawn ABOVE the raster (all layers but parks). */
   overlayPoints?: OverlayPoint[] | null;
+  /** Designated-use fills drawn ABOVE the field (planktpr only). */
+  usePolygons?: UseFillPolygon[] | null;
   overlayColor?: string;
   /** Legend line explaining the markers + their weights (Estonian). */
   overlayLegend?: string | null;
@@ -169,6 +183,7 @@ export function ValueHeatMap({
 
     eelisAreas,
     overlayPoints,
+    usePolygons,
     overlayColor,
     showOverlay,
   });
@@ -184,6 +199,7 @@ export function ValueHeatMap({
 
     eelisAreas,
     overlayPoints,
+    usePolygons,
     overlayColor,
     showOverlay,
   };
@@ -345,9 +361,10 @@ export function ValueHeatMap({
       // FLOOD-HOOK (#487): floodAreas join the painted slot.
       // MAAPARCEL-HOOK (#491): maaParcels join the painted slot.
       // EELIS-HOOK (#488): eelisAreas join the painted slot.
-      paintOverlay(mapRef.current, { outlines, floodAreas, maaParcels, eelisAreas, overlayPoints, overlayColor, showOverlay });
+      // PLANKTPR-HOOK (#492): usePolygons join the painted slot.
+      paintOverlay(mapRef.current, { outlines, floodAreas, maaParcels, eelisAreas, overlayPoints, usePolygons, overlayColor, showOverlay });
     }
-  }, [outlines, floodAreas, maaParcels, eelisAreas, overlayPoints, overlayColor, showOverlay]);
+  }, [outlines, floodAreas, maaParcels, eelisAreas, overlayPoints, usePolygons, overlayColor, showOverlay]);
 
   return (
     <section aria-label={title}>

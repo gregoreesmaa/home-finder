@@ -64,8 +64,8 @@ print('missing:', sorted(set(range(1, 501)) - owned))
 "
 ```
 
-Split (same method, `paramIds` values only): **97 map-layer params**,
-**403 documented no-map + scorer dim**. Map layers never render unknown as
+Split (same method, `paramIds` values only): **98 map-layer params**,
+**402 documented no-map + scorer dim**. Map layers never render unknown as
 zero: null encodes 255 and renders red (red = bad *or* honestly-unknown).
 
 ## 3. Group reconciliation (parameters3.md §5 → implementation)
@@ -76,7 +76,7 @@ zero: null encodes 255 and renders red (red = bad *or* honestly-unknown).
 | 2 EHR registry (9) | 9 | 196 | 21, 30, 33, 35, 48, 79, 154, 495 | `layers_group02/02b` + `dims_group02/02b` (#136, #137) |
 | 3 Cadastre (22) | 22 | 50, 332, 340 | 19 incl. 29, 68, 71, 75 | `layers_group03/03b/03c/03d/03e` (#151–#155) |
 | 4 Title/legal (17) | 17 | 364 (p364 ships twice — dims_overturn_maa scorer hint stands; maaparcel kataster omandivorm-class overlay, polygons only, outside stays unknown) | 16: per-parcel registry facts | `layers_group04` + `dims_group04` (#204) + `layers_maaparcel`/`batch_maaparcel_kataster` (#235, #491) |
-| 5 Plans (27) | 27 | 42, 44, 106, 146, 223, 224, 225, 230, 381, 485 | 17 | `layers_group05a–05f` (#161–#166) |
+| 5 Plans (27) | 27 | 42, 44, 47, 106, 146, 223, 224, 225, 230, 381, 485 (p47 ships as harvest-gated `planktpr` fills — honestly empty live, see `docs/p4_planktpr.md` #492) | 16 | `layers_group05a–05f` (#161–#166) + `layers_planktpr` (#492) |
 | 6 Heritage (12) | 12 | 72, 352, 353, 356 | 8 | `layers_group06/06b` (#138, #139) |
 | 7 Env health (20) | 20 | 61, 62, 189, 202, 227, 257, 409, 450 | 12 | `layers_group07/07b/07c/07d` (#140–#143) |
 | 8 Climate/flood (16) | 16 | 69, 112, 255, 333, 334, 336, 447 (p112 ships twice — g08a OSM no-map verdict stands; floodzone KAUR zone-join overlay, polygons only) | 10 (incl. p112-outside: the join stays NULL outside every polygon) | `layers_group08a–08d` (#167–#170) + `layers_flood`/`dims_overturn_flood`/`batch_flood_kaur` (#239, #487) |
@@ -92,7 +92,7 @@ zero: null encodes 255 and renders red (red = bad *or* honestly-unknown).
 | 18 Spatial sim (29) | 29 | 7: 34, 63, 181, 305, 405, 468, 479 | 22 (scorer dims: solar/shade/traffic/vegetation proxies + no-map verdicts) | `layers_group18resta/b/c` + `layers_genv` + `dims_group18*` (#113, #122–#124, #172, #173, #197) |
 | 19 Inspection (134) | 134 | — | 134: forensic facts needing presence/meters | `layers_group19a–19d` + `dims_group19a–19d` (#208–#211) |
 | 20 Subjective (38) | 38 | — | 38: buyer-profile inputs, never area scores | `layers_group20a/b` + `dims_group20a/b` (#212, #213) |
-| **Total** | **500** | **97** | **403** | batch files per-group above |
+| **Total** | **500** | **98** | **402** | batch files per-group above |
 
 ## 4. P4 buyer params (parameters4.md P4-001–P4-062) — scorer dims, honest shapes
 
@@ -153,9 +153,10 @@ id, no raster master (the points-splat kernel IS the field):
 
 Overlay layers carry `paramIds: []` + `paramLabel` (e.g. `P4-031`):
 parameters3 p31 is Structural integrity (inspection no-map) and must
-never gain a map by accident. §3 counts are untouched (still 97
-map-layer params / 403 no-map + scorer dim — overlays visualize P4
-slices, not parameters3 params).
+never gain a map by accident. §3 counts are untouched by overlays
+(still 98 map-layer params / 402 no-map + scorer dim after p47
+graduated in #492 — overlays visualize P4 slices, not parameters3
+params).
 
 Polygon overlays (`eeliskaitse`/`eelisniit`/`eelisraie`, #488) paint
 EELIS zone fills with no score field at all (zero points, null
@@ -165,3 +166,4 @@ clear), the scorer's per-parcel join (`dims_p4_eelis.py`) is untouched,
 and the flood table + emitter register stay out (flood owned by #487,
 emitters are a point register with no honest polygon — see
 `docs/p4_eelis.md`).
+

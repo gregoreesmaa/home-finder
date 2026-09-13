@@ -479,6 +479,17 @@ import {
   bonusSpecForEelis,
 } from "./layers_eelis";
 
+// PLANKTPR-HOOK (#492): PLANK/TPR designated-use polygon tables live in
+// ./layers_planktpr (p47 exact per-parcel fills). That module imports
+// layers only as types, so no runtime cycle.
+import type { PlanktprLayerId } from "./layers_planktpr";
+import {
+  PLANKTPR_DECAY,
+  PLANKTPR_DEFS,
+  PLANKTPR_TAGS,
+  bonusSpecForPlanktpr,
+} from "./layers_planktpr";
+
 export type LayerId =
   | "parks"
   | "transit"
@@ -580,7 +591,10 @@ export type LayerId =
   | MaaParcelLayerId
   // EELIS-HOOK (#488): EELIS nature-polygon ids (./layers_eelis,
   // kaitse/niit/raie zone-membership choropleths, polygons only).
-  | EelisLayerId;
+  | EelisLayerId
+  // PLANKTPR-HOOK (#492): designated-use polygon id
+  // (./layers_planktpr, p47 exact fills).
+  | PlanktprLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -778,6 +792,9 @@ const DECAY_KM: Record<LayerId, number> = {
   // EELIS-HOOK (#488): nature-polygon radii (see layers_eelis.ts EELIS_DECAY —
   // INERT placeholders, polygons only: zero points, never evaluated).
   ...EELIS_DECAY,
+
+  // PLANKTPR-HOOK (#492): polygon fallback width (see layers_planktpr.ts).
+  ...PLANKTPR_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -979,6 +996,10 @@ export const LAYERS: LayerDef[] = [
   // EELIS-HOOK (#488): nature-polygon defs (P4-015/024/030 slices, no
   // parameters3 ids) from ./layers_eelis.
   ...EELIS_DEFS,
+
+  // PLANKTPR-HOOK (#492): designated-use polygon def (p47 exact fills)
+  // from ./layers_planktpr.
+  ...PLANKTPR_DEFS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -1092,6 +1113,9 @@ const TAGS: Record<LayerId, string> = {
   // EELIS-HOOK (#488): nature-polygon source notes (see layers_eelis.ts EELIS_TAGS —
   // WFS provenance, NOT runnable Overpass QL).
   ...EELIS_TAGS,
+
+  // PLANKTPR-HOOK (#492): WFS source note (see layers_planktpr.ts PLANKTPR_TAGS).
+  ...PLANKTPR_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -1443,6 +1467,10 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // polygons only, never evaluated).
   const eelis = bonusSpecForEelis(layer);
   if (eelis) return eelis;
+
+  // PLANKTPR-HOOK (#492): designated-use spec lives in ./layers_planktpr.
+  const planktpr = bonusSpecForPlanktpr(layer);
+  if (planktpr) return planktpr;
   throw new Error(`unknown layer: ${layer}`);
 }
 

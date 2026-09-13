@@ -62,6 +62,17 @@ import {
   type EelisArea,
 } from "../../lib/layers_eelis";
 
+// PLANKTPR-HOOK (#492): designated-use polygon fills (see usePolygons).
+import {
+  fetchPlanktprAreas,
+  isPlanktprLayerId,
+  planktprColorForUse,
+  planktprFold,
+  planktprIsTallinn,
+  PLANKTPR_DECREE_STAGE,
+} from "../../lib/layers_planktpr";
+import type { UseFillPolygon } from "../../lib/outlines";
+
 /** Viewport bbox rounded for fetch stability (matches server key rounding). */
 function sameView(a: BBoxLike, b: BBoxLike): boolean {
   return (
@@ -136,16 +147,21 @@ export default function LayersPage() {
     fetchLayerPoints(layer, view)
       .then((res) => {
         if (!fresh()) return;
+        // Points belong to exactly one layer (PLANKTPR-HOOK #492: the
+        // previous layer's points reset on switch below, so accepting
+        // here can never leak stale dots under a new layer's legend —
+        // the old suppress-demo branch did exactly that for empty
+        // layers). A demo that follows real data still raises the
+        // refresh-failed flag; the status names it.
+        setProvenance(res.provenance);
+        setAgeMs(res.ageMs);
+        setPointCount(res.points.length);
+        setFeaturePoints(res.points);
+        setDistance(res.distance);
         if (res.provenance === "demo" && hasDataRef.current) {
           setRefreshFailed(true);
-        } else {
-          setProvenance(res.provenance);
-          setAgeMs(res.ageMs);
-          setPointCount(res.points.length);
-          setFeaturePoints(res.points);
-          setDistance(res.distance);
-          hasDataRef.current = true;
         }
+        hasDataRef.current = true;
         setLoading(false);
       })
       .catch(() => {
@@ -163,9 +179,19 @@ export default function LayersPage() {
     };
   }, [layer, view]);
 
-  // A new layer starts without the previous layer's window.
+  // A new layer starts without the previous layer's data: window,
+  // points, provenance and counts all belong to exactly one layer, so
+  // stale dots/status must never render under a new layer's legend
+  // (PLANKTPR-HOOK #492 — exposed by the polygons-only layer, whose
+  // empty point set otherwise inherits the previous layer's markers).
+  // Same-view pans keep stale-while-revalidate (this runs on layer
+  // switches only, like the raster reset before it).
   useEffect(() => {
     setRaster(null);
+    setFeaturePoints(null);
+    setProvenance(null);
+    setAgeMs(null);
+    setPointCount(0);
   }, [layer]);
 
   // EELIS-HOOK (#488): EELIS nature polygons (eelis layers only,
@@ -237,6 +263,39 @@ export default function LayersPage() {
     }
     fetchMaaParcelAreas().then((areas) => {
       if (!cancelled) setMaaAreas(areas);
+
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [layer]);
+  // PLANKTPR-HOOK (#492): designated-use fills (planktpr layer only):
+  // fetched once per selection; only scored rows draw (kehtestatud +
+  // Tallinn + recognised use — unscored rows never paint, so the fills
+  // and planktprScoreAt agree by construction). Empty harvest draws
+  // nothing (the dated NULL).
+  const [usePolygons, setUsePolygons] = useState<UseFillPolygon[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!isPlanktprLayerId(layer)) {
+      setUsePolygons(null);
+      return;
+    }
+    fetchPlanktprAreas().then((areas) => {
+      if (cancelled) return;
+      if (!areas) {
+        setUsePolygons(null);
+        return;
+      }
+      const fills: UseFillPolygon[] = [];
+      for (const a of areas) {
+        if (!planktprIsTallinn(a.kov)) continue;
+        if (planktprFold(a.stage) !== PLANKTPR_DECREE_STAGE) continue;
+        const color = planktprColorForUse(a.use);
+        if (!color) continue;
+        fills.push({ rings: a.rings, color });
+      }
+      setUsePolygons(fills);
     });
     return () => {
       cancelled = true;
@@ -279,13 +338,15 @@ export default function LayersPage() {
       : needsGraphOverlay(layer)
         ? graphPoints
         : selectOverlayPoints(featurePoints ?? [], layer);
+  // PLANKTPR-HOOK (#492): the toggle counts scored fills, not points.
   const overlayCount = isPolygonOnlyLayer(layer)
     ? (floodAreas?.length ?? 0)
     : isPolygonOnlyMaaLayer(layer)
       ? (maaAreas?.length ?? 0)
-
       : isEelisPolygonOnlyLayer(layer)
         ? (eelisOverlay?.length ?? 0)
+        : isPlanktprLayerId(layer)
+          ? (usePolygons?.length ?? 0)
     : layer === "parks"
       ? (outlines?.length ?? 0)
       : (pointOverlay?.length ?? 0);
@@ -344,9 +405,12 @@ export default function LayersPage() {
               : provenance === "stale"
                 ? `Aegunud vahemälu — upstream maas (vanus ${ageEt(ageMs)}) · ${pointCount} punkti`
                 : `DEMO-varu (live ebaõnnestus) · ${pointCount} punkti`;
+  // PLANKTPR-HOOK (#492): the DEMO base already names the failed
+  // refresh, so the suffix would repeat it — it rides only on real
+  // (non-demo) provenances.
   const status =
     (loading && provenance !== null ? `${base} · uuendan…` : base) +
-    (refreshFailed ? " · uuendamine ebaõnnestus" : "");
+    (refreshFailed && provenance !== "demo" ? " · uuendamine ebaõnnestus" : "");
 
   return (
     <main>
@@ -405,6 +469,7 @@ export default function LayersPage() {
 
         eelisAreas={eelisOverlay}
         overlayPoints={pointOverlay}
+        usePolygons={usePolygons}
         overlayColor={overlayColorFor(layer)}
         overlayLegend={overlayLegendFor(layer)}
         showOverlay={showOverlay}
@@ -425,10 +490,12 @@ export default function LayersPage() {
           // points, null raster) -- same skip for the kataster fills.
           // EELIS-HOOK (#488): eelis layers paint no field at all (zero
           // points, null raster) -- same skip for the nature fills.
+          // PLANKTPR-HOOK (#492): use-fills are exact parcel joins too.
           (isStatKovLayerId(layer) || isEelisPolygonOnlyLayer(layer) ||
             isMaruKovLayerId(layer) ||
             isPolygonOnlyLayer(layer) ||
-            isPolygonOnlyMaaLayer(layer)
+            isPolygonOnlyMaaLayer(layer) ||
+            isPlanktprLayerId(layer)
             ? ""
             : distance === "euclidean" && provenance === "snapshot"
               ? raster

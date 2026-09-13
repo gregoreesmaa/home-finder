@@ -60,7 +60,8 @@ describe("gtfsstops registry (#483)", () => {
     // MAAPARCEL-HOOK (#491): +1 parcel overlay (100 + 1).
 
     // EELIS-HOOK (#488): +3 nature-polygon layers (101 + 3).
-    expect(ids.length).toBe(104);
+    // PLANKTPR-HOOK (#492): +1 designated-use polygon layer (104 + 1).
+    expect(ids.length).toBe(105);
   });
 
   it("labels schedules honestly in Estonian (never ridership)", () => {

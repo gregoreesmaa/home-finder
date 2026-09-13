@@ -502,6 +502,16 @@ export function overlayColorFor(layer: LayerId): string {
       return "#10b981";
     case "eelisraie":
       return "#9c4221";
+
+    // PLANKTPR-HOOK (#492): planktpr marker (polygon layer — the point
+    // overlay stays empty live, so this colors only the toggle dot).
+    // #4c1d95: violet-900 decree ink (NOT #312e81 — taken by darkness
+    // on main #480 — and NOT #4f46e5 — taken by community — and NOT
+    // #6b21a8 — taken by dispatch; darker value than both, and layers
+    // never co-render). Distinct from every other marker
+    // (distinct-color test).
+    case "planktpr":
+      return "#4c1d95";
   }
 }
 
@@ -859,6 +869,14 @@ export function overlayLegendFor(layer: LayerId): string {
       return "EELIS niiduelupaigad · tsoonis = jäme proksi-hinnang (rakk, mitte liigiväide), väljaspool = teadmata, mitte puugivaba (rohevõrgustik EI OLE)";
     case "eelisraie":
       return "EELIS raiealad · tsoonis = muutuslipp-hinnang (register, mitte satelliit), väljaspool = teadmata, mitte muutumatu (raieluba EI OLE)";
+
+    // PLANKTPR-HOOK (#492): planktpr (p47) — kehtestatud designated-use
+    // polygons as exact fills (elamu 80 / sega 60 / äri 35 / piirang 20,
+    // lagi 80); the dated WFS negative rides along (live harvest holds
+    // no polygons — outside the fills there is no hinnang, never a
+    // faked score; OSM landuse is never painted as zoning).
+    case "planktpr":
+      return "Sihtotstarbe-polügoonid (kehtestatud, hinnang: elamu roheline 80 / sega 60 / äri 35 / piirang punane 20, lagi 80; PLANK-WFS 2026-09-13 seisuga MAAS, TPR-il liidest EI OLE — väljaspool polügoone hinnangut pole)";
   }
 }
 
