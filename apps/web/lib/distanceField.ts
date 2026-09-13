@@ -222,6 +222,20 @@ export function buildScoredField(
     }
     return { field, bonus, sigmaKm, direct };
   }
+  if (spec.kind === "quiet") {
+    // G03-HOOK (#151): nearest-source drainage goodness:
+    // score = 100·d/(d+halfM), 0 on the source, 50 at halfM. Shared
+    // semantics with the Group 9/GENV "quiet" specs (one kind, one
+    // implementation). Unknown (+Inf) stays NaN, never faked; sub-3
+    // scores degrade to null like the area branch.
+    const direct = new Float64Array(cols * rows);
+    for (let k = 0; k < direct.length; k++) {
+      const dM = field.distKm[k] * 1000;
+      const raw = (100 * dM) / (dM + spec.halfM);
+      direct[k] = Number.isFinite(dM) && raw >= 3 ? Math.min(100, raw) : NaN;
+    }
+    return { field, bonus, sigmaKm, direct };
+  }
   {
     const classes = classSplats(
       points,

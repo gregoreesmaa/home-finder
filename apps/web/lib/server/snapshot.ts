@@ -16,6 +16,8 @@ import { haversineKm } from "../poi";
 import { sampleRaster } from "../walkRaster";
 // B1-HOOK(#98): batch B1 raster files live in layers_batch1.ts.
 import { B1_METRO_PREFIXES, B1_RASTER_FILES } from "../layers_batch1";
+// G03-HOOK(#151): batch G03 raster files live in layers_group03.ts.
+import { G03_RASTER_FILE } from "../layers_group03";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -301,6 +303,8 @@ const RASTER_FILE: Record<LayerId, string> = {
   hydrants: "hydrants-walk-raster.json",
   evac: "evac-walk-raster.json",
   dispatch: "dispatch-walk-raster.json",
+  // G03-HOOK (#151): drainage raster (scripts/build/batch_g03_cadastre.py).
+  ...G03_RASTER_FILE,
 };
 
 /**
@@ -343,8 +347,20 @@ export function matchesContract(
   if (doc.sigma !== radiusKmFor(layer)) return false;
   if (spec.kind === "variety") return doc.per === spec.per && doc.cap === spec.cap;
   if (spec.kind === "area" || spec.kind === "trips") return doc.half === spec.half;
+  // G03-HOOK (#151): "quiet" carries halfM on the wire half field.
+  if (spec.kind === "quiet") return doc.half === spec.halfM;
   return false;
 }
+
+/**
+ * Masters stamped with DIRECT distance, not walk time: the G03 drainage
+ * proxy field is a smooth Euclidean grid by construction (see its
+ * builder). Labeling it "walk" would claim footpath routing the master
+ * never used. (Sibling batches extend this set with their own
+ * Euclidean-built masters.)
+ */
+// G03-HOOK (#151): Euclidean-built masters ride "euclidean", not "walk".
+const EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["drainage"]);
 
 export async function loadLayerRaster(
   layer: LayerId,
@@ -352,7 +368,7 @@ export async function loadLayerRaster(
 ): Promise<{ raster: WalkRasterDoc | null; distance: TransitDistance }> {
   const doc = await loadWalkRaster(layer, dir);
   if (doc && matchesContract(doc, layer)) {
-    return { raster: doc, distance: "walk" };
+    return { raster: doc, distance: EUCLIDEAN_MASTER.has(layer) ? "euclidean" : "walk" };
   }
   return { raster: null, distance: "euclidean" };
 }
@@ -374,6 +390,9 @@ const METRO_PREFIX: Record<LayerId, string> = {
   hydrants: "hydrants-metro",
   evac: "evac-metro",
   dispatch: "dispatch-metro",
+  // G03-HOOK (#151): no metro master (documented fake precision — the
+  // file is absent, so windows serve county everywhere, like B5).
+  drainage: "drainage-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */
@@ -591,7 +610,13 @@ export async function loadWindowRaster(
     rows: outRows,
     bbox: view,
     step_m: stepM,
-    half: spec.kind === "variety" ? null : (spec as { half: number }).half,
+    // G03-HOOK (#151): "quiet" specs carry halfM, not half.
+    half:
+      spec.kind === "variety"
+        ? null
+        : spec.kind === "quiet"
+          ? spec.halfM
+          : (spec as { half: number }).half,
     sigma: radiusKmFor(layer),
     per: spec.kind === "variety" ? spec.per : 0,
     cap: spec.kind === "variety" ? spec.cap : 0,

@@ -115,6 +115,10 @@ export function overlayColorFor(layer: LayerId): string {
       return "#57534c";
     case "dispatch":
       return "#6b21a8";
+    // G03-HOOK (#151): drainage proxy markers (point overlay,
+    // stride-sampled like grocery).
+    case "drainage":
+      return "#0891b2";
   }
 }
 
@@ -165,6 +169,10 @@ export function overlayLegendFor(layer: LayerId): string {
       return "Magistraalteede tihedus (hinnang, küllastus 2 km)";
     case "dispatch":
       return "Politsei/pääste/haigla · lähedaste arv (hinnang, küllastus 3)";
+    // G03-HOOK (#151): drainage proxy (p50) — mapped source water, the
+    // raster holds the full quietness field.
+    case "drainage":
+      return "Veekogud, rannajoon ja märgalad · kauguse-hinnang (drenaažiproksi, küllastus 300 m)";
   }
 }
 

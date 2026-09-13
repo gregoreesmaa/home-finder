@@ -132,6 +132,35 @@ describe("trips-weighted transit", () => {
   });
 });
 
+describe("quiet-kind drainage goodness (G03)", () => {
+  // Score = 100·d/(d+halfM): 0 on the source, 50 at halfM. Shared
+  // semantics with the Group 9/GENV quiet specs.
+  const quiet: BonusSpec = { kind: "quiet", halfM: 300 };
+
+  it("reads null on the source, ~43 one cell (~231 m) out", () => {
+    const lon = 24.5 + (50 / 99) * (BBOX.maxlon - BBOX.minlon);
+    const lat = 59.35 + (18 / 39) * (BBOX.maxlat - BBOX.minlat);
+    const s = buildScoredField([{ lon, lat }], BBOX, 100, 40, 0.3, quiet);
+    // On the water the raw 0 sits below the noise floor: null (renders
+    // red, like the raster's baked 0) — never a faked score.
+    expect(scoredAt(s, 50, 18)).toBeNull();
+    // One node over (~231 m): 100·231/531 ≈ 43.5.
+    expect(scoredAt(s, 51, 18)).toBeCloseTo(43.5, 0);
+  });
+
+  it("rises with distance and stays null with no points", () => {
+    const lon = 24.5 + (50 / 99) * (BBOX.maxlon - BBOX.minlon);
+    const lat = 59.35 + (18 / 39) * (BBOX.maxlat - BBOX.minlat);
+    const s = buildScoredField([{ lon, lat }], BBOX, 100, 40, 0.3, quiet);
+    const near = scoredAt(s, 51, 18) ?? NaN;
+    const far = scoredAt(s, 90, 18) ?? NaN;
+    expect(far).toBeGreaterThan(near);
+    expect(far).toBeLessThanOrEqual(100);
+    const empty = buildScoredField([], BBOX, 100, 40, 0.3, quiet);
+    expect(scoredAt(empty, 50, 18)).toBeNull();
+  });
+});
+
 describe("distance field", () => {
   it("is zero at a feature and rises with distance", () => {
     const f = buildDistanceField([{ lon: 24.7, lat: 59.42 }], BBOX, 200, 75);

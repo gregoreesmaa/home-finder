@@ -42,10 +42,21 @@ describe("layer registry", () => {
       "hydrants",
       "evac",
       "dispatch",
+      // G03-HOOK (#151): Group 3 cadastre-A drainage id.
+      "drainage",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
     expect(LAYERS.find((l) => l.id === "schools")?.paramIds).toEqual([12, 123]);
+  });
+
+  it("wires the G03 drainage proxy with locked calibration", () => {
+    // Drift guard: hook spec must equal G03_CAL in layers_group03.ts and
+    // the Python builder (parsed by test_batch_g03.py).
+    expect(bonusSpecFor("drainage")).toEqual({ kind: "quiet", halfM: 300 });
+    expect(radiusKmFor("drainage")).toBe(0.3);
+    expect(LAYERS.find((l) => l.id === "drainage")?.paramIds).toEqual([50]);
+    expect(overpassQueryFor("drainage", TALLINN_BBOX)).toContain("coastline");
   });
 
   it("every layer explains green=good / red=bad in Estonian", () => {

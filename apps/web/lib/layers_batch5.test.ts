@@ -36,9 +36,10 @@ describe("batch B5 registry (#102)", () => {
     }
   });
 
-  it("merges into LAYERS via the B5-HOOK (page + routes serve all eighteen)", () => {
+  it("merges into LAYERS via the B5-HOOK (page + routes serve all nineteen)", () => {
     const ids = LAYERS.map((l) => l.id);
-    expect(ids.length).toBe(18);
+    // G03-HOOK (#151): +1 drainage layer (sibling batches append theirs).
+    expect(ids.length).toBe(19);
     for (const id of BATCH5_LAYER_IDS) expect(ids).toContain(id);
   });
 
