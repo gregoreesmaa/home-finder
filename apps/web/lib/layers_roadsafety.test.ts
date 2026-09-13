@@ -44,7 +44,8 @@ describe("roadsafety registry (#481)", () => {
     // 84 shipped layers (OSMDAILY-HOOK #482 + GTFS-HOOK #483 on main) + 1 road-safety.
     // P4-031-HOOK (#484): +senscom DIY-air overlay (85 + 1).
     // STATKOV-HOOK (#485): +3 choropleth layers (86 + 3).
-    expect(ids.length).toBe(89);
+    // P4PARK-HOOK (#479): +1 parking layer (89 + 1).
+    expect(ids.length).toBe(90);
     expect(ids).toContain("roadsafety");
   });
 

@@ -44,8 +44,8 @@ describe("P4 parking registry (#479)", () => {
 
   it("merges into LAYERS via the P4PARK-HOOK (page + routes serve it)", () => {
     const ids = LAYERS.map((l) => l.id);
-    // 77 shipped layers + 1 P4 parking layer.
-    expect(ids.length).toBe(78);
+    // 89 shipped layers (main at #502: +senscom, +3 statkov) + 1 P4 parking layer.
+    expect(ids.length).toBe(90);
     expect(ids).toContain("parking");
   });
 

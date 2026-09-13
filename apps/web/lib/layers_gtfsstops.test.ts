@@ -52,7 +52,8 @@ describe("gtfsstops registry (#483)", () => {
     // RSAFE-HOOK (#481): +1 road-safety.
     // P4-031-HOOK (#484): +senscom DIY-air overlay (86 with gtfsstops + roadsafety + senscom).
     // STATKOV-HOOK (#485): +3 choropleth layers (86 + 3).
-    expect(ids.length).toBe(89);
+    // P4PARK-HOOK (#479): +1 parking layer (89 + 1).
+    expect(ids.length).toBe(90);
   });
 
   it("labels schedules honestly in Estonian (never ridership)", () => {
