@@ -263,7 +263,7 @@ describe("applyFloodPolygons", () => {
     const map = mockMap();
     map.layers.add("flood-zone-fill");
     map.sources.add("flood-zone-polys");
-    applyFloodPolygons(map, null);
+    applyFloodPolygons(map, null, { color: "#1e3a8a" });
     expect(map.layers.size).toBe(0);
     expect(map.sources.size).toBe(0);
     const map2 = mockMap();
