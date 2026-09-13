@@ -324,6 +324,13 @@ export function overlayColorFor(layer: LayerId): string {
     // every other marker (distinct-color test).
     case "lawncare":
       return "#bef264";
+    // G17R-HOOK (#196): privroad marker (point overlay,
+    // stride-sampled like grocery). #d4a373: sandy gravel tan (dirt
+    // eratee; NOT #b45309 — taken by plaster — and NOT #fbbf24 —
+    // taken by ehitus — and NOT #92400e — taken by libraries).
+    // Distinct from every other marker (distinct-color test).
+    case "privroad":
+      return "#d4a373";
   }
 }
 
@@ -554,6 +561,10 @@ export function overlayLegendFor(layer: LayerId): string {
     // raster holds the full count field.
     case "lawncare":
       return "Niidetavad murualad (aasad välja) · lähedaste arv (hooldusnähtavuse-hinnang, küllastus 20, niitmiskontrolli register puudub)";
+    // G17R-HOOK (#196): privroad (p245) — mapped shared private
+    // roads, the raster holds the full calmness field.
+    case "privroad":
+      return "Jagatud erateed (parklad ja sissesõiduteed välja) · kauguse-hinnang (teehooldusproksi, poolkaugus 200 m, KÜ leping puudub)";
   }
 }
 

@@ -865,6 +865,34 @@ describe("layer walk rasters", () => {
     }
   });
 
+  it("serves the G17R privroad raster under its contract", async () => {
+    // G17R-HOOK (#196): privroad QUIET contract (halfM 200 on the
+    // wire half field, sigma 0.3); exact-grid Dijkstra Euclidean
+    // master. A stale half is rejected.
+    const ldir = await fixtureDir([{ lat: 59.44256, lon: 24.57679 }], "privroad");
+    await writeFile(
+      join(ldir, "osm", "privroad-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 200, sigma: 0.3 })),
+    );
+    try {
+      const res = await loadLayerRaster("privroad", ldir);
+      expect(res.distance).toBe("euclidean");
+      expect(res.raster?.half).toBe(200);
+    } finally {
+      await rm(ldir, { recursive: true, force: true });
+    }
+    const stale = await fixtureDir([{ lat: 59.44256, lon: 24.57679 }], "privroad");
+    await writeFile(
+      join(stale, "osm", "privroad-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 300, sigma: 0.3 })),
+    );
+    try {
+      expect(await loadLayerRaster("privroad", stale)).toEqual({ raster: null, distance: "euclidean" });
+    } finally {
+      await rm(stale, { recursive: true, force: true });
+    }
+  });
+
   it("serves grocery and walkability rasters under the area contract", async () => {
     const gdir = await fixtureDir([{ lat: 59.44, lon: 24.75, a: 1 }], "grocery");
     await writeFile(

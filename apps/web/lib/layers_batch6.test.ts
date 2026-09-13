@@ -61,7 +61,8 @@ describe("batch B6 registry (#133)", () => {
     // G18B-HOOK (#173): fishbowl + mossrisk + daylight join the registry.
     // G17A-HOOK (#177): compost + gritbin + leafdrop join the registry.
     // G17B-HOOK (#178): lawncare joins the registry.
-    expect(ids.length).toBe(72);
+    // G17R-HOOK (#196): privroad joins the registry.
+    expect(ids.length).toBe(73);
     for (const id of BATCH6_LAYER_IDS) expect(ids).toContain(id);
   });
 
