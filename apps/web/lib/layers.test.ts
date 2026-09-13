@@ -100,6 +100,10 @@ describe("layer registry", () => {
       // G05A-HOOK (#161): Group 5 plans-A ids (p42 ehitus + p44 korterstock).
       "ehitus",
       "korterstock",
+      // G05C-HOOK (#163): Group 5 plans-C ids (p223 commbleed + p224 windsolar + p225 viewshed).
+      "commbleed",
+      "windsolar",
+      "viewshed",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -228,6 +232,24 @@ describe("layer registry", () => {
     expect(radiusKmFor("korterstock")).toBe(0.3);
     expect(LAYERS.find((l) => l.id === "korterstock")?.paramIds).toEqual([44]);
     expect(overpassQueryFor("korterstock", TALLINN_BBOX)).toContain("apartments");
+  });
+
+  it("wires the G05C commbleed + windsolar + viewshed layers with locked calibration", () => {
+    // G05C-HOOK (#163): drift guard — hook specs must equal G05C_CAL in
+    // layers_group05c.ts and the Python builder (parsed by
+    // test_batch_g05c.py).
+    expect(bonusSpecFor("commbleed")).toEqual({ kind: "quiet", halfM: 300 });
+    expect(radiusKmFor("commbleed")).toBe(0.3);
+    expect(LAYERS.find((l) => l.id === "commbleed")?.paramIds).toEqual([223]);
+    expect(overpassQueryFor("commbleed", TALLINN_BBOX)).toContain("commercial");
+    expect(bonusSpecFor("windsolar")).toEqual({ kind: "quiet", halfM: 800 });
+    expect(radiusKmFor("windsolar")).toBe(0.3);
+    expect(LAYERS.find((l) => l.id === "windsolar")?.paramIds).toEqual([224]);
+    expect(overpassQueryFor("windsolar", TALLINN_BBOX)).toContain("generator");
+    expect(bonusSpecFor("viewshed")).toEqual({ kind: "area", half: 1 });
+    expect(radiusKmFor("viewshed")).toBe(0.3);
+    expect(LAYERS.find((l) => l.id === "viewshed")?.paramIds).toEqual([225]);
+    expect(overpassQueryFor("viewshed", TALLINN_BBOX)).toContain("viewpoint");
   });
 
   it("every layer explains green=good / red=bad in Estonian", () => {

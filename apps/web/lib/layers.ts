@@ -145,6 +145,17 @@ import {
   GROUP05A_TAGS,
   bonusSpecForGroup05A,
 } from "./layers_group05a";
+// G05C-HOOK(#163): batch G05C (Group 5 plans-C commbleed + windsolar +
+// viewshed; p221/p222 documented no-map) tables live in
+// ./layers_group05c (new file). That module imports layers only as
+// types, so no runtime cycle.
+import type { Group05CLayerId } from "./layers_group05c";
+import {
+  GROUP05C_DECAY,
+  GROUP05C_LAYERS,
+  GROUP05C_TAGS,
+  bonusSpecForGroup05C,
+} from "./layers_group05c";
 // G11D-HOOK(#135): batch G11D (Group 11 leftovers B: p346/p470/p419/p466;
 // p317 is a documented no-map) tables live in ./layers_group11d (new
 // file). That module imports layers only as types, so no runtime cycle.
@@ -281,7 +292,9 @@ export type LayerId =
   // G05D-HOOK (#164): Group 5 plans-D id (./layers_group05d).
   | Group05DLayerId
   // G05A-HOOK (#161): Group 5 plans-A ids (./layers_group05a).
-  | Group05ALayerId;
+  | Group05ALayerId
+  // G05C-HOOK (#163): Group 5 plans-C ids (./layers_group05c).
+  | Group05CLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -400,6 +413,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...GROUP05D_DECAY,
   // G05A-HOOK (#161): ehitus + korterstock radii (see layers_group05a.ts GROUP05A_DECAY).
   ...GROUP05A_DECAY,
+  // G05C-HOOK (#163): commbleed + windsolar + viewshed radii (see layers_group05c.ts GROUP05C_DECAY).
+  ...GROUP05C_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -548,6 +563,8 @@ export const LAYERS: LayerDef[] = [
   ...GROUP05D_LAYERS,
   // G05A-HOOK (#161): ehitus (p42) + korterstock (p44) defs from ./layers_group05a.
   ...GROUP05A_LAYERS,
+  // G05C-HOOK (#163): commbleed (p223) + windsolar (p224) + viewshed (p225) defs from ./layers_group05c.
+  ...GROUP05C_LAYERS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -609,6 +626,8 @@ const TAGS: Record<LayerId, string> = {
   ...GROUP05D_TAGS,
   // G05A-HOOK (#161): ehitus + korterstock queries (see layers_group05a.ts GROUP05A_TAGS).
   ...GROUP05A_TAGS,
+  // G05C-HOOK (#163): commbleed + windsolar + viewshed queries (see layers_group05c.ts GROUP05C_TAGS).
+  ...GROUP05C_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -817,6 +836,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // G05A-HOOK (#161): ehitus + korterstock specs live in ./layers_group05a.
   const g05a = bonusSpecForGroup05A(layer);
   if (g05a) return g05a;
+  // G05C-HOOK (#163): commbleed + windsolar + viewshed specs live in ./layers_group05c.
+  const g05c = bonusSpecForGroup05C(layer);
+  if (g05c) return g05c;
   throw new Error(`unknown layer: ${layer}`);
 }
 

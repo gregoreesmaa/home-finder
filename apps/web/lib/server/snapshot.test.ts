@@ -568,6 +568,62 @@ describe("layer walk rasters", () => {
     }
   });
 
+  it("serves G05C commbleed + windsolar + viewshed rasters under their contracts", async () => {
+    // G05C-HOOK (#163): commbleed quiet contract (halfM 300 on the
+    // wire as half, sigma 0.3); Euclidean-built like drainage. A stale
+    // half is rejected.
+    const cdir = await fixtureDir([{ lat: 59.4229, lon: 24.7956 }], "commbleed");
+    await writeFile(
+      join(cdir, "osm", "commbleed-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 300, sigma: 0.3 })),
+    );
+    try {
+      const res = await loadLayerRaster("commbleed", cdir);
+      expect(res.distance).toBe("euclidean");
+      expect(res.raster?.half).toBe(300);
+    } finally {
+      await rm(cdir, { recursive: true, force: true });
+    }
+    // G05C-HOOK (#163): windsolar quiet contract (halfM 800 on the
+    // wire as half, sigma 0.3); Euclidean-built like saltspray.
+    const wdir = await fixtureDir([{ lat: 59.39614, lon: 24.67064 }], "windsolar");
+    await writeFile(
+      join(wdir, "osm", "windsolar-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 800, sigma: 0.3 })),
+    );
+    try {
+      const res = await loadLayerRaster("windsolar", wdir);
+      expect(res.distance).toBe("euclidean");
+      expect(res.raster?.half).toBe(800);
+    } finally {
+      await rm(wdir, { recursive: true, force: true });
+    }
+    // G05C-HOOK (#163): viewshed AREA contract (half 1 on the wire,
+    // sigma 0.3, moorage precedent); Euclidean count kernel.
+    const vdir = await fixtureDir([{ lat: 59.4357, lon: 24.7399 }], "viewshed");
+    await writeFile(
+      join(vdir, "osm", "viewshed-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 1, sigma: 0.3 })),
+    );
+    try {
+      const res = await loadLayerRaster("viewshed", vdir);
+      expect(res.distance).toBe("euclidean");
+      expect(res.raster?.half).toBe(1);
+    } finally {
+      await rm(vdir, { recursive: true, force: true });
+    }
+    const stale = await fixtureDir([{ lat: 59.4357, lon: 24.7399 }], "viewshed");
+    await writeFile(
+      join(stale, "osm", "viewshed-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 2, sigma: 0.3 })),
+    );
+    try {
+      expect(await loadLayerRaster("viewshed", stale)).toEqual({ raster: null, distance: "euclidean" });
+    } finally {
+      await rm(stale, { recursive: true, force: true });
+    }
+  });
+
   it("serves grocery and walkability rasters under the area contract", async () => {
     const gdir = await fixtureDir([{ lat: 59.44, lon: 24.75, a: 1 }], "grocery");
     await writeFile(

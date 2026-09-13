@@ -52,6 +52,8 @@ import { G05B_RASTER_FILE } from "../layers_group05b";
 import { G05D_RASTER_FILE } from "../layers_group05d";
 // G05A-HOOK(#161): batch G05A raster files live in layers_group05a.ts.
 import { G05A_RASTER_FILE } from "../layers_group05a";
+// G05C-HOOK(#163): batch G05C raster files live in layers_group05c.ts.
+import { G05C_RASTER_FILE } from "../layers_group05c";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -375,6 +377,8 @@ const RASTER_FILE: Record<LayerId, string> = {
   ...G05D_RASTER_FILE,
   // G05A-HOOK (#161): ehitus + korterstock rasters (scripts/build/batch_g05a_plans.py).
   ...G05A_RASTER_FILE,
+  // G05C-HOOK (#163): commbleed + windsolar + viewshed rasters (scripts/build/batch_g05c_plans.py).
+  ...G05C_RASTER_FILE,
 };
 
 /**
@@ -483,6 +487,11 @@ const G05D_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["strsat"]);
 // ehitus + korterstock (same count-kernel-by-construction story as
 // moorage — see scripts/build/batch_g05a_plans.py).
 const G05A_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["ehitus", "korterstock"]);
+// G05C-HOOK (#163): Euclidean-built G05C masters ride "euclidean" —
+// commbleed + windsolar (exact-grid Dijkstra by construction) and
+// viewshed (Euclidean count kernel, moorage precedent — see
+// scripts/build/batch_g05c_plans.py).
+const G05C_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["commbleed", "windsolar", "viewshed"]);
 
 export async function loadLayerRaster(
   layer: LayerId,
@@ -500,7 +509,8 @@ export async function loadLayerRaster(
       G08B_EUCLIDEAN_MASTER.has(layer) || // G08B-HOOK (#168)
       G05B_EUCLIDEAN_MASTER.has(layer) || // G05B-HOOK (#162)
       G05D_EUCLIDEAN_MASTER.has(layer) || // G05D-HOOK (#164)
-      G05A_EUCLIDEAN_MASTER.has(layer); // G05A-HOOK (#161)
+      G05A_EUCLIDEAN_MASTER.has(layer) || // G05A-HOOK (#161)
+      G05C_EUCLIDEAN_MASTER.has(layer); // G05C-HOOK (#163)
     return { raster: doc, distance: euclidean ? "euclidean" : "walk" };
   }
   return { raster: null, distance: "euclidean" };
@@ -601,6 +611,12 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // everywhere, like G02B/G03/G03D).
   ehitus: "ehitus-metro",
   korterstock: "korterstock-metro",
+  // G05C-HOOK (#163): no commbleed/windsolar/viewshed metro masters
+  // (documented fake precision — the files are absent, so windows
+  // serve county everywhere, like G02B/G03/G03D/G08B).
+  commbleed: "commbleed-metro",
+  windsolar: "windsolar-metro",
+  viewshed: "viewshed-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */
