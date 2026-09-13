@@ -56,3 +56,13 @@ Never a gradient: no distance weighting, no interpolation, exact-parcel
 joins only; `plans=None` means "no TPR snapshot" (NULL), never "empty
 buffer" (pass `[]`); ambiguity (P4-004 cap, P4-020 cap) never pushes the
 steal sort above 70.
+
+Layer #491 (`maaparcel` overlay, p364 ships twice) consumes the #235
+verdict (`docs/overturn_maa.md` + #491 harvest addendum +
+`services/scoring/dims_overturn_maa.py`): the map sidecar
+`maa/parcel-areas.json` (offline build via
+`scripts/build/batch_maaparcel_kataster.py` off the cached WFS GeoJSON)
+carries the same 100-parcel Kesklinn sample the scorer joins —
+omandivorm-class fills only (register facts, never suspicion scores),
+outside stays unknown. The P4-004 closing-block leg above is untouched
+(distinct question off the same source family, no shared helper).

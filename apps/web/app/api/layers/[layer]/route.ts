@@ -8,6 +8,8 @@ import { isFloodLayerId } from "../../../../lib/layers_flood";
 import { isOoklaLayerId } from "../../../../lib/layers_p4_ookla";
 // ACCBLACK-HOOK (#490): accblack serves honestly-empty (never 500/demo).
 import { isAccBlackLayerId } from "../../../../lib/layers_accblack";
+// MAAPARCEL-HOOK (#491): polygons-only branch guard (see below).
+import { isMaaParcelLayerId } from "../../../../lib/layers_maaparcel";
 import {
   intersectsCoverage,
   loadLayerRaster,
@@ -83,6 +85,21 @@ export async function GET(
   // fake gradient), and demo fallback points are refused by the layer
   // def (empty fallbackPoints, pinned by test).
   if (isFloodLayerId(def.id)) {
+    const { distance } = await loadLayerRaster(def.id);
+    return NextResponse.json({
+      points: [],
+      provenance: "snapshot",
+      ageMs: Date.now() - SNAPSHOT_AS_OF_MS,
+      distance,
+    });
+  }
+  // MAAPARCEL-HOOK (#491): maaparcel is polygons-only (zero points,
+  // zero raster — the /maaparcel/areas sidecar carries the data). Answer
+  // honestly-empty points on snapshot provenance: requiring points or a
+  // raster here would 500 a healthy layer into labeled demo points (a
+  // fake gradient), and demo fallback points are refused by the layer
+  // def (empty fallbackPoints, pinned by test).
+  if (isMaaParcelLayerId(def.id)) {
     const { distance } = await loadLayerRaster(def.id);
     return NextResponse.json({
       points: [],

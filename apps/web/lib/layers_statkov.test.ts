@@ -43,7 +43,10 @@ describe("statkov registry (#485)", () => {
     // OOKLA-HOOK (#489): +2 quarterly-tile layers (97 + 2).
     // 1 roadsafety #481 + 1 senscom #484) + 3 statkov layers (86 + 3)
     // + 1 accblack layer (ACCBLACK-HOOK #490, 89 + 1).
-    expect(ids.length).toBe(100);
+    // MAAPARCEL-HOOK (#491): +1 parcel overlay (100 + 1).
+
+    expect(ids.length).toBe(101);
+
     for (const id of STATKOV_LAYER_IDS) expect(ids).toContain(id);
   });
 

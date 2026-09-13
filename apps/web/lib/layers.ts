@@ -454,6 +454,19 @@ import {
   ooklaBonusSpecFor,
   ooklaTileAt,
 } from "./layers_p4_ookla";
+
+// MAAPARCEL-HOOK (#491): kataster parcel tables live in
+// ./layers_maaparcel (p364 omandivorm-class choropleth, polygons only).
+// That module imports layers only as types, so no runtime cycle.
+import type { MaaParcelLayerId } from "./layers_maaparcel";
+import {
+  MAAPARCEL_DECAY,
+  MAAPARCEL_DEFS,
+  MAAPARCEL_TAGS,
+  bonusSpecForMaaParcel,
+  isPolygonOnlyMaaLayer,
+} from "./layers_maaparcel";
+
 export type LayerId =
   | "parks"
   | "transit"
@@ -549,7 +562,11 @@ export type LayerId =
   | P4OSMLayerId
   // OOKLA-HOOK (#489): Ookla quarterly-tile ids
   // (./layers_p4_ookla).
-  | OoklaLayerId;
+  | OoklaLayerId
+  // MAAPARCEL-HOOK (#491): maaparcel id (./layers_maaparcel, p364
+  // kataster omandivorm-class choropleth).
+  | MaaParcelLayerId;
+
 export interface BBoxLike {
   minlon: number;
   minlat: number;
@@ -737,6 +754,11 @@ const DECAY_KM: Record<LayerId, number> = {
   ...P4OSM_DECAY,
   // OOKLA-HOOK (#489): tileband join radii (see layers_p4_ookla.ts OOKLA_DECAY_KM).
   ...OOKLA_DECAY_KM,
+
+  // MAAPARCEL-HOOK (#491): maaparcel radius (see layers_maaparcel.ts
+  // MAAPARCEL_DECAY — INERT placeholder, polygons only: zero points,
+  // never evaluated).
+  ...MAAPARCEL_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -930,6 +952,10 @@ export const LAYERS: LayerDef[] = [
   ...OOKLA_LAYERS,
   // ACCBLACK-HOOK (#490): accblack def (P4-012 measured slice) from ./layers_accblack.
   ...ACCBLACK_DEFS,
+
+  // MAAPARCEL-HOOK (#491): maaparcel def (p364, kataster omandivorm-class
+  // choropleth) from ./layers_maaparcel.
+  ...MAAPARCEL_DEFS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -1034,6 +1060,11 @@ const TAGS: Record<LayerId, string> = {
   ...P4OSM_TAGS,
   // OOKLA-HOOK (#489): tile source notes (see layers_p4_ookla.ts OOKLA_TAGS).
   ...OOKLA_TAGS,
+
+  // MAAPARCEL-HOOK (#491): maaparcel source note (see
+  // layers_maaparcel.ts MAAPARCEL_TAGS — WFS provenance, NOT runnable
+  // Overpass QL).
+  ...MAAPARCEL_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -1375,6 +1406,11 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   if (p4osm) return p4osm;
   // OOKLA-HOOK (#489): tileband specs live in ./layers_p4_ookla.
   if (isOoklaLayerId(layer)) return ooklaBonusSpecFor(layer);
+
+  // MAAPARCEL-HOOK (#491): maaparcel spec lives in ./layers_maaparcel
+  // (INERT — polygons only, never evaluated).
+  const maaparcel = bonusSpecForMaaParcel(layer);
+  if (maaparcel) return maaparcel;
   throw new Error(`unknown layer: ${layer}`);
 }
 
@@ -1550,6 +1586,11 @@ export async function fetchWindow(
   // decision (OOKLA_NO_RASTER) — same skip, same reason.
   if (bonusSpecFor(layer).kind === "bands") return null;
   if (bonusSpecFor(layer).kind === "tileband") return null;
+
+  // MAAPARCEL-HOOK (#491): maaparcel has no raster master by decision
+  // (polygons only — the sidecar carries the data). Skip the window
+  // fetch for the same reason: a designed 500 only litters the console.
+  if (isPolygonOnlyMaaLayer(layer)) return null;
   try {
     const spanM = (view.maxlon - view.minlon) * 57300;
     const latM = (view.maxlat - view.minlat) * 110570;

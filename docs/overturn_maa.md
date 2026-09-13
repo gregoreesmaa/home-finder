@@ -80,3 +80,29 @@ rebalance follow-up: P4-004 owns closing-block, p71 owns use-burden;
 P4-054 owns blast/truck noise, p76/p229 own rights hints; P4-016 owns
 the EGT class, p68 owns bonitet; G03 owns the listing-record p29, this
 module owns the cadastre p29 leg (same band — they cannot disagree).
+
+## Addendum — harvest run #491: parcel/KKIS polygons for the map (2026-09-13)
+
+Group B verify-first follow-up (issue #491): the per-parcel joins above
+needed a map shape, so a second polite round ran the same day (5 GETs
+total: 1 × DescribeFeatureType + 4 × GetFeature, labelled research
+user-agent `home-finder-research/0.1 (... issue 491)`, paced ≥ 3 s,
+`count ≤ 100`, raw bodies at `/tmp/hf-491-maa-parcel/`, never committed;
+**zero HTTP 429** — no stop triggered).
+
+| Pull (Tallinn bbox 24.5/59.35/24.9/59.5 unless noted) | Observed | Meaning |
+|---|---|---|
+| `GetFeature kataster:ky_kehtiv count=5` (city bbox) | 5 features, 4 800 B | parcels serve GeoJSON, field contract unchanged |
+| `GetFeature kataster:ky_kehtiv count=100` (Kesklinn window 24.74–24.76 / 59.428–59.438) | 100/100 Polygon, `omvorm` = Eraomand 54 / Munitsipaalomand 42 / Riigiomand 2 / **Avalik-õiguslik omand 2** (new fourth class vs #235), `siht1` = ARIMAA 36 / TRANSPORDIMAA 26 / ELAMUMAA 19 / … | **map sample fixed**: 100 parcels, paint classes era/muni/riik/muu (fourth class folds to muu — 2/100 is noise, raw omvorm rides along) |
+| `GetFeature kma_avalik_asjaoigus count=10` (same window) | 10 features (TKTV, `reegel` None throughout — thin rule leg confirmed again), 11 rings | KKIS touch join is join-proven but thin: centroid-only containment hits **0/100** (meter-scale strips miss centroids); coarse touch join (centroid OR any vertex either way) hits **5/100** (2×1, 3×2) — ships as `kkis` hint count, never depth |
+| `GetFeature maaamet:maavarad_gbmv_levialad count=10` (city bbox) | 10 levialad (Väo kihistu perspektiivne ala, Harku, … — all at the city edges), **0 touching the parcel window** | harvest TALLY only: deposit polygons as a buyer layer is a second question for a follow-up; p76/p229 scorer dims untouched |
+
+Map verdict: **`maaparcel` (p364 ships twice)** — the 100-parcel sample
+paints as an omandivorm-class choropleth (register facts, never
+suspicion scores; outside the window = teadmata, mitte tühi), wired by
+`scripts/build/batch_maaparcel_kataster.py` →
+`<snap>/maa/parcel-areas.json` → `/api/layers/maaparcel/areas`
+(issue #491; floodzone #487 precedent). The #235 scorer dims, TTLs, and
+re-check date (2027-03-13) are unchanged — this run doubles as the first
+scheduled re-probe: endpoint still open, field contracts unchanged,
+fourth omvorm class noted.

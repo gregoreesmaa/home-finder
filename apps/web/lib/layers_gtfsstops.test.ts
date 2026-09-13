@@ -57,7 +57,10 @@ describe("gtfsstops registry (#483)", () => {
     // FLOOD-HOOK (#487): +1 flood-risk polygon overlay (94 + 1) + 2 P4OSM (P4OSM-HOOK #480, 95 + 2).
     // OOKLA-HOOK (#489): +2 quarterly-tile layers (97 + 2).
     // ACCBLACK-HOOK (#490): +1 blackspot layer (99 + 1).
-    expect(ids.length).toBe(100);
+    // MAAPARCEL-HOOK (#491): +1 parcel overlay (100 + 1).
+
+    expect(ids.length).toBe(101);
+
   });
 
   it("labels schedules honestly in Estonian (never ridership)", () => {

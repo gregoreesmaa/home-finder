@@ -52,7 +52,10 @@ describe("batch B10C registry (#121)", () => {
     // P4OSM-HOOK (#480): +2 walkability/darkness layers. (95 + 2).
     // OOKLA-HOOK (#489): +2 quarterly-tile layers join the registry (97 + 2).
     // ACCBLACK-HOOK (#490): +1 blackspot layer (99 + 1).
-    expect(ids.length).toBe(100);
+    // MAAPARCEL-HOOK (#491): +1 parcel overlay (100 + 1).
+
+    expect(ids.length).toBe(101);
+
     for (const id of BATCH10C_LAYER_IDS) expect(ids).toContain(id);
     for (const gone of ["internet", "redundancy", "ota"]) expect(ids).not.toContain(gone);
   });

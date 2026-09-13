@@ -58,8 +58,8 @@ describe("floodzone registry (#487)", () => {
     const ids = LAYERS.map((l) => l.id);
     // 94 shipped layers (main at #503: +parking, +4 maru) + 1 flood-risk polygon overlay (94 + 1) + 2 P4OSM (P4OSM-HOOK #480, 95 + 2) +
     // 2 ookla tile layers (OOKLA-HOOK #489, 97 + 2) +
-    // 1 accblack layer (ACCBLACK-HOOK #490, 99 + 1).
-    expect(ids.length).toBe(100);
+    // 1 accblack layer (ACCBLACK-HOOK #490, 99 + 1) + 1 maaparcel (MAAPARCEL-HOOK #491, 100 + 1).
+    expect(ids.length).toBe(101);
     expect(ids).toContain("floodzone");
   });
 
