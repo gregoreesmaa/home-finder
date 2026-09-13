@@ -460,7 +460,7 @@ def main(argv=None):
                 json.dump(encode_wire(grid, vals, layer), f)
             print("wrote %s" % args.out, flush=True)
         else:
-            write_outputs(outdir, layer, vals, args.format)
+            write_outputs(outdir, layer, grid, vals, args.format)
         if args.write_points:
             write_points(outdir, layer, pts)
         print("%s: cells=%d dense-mapped(>=50)=%d" %

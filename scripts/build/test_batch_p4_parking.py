@@ -146,6 +146,29 @@ def test_wire_contract_shape():
     assert set(raw) == {50}
 
 
+def test_main_writes_outdir_master_and_points(tmp_path):
+    # Regression: main() used to mis-call write_outputs on the
+    # --outdir path (caught by a real Tallinn-window build, #479).
+    ring = [[24.75, 59.44], [24.752, 59.44], [24.752, 59.442],
+            [24.75, 59.442], [24.75, 59.44]]
+    src = write_geojson(str(tmp_path / "parking.geojson"), [
+        pt(24.75, 59.44, {"amenity": "parking"}),
+        poly(ring, {"amenity": "parking"}),
+    ])
+    outdir = str(tmp_path / "snap")
+    G.main(["--layer", "parking", "--parking", src,
+            "--bbox", "24.7", "59.4", "24.8", "59.5",
+            "--outdir", outdir, "--write-points"])
+    master = os.path.join(outdir, "parking-walk-raster.json")
+    assert os.path.isfile(master)
+    doc = json.load(open(master, encoding="utf-8"))
+    assert doc["half"] == 75.0 and doc["sigma"] == 0.8
+    assert doc["unknown"] == 255
+    derived = os.path.join(outdir, "derived-parking.json")
+    assert os.path.isfile(derived)
+    assert len(json.load(open(derived, encoding="utf-8"))) > 0
+
+
 def test_ts_cal_matches_py_cal():
     # The web fallback must score with the same numbers as this builder;
     # parse P4PARK_CAL out of the TS source and fail on any drift.
