@@ -343,6 +343,14 @@ export function overlayColorFor(layer: LayerId): string {
     // and NOT #0e7490 — taken by schoolbus); #831843: pink-900
     // crowdsource magenta (measurement sites, never masts). All
     // distinct from every other marker (distinct-color test).
+    // P4-031-HOOK (#484): senscom marker (point overlay,
+    // stride-sampled like grocery). #06b6d4: cyan-500 breathing air
+    // (NOT #0ea5e9 — taken by saltspray — and NOT #0284c7 — taken by
+    // cycling — and NOT #0d9488/#0f766e/#0e7490/#0891b2 — taken by
+    // walkability/antiques/schoolbus/liftproxy). Distinct from every
+    // other marker (distinct-color test).
+    case "senscom":
+      return "#06b6d4";
     case "water":
       return "#075985";
     case "waste":
@@ -665,6 +673,12 @@ export function overlayLegendFor(layer: LayerId): string {
     // mapping usage, never accident truth.
     case "roadsafety":
       return "Märgistatud ülekäigud + rahustid · lähedaste arv (kasutus-hinnang, küllastus 60, õnnetusstatistika puudub)";
+    // P4-031-HOOK (#484): senscom (P4-031) — DIY outdoor locations from
+    // the Tallinn extract; the band field (not the dots) is the score:
+    // 1 andur <=500 m -> 60, 2-3 -> 70, 4+ -> 80 (lagi); anduriteta
+    // hoov stays unknown (scorer NULL: hinnang + EI OLE).
+    case "senscom":
+      return "DIY-välisandurid (Tallinna väljavõte) · tunnistajate arv 500 m raadiuses (1 -> 60, 2-3 -> 70, 4+ -> 80, lagi; kalibreerimata, mitte mõõtmine)";
   }
 }
 

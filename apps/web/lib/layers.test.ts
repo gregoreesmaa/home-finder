@@ -143,6 +143,9 @@ describe("layer registry", () => {
       "gtfsstops",
       // RSAFE-HOOK (#481): road-safety id (p13 roadsafety, P4-012 proxy).
       "roadsafety",
+      // P4-031-HOOK (#484): senscom DIY-air id (P4-031 slice, no
+      // parameters3 id — parameters3 p31 stays inspection no-map).
+      "senscom",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);

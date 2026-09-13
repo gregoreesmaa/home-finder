@@ -133,7 +133,7 @@ export interface ScoredField {
   /** Bonus per node (same geometry as field). */
   bonus: Float64Array;
   sigmaKm: number;
-  /** Direct per-node score (NaN = unknown) for the "area" spec; else null. */
+  /** Direct per-node score (NaN = unknown) for direct kinds (area/sparse/trips/avoid/quiet/cover/bands); else null. */
   direct: Float64Array | null;
 }
 
@@ -211,6 +211,36 @@ export function buildScoredField(
     for (let k = 0; k < direct.length; k++) {
       const s = density[k];
       direct[k] = Math.min(100, (100 * spec.half) / (s + spec.half));
+    }
+    return { field, bonus, sigmaKm, direct };
+  }
+  // P4-031-HOOK (#484): hard-radius witness-count bands (senscom DIY
+  // air) — the map twin of _band_density/_nearby in
+  // services/scoring/dims_p4_senscom.py. Each cell counts distinct
+  // sensor points within radiusM (hard cutoff, equirect km at mid
+  // latitude — same geometry as the "cover" branch below) and maps
+  // 1 -> one, 2-3 -> twoThree, 4+ -> fourPlus. Deliberately NOT a
+  // Gaussian splat: a DIY sensor 2 km away says nothing about the
+  // backyard, so smoothing would fake a gradient between watched
+  // balconies. Zero witnesses stays NaN (unknown, never zero — the
+  // scorer reads the same gap as NULL with hinnang + EI OLE).
+  if (spec.kind === "bands") {
+    const direct = new Float64Array(cols * rows);
+    const spanLon = bbox.maxlon - bbox.minlon;
+    const spanLat = bbox.maxlat - bbox.minlat;
+    const kx = 111.32 * Math.cos((((bbox.minlat + bbox.maxlat) / 2) * Math.PI) / 180);
+    const radiusKm = spec.radiusM / 1000;
+    for (let k = 0; k < direct.length; k++) {
+      const iy = Math.floor(k / cols);
+      const ix = k % cols;
+      const clon = bbox.minlon + (cols > 1 ? (ix / (cols - 1)) * spanLon : 0);
+      const clat = bbox.minlat + (rows > 1 ? (iy / (rows - 1)) * spanLat : 0);
+      let n = 0;
+      for (const p of points) {
+        const d = Math.hypot((clon - p.lon) * kx, (clat - p.lat) * 110.57);
+        if (d <= radiusKm) n++;
+      }
+      direct[k] = n <= 0 ? NaN : n <= 1 ? spec.one : n <= 3 ? spec.twoThree : spec.fourPlus;
     }
     return { field, bonus, sigmaKm, direct };
   }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { LAYERS, tileForView, type BBoxLike, type LayerPoint } from "../../../../lib/layers";
+import { isSenscomLayerId } from "../../../../lib/layers_p4_senscom";
 import {
   intersectsCoverage,
   loadLayerRaster,
@@ -7,6 +8,7 @@ import {
   SNAPSHOT_AS_OF_MS,
   SnapshotUnavailable,
 } from "../../../../lib/server/snapshot";
+import { loadSenscomSnapshot, senscomPointsIn } from "../../../../lib/server/senscom";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +49,24 @@ export async function GET(
   const tile = tileForView(bbox);
   if (!intersectsCoverage(tile)) {
     return NextResponse.json({ points: [], provenance: "empty", ageMs: null });
+  }
+  // P4-031-HOOK (#484): senscom points come from the sensor.community
+  // Tallinn extract (never the OSM snapshot, never live). A missing or
+  // corrupt extract is a 500 (client shows labeled demo); a valid
+  // extract with no sensors in view is honestly-empty (the map renders
+  // those as "no data", never as zero).
+  if (isSenscomLayerId(def.id)) {
+    const snap = await loadSenscomSnapshot();
+    if (!snap) {
+      return NextResponse.json({ error: "no senscom snapshot data" }, { status: 500 });
+    }
+    const points = senscomPointsIn(snap, bbox);
+    const age = snap.fetched ? Date.parse(snap.fetched) : NaN;
+    return NextResponse.json({
+      points,
+      provenance: points.length > 0 ? "snapshot" : "empty",
+      ageMs: Number.isFinite(age) ? Date.now() - age : null,
+    });
   }
   try {
     // Density layers (walkability/pedinfra/cycling) have no points file:

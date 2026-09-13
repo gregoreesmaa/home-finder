@@ -10,6 +10,7 @@ import {
   fetchLayerPoints,
   fetchParkAreas,
   fetchWindow,
+  layerParamTag,
   radiusKmFor,
   type BBoxLike,
   type LayerDef,
@@ -183,12 +184,18 @@ export default function LayersPage() {
   const overlayCount =
     layer === "parks" ? (outlines?.length ?? 0) : (pointOverlay?.length ?? 0);
 
+  // P4-031-HOOK (#484): bands-layer points ride the sensor.community
+  // extract, not the OSM snapshot — the status names the extract (+ its
+  // age) instead of the snapshot date.
+  const isBands = bonusSpecFor(layer).kind === "bands";
   const base =
     provenance === null
       ? "Laadin kihi andmeid…"
       : provenance === "snapshot"
         ? pointCount > 0 || !raster
-          ? `Kohalik hetktõmmis (2026-09-12) · ${pointCount} punkti`
+          ? isBands
+            ? `sensor.community väljavõte${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
+            : `Kohalik hetktõmmis (2026-09-12) · ${pointCount} punkti`
           : "Kohalik hetktõmmis (2026-09-12) · rasterkiht"
         : provenance === "empty"
           ? "Selle piirkonna kohta hetktõmmises andmed puuduvad"
@@ -223,10 +230,13 @@ export default function LayersPage() {
             onClick={() => setLayer(l.id)}
           >
             {l.title}
-            {/* OSMDAILY-HOOK (#482): P4 layers carry an empty paramIds
-                (parameters4 namespace — see layers_osmdaily.ts); skip
-                the "(p…)" suffix for them instead of rendering "(p)". */}
-            {l.paramIds.length > 0 ? ` (p${l.paramIds.join(", p")})` : ""}
+            {/* OSMDAILY-HOOK (#482) + P4-031-HOOK (#484): P4 layers carry
+                an empty paramIds (parameters4 namespace — see
+                layers_osmdaily.ts); layerParamTag returns "" for them
+                (and "(P4-031)" for paramLabel slices like senscom), so
+                skip the trailing space when the tag is empty instead of
+                rendering "(p)" on all six osmdaily buttons. */}
+            {layerParamTag(l) === "" ? "" : ` ${layerParamTag(l)}`}
           </button>
         ))}
       </div>
@@ -262,7 +272,12 @@ export default function LayersPage() {
               // GENV/G03-style proxy fields) are direct distance, not a
               // fallback — "varu" would claim the foot graph was missing.
               ? " · otsekaugus (sirge joon, mitte kõndimisaeg)"
-              : " · euclidiline varu (kõndimisvõrk puudub)"
+              // P4-031-HOOK (#484): the senscom band kernel counts in a
+              // hard Euclidean radius by design (DIY witnesses, no walk
+              // graph involved) — "varu" would claim a walk version exists.
+              : bonusSpecFor(layer).kind === "bands"
+                ? " · otsekaugus kõvas raadiuses (DIY-tunnistajad, mitte kõnnivõrk)"
+                : " · euclidiline varu (kõndimisvõrk puudub)"
             : "")
         }
         onViewChange={(b) => setView((prev) => (sameView(prev, b) ? prev : b))}
