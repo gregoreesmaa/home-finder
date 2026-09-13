@@ -68,6 +68,8 @@ import { G18B_RASTER_FILE } from "../layers_group18restb";
 import { G17A_RASTER_FILE } from "../layers_group17a";
 // G17B-HOOK(#178): batch G17B raster file lives in layers_group17b.ts.
 import { G17B_RASTER_FILE } from "../layers_group17b";
+// G17R-HOOK(#196): batch G17R raster file lives in layers_group17rest.ts.
+import { G17R_RASTER_FILE } from "../layers_group17rest";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -407,6 +409,8 @@ const RASTER_FILE: Record<LayerId, string> = {
   ...G17A_RASTER_FILE,
   // G17B-HOOK (#178): lawncare raster (scripts/build/batch_g17_b.py).
   ...G17B_RASTER_FILE,
+  // G17R-HOOK (#196): privroad raster (scripts/build/batch_g17_rest.py).
+  ...G17R_RASTER_FILE,
 };
 
 /**
@@ -553,6 +557,10 @@ const G17A_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["compost", "gritbin"
 // lawncare (Euclidean count kernel, viewshed/moorage/G17A precedent —
 // see scripts/build/batch_g17_b.py).
 const G17B_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["lawncare"]);
+// G17R-HOOK (#196): Euclidean-built G17R master rides "euclidean" —
+// privroad (exact-grid Dijkstra by construction, same story as
+// drainage/shoredist — see scripts/build/batch_g17_rest.py).
+const G17R_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["privroad"]);
 
 export async function loadLayerRaster(
   layer: LayerId,
@@ -578,7 +586,8 @@ export async function loadLayerRaster(
       G18A_EUCLIDEAN_MASTER.has(layer) || // G18A-HOOK (#172)
       G18B_EUCLIDEAN_MASTER.has(layer) || // G18B-HOOK (#173)
       G17A_EUCLIDEAN_MASTER.has(layer) || // G17A-HOOK (#177)
-      G17B_EUCLIDEAN_MASTER.has(layer); // G17B-HOOK (#178)
+      G17B_EUCLIDEAN_MASTER.has(layer) || // G17B-HOOK (#178)
+      G17R_EUCLIDEAN_MASTER.has(layer); // G17R-HOOK (#196)
     return { raster: doc, distance: euclidean ? "euclidean" : "walk" };
   }
   return { raster: null, distance: "euclidean" };
@@ -718,6 +727,10 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // precision — the file is absent, so windows serve county
   // everywhere, like G02B/G03/G03D/G08B/G05C/G05E).
   lawncare: "lawncare-metro",
+  // G17R-HOOK (#196): no privroad metro master (documented fake
+  // precision — the file is absent, so windows serve county
+  // everywhere, like G02B/G03/G03D/G08B/G05C/G05E).
+  privroad: "privroad-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

@@ -101,7 +101,8 @@ describe("overlay legend + colors", () => {
     // G18B-HOOK (#173): fishbowl + mossrisk + daylight join the registry.
     // G17A-HOOK (#177): compost + gritbin + leafdrop join the registry.
     // G17B-HOOK (#178): lawncare joins the registry.
-    expect(ids).toHaveLength(72);
+    // G17R-HOOK (#196): privroad joins the registry.
+    expect(ids).toHaveLength(73);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -237,6 +238,9 @@ describe("overlay legend + colors", () => {
     // G17B-HOOK (#178): lawncare joins the registry.
     expect(overlayLegendFor("lawncare")).toContain("küllastus 20");
     expect(overlayLegendFor("lawncare")).toContain("hinnang");
+    // G17R-HOOK (#196): privroad joins the registry.
+    expect(overlayLegendFor("privroad")).toContain("200 m");
+    expect(overlayLegendFor("privroad")).toContain("hinnang");
   });
 
   it("gives every layer a distinct marker color", () => {
@@ -255,7 +259,8 @@ describe("overlay legend + colors", () => {
     // G18B-HOOK (#173): fishbowl + mossrisk + daylight join the registry.
     // G17A-HOOK (#177): compost + gritbin + leafdrop join the registry.
     // G17B-HOOK (#178): lawncare joins the registry.
-    expect(seen.size).toBe(72);
+    // G17R-HOOK (#196): privroad joins the registry.
+    expect(seen.size).toBe(73);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

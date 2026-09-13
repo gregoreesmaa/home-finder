@@ -123,6 +123,8 @@ describe("layer registry", () => {
       "leafdrop",
       // G17B-HOOK (#178): Group 17 municipal-services-B id (p469 lawncare).
       "lawncare",
+      // G17R-HOOK (#196): Group 17 HOA-rest id (p245 privroad).
+      "privroad",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -363,6 +365,16 @@ describe("layer registry", () => {
     expect(radiusKmFor("lawncare")).toBe(0.3);
     expect(LAYERS.find((l) => l.id === "lawncare")?.paramIds).toEqual([469]);
     expect(overpassQueryFor("lawncare", TALLINN_BBOX)).toContain("grass");
+  });
+
+  it("wires the G17R privroad layer with locked calibration", () => {
+    // G17R-HOOK (#196): drift guard — hook specs must equal G17R_CAL in
+    // layers_group17rest.ts and the Python builder (parsed by
+    // test_batch_g17_rest.py).
+    expect(bonusSpecFor("privroad")).toEqual({ kind: "quiet", halfM: 200 });
+    expect(radiusKmFor("privroad")).toBe(0.3);
+    expect(LAYERS.find((l) => l.id === "privroad")?.paramIds).toEqual([245]);
+    expect(overpassQueryFor("privroad", TALLINN_BBOX)).toContain("private");
   });
 
   it("every layer explains green=good / red=bad in Estonian", () => {

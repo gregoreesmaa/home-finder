@@ -231,6 +231,17 @@ import {
   GROUP17B_TAGS,
   bonusSpecForGroup17B,
 } from "./layers_group17b";
+// G17R-HOOK(#196): batch G17R (Group 17 HOA-rest privroad p245;
+// p4/p49/p142/p145/p152/p167/p246/p247/p278/p368/p427 documented
+// no-map) tables live in ./layers_group17rest (new file). That
+// module imports layers only as types, so no runtime cycle.
+import type { Group17RestLayerId } from "./layers_group17rest";
+import {
+  GROUP17REST_DECAY,
+  GROUP17REST_LAYERS,
+  GROUP17REST_TAGS,
+  bonusSpecForGroup17Rest,
+} from "./layers_group17rest";
 // G11D-HOOK(#135): batch G11D (Group 11 leftovers B: p346/p470/p419/p466;
 // p317 is a documented no-map) tables live in ./layers_group11d (new
 // file). That module imports layers only as types, so no runtime cycle.
@@ -383,7 +394,9 @@ export type LayerId =
   // G17A-HOOK (#177): Group 17 municipal-services-A ids (./layers_group17a).
   | Group17ALayerId
   // G17B-HOOK (#178): Group 17 municipal-services-B id (./layers_group17b).
-  | Group17BLayerId;
+  | Group17BLayerId
+  // G17R-HOOK (#196): Group 17 HOA-rest id (./layers_group17rest).
+  | Group17RestLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -518,6 +531,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...GROUP17A_DECAY,
   // G17B-HOOK (#178): lawncare radius (see layers_group17b.ts GROUP17B_DECAY).
   ...GROUP17B_DECAY,
+  // G17R-HOOK (#196): privroad radius (see layers_group17rest.ts GROUP17REST_DECAY).
+  ...GROUP17REST_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -682,6 +697,8 @@ export const LAYERS: LayerDef[] = [
   ...GROUP17A_LAYERS,
   // G17B-HOOK (#178): lawncare (p469) def from ./layers_group17b.
   ...GROUP17B_LAYERS,
+  // G17R-HOOK (#196): privroad (p245) def from ./layers_group17rest.
+  ...GROUP17REST_LAYERS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -759,6 +776,8 @@ const TAGS: Record<LayerId, string> = {
   ...GROUP17A_TAGS,
   // G17B-HOOK (#178): lawncare query (see layers_group17b.ts GROUP17B_TAGS).
   ...GROUP17B_TAGS,
+  // G17R-HOOK (#196): privroad query (see layers_group17rest.ts GROUP17REST_TAGS).
+  ...GROUP17REST_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -1007,6 +1026,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // G17B-HOOK (#178): lawncare spec lives in ./layers_group17b.
   const g17b = bonusSpecForGroup17B(layer);
   if (g17b) return g17b;
+  // G17R-HOOK (#196): privroad spec lives in ./layers_group17rest.
+  const g17r = bonusSpecForGroup17Rest(layer);
+  if (g17r) return g17r;
   throw new Error(`unknown layer: ${layer}`);
 }
 
