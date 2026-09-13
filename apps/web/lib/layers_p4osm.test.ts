@@ -44,8 +44,8 @@ describe("p4osm registry (#480)", () => {
 
   it("merges into LAYERS via the P4OSM-HOOK (page + routes serve all layers)", () => {
     const ids = LAYERS.map((l) => l.id);
-    // 77 shipped layers + 2 P4OSM.
-    expect(ids.length).toBe(79);
+    // 95 shipped layers (main at #504) + 2 P4OSM (95 + 2).
+    expect(ids.length).toBe(97);
     for (const id of P4OSM_LAYER_IDS) expect(ids).toContain(id);
   });
 

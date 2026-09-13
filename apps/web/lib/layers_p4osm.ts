@@ -66,7 +66,7 @@
 // 1..500 has exactly one verdict — e.g. 29 is lot size, 35 is energy
 // class). Claiming bare 29/35 would corrupt that audit (group02's
 // global verdict lock fails any LAYERS row claiming 35). The P4
-// linkage lives in P4OSM_P4 + the titles instead (pinned by test),
+// linkage lives in P4OSM_P4 + paramLabel + the titles instead (pinned by test),
 // and app/layers/page.tsx skips the "(p…)" suffix for empty
 // paramIds (zero behaviour change for existing layers). Same shape
 // as the merged #482 osmdaily batch.
@@ -89,6 +89,7 @@ export const P4OSM_LAYERS: LayerDef[] = [
   {
     id: "blockwalk",
     paramIds: [],
+    paramLabel: "P4-029",
     title: "Kvartali kõnnitavus (P4-029 proksi, hinnang)",
     goodLabel: "roheline = kaardistatud kõnnitee/kate/valgusti lähedal (hinnang)",
     badLabel: "punane = kaardistatud kõnniteed/katet/valgustit lähedal pole (hinnang)",
@@ -101,6 +102,7 @@ export const P4OSM_LAYERS: LayerDef[] = [
   {
     id: "darkness",
     paramIds: [],
+    paramLabel: "P4-035",
     title: "Tänavavalgustus (P4-035 proksi, hinnang)",
     goodLabel: "roheline = lit-märgistus lähedal (hinnang)",
     badLabel: "punane = lit-märgistust lähedal pole (hinnang)",
