@@ -42,7 +42,8 @@ describe("batch B10C registry (#121)", () => {
     const ids = LAYERS.map((l) => l.id);
     // Rebased onto current main (#230): 73 shipped layers + 4 B10C.
     // OSMDAILY-HOOK (#482): +6 daily-life layers.
-    expect(ids.length).toBe(83);
+    // GTFS-HOOK (#483): +1 stop overlay (84 with gtfsstops).
+    expect(ids.length).toBe(84);
     for (const id of BATCH10C_LAYER_IDS) expect(ids).toContain(id);
     for (const gone of ["internet", "redundancy", "ota"]) expect(ids).not.toContain(gone);
   });

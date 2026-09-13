@@ -35,6 +35,9 @@ export function needsGraphOverlay(layer: LayerId): boolean {
 /** Marker sizing weight for one feature point. */
 export function overlayWeight(p: LayerPoint, layer: LayerId): number {
   if (layer === "transit") return p.t ?? 0;
+  // GTFS-HOOK (#483): gtfsstops markers size by scheduled Wednesday
+  // departures; mapped-only Elron stations (no t) read 1, never 0.
+  if (layer === "gtfsstops") return p.t ?? 1;
   if (typeof p.a === "number") return p.a;
   return 1;
 }
@@ -371,6 +374,14 @@ export function overlayColorFor(layer: LayerId): string {
       return "#1e293b";
     case "lastshop":
       return "#854d0e";
+    // GTFS-HOOK (#483): gtfsstops markers (point overlay, stride-sampled
+    // like grocery). #8b5cf6: violet-500 schedule-board violet (lighter
+    // than herd #7c3aed; NOT #6d28d9 — taken by worship — and NOT
+    // #9333ea — taken by schools — and NOT #7e22ce — taken by commbleed
+    // — and NOT #4f46e5 — taken by community). Distinct from every
+    // other marker (distinct-color test).
+    case "gtfsstops":
+      return "#8b5cf6";
   }
 }
 
@@ -636,6 +647,11 @@ export function overlayLegendFor(layer: LayerId): string {
       return "Sissepääsud (sh trepikojad) · lähedaste arv (leitavuse-hinnang, küllastus 30, parkimisreeglid puuduvad)";
     case "lastshop":
       return "Pood/apteek/sularaha · lähedaste arv (HOIATUS-hinnang, küllastus 12, sulgemine mõõtmata)";
+    // GTFS-HOOK (#483): gtfsstops (p15) — TLT-city GTFS stops with
+    // scheduled Wednesday departures + mapped-only Elron stations; the
+    // Euclidean fallback holds the scheduled-service density field.
+    case "gtfsstops":
+      return "GTFS peatused (buss/tramm/troll + kaardistatud Elroni jaamad) · suurus = sõiduplaanilised väljumised kolmapäevas (küllastus 1500, õhtune täituvus teadmata — EI OLE loendusandmeid)";
   }
 }
 

@@ -139,6 +139,8 @@ describe("layer registry", () => {
       "thirdplace",
       "taxidoor",
       "lastshop",
+      // GTFS-HOOK (#483): GTFS stop overlay id (p15, measured-only set).
+      "gtfsstops",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -167,6 +169,9 @@ describe("layer registry", () => {
     for (const id of ["dailyshop", "activity", "herd", "thirdplace", "taxidoor", "lastshop"]) {
       expect(LAYERS.find((l) => l.id === id)?.paramIds).toEqual([]);
     }
+    // GTFS-HOOK (#483): gtfsstops shares p15 with transit (fiber/mobile
+    // share p51 — same precedent).
+    expect(LAYERS.find((l) => l.id === "gtfsstops")?.paramIds).toEqual([15]);
   });
 
   it("wires the B10C utility layers with locked calibration", () => {

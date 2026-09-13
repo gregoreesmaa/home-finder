@@ -684,7 +684,7 @@ carries its own re-probe checklist.
 | EIS (ex-KredEx) | P4-007, 010, 060 | proxy join-gated (3 per-building dims) | docs/p4_eis.md |
 | Elektrilevi DSO | P4-008, 009, 036, 046, 051 | no-map (fault-map app / gated / nowhere) | docs/p4_elektrilevi.md |
 | Elering dashboard | P4-009, 036, 046 | no-map (national series = context echo, never score) | docs/p4_elering.md |
-| Elron timetables | P4-014, 032, 055, 061 | no-map (PDFs/news; no GTFS/API) | docs/p4_elron.md |
+| Elron timetables | P4-014, 032, 055, 061 | no-map (PDFs/news; no GTFS/API; mapped stations ride the `gtfsstops` overlay, position only) | docs/p4_elron.md |
 | EMTA guides / Võlapäring | P4-004, 019, 037 | proxy join-gated (joined rows only; KOV-table bulk = future) | docs/p4_emta.md |
 | Event / fireworks calendars | P4-033, 047 | no-map (human culture pages) | docs/p4_events.md |
 | Fix-it channels / Mupo | P4-026, 062 | no-map (helpline/app; no lag table) | docs/p4_fixit.md |
@@ -718,7 +718,7 @@ carries its own re-probe checklist.
 | Own listing store | P4-001, 002, 003, 005, 007, 021, 022, 028, 029, 034, 038, 040, 041, 043, 046, 049, 051, 052, 057, 059 | mixed (P4-001/022/028/043/046 computed or partial; rest NULL incl. P4-051 hard NULL) | docs/p4_own_store.md |
 | Päästeamet | P4-012, 015, 042, 047, 058, 059, 062 | proxy join-gated (point/calendar/zone joins; machine feed negative) | docs/p4_paaste.md |
 | Parkimine regime | P4-013, 037, 049 | proxy (per-parcel zone join; bulk polygons negative) | docs/p4_park.md |
-| Peatus.ee GTFS | P4-037, 045, 048, 049, 061 | no-map (zip dead; NULL until feed reopens) | docs/p4_peatus.md |
+| Peatus.ee GTFS | P4-037, 045, 048, 049, 061 | no-map (zip dead; NULL until feed reopens; city stop positions ride the `gtfsstops` overlay from the TLT snapshot vintage) | docs/p4_peatus.md |
 | PLANK WFS | P4-006 | no-map (endpoint gone → SPA shell) | docs/p4_plank.md |
 | PPA open CSVs | P4-012, 015 | proxy (OPEN feeds; linnaosa tertile choropleth) | docs/p4_ppa.md |
 | PRIA field blocks | P4-024 | no-map (no anonymous bulk; buffer shape fixture-proven) | docs/p4_pria.md |
@@ -739,7 +739,7 @@ carries its own re-probe checklist.
 | Kohtutäiturid | P4-004, 020 | proxy join-gated (joined snapshot slices only) | docs/p4_taitur.md |
 | Terviseamet | P4-017, 024 | no-map (query UI / county PDFs; no bulk) | docs/p4_tervise.md |
 | Tervisekassa GP lists | P4-011, 020 | no-map (PowerBI embed; no bulk flags) | docs/p4_tkas.md |
-| TLT / transport.tallinn | P4-012, 018, 027, 032, 037, 045, 048, 049, 061 | no-map (news/app shells; no bulk) | docs/p4_tlt.md |
+| TLT / transport.tallinn | P4-012, 018, 027, 032, 037, 045, 048, 049, 061 | no-map (news/app shells; no bulk; city stops ride the `gtfsstops` overlay from the snapshot GTFS vintage — schedules, never ridership) | docs/p4_tlt.md |
 | TPR register | P4-005, 006, 050 | no-map (Angular SPA; no bulk) | docs/p4_tpr.md |
 | Transpordiamet | P4-012, 018, 023, 026, 037, 046, 047, 054 | mixed (P4-012 accident-CSV proxy live; rest join-gated) | docs/p4_trans.md |
 | TTJA netikaart | P4-009 | no-map (interactive app; no feed) | docs/p4_ttja_net.md |

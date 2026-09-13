@@ -61,6 +61,10 @@ publications, not polling a feed — exactly what this repo refuses
   build the polite cached ingestion (daily TTL per parameters3.md
   §5.12 cadence), and graduate that dim to a per-station band /
   calendar.
+- **Station positions (not a verdict change):** mapped Elron stations
+  ride the `gtfsstops` point overlay (#483) from the snapshot OSM
+  extract (position + real railway tags only — no departure join,
+  ridership still NULL above).
 
 ## Why demo + coverage share one PR
 

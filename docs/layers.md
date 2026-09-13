@@ -83,7 +83,7 @@ zero: null encodes 255 and renders red (red = bad *or* honestly-unknown).
 | 9 Noise (8) | 8 | 16, 138, 162, 234, 301, 408, 445, 493 (proxies) | — | `layers_group09` + `layers_genv` (#104, #124) |
 | 10 Utilities (18) | 18 | 215, 51, 53, 54 | 14 incl. 262, 265 (dims; p51 ships twice — fiber + mobile — on one param) | `layers_group10rest` + `layers_batch10c` + `dims_group10/10b/10c/10rest` (#105, #107, #121, #171, #230) |
 | 11 OSM amenities (24) | 24 | 23: 14, 19, 20, 84, 86–89, 101–103, 108, 124, 169, 190, 313, 338, 346, 419, 442, 462, 466, 470 | 317 (no-map) | `layers.ts` core + `layers_batch1` + `layers_group11c/d` + dims (#98, #134, #135) |
-| 12 Transit (5) | 5 | 15, 125, 343 | 11, 17 (commute dims, no layer) | core + `layers_batch4` + `dims_group12`/`dims_batch6` (#99, #126, #133) |
+| 12 Transit (5) | 5 | 15, 125, 343 (p15 ships twice — transit + gtfsstops — on one param) | 11, 17 (commute dims, no layer) | core + `layers_batch4` + `layers_gtfsstops` + `dims_group12`/`dims_batch6`/`dims_p4_gtfsstops` (#99, #126, #133, #483) |
 | 13 Logistics (5) | 5 | 141, 220, 270, 282, 342 | — (all five ship; 220/270 via batch6 mobility proxies) | `layers_batch4/6` + `dims_group13` (#99, #126, #133) |
 | 14 Safety (5) | 5 | 13, 78, 315, 335, 467 (proxies) | — | `layers_batch5` (#102) |
 | 15 Education (5) | 5 | 12, 123, 130, 314, 386 | — | core + `layers_group15` + `layers_batch6` (#116, #133) |
