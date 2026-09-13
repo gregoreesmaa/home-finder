@@ -70,6 +70,8 @@ import { G17A_RASTER_FILE } from "../layers_group17a";
 import { G17B_RASTER_FILE } from "../layers_group17b";
 // G17R-HOOK(#196): batch G17R raster file lives in layers_group17rest.ts.
 import { G17R_RASTER_FILE } from "../layers_group17rest";
+// B10C-HOOK (#230): batch B10C raster files live in layers_batch10c.ts.
+import { BATCH10C_RASTER_FILE } from "../layers_batch10c";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -411,6 +413,8 @@ const RASTER_FILE: Record<LayerId, string> = {
   ...G17B_RASTER_FILE,
   // G17R-HOOK (#196): privroad raster (scripts/build/batch_g17_rest.py).
   ...G17R_RASTER_FILE,
+  // B10C-HOOK (#230): utility rasters (scripts/build/batch_b10c_utility.py).
+  ...BATCH10C_RASTER_FILE,
 };
 
 /**
@@ -468,6 +472,10 @@ export function matchesContract(
   // B6-HOOK (#133): "quiet" carries halfM on the wire half field.
   // G07-HOOK (#140): nearest-source cleanliness (0 on the source, 50 at halfM).
   if (spec.kind === "quiet") return doc.half === spec.halfM;
+  // B10C-HOOK (#230): "cover" (mobile) is self-scaling discs — null half
+  // on the wire (the measured ranges ARE the calibration); sigma must
+  // still match the Euclidean fallback kernel width.
+  if (spec.kind === "cover") return doc.half === null && doc.sigma === spec.sigma;
   return false;
 }
 
@@ -561,6 +569,11 @@ const G17B_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["lawncare"]);
 // privroad (exact-grid Dijkstra by construction, same story as
 // drainage/shoredist — see scripts/build/batch_g17_rest.py).
 const G17R_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["privroad"]);
+// B10C-HOOK (#230): the mobile master stamps DIRECT distance, not walk
+// time — radio cells radiate through air (see batch_b10c_utility.py
+// stamp_cover). Water/waste/fiber ride the walk graph ("walk").
+// Labeling mobile "walk" would claim footpath routing it never used.
+const B10C_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["mobile"]);
 
 export async function loadLayerRaster(
   layer: LayerId,
@@ -587,7 +600,8 @@ export async function loadLayerRaster(
       G18B_EUCLIDEAN_MASTER.has(layer) || // G18B-HOOK (#173)
       G17A_EUCLIDEAN_MASTER.has(layer) || // G17A-HOOK (#177)
       G17B_EUCLIDEAN_MASTER.has(layer) || // G17B-HOOK (#178)
-      G17R_EUCLIDEAN_MASTER.has(layer); // G17R-HOOK (#196)
+      G17R_EUCLIDEAN_MASTER.has(layer) || // G17R-HOOK (#196)
+      B10C_EUCLIDEAN_MASTER.has(layer); // B10C-HOOK (#230)
     return { raster: doc, distance: euclidean ? "euclidean" : "walk" };
   }
   return { raster: null, distance: "euclidean" };
@@ -731,6 +745,12 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // precision — the file is absent, so windows serve county
   // everywhere, like G02B/G03/G03D/G08B/G05C/G05E).
   privroad: "privroad-metro",
+  // B10C-HOOK (#230): no metro masters (sparse count kernels are smooth
+  // at 75 m; files absent, windows serve county everywhere).
+  water: "water-metro",
+  waste: "waste-metro",
+  fiber: "fiber-metro",
+  mobile: "mobile-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */
@@ -953,8 +973,9 @@ export async function loadWindowRaster(
     // G07D-HOOK (#143): quiet specs carry halfM, not half.
     // B6-HOOK (#133): "quiet" specs carry halfM, not half.
     // G07-HOOK (#140): quiet specs carry halfM, not half.
+    // B10C-HOOK (#230): "cover" (mobile) is self-scaling: null half.
     half:
-      spec.kind === "variety"
+      spec.kind === "variety" || spec.kind === "cover"
         ? null
         : spec.kind === "quiet"
           ? spec.halfM

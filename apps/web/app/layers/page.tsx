@@ -253,7 +253,12 @@ export default function LayersPage() {
         sourceNote={
           `Allikas: ${def.source}` +
           (distance === "euclidean" && provenance === "snapshot"
-            ? " · euclidiline varu (kõndimisvõrk puudub)"
+            ? raster
+              // B10C-HOOK (#230): Euclidean-BUILT masters (mobile + the
+              // GENV/G03-style proxy fields) are direct distance, not a
+              // fallback — "varu" would claim the foot graph was missing.
+              ? " · otsekaugus (sirge joon, mitte kõndimisaeg)"
+              : " · euclidiline varu (kõndimisvõrk puudub)"
             : "")
         }
         onViewChange={(b) => setView((prev) => (sameView(prev, b) ? prev : b))}

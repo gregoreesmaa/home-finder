@@ -161,6 +161,32 @@ describe("quiet-kind drainage goodness (G03)", () => {
   });
 });
 
+describe("cover measured-footprint score (B10C mobile fallback, #230)", () => {
+  // Cell score = strongest covering disc 100·(1-d/r), max-merged;
+  // outside every disc stays null (unknown, never zero). The centroid
+  // is a measurement site (tags.ulatus_m = measured range in metres),
+  // never a tower.
+  const COVER: BonusSpec = { kind: "cover", sigma: 1.0 };
+  const BOX: BBoxLike = { minlon: 24.74, minlat: 59.43, maxlon: 24.76, maxlat: 59.44 };
+
+  it("reads 100 at the centroid, decays to the measured edge, null beyond", () => {
+    const s = buildScoredField(
+      [{ lon: 24.75, lat: 59.435, tags: { ulatus_m: "1000", radio: "LTE" } }],
+      BOX, 11, 11, 1.0, COVER,
+    );
+    expect(scoredAt(s, 5, 5)).toBe(100);
+    // ~440 m north: 100*(1-0.44) ~= 56.
+    expect(scoredAt(s, 5, 9)).toBeCloseTo(56, 0);
+    // Corner (~790 m) still inside the 1 km disc: ~= 21.
+    expect(scoredAt(s, 0, 0)).toBeCloseTo(21, 0);
+  });
+
+  it("ignores points without a measured range, nulls when none qualify", () => {
+    const s = buildScoredField([{ lon: 24.75, lat: 59.435 }], BOX, 11, 11, 1.0, COVER);
+    expect(scoredAt(s, 5, 5)).toBeNull();
+  });
+});
+
 describe("sparse-kind daylight openness (G18B)", () => {
   // Score = 100·half/(S+half) over the plain nearby-building count:
   // green where SPARSE (open sky), the mirror image of the area kind.

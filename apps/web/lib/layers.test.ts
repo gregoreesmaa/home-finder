@@ -125,6 +125,12 @@ describe("layer registry", () => {
       "lawncare",
       // G17R-HOOK (#196): Group 17 HOA-rest id (p245 privroad).
       "privroad",
+      // B10C-HOOK (#230): Group 10 utility ids (p53 water + p54 waste +
+      // p51 fiber/mobile on TTJA/OpenCellID data — p262/p265 stay cut).
+      "water",
+      "waste",
+      "fiber",
+      "mobile",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -143,6 +149,28 @@ describe("layer registry", () => {
     expect(LAYERS.find((l) => l.id === "odorsrc")?.paramIds).toEqual([62]);
     // G02B-HOOK (#137): lift-proxy param binding.
     expect(LAYERS.find((l) => l.id === "liftproxy")?.paramIds).toEqual([196]);
+    // B10C-HOOK (#230): utility param binding.
+    expect(LAYERS.find((l) => l.id === "water")?.paramIds).toEqual([53]);
+    expect(LAYERS.find((l) => l.id === "waste")?.paramIds).toEqual([54]);
+    expect(LAYERS.find((l) => l.id === "fiber")?.paramIds).toEqual([51]);
+    expect(LAYERS.find((l) => l.id === "mobile")?.paramIds).toEqual([51]);
+  });
+
+  it("wires the B10C utility layers with locked calibration", () => {
+    // Drift guard: hook specs must equal BATCH10C_BONUS/BATCH10C_DECAY in
+    // layers_batch10c.ts and the Python builder LAYER_DEFAULTS (parsed by
+    // test_batch_b10c.py). Mobile is measured-coverage discs,
+    // self-scaling, no half.
+    expect(bonusSpecFor("water")).toEqual({ kind: "area", half: 1 });
+    expect(bonusSpecFor("waste")).toEqual({ kind: "area", half: 6 });
+    expect(bonusSpecFor("fiber")).toEqual({ kind: "area", half: 50 });
+    expect(bonusSpecFor("mobile")).toEqual({ kind: "cover", sigma: 1.0 });
+    expect(radiusKmFor("water")).toBe(0.5);
+    expect(radiusKmFor("waste")).toBe(0.3);
+    expect(radiusKmFor("fiber")).toBe(0.3);
+    expect(radiusKmFor("mobile")).toBe(1.0);
+    expect(overpassQueryFor("waste", TALLINN_BBOX)).toContain("waste_disposal");
+    expect(overpassQueryFor("water", TALLINN_BBOX)).toContain("drinking_water");
   });
 
   it("wires the G02B lift proxy with locked calibration", () => {

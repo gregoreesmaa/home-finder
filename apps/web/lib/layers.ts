@@ -328,6 +328,17 @@ import {
   GROUP06_TAGS,
   bonusSpecForGroup06,
 } from "./layers_group06";
+// B10C-HOOK (#230): batch B10C (Group 10 utilities: p53 water + p54
+// waste + p51 fiber/mobile) tables live in ./layers_batch10c (cherry-
+// picked from local-wip-savepoint, #121). That module imports layers
+// only as types, so no runtime cycle.
+import type { Batch10CLayerId } from "./layers_batch10c";
+import {
+  BATCH10C_DECAY,
+  BATCH10C_DEFS,
+  BATCH10C_TAGS,
+  bonusSpecForBatch10C,
+} from "./layers_batch10c";
 
 export type LayerId =
   | "parks"
@@ -396,7 +407,9 @@ export type LayerId =
   // G17B-HOOK (#178): Group 17 municipal-services-B id (./layers_group17b).
   | Group17BLayerId
   // G17R-HOOK (#196): Group 17 HOA-rest id (./layers_group17rest).
-  | Group17RestLayerId;
+  | Group17RestLayerId
+  // B10C-HOOK (#230): Group 10 utility ids (./layers_batch10c).
+  | Batch10CLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -533,6 +546,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...GROUP17B_DECAY,
   // G17R-HOOK (#196): privroad radius (see layers_group17rest.ts GROUP17REST_DECAY).
   ...GROUP17REST_DECAY,
+  // B10C-HOOK (#230): utility radii (see layers_batch10c.ts BATCH10C_DECAY).
+  ...BATCH10C_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -699,6 +714,8 @@ export const LAYERS: LayerDef[] = [
   ...GROUP17B_LAYERS,
   // G17R-HOOK (#196): privroad (p245) def from ./layers_group17rest.
   ...GROUP17REST_LAYERS,
+  // B10C-HOOK (#230): utility defs (p53 water + p54 waste + p51 fiber/mobile) from ./layers_batch10c.
+  ...BATCH10C_DEFS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -778,6 +795,8 @@ const TAGS: Record<LayerId, string> = {
   ...GROUP17B_TAGS,
   // G17R-HOOK (#196): privroad query (see layers_group17rest.ts GROUP17REST_TAGS).
   ...GROUP17REST_TAGS,
+  // B10C-HOOK (#230): utility queries (see layers_batch10c.ts BATCH10C_TAGS).
+  ...BATCH10C_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -900,6 +919,11 @@ export type BonusSpec =
   // G18B-HOOK (#173): inverse count-kernel spec (green where sparse —
   // daylight p405 open-sky proxy, first use).
   | SparseSpec
+  // B10C-HOOK (#230): measured-coverage discs (mobile p51) — self-scaling
+  // 0..100 off the measured ranges (the ranges ARE the calibration, no
+  // half); sigma is the Euclidean fallback kernel width when the raster
+  // is missing.
+  | { kind: "cover"; sigma: number }
   | { kind: "variety"; key: string; values: string[]; per: number; cap: number }
   // B6-HOOK (#133) + G07-HOOK (#140): nearest-source calmness/cleanliness
   // (0 on the source, 50 at halfM).
@@ -1029,6 +1053,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // G17R-HOOK (#196): privroad spec lives in ./layers_group17rest.
   const g17r = bonusSpecForGroup17Rest(layer);
   if (g17r) return g17r;
+  // B10C-HOOK (#230): utility specs live in ./layers_batch10c.
+  const b10c = bonusSpecForBatch10C(layer);
+  if (b10c) return b10c;
   throw new Error(`unknown layer: ${layer}`);
 }
 

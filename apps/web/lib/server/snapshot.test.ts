@@ -708,6 +708,85 @@ describe("layer walk rasters", () => {
     }
   });
 
+  it("serves the B10C utility rasters under area + cover contracts", async () => {
+    // B10C-HOOK (#230): water (half 1 / sigma 0.5), waste (half 6 /
+    // sigma 0.3) and fiber (half 50 / sigma 0.3) ride walk-graph area
+    // contracts; mobile rides the self-scaling cover contract (null
+    // half, sigma 1.0) and reports euclidean (direct-distance stamp —
+    // radio does not walk footpaths). A stale half is rejected.
+    for (const [layer, half, sigma, distance] of [
+      ["water", 1, 0.5, "walk"],
+      ["waste", 6, 0.3, "walk"],
+      ["fiber", 50, 0.3, "walk"],
+      ["mobile", null, 1.0, "euclidean"],
+    ] as const) {
+      const dir = await fixtureDir([{ lat: 59.44, lon: 24.75 }], layer);
+      await writeFile(
+        join(dir, "osm", `${layer}-walk-raster.json`),
+        JSON.stringify(rasterDoc({ half, sigma })),
+      );
+      try {
+        const res = await loadLayerRaster(layer, dir);
+        expect(res.distance).toBe(distance);
+        expect(res.raster?.half).toBe(half);
+        expect(res.raster?.sigma).toBe(sigma);
+      } finally {
+        await rm(dir, { recursive: true, force: true });
+      }
+    }
+    const stale = await fixtureDir([{ lat: 59.44, lon: 24.75 }], "waste");
+    await writeFile(
+      join(stale, "osm", "waste-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 999, sigma: 0.3 })),
+    );
+    try {
+      expect(await loadLayerRaster("waste", stale)).toEqual({ raster: null, distance: "euclidean" });
+    } finally {
+      await rm(stale, { recursive: true, force: true });
+    }
+    const staleCover = await fixtureDir([{ lat: 59.44, lon: 24.75 }], "mobile");
+    await writeFile(
+      join(staleCover, "osm", "mobile-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 15, sigma: 1.0 })),
+    );
+    try {
+      // A half-bearing mobile doc is stale (cover is self-scaling).
+      expect(await loadLayerRaster("mobile", staleCover)).toEqual({ raster: null, distance: "euclidean" });
+    } finally {
+      await rm(staleCover, { recursive: true, force: true });
+    }
+  });
+
+  it("probes B10C county windows per layer (contract half echoed)", async () => {
+    // B10C-HOOK (#230): window-probe per layer — county-only windows
+    // (no metro masters) serve under the same contracts; the half echo
+    // pins the wire (mobile: null).
+    for (const [layer, half, sigma] of [
+      ["water", 1, 0.5],
+      ["waste", 6, 0.3],
+      ["fiber", 50, 0.3],
+      ["mobile", null, 1.0],
+    ] as const) {
+      const dir = await fixtureDir([{ lat: 59.44, lon: 24.75 }], layer);
+      await writeFile(
+        join(dir, "osm", `${layer}-walk-raster.json`),
+        JSON.stringify(rasterDoc({ half, sigma })),
+      );
+      try {
+        const win = await loadWindowRaster(
+          layer,
+          { minlon: 24.0, minlat: 59.0, maxlon: 24.2, maxlat: 59.1 },
+          2, 2, dir,
+        );
+        expect(win).not.toBeNull();
+        expect(win?.half).toBe(half);
+        expect(win?.sigma).toBe(sigma);
+      } finally {
+        await rm(dir, { recursive: true, force: true });
+      }
+    }
+  });
+
   it("serves G18A dayopen + glassglare rasters under their contracts", async () => {
     // G18A-HOOK (#172): dayopen quiet contract (halfM 150 on the
     // wire as half, sigma 0.3); Euclidean-built like commbleed. A

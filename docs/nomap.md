@@ -1,7 +1,7 @@
-# No-map decisions — why 406 parameters have no gradient map
+# No-map decisions — why 403 parameters have no gradient map
 
-`docs/layers.md` registers all 500 `parameters3.md` parameters: **94 ship as
-raster map layers**, **406 do not**. This file records the no-map decisions
+`docs/layers.md` registers all 500 `parameters3.md` parameters: **97 ship as
+raster map layers**, **403 do not**. This file records the no-map decisions
 with enough reasoning that any one of them can be challenged, re-tested, and
 overturned. Every row in the appendix (§4) points at the registry file and
 scorer dim that owns it; every section below states the claim, the snapshot
@@ -126,24 +126,30 @@ EFAS/CMEMS surge grids and EELIS flow data are not in the snapshot; a
 water-proximity re-skin would duplicate p50/p334. Overturn: KAUR flood
 polygons or DEM-derived hazard grids in-snapshot.
 
-### G10 — Utilities, telecom & grids (17/18 no-map; p215 ships)
+### G10 — Utilities, telecom & grids (14/18 no-map; p215/p51/p53/p54 ship)
 
-p215 skyview ships; p491 no-map dim. The rest are **proxy dims, no
-raster** (they SCORE per listing, honestly): p51/p262 mast-count
-(confirmed-telecom subset only — 219 masts, bare-mast fantasy
-excluded), p53 public-water nearness (~157 points), p54
-waste-collection nearness (709 disposal + 1034 recycling; 6347 street
-bins deliberately excluded), p265 broadcast nearness (44 antennas —
-sparse, soft floor), p52/p135/p211/p214/p404 power/telecom proximity
-(3689 towers, 1120 substations, voltage-tagged ways; p214/p404
-inverted with soft floors), p56/p213/p216/p420/p476 redundancy/solar/
-gap/response/underground proxies (underground: 41 cables — absence
-scores neutral, never zero). No raster because: counts are sparse
-(registry SAIDI/outage/Elering feeds absent), and mast proximity must
-never be presented as coverage. (Local B10C walk-graph masters exist on
-branch `local-wip-savepoint`, unmerged — the designated challenger for
-the raster half of these verdicts.) Overturn: TTJA/KKIS/ÜVK registries
-in-snapshot, or merging the B10C masters with contract checks.
+p215 skyview ships; p51 ships TWICE (fiber walk-graph on TTJA-reported
+≥1000 Mbit/s addresses, half 50/sigma 0.3; mobile measured-coverage
+discs on ~4.2k OpenCellID LTE cells, self-scaling cover-kind); p53
+ships (mapped public-water count kernel, half 1/sigma 0.5, ~154
+points); p54 ships (mapped collection-point count kernel, half 6/
+sigma 0.3, ~1531 points). All four are honestly-labelled proxies
+(`kaardistatud` + `hinnang` — mast proximity is never presented as
+coverage, which is why the old mast layers were cut). p491 no-map dim.
+The rest stay **proxy dims, no raster** (they SCORE per listing,
+honestly): p51/p262 mast-count (confirmed-telecom subset only — 219
+masts, bare-mast fantasy excluded), p265 broadcast nearness (44
+antennas — sparse, soft floor), p52/p135/p211/p214/p404
+power/telecom proximity (3689 towers, 1120 substations,
+voltage-tagged ways; p214/p404 inverted with soft floors),
+p56/p213/p216/p420/p476 redundancy/solar/gap/response/underground
+proxies (underground: 41 cables — absence scores neutral, never zero).
+No raster for those because: counts are sparse (registry
+SAIDI/outage/Elering feeds absent), and mast proximity must never be
+presented as coverage. (Overturned by #230: B10C walk-graph masters
+rebuilt from the 2026-09-12 snapshot with contract checks; the
+per-listing scorer dims are unchanged.) Overturn: TTJA/KKIS/ÜVK
+registries in-snapshot for the remaining proxies.
 
 ### G11 — OSM amenities (1/24 no-map: p317)
 
@@ -266,10 +272,7 @@ different surface, never a raster).
 | 47 | G5 | Zoning laws | NULL | layers_group05a.ts | Per-parcel prescriptive fact (the PLANK/TPR designated use); OSM landuse is descriptive (what is built), never the decree — painting it as zoning would be fake precision. Commercial-zone nearness stays p223's proxy, neve… |
 | 48 | G2 | Permit history | NULL | layers_group02.ts | Load on hoone, mitte asukoha omadus; naabermajade load ei puhasta Sinu korterit. Olek skooritakse kuulutuse/EHR fakti järgi (dims_group02), tundmatu olek jääb NULLiks. |
 | 49 | G17 | HOA restrictions | NULL | layers_group17rest.ts | A per-KÜ rulebook fact (house rules live in the KÜ põhikiri); the snapshot carries zero rulebook keys — a proximity gradient cannot read another building's rules. |
-| 51 | G10 | High-speed internet availabi | proxy | (dims docstring — see §3) | (see group reasoning in §3; scorer dim in owning dims_*.py) |
 | 52 | G10 | Cellular signal strength | proxy | (dims docstring — see §3) | (see group reasoning in §3; scorer dim in owning dims_*.py) |
-| 53 | G10 | Water source type | proxy | (dims docstring — see §3) | (see group reasoning in §3; scorer dim in owning dims_*.py) |
-| 54 | G10 | Waste management system | proxy | (dims docstring — see §3) | (see group reasoning in §3; scorer dim in owning dims_*.py) |
 | 55 | G19 | EV charging readiness | NULL | dim_ev_charging_readiness · layers_group19a.ts | EV-laadimise valmidus on maja elektrikilbi ja liitumisvõimsuse fakt (EI OLE hinnangut). Vajab elektriku kohapealset kontrolli (peakaitsme suurus, vaba võimsus, kaabeldus). |
 | 56 | G10 | Power grid reliability | proxy | (dims docstring — see §3) | (see group reasoning in §3; scorer dim in owning dims_*.py) |
 | 57 | G19 | Plumbing pipe materials | NULL | dim_plumbing_pipe_materials · layers_group19a.ts | Torude materjal (vask/teras/plast) selgub ainult torustikku nähes või aktidest (EI OLE hinnangut). Vajab kohapealset torumehe kontrolli + kaetud tööde akte (EHR). |
@@ -634,4 +637,4 @@ different surface, never a raster).
 | 499 | G7 | Radon mitigation aesthetic | NULL | layers_group07d.ts | radoonitõrje esteetika: fassaadihinnang, mille kohta andmed puuduvad (ka radoonitasemed p66 on #140 otsusega kaardita, hinnangut kaardil pole) |
 | 500 | G20 | The "Gut Feeling" veto | NULL | dim_gut_veto · layers_group20b.ts | Kõhutunde veto on ostja isiklik bloki-vaatluse hinnang (kohapeal, EI OLE skooritav): kui koht tundub vale, langeb pakkumine välja — kaarti sellele pole — ära feigi. — Lähim kaart: puudub — veto pole skoor, otsustab kohapealne tunne |
 
-<!-- appendix rows: 406 -->
+<!-- appendix rows: 403 -->
