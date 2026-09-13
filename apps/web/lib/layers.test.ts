@@ -79,6 +79,9 @@ describe("layer registry", () => {
       "liftproxy",
       // G03-HOOK (#151): Group 3 cadastre-A drainage id.
       "drainage",
+      // G03D-HOOK (#154): Group 3 cadastre-D ids (p332 moorage + p340 shoredist).
+      "moorage",
+      "shoredist",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -115,6 +118,19 @@ describe("layer registry", () => {
     expect(radiusKmFor("drainage")).toBe(0.3);
     expect(LAYERS.find((l) => l.id === "drainage")?.paramIds).toEqual([50]);
     expect(overpassQueryFor("drainage", TALLINN_BBOX)).toContain("coastline");
+  });
+
+  it("wires the G03D moorage + shoredist layers with locked calibration", () => {
+    // Drift guard: hook specs must equal G03D_CAL in layers_group03d.ts
+    // and the Python builder (parsed by test_batch_g03d.py).
+    expect(bonusSpecFor("moorage")).toEqual({ kind: "area", half: 1 });
+    expect(radiusKmFor("moorage")).toBe(0.3);
+    expect(LAYERS.find((l) => l.id === "moorage")?.paramIds).toEqual([332]);
+    expect(overpassQueryFor("moorage", TALLINN_BBOX)).toContain("marina");
+    expect(bonusSpecFor("shoredist")).toEqual({ kind: "quiet", halfM: 100 });
+    expect(radiusKmFor("shoredist")).toBe(0.3);
+    expect(LAYERS.find((l) => l.id === "shoredist")?.paramIds).toEqual([340]);
+    expect(overpassQueryFor("shoredist", TALLINN_BBOX)).toContain("coastline");
   });
 
   it("every layer explains green=good / red=bad in Estonian", () => {

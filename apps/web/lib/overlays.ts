@@ -184,6 +184,15 @@ export function overlayColorFor(layer: LayerId): string {
     // from liftproxy #0891b2 and every other marker (distinct-color test).
     case "drainage":
       return "#1e40af";
+    // G03D-HOOK (#154): moorage + shoredist markers (point overlays,
+    // stride-sampled like grocery). #0c4a6e: dark harbor blue (one
+    // shade deeper than drainage #1e40af); #047857: emerald-700 shore
+    // green (one shade deeper than recspecial #059669). Both distinct
+    // from every other marker (distinct-color test).
+    case "moorage":
+      return "#0c4a6e";
+    case "shoredist":
+      return "#047857";
   }
 }
 
@@ -312,6 +321,13 @@ export function overlayLegendFor(layer: LayerId): string {
     // raster holds the full quietness field.
     case "drainage":
       return "Veekogud, rannajoon ja märgalad · kauguse-hinnang (drenaažiproksi, küllastus 300 m)";
+    // G03D-HOOK (#154): moorage (p332) — mapped facilities, the raster
+    // holds the full count field; shoredist (p340) — mapped shoreline,
+    // the raster holds the full quietness field.
+    case "moorage":
+      return "Sadamad ja sildumiskohad · lähedaste arv (hinnang, küllastus 1, luba krundi-põhine)";
+    case "shoredist":
+      return "Rannajoon ja järved (jõed/märgalad välja) · kauguse-hinnang (ehituskeeluvööndi proksi, küllastus 100 m)";
   }
 }
 

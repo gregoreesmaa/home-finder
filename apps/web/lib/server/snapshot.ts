@@ -36,6 +36,8 @@ import { BATCH6_RASTER_FILE } from "../layers_batch6";
 import { G07_RASTER_FILE } from "../layers_group07";
 // G02B-HOOK (#137): lift-proxy raster file lives in ../layers_group02b.
 import { G02B_RASTER_FILE } from "../layers_group02b";
+// G03D-HOOK(#154): batch G03D raster files live in layers_group03d.ts.
+import { G03D_RASTER_FILE } from "../layers_group03d";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -343,6 +345,8 @@ const RASTER_FILE: Record<LayerId, string> = {
   ...G02B_RASTER_FILE,
   // G03-HOOK (#151): drainage raster (scripts/build/batch_g03_cadastre.py).
   ...G03_RASTER_FILE,
+  // G03D-HOOK (#154): moorage + shoredist rasters (scripts/build/batch_g03d_cadastre.py).
+  ...G03D_RASTER_FILE,
 };
 
 /**
@@ -415,6 +419,12 @@ const B6_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set([
 ]);
 // G03-HOOK (#151): Euclidean-built drainage master rides "euclidean".
 const G03_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["drainage"]);
+// G03D-HOOK (#154): Euclidean-built G03D masters ride "euclidean" —
+// shoredist (same Dijkstra-by-construction story as drainage) and
+// moorage (Euclidean count kernel: marina centroids sit on water where
+// the foot graph has no vertices, so walk stamping leaves holes AT the
+// facilities — see batch_g03d_cadastre.py).
+const G03D_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["moorage", "shoredist"]);
 
 export async function loadLayerRaster(
   layer: LayerId,
@@ -422,7 +432,10 @@ export async function loadLayerRaster(
 ): Promise<{ raster: WalkRasterDoc | null; distance: TransitDistance }> {
   const doc = await loadWalkRaster(layer, dir);
   if (doc && matchesContract(doc, layer)) {
-    const euclidean = B6_EUCLIDEAN_MASTER.has(layer) || G03_EUCLIDEAN_MASTER.has(layer);
+    const euclidean =
+      B6_EUCLIDEAN_MASTER.has(layer) ||
+      G03_EUCLIDEAN_MASTER.has(layer) ||
+      G03D_EUCLIDEAN_MASTER.has(layer);
     return { raster: doc, distance: euclidean ? "euclidean" : "walk" };
   }
   return { raster: null, distance: "euclidean" };
@@ -486,6 +499,11 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // G03-HOOK (#151): no drainage metro master (documented fake precision
   // — the file is absent, so windows serve county everywhere, like B5).
   drainage: "drainage-metro",
+  // G03D-HOOK (#154): no moorage/shoredist metro masters (documented
+  // fake precision — the files are absent, so windows serve county
+  // everywhere, like G02B/G03).
+  moorage: "moorage-metro",
+  shoredist: "shoredist-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

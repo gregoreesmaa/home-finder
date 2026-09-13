@@ -85,7 +85,8 @@ describe("overlay legend + colors", () => {
   it("explains every layer's markers and weights in Estonian", () => {
     const ids = LAYERS.map((l) => l.id);
     // G07C-HOOK(#142): vectorhabitat joins the registry.
-    expect(ids).toHaveLength(44);
+    // G03D-HOOK (#154): moorage + shoredist join the registry.
+    expect(ids).toHaveLength(46);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -153,11 +154,16 @@ describe("overlay legend + colors", () => {
     // Batch G03 half (see G03_CAL in layers_group03.ts).
     expect(overlayLegendFor("drainage")).toContain("300 m");
     expect(overlayLegendFor("drainage")).toContain("drenaažiproksi");
+    // Batch G03D halves (see G03D_CAL in layers_group03d.ts).
+    expect(overlayLegendFor("moorage")).toContain("küllastus 1");
+    expect(overlayLegendFor("moorage")).toContain("hinnang");
+    expect(overlayLegendFor("shoredist")).toContain("100 m");
+    expect(overlayLegendFor("shoredist")).toContain("hinnang");
   });
 
   it("gives every layer a distinct marker color", () => {
     const seen = new Set((LAYERS.map((l) => l.id) as LayerId[]).map(overlayColorFor));
-    expect(seen.size).toBe(44);
+    expect(seen.size).toBe(46);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

@@ -62,6 +62,16 @@ import {
   GROUP03_TAGS,
   bonusSpecForGroup03,
 } from "./layers_group03";
+// G03D-HOOK(#154): batch G03D (Group 3 cadastre-D moorage + shoredist)
+// tables live in ./layers_group03d (new file). That module imports
+// layers only as types, so no runtime cycle.
+import type { Group03DLayerId } from "./layers_group03d";
+import {
+  GROUP03D_DECAY,
+  GROUP03D_LAYERS,
+  GROUP03D_TAGS,
+  bonusSpecForGroup03D,
+} from "./layers_group03d";
 // G11D-HOOK(#135): batch G11D (Group 11 leftovers B: p346/p470/p419/p466;
 // p317 is a documented no-map) tables live in ./layers_group11d (new
 // file). That module imports layers only as types, so no runtime cycle.
@@ -182,7 +192,9 @@ export type LayerId =
   // G02B-HOOK (#137): Group 2 batch-B lift-proxy id (./layers_group02b).
   | Group02bLayerId
   // G03-HOOK (#151): Group 3 cadastre-A drainage id (./layers_group03).
-  | Group03LayerId;
+  | Group03LayerId
+  // G03D-HOOK (#154): Group 3 cadastre-D ids (./layers_group03d).
+  | Group03DLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -285,6 +297,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...G02B_DECAY,
   // G03-HOOK (#151): drainage radius (see layers_group03.ts GROUP03_DECAY).
   ...GROUP03_DECAY,
+  // G03D-HOOK (#154): moorage + shoredist radii (see layers_group03d.ts GROUP03D_DECAY).
+  ...GROUP03D_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -417,6 +431,8 @@ export const LAYERS: LayerDef[] = [
   ...G02B_DEFS,
   // G03-HOOK (#151): drainage def (p50) from ./layers_group03.
   ...GROUP03_LAYERS,
+  // G03D-HOOK (#154): moorage (p332) + shoredist (p340) defs from ./layers_group03d.
+  ...GROUP03D_LAYERS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -462,6 +478,8 @@ const TAGS: Record<LayerId, string> = {
   ...G02B_TAGS,
   // G03-HOOK (#151): drainage query (see layers_group03.ts GROUP03_TAGS).
   ...GROUP03_TAGS,
+  // G03D-HOOK (#154): moorage + shoredist queries (see layers_group03d.ts GROUP03D_TAGS).
+  ...GROUP03D_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -646,6 +664,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // G03-HOOK (#151): drainage spec lives in ./layers_group03.
   const g03 = bonusSpecForGroup03(layer);
   if (g03) return g03;
+  // G03D-HOOK (#154): moorage + shoredist specs live in ./layers_group03d.
+  const g03d = bonusSpecForGroup03D(layer);
+  if (g03d) return g03d;
   throw new Error(`unknown layer: ${layer}`);
 }
 

@@ -316,6 +316,49 @@ describe("layer walk rasters", () => {
     }
   });
 
+  it("serves G03D moorage + shoredist rasters under area + quiet contracts", async () => {
+    // G03D-HOOK (#154): moorage area contract (half 1, sigma 0.3) —
+    // Euclidean count-kernel-built (see batch_g03d_cadastre.py), so the
+    // distance label says euclidean, like drainage.
+    const mdir = await fixtureDir([{ lat: 59.468, lon: 24.821, a: 1 }], "moorage");
+    await writeFile(
+      join(mdir, "osm", "moorage-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 1, sigma: 0.3 })),
+    );
+    try {
+      const res = await loadLayerRaster("moorage", mdir);
+      expect(res.distance).toBe("euclidean");
+      expect(res.raster?.half).toBe(1);
+    } finally {
+      await rm(mdir, { recursive: true, force: true });
+    }
+    // G03D-HOOK (#154): shoredist quiet contract (halfM 100 on the wire
+    // as half, sigma 0.3); Euclidean-built like drainage. A stale half
+    // is rejected.
+    const sdir = await fixtureDir([{ lat: 59.47, lon: 24.82 }], "shoredist");
+    await writeFile(
+      join(sdir, "osm", "shoredist-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 100, sigma: 0.3 })),
+    );
+    try {
+      const res = await loadLayerRaster("shoredist", sdir);
+      expect(res.distance).toBe("euclidean");
+      expect(res.raster?.half).toBe(100);
+    } finally {
+      await rm(sdir, { recursive: true, force: true });
+    }
+    const stale = await fixtureDir([{ lat: 59.47, lon: 24.82 }], "shoredist");
+    await writeFile(
+      join(stale, "osm", "shoredist-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 300, sigma: 0.3 })),
+    );
+    try {
+      expect(await loadLayerRaster("shoredist", stale)).toEqual({ raster: null, distance: "euclidean" });
+    } finally {
+      await rm(stale, { recursive: true, force: true });
+    }
+  });
+
   it("serves grocery and walkability rasters under the area contract", async () => {
     const gdir = await fixtureDir([{ lat: 59.44, lon: 24.75, a: 1 }], "grocery");
     await writeFile(
