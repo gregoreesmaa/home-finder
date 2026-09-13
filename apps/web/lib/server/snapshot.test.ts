@@ -1604,3 +1604,54 @@ describe("G07C quiet raster (vectorhabitat, #142)", () => {
   });
 });
 });
+
+// STATKOV-HOOK (#485): choropleth rasters (kovmigr/kovehit/kovfisc).
+describe("statkov cover rasters (#485)", () => {
+  const statkovDoc = (contract: { half?: number | null; sigma: number }) => ({
+    cols: 2,
+    rows: 2,
+    bbox: { minlon: 24.0, minlat: 59.0, maxlon: 24.2, maxlat: 59.1 },
+    step_m: 75,
+    half: contract.half ?? null,
+    sigma: contract.sigma,
+    per: 0,
+    cap: 0,
+    unknown: 255,
+    dtype: "uint8",
+    data: Buffer.from([75, 255, 45, 60]).toString("base64"),
+  });
+
+  it("serves the choropleth rasters under the cover contract", async () => {
+    // Cover contract: half null on the wire, sigma 0.5 (the Euclidean
+    // fallback width); exact KOV fills carry no half. A stale sigma or
+    // half is rejected, never silently rendered.
+    for (const layer of ["kovmigr", "kovehit", "kovfisc"] as const) {
+      const dir = await fixtureDir([{ lat: 59.4374, lon: 24.7454 }], layer);
+      await writeFile(
+        join(dir, "osm", `${layer}-walk-raster.json`),
+        JSON.stringify(statkovDoc({ half: null, sigma: 0.5 })),
+      );
+      try {
+        const res = await loadLayerRaster(layer, dir);
+        expect(res.distance).toBe("euclidean");
+        expect(res.raster?.half).toBeNull();
+        expect(res.raster?.sigma).toBe(0.5);
+      } finally {
+        await rm(dir, { recursive: true, force: true });
+      }
+      const stale = await fixtureDir([{ lat: 59.4374, lon: 24.7454 }], layer);
+      await writeFile(
+        join(stale, "osm", `${layer}-walk-raster.json`),
+        JSON.stringify(statkovDoc({ half: 50, sigma: 0.5 })),
+      );
+      try {
+        expect(await loadLayerRaster(layer, stale)).toEqual({
+          raster: null,
+          distance: "euclidean",
+        });
+      } finally {
+        await rm(stale, { recursive: true, force: true });
+      }
+    }
+  });
+});

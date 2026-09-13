@@ -108,7 +108,8 @@ describe("overlay legend + colors", () => {
     // GTFS-HOOK (#483): gtfsstops joins the registry.
     // RSAFE-HOOK (#481): roadsafety joins the registry.
     // P4-031-HOOK (#484): senscom joins the registry.
-    expect(ids).toHaveLength(86);
+    // STATKOV-HOOK (#485): kovmigr + kovehit + kovfisc join the registry (86 + 3).
+    expect(ids).toHaveLength(89);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -276,6 +277,11 @@ describe("overlay legend + colors", () => {
     // P4-031-HOOK (#484): senscom bands (see SENSCOM_BANDS).
     expect(overlayLegendFor("senscom")).toContain("500 m");
     expect(overlayLegendFor("senscom")).toContain("kalibreerimata");
+    // STATKOV-HOOK (#485): choropleth bands (see STATKOV_BANDS).
+    expect(overlayLegendFor("kovmigr")).toContain("hinnang");
+    expect(overlayLegendFor("kovmigr")).toContain("EI OLE");
+    expect(overlayLegendFor("kovehit")).toContain("lagi 70");
+    expect(overlayLegendFor("kovfisc")).toContain("lagi 70");
   });
 
   it("gives every layer a distinct marker color", () => {
@@ -300,7 +306,8 @@ describe("overlay legend + colors", () => {
     // GTFS-HOOK (#483): gtfsstops joins the registry.
     // RSAFE-HOOK (#481): roadsafety joins the registry.
     // P4-031-HOOK (#484): senscom joins the registry.
-    expect(seen.size).toBe(86);
+    // STATKOV-HOOK (#485): kovmigr + kovehit + kovfisc join the registry (86 + 3).
+    expect(seen.size).toBe(89);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

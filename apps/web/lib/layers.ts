@@ -381,6 +381,16 @@ import {
   isSenscomLayerId,
   senscomBonusSpecFor,
 } from "./layers_p4_senscom";
+// STATKOV-HOOK (#485): Statamet per-KOV choropleth tables live in
+// ./layers_statkov (RVR02/EH44U/RR300 2025 exact KOV fills). That module
+// imports layers only as types, so no runtime cycle.
+import type { StatKovLayerId } from "./layers_statkov";
+import {
+  STATKOV_DECAY,
+  STATKOV_DEFS,
+  STATKOV_TAGS,
+  bonusSpecForStatKov,
+} from "./layers_statkov";
 
 export type LayerId =
   | "parks"
@@ -459,7 +469,10 @@ export type LayerId =
   // RSAFE-HOOK (#481): road-safety id (./layers_roadsafety, P4-012 proxy).
   | RsafeLayerId
   // P4-031-HOOK (#484): senscom DIY-air id (./layers_p4_senscom).
-  | SenscomLayerId;
+  | SenscomLayerId
+  // STATKOV-HOOK (#485): Statamet per-KOV choropleth ids
+  // (./layers_statkov).
+  | StatKovLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -625,6 +638,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...RSAFE_DECAY,
   // P4-031-HOOK (#484): senscom radius (see layers_p4_senscom.ts SENSCOM_DECAY_KM).
   ...SENSCOM_DECAY_KM,
+  // STATKOV-HOOK (#485): choropleth fallback widths (see layers_statkov.ts).
+  ...STATKOV_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -803,6 +818,8 @@ export const LAYERS: LayerDef[] = [
   // P4-031-HOOK (#484): senscom DIY-air def (P4-031 slice, no
   // parameters3 id) from ./layers_p4_senscom.
   ...SENSCOM_LAYERS,
+  // STATKOV-HOOK (#485): choropleth defs (P4-025/050/019 proxies) from ./layers_statkov.
+  ...STATKOV_DEFS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -892,6 +909,8 @@ const TAGS: Record<LayerId, string> = {
   ...RSAFE_TAGS,
   // P4-031-HOOK (#484): senscom source note (see layers_p4_senscom.ts SENSCOM_TAGS).
   ...SENSCOM_TAGS,
+  // STATKOV-HOOK (#485): KOV polygon queries (see layers_statkov.ts STATKOV_TAGS).
+  ...STATKOV_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -1184,6 +1203,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // RSAFE-HOOK (#481): roadsafety spec lives in ./layers_roadsafety.
   const rsafe = bonusSpecForRsafe(layer);
   if (rsafe) return rsafe;
+  // STATKOV-HOOK (#485): choropleth specs live in ./layers_statkov.
+  const statkov = bonusSpecForStatKov(layer);
+  if (statkov) return statkov;
   throw new Error(`unknown layer: ${layer}`);
 }
 

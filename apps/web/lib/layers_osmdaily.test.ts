@@ -73,7 +73,8 @@ describe("osmdaily registry (#482)", () => {
     const ids = LAYERS.map((l) => l.id);
     // 77 shipped layers + 6 OSM-daily + 1 GTFS stop overlay (#483) + 1 road-safety (#481).
     // P4-031-HOOK (#484): +senscom DIY-air overlay.
-    expect(ids.length).toBe(86);
+    // STATKOV-HOOK (#485): +3 choropleth layers (86 + 3).
+    expect(ids.length).toBe(89);
     for (const id of OSMDAILY_LAYER_IDS) expect(ids).toContain(id);
   });
 

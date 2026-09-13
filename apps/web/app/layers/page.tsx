@@ -29,6 +29,8 @@ import {
   selectOverlayPoints,
   type OverlayPoint,
 } from "../../lib/overlays";
+// STATKOV-HOOK (#485): choropleth distance-suffix skip (see sourceNote).
+import { isStatKovLayerId } from "../../lib/layers_statkov";
 
 /** Viewport bbox rounded for fetch stability (matches server key rounding). */
 function sameView(a: BBoxLike, b: BBoxLike): boolean {
@@ -236,6 +238,9 @@ export default function LayersPage() {
                 (and "(P4-031)" for paramLabel slices like senscom), so
                 skip the trailing space when the tag is empty instead of
                 rendering "(p)" on all six osmdaily buttons. */}
+            {/* STATKOV-HOOK (#485): P4 layers carry an empty paramIds
+                (parameters4 namespace -- see layers_statkov.ts), so
+                layerParamTag returns "" for them too -- no suffix. */}
             {layerParamTag(l) === "" ? "" : ` ${layerParamTag(l)}`}
           </button>
         ))}
@@ -266,19 +271,23 @@ export default function LayersPage() {
         initialZoom={camera.zoom}
         sourceNote={
           `Allikas: ${def.source}` +
-          (distance === "euclidean" && provenance === "snapshot"
-            ? raster
-              // B10C-HOOK (#230): Euclidean-BUILT masters (mobile + the
-              // GENV/G03-style proxy fields) are direct distance, not a
-              // fallback — "varu" would claim the foot graph was missing.
-              ? " · otsekaugus (sirge joon, mitte kõndimisaeg)"
-              // P4-031-HOOK (#484): the senscom band kernel counts in a
-              // hard Euclidean radius by design (DIY witnesses, no walk
-              // graph involved) — "varu" would claim a walk version exists.
-              : bonusSpecFor(layer).kind === "bands"
-                ? " · otsekaugus kõvas raadiuses (DIY-tunnistajad, mitte kõnnivõrk)"
-                : " · euclidiline varu (kõndimisvõrk puudub)"
-            : "")
+          // STATKOV-HOOK (#485): choropleth fields are exact KOV fills,
+          // not distances -- skip the otsekaugus/varu suffix for them.
+          (isStatKovLayerId(layer)
+            ? ""
+            : distance === "euclidean" && provenance === "snapshot"
+              ? raster
+                // B10C-HOOK (#230): Euclidean-BUILT masters (mobile + the
+                // GENV/G03-style proxy fields) are direct distance, not a
+                // fallback — "varu" would claim the foot graph was missing.
+                ? " · otsekaugus (sirge joon, mitte kõndimisaeg)"
+                // P4-031-HOOK (#484): the senscom band kernel counts in a
+                // hard Euclidean radius by design (DIY witnesses, no walk
+                // graph involved) — "varu" would claim a walk version exists.
+                : bonusSpecFor(layer).kind === "bands"
+                  ? " · otsekaugus kõvas raadiuses (DIY-tunnistajad, mitte kõnnivõrk)"
+                  : " · euclidiline varu (kõndimisvõrk puudub)"
+              : "")
         }
         onViewChange={(b) => setView((prev) => (sameView(prev, b) ? prev : b))}
       />
