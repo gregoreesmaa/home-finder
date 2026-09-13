@@ -340,7 +340,7 @@ describe("field resolution", () => {
   });
 });
 
-describe("quiet-kind cleanliness (G07 env-health)", () => {
+describe("quiet-kind cleanliness (G07/G07D env-health)", () => {
   const QUIET: BonusSpec = { kind: "quiet", halfM: 500 };
 
   it("reads 0 on the source, ~50 at halfM, near 100 when far", () => {
@@ -353,6 +353,17 @@ describe("quiet-kind cleanliness (G07 env-health)", () => {
     expect(half?.value).toBeCloseTo(50, 0);
     const far = sampleScored(s, 24.69, 59.47);
     expect(far?.value).toBeGreaterThan(60);
+  });
+
+  it("agrifield halves at 800 m (drift scale)", () => {
+    // Wider box: 800 m east of the source must stay inside the view.
+    const box: BBoxLike = { minlon: 24.69, minlat: 59.46, maxlon: 24.72, maxlat: 59.47 };
+    const s = buildScoredField([{ lon: 24.7, lat: 59.465 }], box, 41, 41, 0.8, {
+      kind: "quiet",
+      halfM: 800,
+    });
+    const half = sampleScored(s, 24.7 + 0.8 / 57.29, 59.465);
+    expect(half?.value).toBeCloseTo(50, 0);
   });
 
   it("never exceeds 100 and reads null where nothing is known", () => {

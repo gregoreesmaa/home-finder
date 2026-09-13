@@ -41,9 +41,9 @@ describe("batch B6 registry (#133)", () => {
     }
   });
 
-  it("merges into LAYERS via the B6-HOOK (page + routes serve all thirty-three)", () => {
+  it("merges into LAYERS via the B6-HOOK (page + routes serve all thirty-five)", () => {
     const ids = LAYERS.map((l) => l.id);
-    expect(ids.length).toBe(33);
+    expect(ids.length).toBe(35);
     for (const id of BATCH6_LAYER_IDS) expect(ids).toContain(id);
   });
 

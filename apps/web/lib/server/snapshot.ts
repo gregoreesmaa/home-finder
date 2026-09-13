@@ -16,6 +16,8 @@ import { haversineKm } from "../poi";
 import { sampleRaster } from "../walkRaster";
 // B1-HOOK(#98): batch B1 raster files live in layers_batch1.ts.
 import { B1_METRO_PREFIXES, B1_RASTER_FILES } from "../layers_batch1";
+// G07D-HOOK(#143): batch G07D raster files live in layers_group07d.ts.
+import { G07D_RASTER_FILE } from "../layers_group07d";
 // G06B-HOOK (#139): Group 6 leftover raster files live in layers_group06b.ts.
 import { GROUP06B_METRO_PREFIXES, GROUP06B_RASTER_FILES } from "../layers_group06b";
 // G11C-HOOK(#134): batch G11C raster files live in layers_group11c.ts.
@@ -305,6 +307,8 @@ const RASTER_FILE: Record<LayerId, string> = {
   grocery: "grocery-walk-raster.json",
   healthcare: "healthcare-walk-raster.json",
   ...B1_RASTER_FILES, // B1-HOOK(#98)
+  // G07D-HOOK (#143): env-health D rasters (built by scripts/build/batch_g07d_envhealth.py).
+  ...G07D_RASTER_FILE,
   // G07-HOOK (#140): env-health rasters (built by scripts/build/batch_g07_envhealth.py).
   ...G07_RASTER_FILE,
   // B5-HOOK (#102): Group 14 rasters (built by scripts/build/batch_b5_safety.py).
@@ -364,6 +368,7 @@ export function matchesContract(
   const spec = bonusSpecFor(layer);
   if (doc.sigma !== radiusKmFor(layer)) return false;
   if (spec.kind === "variety") return doc.per === spec.per && doc.cap === spec.cap;
+  // G07D-HOOK (#143): nearest-source cleanliness (0 on the source, 50 at halfM).
   // G06B-HOOK (#139): the "avoid" kind carries the same half contract as
   // area/trips (50-score walk-km); only the score SHAPE differs (inverse).
   if (spec.kind === "area" || spec.kind === "trips" || spec.kind === "avoid")
@@ -410,6 +415,11 @@ const METRO_PREFIX: Record<LayerId, string> = {
   grocery: "grocery-metro",
   healthcare: "healthcare-metro",
   ...B1_METRO_PREFIXES, // B1-HOOK(#98)
+  // G07D-HOOK (#143): no metro masters by documented decision (see
+  // layers_group07d.ts G07D_NO_METRO) — names resolve to absent files so
+  // windows fall back to county cleanly.
+  agrifield: "agrifield-metro",
+  wildcorr: "wildcorr-metro",
   // G07-HOOK (#140): no metro masters by documented decision (see
   // layers_group07.ts G07_NO_METRO) — names resolve to absent files so
   // windows fall back to county cleanly.
@@ -653,6 +663,7 @@ export async function loadWindowRaster(
     rows: outRows,
     bbox: view,
     step_m: stepM,
+    // G07D-HOOK (#143): quiet specs carry halfM, not half.
     // B6-HOOK (#133): "quiet" specs carry halfM, not half.
     // G07-HOOK (#140): quiet specs carry halfM, not half.
     half:
