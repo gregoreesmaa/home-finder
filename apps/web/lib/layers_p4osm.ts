@@ -60,13 +60,16 @@
 // presence caps (85/80 — mapped is not measured) and weak-neutral
 // absences (50/45 — unmapped is not absent).
 //
-// PARAM NAMESPACE (read before renumbering): these layers carry NO
-// parameters3.md id. P3 p29 (lot size) is a documented no-map with a
-// GLOBAL verdict lock (layers_group02 locks 35 too —
-// layers_group02.test.ts fails any LAYERS row claiming them), so
-// paramIds stays [] and paramLabel carries the buyer-param slice
-// ("P4-029"/"P4-035") for the layer button. Same shape as the #484
-// senscom layer (paramLabel twin — see layerParamTag in ./layers).
+// NAMESPACE (judgment call, AGENTS.md 7.5): paramIds stays EMPTY. P4
+// numbers (P4-029 etc.) live in the parameters4 namespace, while
+// paramIds feeds the parameters3 audit (docs/layers.md: every number
+// 1..500 has exactly one verdict — e.g. 29 is lot size, 35 is energy
+// class). Claiming bare 29/35 would corrupt that audit (group02's
+// global verdict lock fails any LAYERS row claiming 35). The P4
+// linkage lives in P4OSM_P4 + the titles instead (pinned by test),
+// and app/layers/page.tsx skips the "(p…)" suffix for empty
+// paramIds (zero behaviour change for existing layers). Same shape
+// as the merged #482 osmdaily batch.
 
 import type { BonusSpec, LayerDef } from "./layers";
 
@@ -74,8 +77,8 @@ export type P4OSMLayerId = "blockwalk" | "darkness";
 
 export const P4OSM_LAYER_IDS: P4OSMLayerId[] = ["blockwalk", "darkness"];
 
-/** Buyer-param slice per layer (NOT a parameters3 id — see note above). */
-export const P4OSM_PARAM_LABELS: Record<P4OSMLayerId, string> = {
+/** parameters4 number per P4OSM layer (traceability, NOT paramIds). */
+export const P4OSM_P4: Record<P4OSMLayerId, string> = {
   blockwalk: "P4-029",
   darkness: "P4-035",
 };
@@ -86,8 +89,7 @@ export const P4OSM_LAYERS: LayerDef[] = [
   {
     id: "blockwalk",
     paramIds: [],
-    paramLabel: "P4-029",
-    title: "Kvartali kõnnitavus (silmakõrguse-hinnang)",
+    title: "Kvartali kõnnitavus (P4-029 proksi, hinnang)",
     goodLabel: "roheline = kaardistatud kõnnitee/kate/valgusti lähedal (hinnang)",
     badLabel: "punane = kaardistatud kõnniteed/katet/valgustit lähedal pole (hinnang)",
     source: `${SNAP} (OSM footway/sidewalk/asphalt/lit, P4-029 — silmakõrguse-hinnang, mitte fassaadi-tõde; Mapillary/KartaView kaadreid snapshots pole)`,
@@ -99,8 +101,7 @@ export const P4OSM_LAYERS: LayerDef[] = [
   {
     id: "darkness",
     paramIds: [],
-    paramLabel: "P4-035",
-    title: "Tänavavalgustus (detsembri-pimeduse hinnang)",
+    title: "Tänavavalgustus (P4-035 proksi, hinnang)",
     goodLabel: "roheline = lit-märgistus lähedal (hinnang)",
     badLabel: "punane = lit-märgistust lähedal pole (hinnang)",
     source: `${SNAP} (OSM lit=yes, P4-035 — detsembri-pimeduse hinnang, mitte lampide loendus; Tallinna valgustuskaarti ja VIIRS-i snapshots pole)`,

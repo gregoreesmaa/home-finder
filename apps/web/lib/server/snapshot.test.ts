@@ -787,6 +787,51 @@ describe("layer walk rasters", () => {
     }
   });
 
+  it("serves P4OSM walkability + darkness rasters under area contracts", async () => {
+    // P4OSM-HOOK (#480): blockwalk (half 1000 / sigma 0.5) and darkness
+    // (half 500 / sigma 0.5) ride area contracts (see P4OSM_CAL in
+    // layers_p4osm.ts). A stale half is rejected, never silently
+    // rendered. County-only windows (no metro masters) serve under
+    // the same contracts.
+    for (const [layer, half, sigma] of [
+      ["blockwalk", 1000, 0.5],
+      ["darkness", 500, 0.5],
+    ] as const) {
+      const dir = await fixtureDir([{ lat: 59.44, lon: 24.75 }], layer);
+      await writeFile(
+        join(dir, "osm", `${layer}-walk-raster.json`),
+        JSON.stringify(rasterDoc({ half, sigma })),
+      );
+      try {
+        const res = await loadLayerRaster(layer, dir);
+        // Euclidean-built count kernels (G05B precedent), not walk-graph.
+        expect(res.distance).toBe("euclidean");
+        expect(res.raster?.half).toBe(half);
+        expect(res.raster?.sigma).toBe(sigma);
+        const win = await loadWindowRaster(
+          layer,
+          { minlon: 24.0, minlat: 59.0, maxlon: 24.2, maxlat: 59.1 },
+          2, 2, dir,
+        );
+        expect(win).not.toBeNull();
+        expect(win?.half).toBe(half);
+        expect(win?.sigma).toBe(sigma);
+      } finally {
+        await rm(dir, { recursive: true, force: true });
+      }
+    }
+    const stale = await fixtureDir([{ lat: 59.44, lon: 24.75 }], "blockwalk");
+    await writeFile(
+      join(stale, "osm", "blockwalk-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 999, sigma: 0.5 })),
+    );
+    try {
+      expect(await loadLayerRaster("blockwalk", stale)).toEqual({ raster: null, distance: "euclidean" });
+    } finally {
+      await rm(stale, { recursive: true, force: true });
+    }
+  });
+
   it("serves G18A dayopen + glassglare rasters under their contracts", async () => {
     // G18A-HOOK (#172): dayopen quiet contract (halfM 150 on the
     // wire as half, sigma 0.3); Euclidean-built like commbleed. A

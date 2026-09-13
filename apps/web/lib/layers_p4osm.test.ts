@@ -4,7 +4,7 @@ import {
   P4OSM_DECAY,
   P4OSM_LAYERS,
   P4OSM_LAYER_IDS,
-  P4OSM_PARAM_LABELS,
+  P4OSM_P4,
   P4OSM_TAGS,
   P4OSM_VERDICTS,
   bonusSpecForP4OSM,
@@ -15,7 +15,6 @@ import {
   bonusSpecFor,
   fetchLayerPoints,
   goodnessAt,
-  layerParamTag,
   overpassQueryFor,
   radiusKmFor,
   type BBoxLike,
@@ -32,17 +31,15 @@ describe("p4osm registry (#480)", () => {
     expect(P4OSM_LAYERS.map((d) => d.id)).toEqual(P4OSM_LAYER_IDS);
   });
 
-  it("labels each layer with its P4 slice and claims no P3 id", () => {
-    // P4-029/P4-035 (parameters4.md) via paramLabel; paramIds stays []
-    // so the P3 verdict locks (group02 global lock on 35, group03 guard
-    // on 29) keep passing — same shape as the #484 senscom layer.
-    expect(P4OSM_PARAM_LABELS).toEqual({ blockwalk: "P4-029", darkness: "P4-035" });
+  it("links each layer to its P4 number via titles + P4OSM_P4, never paramIds", () => {
+    // P4-029/P4-035 (parameters4.md); paramIds stays [] so the P3
+    // verdict locks (group02 global lock on 35, group03 guard on 29)
+    // keep passing — same shape as the merged #482 osmdaily batch.
+    expect(P4OSM_P4).toEqual({ blockwalk: "P4-029", darkness: "P4-035" });
     for (const d of P4OSM_LAYERS) {
       expect(d.paramIds).toEqual([]);
-      expect(d.paramLabel).toBe(P4OSM_PARAM_LABELS[d.id as keyof typeof P4OSM_PARAM_LABELS]);
-      expect(layerParamTag(d)).toBe(`(${d.paramLabel})`);
+      expect(d.title).toContain(P4OSM_P4[d.id as keyof typeof P4OSM_P4]);
     }
-    expect(layerParamTag(LAYERS.find((l) => l.id === "parks")!)).toBe("(p19)");
   });
 
   it("merges into LAYERS via the P4OSM-HOOK (page + routes serve all layers)", () => {

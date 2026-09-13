@@ -722,6 +722,10 @@ const MARUKOV_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set([
   "kovedas",
   "kovkiirus",
 ]);
+// P4OSM-HOOK (#480): Euclidean-built P4OSM masters ride "euclidean" —
+// blockwalk + darkness (Euclidean count kernels, viewshed/moorage/
+// G05B precedent — see scripts/build/batch_p4_osmwalk.py).
+const P4OSM_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["blockwalk", "darkness"]);
 
 export async function loadLayerRaster(
   layer: LayerId,
@@ -753,7 +757,8 @@ export async function loadLayerRaster(
       RSAFE_EUCLIDEAN_MASTER.has(layer) || // RSAFE-HOOK (#481)
       STATKOV_EUCLIDEAN_MASTER.has(layer) || // STATKOV-HOOK (#485)
       P4PARK_EUCLIDEAN_MASTER.has(layer) || // P4PARK-HOOK (#479)
-      MARUKOV_EUCLIDEAN_MASTER.has(layer); // MARUKOV-HOOK (#486)
+      MARUKOV_EUCLIDEAN_MASTER.has(layer) || // MARUKOV-HOOK (#486)
+      P4OSM_EUCLIDEAN_MASTER.has(layer); // P4OSM-HOOK (#480)
     return { raster: doc, distance: euclidean ? "euclidean" : "walk" };
   }
   return { raster: null, distance: "euclidean" };

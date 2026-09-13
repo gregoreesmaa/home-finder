@@ -597,16 +597,13 @@ export interface LayerHex {
  * P4 buyer-param slices, "" for layers with neither (P4-031-HOOK #484 —
  * paramLabel, never a faked parameters3 id; OSMDAILY-HOOK #482 P4 layers
  * carry an empty paramIds and must render NO tag, not "(p)").
+ * P4OSM-HOOK (#480): blockwalk + darkness ride paramLabel too
+ * ("(P4-029)"/"(P4-035)"), deduped twin dropped on rebase per the
+ * builder's own note.
  */
 export function layerParamTag(def: LayerDef): string {
   if (def.paramLabel) return `(${def.paramLabel})`;
   if (def.paramIds.length === 0) return "";
- * Layer-button tag: "(p19, p15)" for parameters3 layers, "(P4-029)" for
- * P4 buyer-param slices (P4OSM-HOOK #480 — paramLabel, never a faked
- * parameters3 id; twin of the #484 senscom helper, dedupe on rebase).
- */
-export function layerParamTag(def: LayerDef): string {
-  if (def.paramLabel) return `(${def.paramLabel})`;
   return `(p${def.paramIds.join(", p")})`;
 }
 
