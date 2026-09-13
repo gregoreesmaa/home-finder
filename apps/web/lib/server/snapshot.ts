@@ -66,6 +66,8 @@ import { G18A_RASTER_FILE } from "../layers_group18resta";
 import { G18B_RASTER_FILE } from "../layers_group18restb";
 // G17A-HOOK(#177): batch G17A raster files live in layers_group17a.ts.
 import { G17A_RASTER_FILE } from "../layers_group17a";
+// G17B-HOOK(#178): batch G17B raster file lives in layers_group17b.ts.
+import { G17B_RASTER_FILE } from "../layers_group17b";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -403,6 +405,8 @@ const RASTER_FILE: Record<LayerId, string> = {
   ...G18B_RASTER_FILE,
   // G17A-HOOK (#177): compost + gritbin + leafdrop rasters (scripts/build/batch_g17_a.py).
   ...G17A_RASTER_FILE,
+  // G17B-HOOK (#178): lawncare raster (scripts/build/batch_g17_b.py).
+  ...G17B_RASTER_FILE,
 };
 
 /**
@@ -545,6 +549,10 @@ const G18B_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["fishbowl", "mossris
 // compost + gritbin + leafdrop (Euclidean count kernels, viewshed/
 // moorage precedent — see scripts/build/batch_g17_a.py).
 const G17A_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["compost", "gritbin", "leafdrop"]);
+// G17B-HOOK (#178): Euclidean-built G17B master rides "euclidean" —
+// lawncare (Euclidean count kernel, viewshed/moorage/G17A precedent —
+// see scripts/build/batch_g17_b.py).
+const G17B_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["lawncare"]);
 
 export async function loadLayerRaster(
   layer: LayerId,
@@ -569,7 +577,8 @@ export async function loadLayerRaster(
       G10R_EUCLIDEAN_MASTER.has(layer) || // G10R-HOOK (#171)
       G18A_EUCLIDEAN_MASTER.has(layer) || // G18A-HOOK (#172)
       G18B_EUCLIDEAN_MASTER.has(layer) || // G18B-HOOK (#173)
-      G17A_EUCLIDEAN_MASTER.has(layer); // G17A-HOOK (#177)
+      G17A_EUCLIDEAN_MASTER.has(layer) || // G17A-HOOK (#177)
+      G17B_EUCLIDEAN_MASTER.has(layer); // G17B-HOOK (#178)
     return { raster: doc, distance: euclidean ? "euclidean" : "walk" };
   }
   return { raster: null, distance: "euclidean" };
@@ -705,6 +714,10 @@ const METRO_PREFIX: Record<LayerId, string> = {
   compost: "compost-metro",
   gritbin: "gritbin-metro",
   leafdrop: "leafdrop-metro",
+  // G17B-HOOK (#178): no lawncare metro master (documented fake
+  // precision — the file is absent, so windows serve county
+  // everywhere, like G02B/G03/G03D/G08B/G05C/G05E).
+  lawncare: "lawncare-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

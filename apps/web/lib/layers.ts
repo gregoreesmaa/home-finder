@@ -220,6 +220,17 @@ import {
   GROUP17A_TAGS,
   bonusSpecForGroup17A,
 } from "./layers_group17a";
+// G17B-HOOK(#178): batch G17B (Group 17 municipal-services-B lawncare;
+// p463/p464/p465 documented no-map) tables live in
+// ./layers_group17b (new file). That module imports layers only as
+// types, so no runtime cycle.
+import type { Group17BLayerId } from "./layers_group17b";
+import {
+  GROUP17B_DECAY,
+  GROUP17B_LAYERS,
+  GROUP17B_TAGS,
+  bonusSpecForGroup17B,
+} from "./layers_group17b";
 // G11D-HOOK(#135): batch G11D (Group 11 leftovers B: p346/p470/p419/p466;
 // p317 is a documented no-map) tables live in ./layers_group11d (new
 // file). That module imports layers only as types, so no runtime cycle.
@@ -370,7 +381,9 @@ export type LayerId =
   // G18B-HOOK (#173): Group 18 rest-B ids (./layers_group18restb).
   | Group18BLayerId
   // G17A-HOOK (#177): Group 17 municipal-services-A ids (./layers_group17a).
-  | Group17ALayerId;
+  | Group17ALayerId
+  // G17B-HOOK (#178): Group 17 municipal-services-B id (./layers_group17b).
+  | Group17BLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -503,6 +516,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...GROUP18B_DECAY,
   // G17A-HOOK (#177): compost + gritbin + leafdrop radii (see layers_group17a.ts GROUP17A_DECAY).
   ...GROUP17A_DECAY,
+  // G17B-HOOK (#178): lawncare radius (see layers_group17b.ts GROUP17B_DECAY).
+  ...GROUP17B_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -665,6 +680,8 @@ export const LAYERS: LayerDef[] = [
   ...GROUP18B_LAYERS,
   // G17A-HOOK (#177): compost (p187) + gritbin (p311) + leafdrop (p312) defs from ./layers_group17a.
   ...GROUP17A_LAYERS,
+  // G17B-HOOK (#178): lawncare (p469) def from ./layers_group17b.
+  ...GROUP17B_LAYERS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -740,6 +757,8 @@ const TAGS: Record<LayerId, string> = {
   ...GROUP18B_TAGS,
   // G17A-HOOK (#177): compost + gritbin + leafdrop queries (see layers_group17a.ts GROUP17A_TAGS).
   ...GROUP17A_TAGS,
+  // G17B-HOOK (#178): lawncare query (see layers_group17b.ts GROUP17B_TAGS).
+  ...GROUP17B_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -985,6 +1004,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // G17A-HOOK (#177): compost + gritbin + leafdrop specs live in ./layers_group17a.
   const g17a = bonusSpecForGroup17A(layer);
   if (g17a) return g17a;
+  // G17B-HOOK (#178): lawncare spec lives in ./layers_group17b.
+  const g17b = bonusSpecForGroup17B(layer);
+  if (g17b) return g17b;
   throw new Error(`unknown layer: ${layer}`);
 }
 
