@@ -85,6 +85,8 @@ import { RSAFE_RASTER_FILE } from "../layers_roadsafety";
 import { SENSCOM_RASTER_FILE } from "../layers_p4_senscom";
 // STATKOV-HOOK (#485): statkov raster files live in layers_statkov.ts.
 import { STATKOV_RASTER_FILE } from "../layers_statkov";
+// P4PARK-HOOK (#479): P4 parking raster file lives in layers_p4_parking.ts.
+import { P4PARK_RASTER_FILE } from "../layers_p4_parking";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -443,6 +445,8 @@ const RASTER_FILE: Record<LayerId, string> = {
   // STATKOV-HOOK (#485): choropleth rasters
   // (scripts/build/batch_statkov_choropleth.py).
   ...STATKOV_RASTER_FILE,
+  // P4PARK-HOOK (#479): parking raster (scripts/build/batch_p4_parking.py).
+  ...P4PARK_RASTER_FILE,
 };
 
 /**
@@ -618,6 +622,10 @@ const STATKOV_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set([
   "kovehit",
   "kovfisc",
 ]);
+// P4PARK-HOOK (#479): Euclidean-built P4 parking master rides
+// "euclidean" — parking (Euclidean count kernel, lawncare/G17A
+// precedent — see scripts/build/batch_p4_parking.py).
+const P4PARK_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["parking"]);
 
 export async function loadLayerRaster(
   layer: LayerId,
@@ -647,7 +655,8 @@ export async function loadLayerRaster(
       G17R_EUCLIDEAN_MASTER.has(layer) || // G17R-HOOK (#196)
       B10C_EUCLIDEAN_MASTER.has(layer) || // B10C-HOOK (#230)
       RSAFE_EUCLIDEAN_MASTER.has(layer) || // RSAFE-HOOK (#481)
-      STATKOV_EUCLIDEAN_MASTER.has(layer); // STATKOV-HOOK (#485)
+      STATKOV_EUCLIDEAN_MASTER.has(layer) || // STATKOV-HOOK (#485)
+      P4PARK_EUCLIDEAN_MASTER.has(layer); // P4PARK-HOOK (#479)
     return { raster: doc, distance: euclidean ? "euclidean" : "walk" };
   }
   return { raster: null, distance: "euclidean" };
@@ -823,6 +832,10 @@ const METRO_PREFIX: Record<LayerId, string> = {
   kovmigr: "kovmigr-metro",
   kovehit: "kovehit-metro",
   kovfisc: "kovfisc-metro",
+  // P4PARK-HOOK (#479): no parking metro master (documented fake
+  // precision — the file is absent, so windows serve county
+  // everywhere, like G02B/G03/G03D/G08B/G05C/G17B).
+  parking: "parking-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

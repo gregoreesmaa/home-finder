@@ -413,6 +413,13 @@ export function overlayColorFor(layer: LayerId): string {
       return "#d946ef";
     case "kovfisc":
       return "#14b8a6";
+    // P4PARK-HOOK (#479): parking marker (point overlay,
+    // stride-sampled like grocery). #1f2937: gray-800 asphalt (NOT
+    // #0f172a — taken by fishbowl — and NOT #334155 — taken by
+    // oiltank — and NOT #475569 — taken by vernalpool). Distinct
+    // from every other marker (distinct-color test).
+    case "parking":
+      return "#1f2937";
   }
 }
 
@@ -705,6 +712,10 @@ export function overlayLegendFor(layer: LayerId): string {
       return "KOV valminud eluruumid 2025/1000 el (hinnang, lagi 70: 20→30, 10→45, 4→60, muidu 70; load EI OLE)";
     case "kovfisc":
       return "KOV põhitegevuse marginaal 2025 % (hinnang, lagi 70: 10→70, 5→60, 0→45, muidu 30; võlg EI OLE)";
+    // P4PARK-HOOK (#479): parking (P4-013) — mapped bays + lots, the
+    // raster holds the full count field.
+    case "parking":
+      return "Kaardistatud parklad (taskud + platsid) · lähedaste arv (asukoha-hinnang, küllastus 150, vabade kohtade arv ega elanikuluba pole)";
   }
 }
 

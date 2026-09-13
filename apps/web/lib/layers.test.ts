@@ -151,6 +151,8 @@ describe("layer registry", () => {
       "kovmigr",
       "kovehit",
       "kovfisc",
+      // P4PARK-HOOK (#479): P4 OSM parking id (P4-013 bays+lots proxy).
+      "parking",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -456,6 +458,16 @@ describe("layer registry", () => {
     expect(radiusKmFor("lawncare")).toBe(0.3);
     expect(LAYERS.find((l) => l.id === "lawncare")?.paramIds).toEqual([469]);
     expect(overpassQueryFor("lawncare", TALLINN_BBOX)).toContain("grass");
+  });
+
+  it("wires the P4 parking layer with locked calibration", () => {
+    // P4PARK-HOOK (#479): drift guard — hook specs must equal
+    // P4PARK_CAL in layers_p4_parking.ts and the Python builder
+    // (parsed by test_batch_p4_parking.py).
+    expect(bonusSpecFor("parking")).toEqual({ kind: "area", half: 150 });
+    expect(radiusKmFor("parking")).toBe(0.8);
+    expect(LAYERS.find((l) => l.id === "parking")?.paramIds).toEqual([4013]);
+    expect(overpassQueryFor("parking", TALLINN_BBOX)).toContain("parking");
   });
 
   it("wires the G17R privroad layer with locked calibration", () => {
