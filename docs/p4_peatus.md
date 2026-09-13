@@ -24,6 +24,12 @@ parameters3.md cadence: daily cron 03:30 UTC), single GET, no retries —
 HTTP 429/errors are a stop signal. Transport errors are never cached as
 data; the scorers stay NULL with an Estonian EI OLE reason until the feed
 reopens. Scored shapes are proven on fixtures only (hermetic tests).
+Stop positions meanwhile ride the `gtfsstops` point overlay (#483):
+TLT-city stops from the snapshot GTFS vintage
+`gtfs/tallinn-gtfs-2026-09-11.zip` (scheduled Wednesday departures as
+marker size); regional stops beyond that vintage stay unplotted and
+evening ridership stays NULL — the overlay shows schedules, never
+occupancy.
 
 ## Honest shapes per param (checklist / bands, NULL stays NULL)
 

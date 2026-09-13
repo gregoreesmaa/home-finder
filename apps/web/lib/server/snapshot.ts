@@ -74,6 +74,10 @@ import { G17R_RASTER_FILE } from "../layers_group17rest";
 import { BATCH10C_RASTER_FILE } from "../layers_batch10c";
 // OSMDAILY-HOOK (#482): daily-life raster files live in layers_osmdaily.ts.
 import { OSMDAILY_RASTER_FILE } from "../layers_osmdaily";
+// GTFS-HOOK (#483): gtfsstops raster file lives in layers_gtfsstops.ts
+// (named but NOT built — overlay-only decision, resolves absent so the
+// layer rides the Euclidean fallback splat, honestly labeled).
+import { GTFSSTOPS_RASTER_FILE } from "../layers_gtfsstops";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -420,6 +424,9 @@ const RASTER_FILE: Record<LayerId, string> = {
   // OSMDAILY-HOOK (#482): daily-life rasters (follow-up builds; absent
   // files degrade to the honest Euclidean fallback, never an error).
   ...OSMDAILY_RASTER_FILE,
+  // GTFS-HOOK (#483): gtfsstops raster name only (no master built —
+  // overlay-only; absent file degrades to Euclidean points scoring).
+  ...GTFSSTOPS_RASTER_FILE,
 };
 
 /**
@@ -765,6 +772,9 @@ const METRO_PREFIX: Record<LayerId, string> = {
   thirdplace: "thirdplace-metro",
   taxidoor: "taxidoor-metro",
   lastshop: "lastshop-metro",
+  // GTFS-HOOK (#483): no gtfsstops metro master (overlay-only — the file
+  // is absent, so windows serve county everywhere, like G02B/G03/B10C).
+  gtfsstops: "gtfsstops-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

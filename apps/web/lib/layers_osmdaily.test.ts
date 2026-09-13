@@ -71,8 +71,8 @@ describe("osmdaily registry (#482)", () => {
 
   it("merges into LAYERS via the OSMDAILY-HOOK (page + routes serve all layers)", () => {
     const ids = LAYERS.map((l) => l.id);
-    // 77 shipped layers + 6 OSM-daily.
-    expect(ids.length).toBe(83);
+    // 77 shipped layers + 6 OSM-daily + 1 GTFS stop overlay (#483).
+    expect(ids.length).toBe(84);
     for (const id of OSMDAILY_LAYER_IDS) expect(ids).toContain(id);
   });
 

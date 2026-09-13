@@ -350,6 +350,16 @@ import {
   OSMDAILY_TAGS,
   bonusSpecForOsmdaily,
 } from "./layers_osmdaily";
+// GTFS-HOOK (#483): GTFS stop overlay (p15, measured-only point set)
+// tables live in ./layers_gtfsstops (new file). That module imports
+// layers only as types, so no runtime cycle.
+import type { GtfsstopsLayerId } from "./layers_gtfsstops";
+import {
+  GTFSSTOPS_DECAY,
+  GTFSSTOPS_DEFS,
+  GTFSSTOPS_TAGS,
+  bonusSpecForGtfsstops,
+} from "./layers_gtfsstops";
 
 export type LayerId =
   | "parks"
@@ -422,7 +432,9 @@ export type LayerId =
   // B10C-HOOK (#230): Group 10 utility ids (./layers_batch10c).
   | Batch10CLayerId
   // OSMDAILY-HOOK (#482): OSM daily-life ids (./layers_osmdaily).
-  | OsmdailyLayerId;
+  | OsmdailyLayerId
+  // GTFS-HOOK (#483): GTFS stop overlay id (./layers_gtfsstops).
+  | GtfsstopsLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -563,6 +575,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...BATCH10C_DECAY,
   // OSMDAILY-HOOK (#482): daily-life radii (see layers_osmdaily.ts OSMDAILY_DECAY).
   ...OSMDAILY_DECAY,
+  // GTFS-HOOK (#483): gtfsstops radius (see layers_gtfsstops.ts GTFSSTOPS_DECAY).
+  ...GTFSSTOPS_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -733,6 +747,9 @@ export const LAYERS: LayerDef[] = [
   ...BATCH10C_DEFS,
   // OSMDAILY-HOOK (#482): daily-life defs (P4-027/032/044/045/049/061 proxies) from ./layers_osmdaily.
   ...OSMDAILY_DEFS,
+  // GTFS-HOOK (#483): gtfsstops def (p15, shared with transit — measured-only
+  // point set vs default-filled set) from ./layers_gtfsstops.
+  ...GTFSSTOPS_DEFS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -816,6 +833,8 @@ const TAGS: Record<LayerId, string> = {
   ...BATCH10C_TAGS,
   // OSMDAILY-HOOK (#482): daily-life queries (see layers_osmdaily.ts OSMDAILY_TAGS).
   ...OSMDAILY_TAGS,
+  // GTFS-HOOK (#483): gtfsstops query (see layers_gtfsstops.ts GTFSSTOPS_TAGS).
+  ...GTFSSTOPS_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -1078,6 +1097,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // OSMDAILY-HOOK (#482): daily-life specs live in ./layers_osmdaily.
   const osmdaily = bonusSpecForOsmdaily(layer);
   if (osmdaily) return osmdaily;
+  // GTFS-HOOK (#483): gtfsstops spec lives in ./layers_gtfsstops.
+  const gtfs = bonusSpecForGtfsstops(layer);
+  if (gtfs) return gtfs;
   throw new Error(`unknown layer: ${layer}`);
 }
 

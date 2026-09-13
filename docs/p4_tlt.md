@@ -65,6 +65,10 @@ this repo refuses (AGENTS.md §5).
   timetable/change feed for any slice → re-open #277, build the
   polite cached ingestion (daily TTL per parameters3.md §5.12
   cadence), and graduate that dim to a per-stop band / calendar.
+- **Stop positions (not a verdict change):** TLT-city stops ride the
+  `gtfsstops` point overlay (#483) from the snapshot GTFS vintage
+  `gtfs/tallinn-gtfs-2026-09-11.zip` (scheduled departures as marker
+  size; evening ridership still NULL above).
 
 ## Why demo + coverage share one PR
 
