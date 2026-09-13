@@ -118,7 +118,8 @@ describe("overlay legend + colors", () => {
     // MAAPARCEL-HOOK (#491): maaparcel joins the registry (100 + 1).
 
     // EELIS-HOOK (#488): eeliskaitse + eelisniit + eelisraie join the registry (101 + 3).
-    expect(ids).toHaveLength(104);
+    // PLANKTPR-HOOK (#492): planktpr joins the registry (104 + 1).
+    expect(ids).toHaveLength(105);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -316,6 +317,14 @@ describe("overlay legend + colors", () => {
     expect(overlayLegendFor("maaparcel")).toContain("väljaspool = teadmata, mitte tühi");
     expect(overlayLegendFor("maaparcel")).toContain("RIK hoonestuse kontroll");
 
+
+    // PLANKTPR-HOOK (#492): planktpr legend carries the bands + the
+    // dated WFS negative (polygons, never OSM landuse — see
+    // PLANKTPR_USE_BANDS).
+    expect(overlayLegendFor("planktpr")).toContain("hinnang");
+    expect(overlayLegendFor("planktpr")).toContain("EI OLE");
+    expect(overlayLegendFor("planktpr")).toContain("2026-09-13");
+    expect(overlayLegendFor("planktpr")).toContain("elamu");
   });
 
   it("gives every layer a distinct marker color", () => {
@@ -350,7 +359,8 @@ describe("overlay legend + colors", () => {
     // MAAPARCEL-HOOK (#491): maaparcel joins the registry (100 + 1).
 
     // EELIS-HOOK (#488): eeliskaitse + eelisniit + eelisraie join the registry (101 + 3).
-    expect(seen.size).toBe(104);
+    // PLANKTPR-HOOK (#492): planktpr joins the registry (104 + 1).
+    expect(seen.size).toBe(105);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

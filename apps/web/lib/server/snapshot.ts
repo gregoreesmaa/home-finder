@@ -114,6 +114,13 @@ import { MAAPARCEL_RASTER_FILE } from "../layers_maaparcel";
 // windows serve honestly-empty, never a gradient).
 import { EELIS_RASTER_FILE } from "../layers_eelis";
 
+// PLANKTPR-HOOK (#492): planktpr raster filename + harvested-polygon
+// sidecar live in layers_planktpr.ts (raster intentionally never built
+// — PLANKTPR_NO_RASTER; the name resolves to an absent file so rasters
+// degrade to null; the sidecar is honestly empty when unharvested).
+import type { PlanktprArea } from "../layers_planktpr";
+import { PLANKTPR_RASTER_FILE, isPlanktprArea } from "../layers_planktpr";
+
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
 export const SNAPSHOT_AS_OF_MS = Date.parse(`${SNAPSHOT_AS_OF}T00:00:00Z`);
@@ -343,6 +350,8 @@ export async function loadEelisAreas(dir: string): Promise<EelisArea[]> {
 }
 
 const areaCache = new Map<string, ParkArea[]>();
+// PLANKTPR-HOOK (#492): harvested-polygon sidecar cache (same discipline).
+const planktprAreaCache = new Map<string, PlanktprArea[]>();
 
 /**
  * Green-polygon sidecar (`osm/park-areas.json`): outer rings + hectares.
@@ -441,6 +450,28 @@ export async function loadMaaParcelAreas(dir: string): Promise<MaaParcelSidecar[
     // Optional sidecar: honestly no polygons.
   }
   maaParcelCache.set(dir, areas);
+
+  return areas;
+}
+// PLANKTPR-HOOK (#492): designated-use polygon sidecar
+// (`plank/areas.json`, written by scripts/build/batch_planktpr_wfs.py):
+// plan_id + raw use code + stage + kov + outer rings. A missing sidecar
+// is honestly empty (the dated NULL — WFS gone, TPR has no bulk), never
+// an error; malformed rows are skipped, never faked.
+export async function loadPlanktprAreas(dir: string): Promise<PlanktprArea[]> {
+  const hit = planktprAreaCache.get(dir);
+  if (hit) return hit;
+  let areas: PlanktprArea[] = [];
+  try {
+    const raw = await fs.readFile(path.join(dir, "plank", "areas.json"), "utf8");
+    const parsed: unknown = JSON.parse(raw);
+    if (Array.isArray(parsed)) areas = parsed.filter(isPlanktprArea);
+    else console.warn(`snapshot: ignoring malformed plank/areas.json in ${dir}`);
+  } catch {
+    // Optional sidecar: honestly empty below.
+  }
+  planktprAreaCache.set(dir, areas);
+
   return areas;
 }
 
@@ -589,6 +620,7 @@ const allPoints = new Map<string, LayerPoint[]>();
 export function clearSnapshotCache(): void {
   allPoints.clear();
   areaCache.clear();
+  planktprAreaCache.clear(); // PLANKTPR-HOOK (#492)
   freqCache.clear();
   rasterCache.clear();
   countyBytes.clear();
@@ -714,6 +746,10 @@ const RASTER_FILE: Record<LayerId, string> = {
   // EELIS-HOOK (#488): nature-polygon raster names only (no masters built —
   // polygons-only; absent files serve honestly-empty, never a gradient).
   ...EELIS_RASTER_FILE,
+
+  // PLANKTPR-HOOK (#492): planktpr raster name only (no master built —
+  // polygons ARE the field; absent file degrades to null, honestly).
+  ...PLANKTPR_RASTER_FILE,
 };
 
 /**
@@ -1156,6 +1192,11 @@ const METRO_PREFIX: Record<LayerId, string> = {
   eeliskaitse: "eeliskaitse-metro",
   eelisniit: "eelisniit-metro",
   eelisraie: "eelisraie-metro",
+
+  // PLANKTPR-HOOK (#492): no planktpr metro master by documented
+  // decision (see layers_planktpr.ts PLANKTPR_NO_METRO) — the name
+  // resolves to an absent file so windows fall back to county cleanly.
+  planktpr: "planktpr-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

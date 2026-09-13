@@ -193,6 +193,9 @@ describe("layer registry", () => {
       "eeliskaitse",
       "eelisniit",
       "eelisraie",
+
+      // PLANKTPR-HOOK (#492): designated-use polygon id (p47 exact fills).
+      "planktpr",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -255,6 +258,10 @@ describe("layer registry", () => {
     for (const id of ["eeliskaitse", "eelisniit", "eelisraie"]) {
       expect(LAYERS.find((l) => l.id === id)?.paramIds).toEqual([]);
     }
+
+    // PLANKTPR-HOOK (#492): planktpr binds p47 (designated use — the
+    // G05A no-map row it graduates; OSM landuse stays out by design).
+    expect(LAYERS.find((l) => l.id === "planktpr")?.paramIds).toEqual([47]);
   });
 
   it("wires the B10C utility layers with locked calibration", () => {
@@ -584,6 +591,14 @@ describe("layer registry", () => {
       // (a demo point would paint a fake gradient splat).
       // EELIS-HOOK (#488): eelis polygon layers likewise carry NO demo
       // points (pinned by layers_eelis.test.ts).
+      // PLANKTPR-HOOK (#492): polygons-only layer with no honest demo
+      // points — the fallback is EMPTY by documented decision (see
+      // layers_planktpr.ts); the client renders the empty field, never
+      // faked fills. Pinned exactly so no demo junk can creep in.
+      if (l.id === "planktpr") {
+        expect(l.fallbackPoints).toEqual([]);
+        continue;
+      }
       if (isPolygonOnlyMaaLayer(l.id)) {
         expect(l.fallbackPoints).toEqual([]);
       } else if (!isPolygonOnlyLayer(l.id) && !isEelisPolygonOnlyLayer(l.id)) {

@@ -6,6 +6,7 @@ import {
   applyEelisPolygons,
   applyOutlines,
   applyPointOverlay,
+  applyUsePolygons,
   clearVectorOverlays,
   type OutlineMap,
 } from "./outlines";
@@ -200,6 +201,70 @@ describe("applyPointOverlay", () => {
   });
 });
 
+describe("applyUsePolygons", () => {
+  it("paints casing + band-colored fills with closed rings", () => {
+    const map = mockMap();
+    applyUsePolygons(map, [{ rings: [RING], color: "#16a34a" }]);
+    expect(map.sources.has("planktpr-use-polys")).toBe(true);
+    expect(map.layers.has("planktpr-use-casing")).toBe(true);
+    expect(map.layers.has("planktpr-use-fill")).toBe(true);
+    const src = map.added[0] as {
+      data: {
+        features: {
+          properties: { color: string };
+          geometry: { coordinates: number[][][] };
+        }[];
+      };
+    };
+    expect(src.data.features).toHaveLength(1);
+    expect(src.data.features[0].properties.color).toBe("#16a34a");
+    const closed = src.data.features[0].geometry.coordinates[0];
+    expect(closed[0]).toEqual([24.7, 59.41]);
+    expect(closed[closed.length - 1]).toEqual([24.7, 59.41]);
+    const fill = map.added.find(
+      (l) => (l as { id: string }).id === "planktpr-use-fill",
+    ) as { paint: Record<string, unknown> };
+    expect(fill.paint["fill-color"]).toEqual(["get", "color"]);
+  });
+
+  it("shares one overlay slot with outlines and points (never stacks)", () => {
+    const map = mockMap();
+    applyOutlines(map, [{ b: [24.7, 59.41, 24.71, 59.42], a: 6.4, r: [RING] }]);
+    expect(map.layers.has("park-outline-core")).toBe(true);
+    applyUsePolygons(map, [{ rings: [RING], color: "#16a34a" }]);
+    expect(map.layers.has("park-outline-core")).toBe(false);
+    expect(map.layers.has("planktpr-use-fill")).toBe(true);
+    expect(map.sources.has("park-outlines")).toBe(false);
+    applyPointOverlay(map, [{ lon: 24.75, lat: 59.43 }], { color: "#1d4ed8" });
+    expect(map.layers.has("planktpr-use-fill")).toBe(false);
+    expect(map.layers.has("layer-overlay-core")).toBe(true);
+    expect(map.sources.has("planktpr-use-polys")).toBe(false);
+  });
+
+  it("clears stale layers on nullish input and skips junk rings", () => {
+    const map = mockMap();
+    map.layers.add("planktpr-use-casing");
+    map.layers.add("planktpr-use-fill");
+    map.sources.add("planktpr-use-polys");
+    applyUsePolygons(map, null);
+    expect(map.layers.size).toBe(0);
+    expect(map.sources.size).toBe(0);
+    const map2 = mockMap();
+    applyUsePolygons(map2, [
+      { rings: [[[0, 0]]], color: "#16a34a" },
+      { rings: "nope" as unknown as number[][][], color: "#16a34a" },
+    ]);
+    expect(map2.sources.size).toBe(0);
+  });
+
+  it("no-ops before the style loads", () => {
+    const map = mockMap(null);
+    applyUsePolygons(map, [{ rings: [RING], color: "#16a34a" }]);
+    expect(map.sources.size).toBe(0);
+    expect(map.layers.size).toBe(0);
+  });
+});
+
 describe("clearVectorOverlays", () => {
   it("removes both overlay kinds at once", () => {
     const map = mockMap();
@@ -211,6 +276,10 @@ describe("clearVectorOverlays", () => {
       // MAAPARCEL-HOOK (#491): parcel fill + casing join the cleared slot.
       "maaparcel-fill",
       "maaparcel-casing",
+
+      // PLANKTPR-HOOK (#492): use-fill layers join the same slot.
+      "planktpr-use-casing",
+      "planktpr-use-fill",
     ]) {
       map.layers.add(id);
     }
@@ -218,6 +287,8 @@ describe("clearVectorOverlays", () => {
     map.sources.add("layer-overlay-src");
     // MAAPARCEL-HOOK (#491): parcel source joins the cleared slot.
     map.sources.add("maaparcel-polys");
+    // PLANKTPR-HOOK (#492): use-fill source joins the same slot.
+    map.sources.add("planktpr-use-polys");
     clearVectorOverlays(map);
     expect(map.layers.size).toBe(0);
     expect(map.sources.size).toBe(0);

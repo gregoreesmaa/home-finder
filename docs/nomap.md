@@ -269,7 +269,7 @@ different surface, never a raster).
 | 43 | G16 | Resale appeal | NULL | dim_resale_appeal · layers_group16a.ts | Edasimüügi atraktiivsus on mitme registri koondotsus (EI OLE ühest hinnangut snapshots): ükski OSM kiht ei mõõda nõudlust. Dim jääb NULLiks maakleri võrdlustehingute (comp) kontrolli põhjusega — ära feigi. — Lähim kaart: puudub — järelturu atraktiivsus on koondhinnang |
 | 45 | G5 | Adaptability | NULL | layers_group05a.ts | Per-building structural fact (EHR series, load-bearing walls, floor-plan flexibility); OSM maps footprints, never remodelability, so an area gradient cannot answer the question — building attributes are not place fields… |
 | 46 | G8 | Environmental risks | NULL | layers_group08a.ts | Composite incident-per-capita index (KOV-table fallback); no incident register exists in the snapshot, and every mappable hazard already scores under its own layer — a composite gradient would re-skin the whole registry. |
-| 47 | G5 | Zoning laws | NULL | layers_group05a.ts | Per-parcel prescriptive fact (the PLANK/TPR designated use); OSM landuse is descriptive (what is built), never the decree — painting it as zoning would be fake precision. Commercial-zone nearness stays p223's proxy, neve… |
+| 47 | G5 | Zoning laws | proxy | planktpr · layers_planktpr.ts (#492; G05A OSM caveat stands) | Per-parcel prescriptive fact (the PLANK/TPR designated use); OSM landuse is descriptive (what is built), never the decree — painting it as zoning would be fake precision. Commercial-zone nearness stays p223's proxy, neve… Graduated #492: harvested kehtestatud decree polygons draw as exact per-parcel fills (elamu 80 / sega 60 / äri 35 / piirang 20, lagi 80); live harvest honestly empty (WFS gone, dated 2026-09-13) — never OSM. |
 | 48 | G2 | Permit history | NULL | layers_group02.ts | Load on hoone, mitte asukoha omadus; naabermajade load ei puhasta Sinu korterit. Olek skooritakse kuulutuse/EHR fakti järgi (dims_group02), tundmatu olek jääb NULLiks. |
 | 49 | G17 | HOA restrictions | NULL | layers_group17rest.ts | A per-KÜ rulebook fact (house rules live in the KÜ põhikiri); the snapshot carries zero rulebook keys — a proximity gradient cannot read another building's rules. |
 | 52 | G10 | Cellular signal strength | proxy | (dims docstring — see §3) | (see group reasoning in §3; scorer dim in owning dims_*.py) |
@@ -719,7 +719,7 @@ carries its own re-probe checklist.
 | Päästeamet | P4-012, 015, 042, 047, 058, 059, 062 | proxy join-gated (point/calendar/zone joins; machine feed negative) | docs/p4_paaste.md |
 | Parkimine regime | P4-013, 037, 049 | proxy (per-parcel zone join; bulk polygons negative) | docs/p4_park.md |
 | Peatus.ee GTFS | P4-037, 045, 048, 049, 061 | no-map (zip dead; NULL until feed reopens; city stop positions ride the `gtfsstops` overlay from the TLT snapshot vintage) | docs/p4_peatus.md |
-| PLANK WFS | P4-006 | no-map (endpoint gone → SPA shell) | docs/p4_plank.md |
+| PLANK WFS | P4-006 | no-map (endpoint gone → SPA shell; re-verified 2026-09-13 for #492, see docs/p4_planktpr.md) | docs/p4_plank.md |
 | PPA open CSVs | P4-012, 015 | proxy (OPEN feeds; linnaosa tertile choropleth) | docs/p4_ppa.md |
 | PRIA field blocks | P4-024 | no-map (no anonymous bulk; buffer shape fixture-proven) | docs/p4_pria.md |
 | Rahandusministeerium | P4-019, 037 | no-map (prose; dead KOV-budget reference) | docs/p4_rahmin.md |
@@ -764,3 +764,4 @@ carries its own re-probe checklist.
 | Muinas register #237 | p158, 272, 320, 351, 354, 355, 359, 360 | no-map (no dump; 4 legs permanently NULL) | docs/overturn_muinas.md |
 | Park upkeep p317 #240 | p317 | no-map (contracts per polygon; no quality key) | docs/overturn_p317.md |
 | PLANK / TPR #236 | p47, p74 exact joins + p274 ceiling proxy | proxy join-gated (all live NULL; deed stays paid-register) | docs/overturn_planktpr.md |
+| PLANK / TPR polygons #492 | p47 polygon overlay (p74/p274 scorer-only) | proxy join-gated (live harvest empty, dated 2026-09-13; fills light up on reopen) | docs/p4_planktpr.md |

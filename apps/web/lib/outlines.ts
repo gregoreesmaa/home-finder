@@ -36,6 +36,11 @@ const MAAPARCEL_CASING = "maaparcel-casing";
 const EELIS_SRC = "eelis-nature-polys";
 const EELIS_FILL = "eelis-nature-fill";
 const EELIS_CASING = "eelis-nature-casing";
+// PLANKTPR-HOOK (#492): designated-use fill slot (polygons only —
+// per-parcel fills colored by fit band, never kernels or points).
+const USE_SRC = "planktpr-use-polys";
+const USE_FILL = "planktpr-use-fill";
+const USE_CASING = "planktpr-use-casing";
 const POINT_SRC = "layer-overlay-src";
 const POINT_CASING = "layer-overlay-casing";
 const POINT_CORE = "layer-overlay-core";
@@ -45,7 +50,8 @@ export function clearVectorOverlays(mapObj: OutlineMap): void {
   // FLOOD-HOOK (#487): flood fill + casing join the cleared slot.
   // MAAPARCEL-HOOK (#491): parcel fill + casing join the cleared slot.
   // EELIS-HOOK (#488): eelis fill + casing join the cleared slot.
-  for (const id of [PARK_CASING, PARK_CORE, POINT_CASING, POINT_CORE, FLOOD_FILL, FLOOD_CASING, MAAPARCEL_FILL, MAAPARCEL_CASING, EELIS_FILL, EELIS_CASING]) {
+  // PLANKTPR-HOOK (#492): use fill + casing join the cleared slot.
+  for (const id of [PARK_CASING, PARK_CORE, POINT_CASING, POINT_CORE, FLOOD_FILL, FLOOD_CASING, MAAPARCEL_FILL, MAAPARCEL_CASING, EELIS_FILL, EELIS_CASING, USE_FILL, USE_CASING]) {
     try {
       if (mapObj.getLayer(id)) mapObj.removeLayer(id);
     } catch {
@@ -55,7 +61,8 @@ export function clearVectorOverlays(mapObj: OutlineMap): void {
   // FLOOD-HOOK (#487): flood source joins the cleared slot.
   // MAAPARCEL-HOOK (#491): parcel source joins the cleared slot.
   // EELIS-HOOK (#488): eelis source joins the cleared slot.
-  for (const id of [PARK_SRC, POINT_SRC, FLOOD_SRC, MAAPARCEL_SRC, EELIS_SRC]) {
+  // PLANKTPR-HOOK (#492): the use-fill source joins the same slot.
+  for (const id of [PARK_SRC, POINT_SRC, FLOOD_SRC, MAAPARCEL_SRC, EELIS_SRC, USE_SRC]) {
     try {
       if (mapObj.getSource(id)) mapObj.removeSource(id);
     } catch {
@@ -460,6 +467,80 @@ export function applyEelisPolygons(
       type: "line",
       source: EELIS_SRC,
       paint: { "line-color": "#ffffff", "line-width": 2, "line-opacity": 0.9 },
+    },
+    before,
+  );
+}
+
+/** One scored designated-use fill: outer rings + their band color. */
+export interface UseFillPolygon {
+  rings: number[][][];
+  /** Hex fill color (the caller's band color — unscored rows never arrive). */
+  color: string;
+}
+
+// PLANKTPR-HOOK (#492): designated-use fills (p47 exact per-parcel
+// joins). Paints translucent fills (white casing + band-colored core)
+// ABOVE the base field, so harvested kehtestatud polygons read at a
+// glance while everything outside them stays the honest unknown field.
+// Clears stale overlays first; no-op when the style is not loaded yet
+// or fills is nullish. Unscored rows (non-decree stage, unknown use,
+// non-Tallinn) must be filtered by the CALLER — the painter draws what
+// it is given, one feature per ring.
+export function applyUsePolygons(
+  mapObj: OutlineMap,
+  fills: UseFillPolygon[] | null | undefined,
+): void {
+  if (!mapObj.getStyle()) return;
+  clearVectorOverlays(mapObj);
+  if (!fills || fills.length === 0) return;
+  const features = [];
+  for (const f of fills) {
+    if (!f || typeof f.color !== "string" || !Array.isArray(f.rings)) continue;
+    for (const ring of f.rings) {
+      if (!Array.isArray(ring) || ring.length < 3) continue;
+      const pts = ring.filter(
+        (pt) =>
+          Array.isArray(pt) &&
+          pt.length === 2 &&
+          pt.every((n) => typeof n === "number" && Number.isFinite(n)),
+      );
+      if (pts.length < 3) continue;
+      const first = pts[0];
+      const last = pts[pts.length - 1];
+      const closed =
+        first[0] === last[0] && first[1] === last[1] ? pts : [...pts, [first[0], first[1]]];
+      features.push({
+        type: "Feature",
+        properties: { color: f.color },
+        geometry: { type: "Polygon", coordinates: [closed] },
+      });
+    }
+  }
+  if (features.length === 0) return;
+  mapObj.addSource(USE_SRC, {
+    type: "geojson",
+    data: { type: "FeatureCollection", features },
+  });
+  const before = abovePaint(mapObj);
+  mapObj.addLayer(
+    {
+      id: USE_CASING,
+      type: "line",
+      source: USE_SRC,
+      paint: { "line-color": "#ffffff", "line-width": 3, "line-opacity": 0.9 },
+    },
+    before,
+  );
+  mapObj.addLayer(
+    {
+      id: USE_FILL,
+      type: "fill",
+      source: USE_SRC,
+      paint: {
+        "fill-color": ["get", "color"],
+        "fill-opacity": 0.45,
+      },
     },
     before,
   );

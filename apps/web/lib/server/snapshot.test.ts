@@ -7,6 +7,7 @@ import {
   intersectsCoverage,
   loadLayerRaster,
   loadParkAreas,
+  loadPlanktprAreas,
   loadSnapshotPoints,
   loadWindowRaster,
   nominalArea,
@@ -110,6 +111,31 @@ describe("park area features", () => {
       const areas = await loadParkAreas(dir);
       expect(areas).toEqual([{ b: [0, 0, 1, 1], a: 6.4, r: [[[0, 0], [1, 0], [1, 1], [0, 1]]] }]);
       expect(await loadParkAreas(join(dir, "nope"))).toEqual([]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  // PLANKTPR-HOOK (#492): harvested-polygon sidecar — fixture rows
+  // load, junk rows skip, a missing sidecar is honestly empty (dated
+  // NULL), never an error.
+  it("loads harvested use polygons, skipping junk, [] when missing", async () => {
+    const dir = await fixtureDir([{ lat: 1, lon: 1 }], "parks");
+    await mkdir(join(dir, "plank"), { recursive: true });
+    const good = {
+      plan_id: "DP-001",
+      use: "elamumaa",
+      stage: "kehtestatud",
+      kov: "Tallinn",
+      rings: [[[24.7, 59.43], [24.72, 59.43], [24.72, 59.45], [24.7, 59.45]]],
+    };
+    await writeFile(
+      join(dir, "plank", "areas.json"),
+      JSON.stringify([good, { plan_id: "DP-002", use: 42 }, null]),
+    );
+    try {
+      expect(await loadPlanktprAreas(dir)).toEqual([good]);
+      expect(await loadPlanktprAreas(join(dir, "nope"))).toEqual([]);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
