@@ -16,6 +16,8 @@ import { haversineKm } from "../poi";
 import { sampleRaster } from "../walkRaster";
 // B1-HOOK(#98): batch B1 raster files live in layers_batch1.ts.
 import { B1_METRO_PREFIXES, B1_RASTER_FILES } from "../layers_batch1";
+// G03-HOOK(#151): batch G03 raster file lives in layers_group03.ts.
+import { G03_RASTER_FILE } from "../layers_group03";
 // G07B-HOOK(#141): batch G07B raster files live in layers_group07b.ts.
 import { G07B_RASTER_FILE } from "../layers_group07b";
 // G11D-HOOK(#135): leftover-B raster files live in layers_group11d.ts.
@@ -335,6 +337,8 @@ const RASTER_FILE: Record<LayerId, string> = {
   heritage: "heritage-walk-raster.json",
   // G02B-HOOK (#137): lift-proxy raster (built by scripts/build/batch_g02b_lift.py).
   ...G02B_RASTER_FILE,
+  // G03-HOOK (#151): drainage raster (scripts/build/batch_g03_cadastre.py).
+  ...G03_RASTER_FILE,
 };
 
 /**
@@ -376,6 +380,8 @@ export function matchesContract(
   const spec = bonusSpecFor(layer);
   if (doc.sigma !== radiusKmFor(layer)) return false;
   if (spec.kind === "variety") return doc.per === spec.per && doc.cap === spec.cap;
+  // B6-HOOK (#133) + G03-HOOK (#151): "quiet" carries halfM on the wire
+  // half field.
   // G07B-HOOK (#141): nearest-source cleanliness (0 on the source, 50 at halfM).
   // G11D-HOOK (#135): quiet layers carry halfM on the wire as half.
   // G07D-HOOK (#143): nearest-source cleanliness (0 on the source, 50 at halfM).
@@ -391,10 +397,11 @@ export function matchesContract(
 
 /**
  * Masters stamped with DIRECT distance, not walk time: airspace cells
- * radiate through air (drones fly, they do not walk), and the rentbleed
+ * radiate through air (drones fly, they do not walk), the rentbleed
  * pressure field is a smooth Euclidean grid by construction (see the
- * batch_b6_mobility.py builder). Labeling them "walk" would claim
- * footpath routing the master never used.
+ * batch_b6_mobility.py builder), and the G03 drainage proxy field is a
+ * smooth Euclidean grid by construction (see batch_g03_cadastre.py).
+ * Labeling them "walk" would claim footpath routing the master never used.
  */
 // B6-HOOK (#133): Euclidean-by-construction masters.
 const B6_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set([
@@ -402,6 +409,8 @@ const B6_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set([
   "droneviab",
   "rentbleed",
 ]);
+// G03-HOOK (#151): Euclidean-built drainage master rides "euclidean".
+const G03_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["drainage"]);
 
 export async function loadLayerRaster(
   layer: LayerId,
@@ -409,7 +418,8 @@ export async function loadLayerRaster(
 ): Promise<{ raster: WalkRasterDoc | null; distance: TransitDistance }> {
   const doc = await loadWalkRaster(layer, dir);
   if (doc && matchesContract(doc, layer)) {
-    return { raster: doc, distance: B6_EUCLIDEAN_MASTER.has(layer) ? "euclidean" : "walk" };
+    const euclidean = B6_EUCLIDEAN_MASTER.has(layer) || G03_EUCLIDEAN_MASTER.has(layer);
+    return { raster: doc, distance: euclidean ? "euclidean" : "walk" };
   }
   return { raster: null, distance: "euclidean" };
 }
@@ -465,6 +475,9 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // G02B-HOOK (#137): no liftproxy metro master (documented fake
   // precision — the file is absent, so windows serve county everywhere).
   liftproxy: "liftproxy-metro",
+  // G03-HOOK (#151): no drainage metro master (documented fake precision
+  // — the file is absent, so windows serve county everywhere, like B5).
+  drainage: "drainage-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */
@@ -682,6 +695,7 @@ export async function loadWindowRaster(
     rows: outRows,
     bbox: view,
     step_m: stepM,
+    // B6-HOOK (#133) + G03-HOOK (#151): "quiet" specs carry halfM, not half.
     // G07B-HOOK (#141): quiet specs carry halfM, not half.
     // G07D-HOOK (#143): quiet specs carry halfM, not half.
     // B6-HOOK (#133): "quiet" specs carry halfM, not half.

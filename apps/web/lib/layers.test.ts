@@ -75,6 +75,8 @@ describe("layer registry", () => {
       "heritage",
       // G02B-HOOK (#137): Group 2 batch-B lift-proxy id (p196 hinnang).
       "liftproxy",
+      // G03-HOOK (#151): Group 3 cadastre-A drainage id.
+      "drainage",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -100,6 +102,15 @@ describe("layer registry", () => {
     expect(bonusSpecFor("liftproxy")).toEqual({ kind: "area", half: 2 });
     expect(radiusKmFor("liftproxy")).toBe(0.3);
     expect(overpassQueryFor("liftproxy", TALLINN_BBOX)).toContain("building:levels");
+  });
+
+  it("wires the G03 drainage proxy with locked calibration", () => {
+    // Drift guard: hook spec must equal G03_CAL in layers_group03.ts and
+    // the Python builder (parsed by test_batch_g03.py).
+    expect(bonusSpecFor("drainage")).toEqual({ kind: "quiet", halfM: 300 });
+    expect(radiusKmFor("drainage")).toBe(0.3);
+    expect(LAYERS.find((l) => l.id === "drainage")?.paramIds).toEqual([50]);
+    expect(overpassQueryFor("drainage", TALLINN_BBOX)).toContain("coastline");
   });
 
   it("every layer explains green=good / red=bad in Estonian", () => {

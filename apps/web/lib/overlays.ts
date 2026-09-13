@@ -175,6 +175,11 @@ export function overlayColorFor(layer: LayerId): string {
     // G02B-HOOK (#137): lift proxy (point overlay, stride-sampled).
     case "liftproxy":
       return "#0891b2";
+    // G03-HOOK (#151): drainage proxy markers (point overlay,
+    // stride-sampled like grocery). #1e40af: deep water blue, distinct
+    // from liftproxy #0891b2 and every other marker (distinct-color test).
+    case "drainage":
+      return "#1e40af";
   }
 }
 
@@ -295,6 +300,10 @@ export function overlayLegendFor(layer: LayerId): string {
     // as bonusSpecFor (see layers_group02b.ts G02B_BONUS).
     case "liftproxy":
       return "Kõrghooned (5+ korrust) · lähedaste arv (hinnang, küllastus 2)";
+    // G03-HOOK (#151): drainage proxy (p50) — mapped source water, the
+    // raster holds the full quietness field.
+    case "drainage":
+      return "Veekogud, rannajoon ja märgalad · kauguse-hinnang (drenaažiproksi, küllastus 300 m)";
   }
 }
 

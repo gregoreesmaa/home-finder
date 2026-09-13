@@ -287,6 +287,35 @@ describe("layer walk rasters", () => {
     }
   });
 
+  it("reports euclidean for the Euclidean-built drainage master", async () => {
+    // The drainage proxy field is stamped with direct distance (see
+    // batch_g03_cadastre.py), so the distance label must say so —
+    // "walk" would claim footpath routing the master never used.
+    const dir = await fixtureDir([{ lat: 59.47, lon: 24.82 }], "drainage");
+    await writeFile(
+      join(dir, "osm", "drainage-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 300, sigma: 0.3 })),
+    );
+    try {
+      const res = await loadLayerRaster("drainage", dir);
+      expect(res.distance).toBe("euclidean");
+      expect(res.raster?.half).toBe(300);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+    // Stale drainage half: rejected under the quiet contract.
+    const stale = await fixtureDir([{ lat: 59.47, lon: 24.82 }], "drainage");
+    await writeFile(
+      join(stale, "osm", "drainage-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 500, sigma: 0.3 })),
+    );
+    try {
+      expect(await loadLayerRaster("drainage", stale)).toEqual({ raster: null, distance: "euclidean" });
+    } finally {
+      await rm(stale, { recursive: true, force: true });
+    }
+  });
+
   it("serves grocery and walkability rasters under the area contract", async () => {
     const gdir = await fixtureDir([{ lat: 59.44, lon: 24.75, a: 1 }], "grocery");
     await writeFile(

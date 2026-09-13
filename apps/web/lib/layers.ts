@@ -52,6 +52,16 @@ import {
   BATCH5_TAGS,
   bonusSpecForBatch5,
 } from "./layers_batch5";
+// G03-HOOK(#151): batch G03 (Group 3 cadastre-A drainage proxy) tables
+// live in ./layers_group03 (new file). That module imports layers only
+// as types, so no runtime cycle.
+import type { Group03LayerId } from "./layers_group03";
+import {
+  GROUP03_DECAY,
+  GROUP03_LAYERS,
+  GROUP03_TAGS,
+  bonusSpecForGroup03,
+} from "./layers_group03";
 // G11D-HOOK(#135): batch G11D (Group 11 leftovers B: p346/p470/p419/p466;
 // p317 is a documented no-map) tables live in ./layers_group11d (new
 // file). That module imports layers only as types, so no runtime cycle.
@@ -157,7 +167,9 @@ export type LayerId =
   // G06-HOOK (#138): Group 6 heritage id (defined in ./layers_group06).
   | Group06LayerId
   // G02B-HOOK (#137): Group 2 batch-B lift-proxy id (./layers_group02b).
-  | Group02bLayerId;
+  | Group02bLayerId
+  // G03-HOOK (#151): Group 3 cadastre-A drainage id (./layers_group03).
+  | Group03LayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -254,6 +266,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...GROUP06_DECAY,
   // G02B-HOOK (#137): lift-proxy radius (see layers_group02b.ts G02B_DECAY).
   ...G02B_DECAY,
+  // G03-HOOK (#151): drainage radius (see layers_group03.ts GROUP03_DECAY).
+  ...GROUP03_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -382,6 +396,8 @@ export const LAYERS: LayerDef[] = [
   ...GROUP06_DEFS,
   // G02B-HOOK (#137): lift-proxy def (p196) from ./layers_group02b.
   ...G02B_DEFS,
+  // G03-HOOK (#151): drainage def (p50) from ./layers_group03.
+  ...GROUP03_LAYERS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -423,6 +439,8 @@ const TAGS: Record<LayerId, string> = {
   ...GROUP06_TAGS,
   // G02B-HOOK (#137): lift-proxy query (see layers_group02b.ts G02B_TAGS).
   ...G02B_TAGS,
+  // G03-HOOK (#151): drainage query (see layers_group03.ts GROUP03_TAGS).
+  ...GROUP03_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -515,6 +533,8 @@ export type BonusSpec =
   | AreaSpec
   | TripsSpec
   | { kind: "variety"; key: string; values: string[]; per: number; cap: number }
+  // B6-HOOK (#133) + G07-HOOK (#140) + G03-HOOK (#151): nearest-source
+  // calmness/cleanliness/drainage goodness (0 on the source, 50 at halfM).
   // G07B-HOOK (#141): nearest-source cleanliness (0 on the source, 50 at
   // halfM). Same kind the G07-A batch (#140) adds — identical semantics,
   // shared on purpose; if #140 lands first this union member dedupes on
@@ -600,6 +620,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // G02B-HOOK (#137): lift-proxy spec lives in ./layers_group02b.
   const g02b = bonusSpecForGroup02b(layer);
   if (g02b) return g02b;
+  // G03-HOOK (#151): drainage spec lives in ./layers_group03.
+  const g03 = bonusSpecForGroup03(layer);
+  if (g03) return g03;
   throw new Error(`unknown layer: ${layer}`);
 }
 
