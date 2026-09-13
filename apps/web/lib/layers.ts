@@ -83,6 +83,17 @@ import {
   GROUP03D_TAGS,
   bonusSpecForGroup03D,
 } from "./layers_group03d";
+// G08D-HOOK(#170): batch G08D (Group 8 flood/climate-D vernalpool)
+// tables live in ./layers_group08d (new file). That module imports
+// layers only as types, so no runtime cycle.
+import type { G08DLayerId } from "./layers_group08d";
+import {
+  G08D_DECAY_KM,
+  G08D_LAYERS,
+  G08D_TAGS,
+  g08dBonusSpecFor,
+  isG08DLayerId,
+} from "./layers_group08d";
 // G11D-HOOK(#135): batch G11D (Group 11 leftovers B: p346/p470/p419/p466;
 // p317 is a documented no-map) tables live in ./layers_group11d (new
 // file). That module imports layers only as types, so no runtime cycle.
@@ -207,7 +218,9 @@ export type LayerId =
   // G03D-HOOK (#154): Group 3 cadastre-D ids (./layers_group03d).
   | Group03DLayerId
   // G08A-HOOK (#167): Group 8 flood/climate A id (./layers_group08a).
-  | G08ALayerId;
+  | G08ALayerId
+  // G08D-HOOK (#170): Group 8 flood/climate-D id (./layers_group08d).
+  | G08DLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -314,6 +327,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...GROUP03D_DECAY,
   // G08A-HOOK (#167): wildfire radius (see layers_group08a.ts G08A_DECAY_KM).
   ...G08A_DECAY_KM,
+  // G08D-HOOK (#170): vernalpool radius (see layers_group08d.ts G08D_DECAY_KM).
+  ...G08D_DECAY_KM,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -450,6 +465,8 @@ export const LAYERS: LayerDef[] = [
   ...GROUP03D_LAYERS,
   // G08A-HOOK (#167): wildfire def (p69) from ./layers_group08a.
   ...G08A_LAYERS,
+  // G08D-HOOK (#170): vernalpool def (p447) from ./layers_group08d.
+  ...G08D_LAYERS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -499,6 +516,8 @@ const TAGS: Record<LayerId, string> = {
   ...GROUP03D_TAGS,
   // G08A-HOOK (#167): wildfire query (see layers_group08a.ts G08A_TAGS).
   ...G08A_TAGS,
+  // G08D-HOOK (#170): vernalpool query (see layers_group08d.ts G08D_TAGS).
+  ...G08D_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -614,6 +633,8 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   if (isB1LayerId(layer)) return b1BonusSpecFor(layer);
   // G07B-HOOK(#141): env-health B specs live in layers_group07b.ts.
   if (isG07BLayerId(layer)) return g07bBonusSpecFor(layer);
+  // G08D-HOOK(#170): flood/climate-D specs live in layers_group08d.ts.
+  if (isG08DLayerId(layer)) return g08dBonusSpecFor(layer);
   // G07D-HOOK(#143): env-health D specs live in layers_group07d.ts.
   if (isG07DLayerId(layer)) return g07dBonusSpecFor(layer);
   // G07C-HOOK(#142): env-health C specs live in layers_group07c.ts.

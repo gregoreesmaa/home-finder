@@ -387,6 +387,34 @@ describe("layer walk rasters", () => {
     }
   });
 
+  it("serves the G08D vernalpool raster under the quiet contract", async () => {
+    // G08D-HOOK (#170): vernalpool quiet contract (halfM 300 on the
+    // wire as half, sigma 0.3); Euclidean-built like drainage. A stale
+    // half is rejected.
+    const dir = await fixtureDir([{ lat: 59.4425, lon: 24.7972 }], "vernalpool");
+    await writeFile(
+      join(dir, "osm", "vernalpool-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 300, sigma: 0.3 })),
+    );
+    try {
+      const res = await loadLayerRaster("vernalpool", dir);
+      expect(res.distance).toBe("euclidean");
+      expect(res.raster?.half).toBe(300);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+    const stale = await fixtureDir([{ lat: 59.4425, lon: 24.7972 }], "vernalpool");
+    await writeFile(
+      join(stale, "osm", "vernalpool-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 500, sigma: 0.3 })),
+    );
+    try {
+      expect(await loadLayerRaster("vernalpool", stale)).toEqual({ raster: null, distance: "euclidean" });
+    } finally {
+      await rm(stale, { recursive: true, force: true });
+    }
+  });
+
   it("serves grocery and walkability rasters under the area contract", async () => {
     const gdir = await fixtureDir([{ lat: 59.44, lon: 24.75, a: 1 }], "grocery");
     await writeFile(

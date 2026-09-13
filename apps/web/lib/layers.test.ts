@@ -84,6 +84,8 @@ describe("layer registry", () => {
       "shoredist",
       // G08A-HOOK (#167): Group 8 flood/climate A id (p69 wildfire).
       "wildfire",
+      // G08D-HOOK (#170): Group 8 flood/climate-D id (p447 vernalpool).
+      "vernalpool",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -142,6 +144,16 @@ describe("layer registry", () => {
     expect(radiusKmFor("wildfire")).toBe(0.3);
     expect(LAYERS.find((l) => l.id === "wildfire")?.paramIds).toEqual([69]);
     expect(overpassQueryFor("wildfire", TALLINN_BBOX)).toContain("forest");
+  });
+
+  it("wires the G08D vernalpool layer with locked calibration", () => {
+    // G08D-HOOK (#170): drift guard — hook spec must equal G08D_CAL in
+    // layers_group08d.ts and the Python builder (parsed by
+    // test_batch_g08d.py).
+    expect(bonusSpecFor("vernalpool")).toEqual({ kind: "quiet", halfM: 300 });
+    expect(radiusKmFor("vernalpool")).toBe(0.3);
+    expect(LAYERS.find((l) => l.id === "vernalpool")?.paramIds).toEqual([447]);
+    expect(overpassQueryFor("vernalpool", TALLINN_BBOX)).toContain("intermittent");
   });
 
   it("every layer explains green=good / red=bad in Estonian", () => {

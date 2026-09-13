@@ -199,6 +199,12 @@ export function overlayColorFor(layer: LayerId): string {
     // and every other marker (distinct-color test).
     case "wildfire":
       return "#9a3412";
+    // G08D-HOOK (#170): vernalpool markers (point overlay,
+    // stride-sampled like grocery). #475569: murky-pond slate (one
+    // shade lighter than oiltank #334155, grayer than evac #57534c).
+    // Distinct from every other marker (distinct-color test).
+    case "vernalpool":
+      return "#475569";
   }
 }
 
@@ -338,6 +344,10 @@ export function overlayLegendFor(layer: LayerId): string {
     // holds the full quietness field.
     case "wildfire":
       return "Mets ja võsa (kütus, niit/soo välja) · kauguse-hinnang (tuleohutusproksi, küllastus 100 m)";
+    // G08D-HOOK (#170): vernalpool (p447) — mapped ephemeral ponds,
+    // the raster holds the full quietness field.
+    case "vernalpool":
+      return "Ajutised tiigid/vannid (kraavid/jõed/sood välja) · kauguse-hinnang (kevadlompide proksi, poolkaugus 300 m)";
   }
 }
 

@@ -40,6 +40,8 @@ import { G02B_RASTER_FILE } from "../layers_group02b";
 import { G08A_RASTER_FILE } from "../layers_group08a";
 // G03D-HOOK(#154): batch G03D raster files live in layers_group03d.ts.
 import { G03D_RASTER_FILE } from "../layers_group03d";
+// G08D-HOOK(#170): batch G08D raster file lives in layers_group08d.ts.
+import { G08D_RASTER_FILE } from "../layers_group08d";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -351,6 +353,8 @@ const RASTER_FILE: Record<LayerId, string> = {
   ...G03D_RASTER_FILE,
   // G08A-HOOK (#167): wildfire raster (scripts/build/batch_g08a_flood.py).
   ...G08A_RASTER_FILE,
+  // G08D-HOOK (#170): vernalpool raster (scripts/build/batch_g08d_flood.py).
+  ...G08D_RASTER_FILE,
 };
 
 /**
@@ -433,6 +437,10 @@ const G03D_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["moorage", "shoredis
 // (exact-grid Dijkstra by construction, same story as drainage —
 // forest-ring centroids need no foot-graph walk stamping).
 const G08A_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["wildfire"]);
+// G08D-HOOK (#170): Euclidean-built vernalpool master rides
+// "euclidean" — same Dijkstra-by-construction story as drainage
+// (see batch_g08d_flood.py).
+const G08D_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["vernalpool"]);
 
 export async function loadLayerRaster(
   layer: LayerId,
@@ -444,7 +452,8 @@ export async function loadLayerRaster(
       B6_EUCLIDEAN_MASTER.has(layer) ||
       G03_EUCLIDEAN_MASTER.has(layer) ||
       G03D_EUCLIDEAN_MASTER.has(layer) ||
-      G08A_EUCLIDEAN_MASTER.has(layer);
+      G08A_EUCLIDEAN_MASTER.has(layer) ||
+      G08D_EUCLIDEAN_MASTER.has(layer); // G08D-HOOK (#170)
     return { raster: doc, distance: euclidean ? "euclidean" : "walk" };
   }
   return { raster: null, distance: "euclidean" };
@@ -517,6 +526,10 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // precision — the file is absent, so windows serve county
   // everywhere, like G02B/G03).
   wildfire: "wildfire-metro",
+  // G08D-HOOK (#170): no vernalpool metro master (documented fake
+  // precision — the file is absent, so windows serve county
+  // everywhere, like G02B/G03/G03D).
+  vernalpool: "vernalpool-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */
