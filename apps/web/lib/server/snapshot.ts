@@ -48,6 +48,8 @@ import { G08C_RASTER_FILE } from "../layers_group08c";
 import { G08B_RASTER_FILE } from "../layers_group08b";
 // G05B-HOOK(#162): batch G05B raster files live in layers_group05b.ts.
 import { G05B_RASTER_FILE } from "../layers_group05b";
+// G05D-HOOK(#164): batch G05D raster file lives in layers_group05d.ts.
+import { G05D_RASTER_FILE } from "../layers_group05d";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -367,6 +369,8 @@ const RASTER_FILE: Record<LayerId, string> = {
   ...G08B_RASTER_FILE,
   // G05B-HOOK (#162): gardens + buildout rasters (scripts/build/batch_g05b_plans.py).
   ...G05B_RASTER_FILE,
+  // G05D-HOOK (#164): strsat raster (scripts/build/batch_g05d_plans.py).
+  ...G05D_RASTER_FILE,
 };
 
 /**
@@ -467,6 +471,10 @@ const G08B_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["windtunnel", "salts
 // leaves holes AT the facilities — same story as moorage, see
 // scripts/build/batch_g05b_plans.py).
 const G05B_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["gardens", "buildout"]);
+// G05D-HOOK (#164): Euclidean-built G05D master rides "euclidean" —
+// strsat (same exact-grid Dijkstra story as drainage/G08B — see
+// batch_g05d_plans.py).
+const G05D_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["strsat"]);
 
 export async function loadLayerRaster(
   layer: LayerId,
@@ -482,7 +490,8 @@ export async function loadLayerRaster(
       G08D_EUCLIDEAN_MASTER.has(layer) || // G08D-HOOK (#170)
       G08C_EUCLIDEAN_MASTER.has(layer) || // G08C-HOOK (#169)
       G08B_EUCLIDEAN_MASTER.has(layer) || // G08B-HOOK (#168)
-      G05B_EUCLIDEAN_MASTER.has(layer); // G05B-HOOK (#162)
+      G05B_EUCLIDEAN_MASTER.has(layer) || // G05B-HOOK (#162)
+      G05D_EUCLIDEAN_MASTER.has(layer); // G05D-HOOK (#164)
     return { raster: doc, distance: euclidean ? "euclidean" : "walk" };
   }
   return { raster: null, distance: "euclidean" };
@@ -574,6 +583,10 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // everywhere, like G02B/G03/G03D).
   gardens: "gardens-metro",
   buildout: "buildout-metro",
+  // G05D-HOOK (#164): no strsat metro master (documented fake
+  // precision — the file is absent, so windows serve county
+  // everywhere, like G02B/G03/G03D).
+  strsat: "strsat-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

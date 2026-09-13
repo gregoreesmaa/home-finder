@@ -91,7 +91,8 @@ describe("overlay legend + colors", () => {
     // G08C-HOOK (#169): surgeroad + slidebuf join the registry.
     // G08B-HOOK (#168): windtunnel + saltspray join the registry.
     // G05B-HOOK (#162): gardens + buildout join the registry.
-    expect(ids).toHaveLength(54);
+    // G05D-HOOK (#164): strsat joins the registry.
+    expect(ids).toHaveLength(55);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -185,6 +186,9 @@ describe("overlay legend + colors", () => {
     expect(overlayLegendFor("gardens")).toContain("hinnang");
     expect(overlayLegendFor("buildout")).toContain("küllastus 2");
     expect(overlayLegendFor("buildout")).toContain("hinnang");
+    // Batch G05D half (see G05D_CAL in layers_group05d.ts).
+    expect(overlayLegendFor("strsat")).toContain("350 m");
+    expect(overlayLegendFor("strsat")).toContain("hinnang");
   });
 
   it("gives every layer a distinct marker color", () => {
@@ -193,7 +197,8 @@ describe("overlay legend + colors", () => {
     // G08C-HOOK (#169): surgeroad + slidebuf join the registry.
     // G08B-HOOK (#168): windtunnel + saltspray join the registry.
     // G05B-HOOK (#162): gardens + buildout join the registry.
-    expect(seen.size).toBe(54);
+    // G05D-HOOK (#164): strsat joins the registry.
+    expect(seen.size).toBe(55);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });
