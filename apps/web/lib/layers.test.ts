@@ -95,6 +95,8 @@ describe("layer registry", () => {
       // G05B-HOOK (#162): Group 5 plans-B ids (p106 gardens + p146 buildout).
       "gardens",
       "buildout",
+      // G05D-HOOK (#164): Group 5 plans-D id (p230 strsat).
+      "strsat",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -189,6 +191,27 @@ describe("layer registry", () => {
     expect(radiusKmFor("saltspray")).toBe(0.5);
     expect(LAYERS.find((l) => l.id === "saltspray")?.paramIds).toEqual([333]);
     expect(overpassQueryFor("saltspray", TALLINN_BBOX)).toContain("coastline");
+  });
+
+  it("wires the G05D strsat layer with locked calibration", () => {
+    // G05D-HOOK (#164): drift guard — hook spec must equal G05D_CAL in
+    // layers_group05d.ts and the Python builder (parsed by
+    // test_batch_g05d.py).
+    expect(bonusSpecFor("strsat")).toEqual({ kind: "avoid", half: 0.35 });
+    expect(radiusKmFor("strsat")).toBe(0.5);
+    expect(LAYERS.find((l) => l.id === "strsat")?.paramIds).toEqual([230]);
+    expect(overpassQueryFor("strsat", TALLINN_BBOX)).toContain("tourism");
+  });
+
+  it("scores strsat INVERSELY via the shared avoid branch", () => {
+    // G05D-HOOK (#164): near mapped beds = saturated = low score.
+    const pts = [{ lat: 59.4366, lon: 24.7449 }];
+    expect(goodnessAt(59.4366, 24.7449, pts, "strsat")).toBe(0);
+    const half = goodnessAt(59.4366 + 0.35 / 111.2, 24.7449, pts, "strsat") as number;
+    expect(Math.abs(half - 50)).toBeLessThanOrEqual(2);
+    const far = goodnessAt(59.36, 24.66, pts, "strsat") as number;
+    expect(far).toBeGreaterThan(90);
+    expect(goodnessAt(59.4366, 24.7449, [], "strsat")).toBeNull();
   });
 
   it("every layer explains green=good / red=bad in Estonian", () => {

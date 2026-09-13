@@ -124,6 +124,17 @@ import {
   GROUP05B_TAGS,
   bonusSpecForGroup05B,
 } from "./layers_group05b";
+// G05D-HOOK(#164): batch G05D (Group 5 plans-D strsat) tables live in
+// ./layers_group05d (new file). That module imports layers only as
+// types, so no runtime cycle.
+import type { Group05DLayerId } from "./layers_group05d";
+import {
+  GROUP05D_DECAY,
+  GROUP05D_LAYERS,
+  GROUP05D_TAGS,
+  bonusSpecForGroup05D,
+  isGroup05DAvoidLayer,
+} from "./layers_group05d";
 // G11D-HOOK(#135): batch G11D (Group 11 leftovers B: p346/p470/p419/p466;
 // p317 is a documented no-map) tables live in ./layers_group11d (new
 // file). That module imports layers only as types, so no runtime cycle.
@@ -256,7 +267,9 @@ export type LayerId =
   // G08B-HOOK (#168): Group 8 flood/climate-B ids (./layers_group08b).
   | Group08BLayerId
   // G05B-HOOK (#162): Group 5 plans-B ids (./layers_group05b).
-  | Group05BLayerId;
+  | Group05BLayerId
+  // G05D-HOOK (#164): Group 5 plans-D id (./layers_group05d).
+  | Group05DLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -371,6 +384,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...GROUP08B_DECAY,
   // G05B-HOOK (#162): gardens + buildout radii (see layers_group05b.ts GROUP05B_DECAY).
   ...GROUP05B_DECAY,
+  // G05D-HOOK (#164): strsat radius (see layers_group05d.ts GROUP05D_DECAY).
+  ...GROUP05D_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -515,6 +530,8 @@ export const LAYERS: LayerDef[] = [
   ...GROUP08B_LAYERS,
   // G05B-HOOK (#162): gardens (p106) + buildout (p146) defs from ./layers_group05b.
   ...GROUP05B_LAYERS,
+  // G05D-HOOK (#164): strsat (p230) def from ./layers_group05d.
+  ...GROUP05D_LAYERS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -572,6 +589,8 @@ const TAGS: Record<LayerId, string> = {
   ...GROUP08B_TAGS,
   // G05B-HOOK (#162): gardens + buildout queries (see layers_group05b.ts GROUP05B_TAGS).
   ...GROUP05B_TAGS,
+  // G05D-HOOK (#164): strsat query (see layers_group05d.ts GROUP05D_TAGS).
+  ...GROUP05D_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -649,10 +668,11 @@ export interface TripsSpec {
  * Inverse proximity ("avoid") spec: score FALLS with nearness.
  * score = 100·(1−2^(−d/half)), d = walk/Euclidean km to the nearest
  * feature: 0 on top of a feature, 50 at `half` km, →100 far away.
- * Only G06B woodfire (p356 fire-spread attention) uses it: green = far
- * from mapped wooden houses. Null (no feature in range) stays null —
- * the raster/window path renders it red as honestly-unknown, same as
- * every other layer.
+ * G06B woodfire (p356 fire-spread attention) uses it: green = far from
+ * mapped wooden houses. G05D strsat (p230 STR saturation) uses it too:
+ * green = far from mapped tourist beds. Null (no feature in range)
+ * stays null — the raster/window path renders it red as
+ * honestly-unknown, same as every other layer.
  */
 export interface AvoidSpec {
   kind: "avoid";
@@ -773,6 +793,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // G05B-HOOK (#162): gardens + buildout specs live in ./layers_group05b.
   const g05b = bonusSpecForGroup05B(layer);
   if (g05b) return g05b;
+  // G05D-HOOK (#164): strsat spec lives in ./layers_group05d.
+  const g05d = bonusSpecForGroup05D(layer);
+  if (g05d) return g05d;
   throw new Error(`unknown layer: ${layer}`);
 }
 
@@ -798,7 +821,9 @@ export function goodnessAt(
   // walk-raster stamp (batch_g06b_heritage.py) and the buildScoredField
   // branch, so the Euclidean fallback agrees with the raster about
   // direction (near wood = low fire-safety score).
-  if (isGroup06BAvoidLayer(layer)) {
+  // G05D-HOOK (#164): strsat rides the same inverse branch (near mapped
+  // beds = saturated = low score).
+  if (isGroup06BAvoidLayer(layer) || isGroup05DAvoidLayer(layer)) {
     const half = (bonusSpecFor(layer) as AvoidSpec).half;
     return Math.round(100 * (1 - Math.pow(2, -best / half)));
   }

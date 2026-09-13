@@ -499,6 +499,34 @@ describe("layer walk rasters", () => {
     }
   });
 
+  it("serves the G05D strsat raster under the avoid contract", async () => {
+    // G05D-HOOK (#164): strsat avoid contract (half 0.35 walk-km on the
+    // wire, sigma 0.5); Euclidean-built like G08B. A stale half is
+    // rejected.
+    const sdir = await fixtureDir([{ lat: 59.4366, lon: 24.7449 }], "strsat");
+    await writeFile(
+      join(sdir, "osm", "strsat-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 0.35, sigma: 0.5 })),
+    );
+    try {
+      const res = await loadLayerRaster("strsat", sdir);
+      expect(res.distance).toBe("euclidean");
+      expect(res.raster?.half).toBe(0.35);
+    } finally {
+      await rm(sdir, { recursive: true, force: true });
+    }
+    const stale = await fixtureDir([{ lat: 59.4366, lon: 24.7449 }], "strsat");
+    await writeFile(
+      join(stale, "osm", "strsat-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 0.21, sigma: 0.5 })),
+    );
+    try {
+      expect(await loadLayerRaster("strsat", stale)).toEqual({ raster: null, distance: "euclidean" });
+    } finally {
+      await rm(stale, { recursive: true, force: true });
+    }
+  });
+
   it("serves grocery and walkability rasters under the area contract", async () => {
     const gdir = await fixtureDir([{ lat: 59.44, lon: 24.75, a: 1 }], "grocery");
     await writeFile(

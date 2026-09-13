@@ -233,6 +233,13 @@ export function overlayColorFor(layer: LayerId): string {
       return "#4ade80";
     case "buildout":
       return "#eab308";
+    // G05D-HOOK (#164): strsat marker (point overlay, stride-sampled
+    // like grocery). #e879f9: fuchsia-400 neon hospitality pink (guest
+    // turnover; NOT #db2777 — taken by culture — and NOT #a21caf —
+    // taken by vectorhabitat). Distinct from every other marker
+    // (distinct-color test).
+    case "strsat":
+      return "#e879f9";
   }
 }
 
@@ -397,6 +404,10 @@ export function overlayLegendFor(layer: LayerId): string {
       return "Kogukonnaaiad ja aiandusühistud · lähedaste arv (hinnang, küllastus 1, muld krundi-põhine)";
     case "buildout":
       return "Ehitusplatsid · lähedaste arv (hinnang, küllastus 2, tihenemissurve — planeeringu sihttihedus teadmata)";
+    // G05D-HOOK (#164): strsat (p230) — mapped tourist beds, the
+    // raster holds the full inverse-saturation field.
+    case "strsat":
+      return "Turismimajutus (korterid/külalismajad/hostelid/hotellid) · küllastussurve-hinnang (pöörd-lähedus, poolkaugus 350 m, Airbnb loendust mõõdetud pole)";
   }
 }
 
