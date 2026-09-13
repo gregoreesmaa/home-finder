@@ -187,6 +187,17 @@ import {
   GROUP10REST_TAGS,
   bonusSpecForGroup10Rest,
 } from "./layers_group10rest";
+// G18A-HOOK(#172): batch G18A (Group 18 rest-A dayopen + glassglare;
+// p100/p231/p287 documented no-map) tables live in
+// ./layers_group18resta (new file). That module imports layers only as
+// types, so no runtime cycle.
+import type { Group18ARestALayerId } from "./layers_group18resta";
+import {
+  GROUP18ARESTA_DECAY,
+  GROUP18ARESTA_LAYERS,
+  GROUP18ARESTA_TAGS,
+  bonusSpecForGroup18ARestA,
+} from "./layers_group18resta";
 // G11D-HOOK(#135): batch G11D (Group 11 leftovers B: p346/p470/p419/p466;
 // p317 is a documented no-map) tables live in ./layers_group11d (new
 // file). That module imports layers only as types, so no runtime cycle.
@@ -331,7 +342,9 @@ export type LayerId =
   // G05F-HOOK (#166): Group 5 plans-F id (./layers_group05f).
   | Group05FLayerId
   // G10R-HOOK (#171): Group 10 utilities-rest id (./layers_group10rest).
-  | Group10RestLayerId;
+  | Group10RestLayerId
+  // G18A-HOOK (#172): Group 18 rest-A ids (./layers_group18resta).
+  | Group18ARestALayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -458,6 +471,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...GROUP05F_DECAY,
   // G10R-HOOK (#171): skyview radius (see layers_group10rest.ts GROUP10REST_DECAY).
   ...GROUP10REST_DECAY,
+  // G18A-HOOK (#172): dayopen + glassglare radii (see layers_group18resta.ts GROUP18ARESTA_DECAY).
+  ...GROUP18ARESTA_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -614,6 +629,8 @@ export const LAYERS: LayerDef[] = [
   ...GROUP05F_LAYERS,
   // G10R-HOOK (#171): skyview (p215) def from ./layers_group10rest.
   ...GROUP10REST_LAYERS,
+  // G18A-HOOK (#172): dayopen (p34) + glassglare (p305) defs from ./layers_group18resta.
+  ...GROUP18ARESTA_LAYERS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -683,6 +700,8 @@ const TAGS: Record<LayerId, string> = {
   ...GROUP05F_TAGS,
   // G10R-HOOK (#171): skyview query (see layers_group10rest.ts GROUP10REST_TAGS).
   ...GROUP10REST_TAGS,
+  // G18A-HOOK (#172): dayopen + glassglare queries (see layers_group18resta.ts GROUP18ARESTA_TAGS).
+  ...GROUP18ARESTA_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -903,6 +922,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // G10R-HOOK (#171): skyview spec lives in ./layers_group10rest.
   const g10r = bonusSpecForGroup10Rest(layer);
   if (g10r) return g10r;
+  // G18A-HOOK (#172): dayopen + glassglare specs live in ./layers_group18resta.
+  const g18a = bonusSpecForGroup18ARestA(layer);
+  if (g18a) return g18a;
   throw new Error(`unknown layer: ${layer}`);
 }
 

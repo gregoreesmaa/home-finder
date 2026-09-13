@@ -280,6 +280,16 @@ export function overlayColorFor(layer: LayerId): string {
     // Distinct from every other marker (distinct-color test).
     case "skyview":
       return "#7dd3fc";
+    // G18A-HOOK (#172): dayopen + glassglare markers (point overlays,
+    // stride-sampled like grocery). #38bdf6: sky-400 daylight (NOT
+    // #0ea5e9 — taken by saltspray — and NOT #0284c7 — taken by
+    // cycling); #fb7185: rose-400 glare flash (NOT #f43f5e — taken by
+    // viewshed — and NOT #e11d48 — taken by healthcare). Both distinct
+    // from every other marker (distinct-color test).
+    case "dayopen":
+      return "#38bdf6";
+    case "glassglare":
+      return "#fb7185";
   }
 }
 
@@ -478,6 +488,13 @@ export function overlayLegendFor(layer: LayerId): string {
     // forest, the raster holds the full calmness field.
     case "skyview":
       return "Kõrghooned (5+ korrust) + mets · kauguse-hinnang (poolkaugus 150 m, suunatakistust mõõdetud pole)";
+    // G18A-HOOK (#172): dayopen (p34) — mapped tall masses, the
+    // raster holds the full calmness field; glassglare (p305) —
+    // mapped glass facades, the raster holds the full field.
+    case "dayopen":
+      return "Kõrghooned (korruseid ≥4) · kauguse-hinnang (päevavalguse avatus, poolkaugus 150 m, päikesetunde mõõdetud pole)";
+    case "glassglare":
+      return "Klaas/peegelfassaadid · kauguse-hinnang (peegeldus-surve, poolkaugus 200 m, lukse mõõdetud pole)";
   }
 }
 

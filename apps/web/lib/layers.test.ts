@@ -110,6 +110,9 @@ describe("layer registry", () => {
       "upcycle",
       // G10R-HOOK (#171): Group 10 utilities-rest id (p215 skyview).
       "skyview",
+      // G18A-HOOK (#172): Group 18 rest-A ids (p34 dayopen + p305 glassglare).
+      "dayopen",
+      "glassglare",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -290,6 +293,20 @@ describe("layer registry", () => {
     expect(LAYERS.find((l) => l.id === "skyview")?.paramIds).toEqual([215]);
     expect(overpassQueryFor("skyview", TALLINN_BBOX)).toContain("building:levels");
     expect(overpassQueryFor("skyview", TALLINN_BBOX)).toContain("forest");
+  });
+
+  it("wires the G18A dayopen + glassglare layers with locked calibration", () => {
+    // G18A-HOOK (#172): drift guard — hook specs must equal G18A_CAL in
+    // layers_group18resta.ts and the Python builder (parsed by
+    // test_batch_g18_resta.py).
+    expect(bonusSpecFor("dayopen")).toEqual({ kind: "quiet", halfM: 150 });
+    expect(radiusKmFor("dayopen")).toBe(0.3);
+    expect(LAYERS.find((l) => l.id === "dayopen")?.paramIds).toEqual([34]);
+    expect(overpassQueryFor("dayopen", TALLINN_BBOX)).toContain("building:levels");
+    expect(bonusSpecFor("glassglare")).toEqual({ kind: "quiet", halfM: 200 });
+    expect(radiusKmFor("glassglare")).toBe(0.3);
+    expect(LAYERS.find((l) => l.id === "glassglare")?.paramIds).toEqual([305]);
+    expect(overpassQueryFor("glassglare", TALLINN_BBOX)).toContain("building:material");
   });
 
   it("every layer explains green=good / red=bad in Estonian", () => {
