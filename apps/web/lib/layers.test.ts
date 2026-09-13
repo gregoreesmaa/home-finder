@@ -92,6 +92,9 @@ describe("layer registry", () => {
       // G08B-HOOK (#168): Group 8 flood/climate-B ids (p255 windtunnel + p333 saltspray).
       "windtunnel",
       "saltspray",
+      // G05B-HOOK (#162): Group 5 plans-B ids (p106 gardens + p146 buildout).
+      "gardens",
+      "buildout",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);

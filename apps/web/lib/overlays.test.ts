@@ -90,7 +90,8 @@ describe("overlay legend + colors", () => {
     // G08D-HOOK (#170): vernalpool joins the registry.
     // G08C-HOOK (#169): surgeroad + slidebuf join the registry.
     // G08B-HOOK (#168): windtunnel + saltspray join the registry.
-    expect(ids).toHaveLength(52);
+    // G05B-HOOK (#162): gardens + buildout join the registry.
+    expect(ids).toHaveLength(54);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -179,6 +180,11 @@ describe("overlay legend + colors", () => {
     expect(overlayLegendFor("windtunnel")).toContain("hinnang");
     expect(overlayLegendFor("saltspray")).toContain("500 m");
     expect(overlayLegendFor("saltspray")).toContain("hinnang");
+    // Batch G05B halves (see G05B_CAL in layers_group05b.ts).
+    expect(overlayLegendFor("gardens")).toContain("küllastus 1");
+    expect(overlayLegendFor("gardens")).toContain("hinnang");
+    expect(overlayLegendFor("buildout")).toContain("küllastus 2");
+    expect(overlayLegendFor("buildout")).toContain("hinnang");
   });
 
   it("gives every layer a distinct marker color", () => {
@@ -186,7 +192,8 @@ describe("overlay legend + colors", () => {
     // G08D-HOOK (#170): vernalpool joins the registry.
     // G08C-HOOK (#169): surgeroad + slidebuf join the registry.
     // G08B-HOOK (#168): windtunnel + saltspray join the registry.
-    expect(seen.size).toBe(52);
+    // G05B-HOOK (#162): gardens + buildout join the registry.
+    expect(seen.size).toBe(54);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

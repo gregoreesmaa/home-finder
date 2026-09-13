@@ -223,6 +223,16 @@ export function overlayColorFor(layer: LayerId): string {
       return "#71717a";
     case "saltspray":
       return "#0ea5e9";
+    // G05B-HOOK (#162): gardens + buildout markers (point overlays,
+    // stride-sampled like grocery). #4ade80: fresh sprout green
+    // (lighter than agrifield #16a34a, yellower than agriland
+    // #84cc16); #eab308: caution-tape yellow (construction; warmer
+    // than evac #57534c, distinct from hydrants #0369a1). Both
+    // distinct from every other marker (distinct-color test).
+    case "gardens":
+      return "#4ade80";
+    case "buildout":
+      return "#eab308";
   }
 }
 
@@ -380,6 +390,13 @@ export function overlayLegendFor(layer: LayerId): string {
       return "Kõrghooned (5+ korrust) · tuuletunneli-hinnang (lähedus, poolkaugus 200 m, ilmajaama mõõtmine puudub)";
     case "saltspray":
       return "Mererannajoon (järved välja) · soolapritsme kauguse-hinnang (poolkaugus 500 m, korrosioonikiirust mõõdetud pole)";
+    // G05B-HOOK (#162): gardens (p106) — mapped growing sites, the
+    // raster holds the full count field; buildout (p146) — mapped
+    // construction, the raster holds the full count field.
+    case "gardens":
+      return "Kogukonnaaiad ja aiandusühistud · lähedaste arv (hinnang, küllastus 1, muld krundi-põhine)";
+    case "buildout":
+      return "Ehitusplatsid · lähedaste arv (hinnang, küllastus 2, tihenemissurve — planeeringu sihttihedus teadmata)";
   }
 }
 

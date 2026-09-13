@@ -114,6 +114,16 @@ import {
   GROUP08B_TAGS,
   bonusSpecForGroup08B,
 } from "./layers_group08b";
+// G05B-HOOK(#162): batch G05B (Group 5 plans-B gardens + buildout)
+// tables live in ./layers_group05b (new file). That module imports
+// layers only as types, so no runtime cycle.
+import type { Group05BLayerId } from "./layers_group05b";
+import {
+  GROUP05B_DECAY,
+  GROUP05B_LAYERS,
+  GROUP05B_TAGS,
+  bonusSpecForGroup05B,
+} from "./layers_group05b";
 // G11D-HOOK(#135): batch G11D (Group 11 leftovers B: p346/p470/p419/p466;
 // p317 is a documented no-map) tables live in ./layers_group11d (new
 // file). That module imports layers only as types, so no runtime cycle.
@@ -244,7 +254,9 @@ export type LayerId =
   // G08C-HOOK (#169): Group 8 flood/climate-C ids (./layers_group08c).
   | Group08CLayerId
   // G08B-HOOK (#168): Group 8 flood/climate-B ids (./layers_group08b).
-  | Group08BLayerId;
+  | Group08BLayerId
+  // G05B-HOOK (#162): Group 5 plans-B ids (./layers_group05b).
+  | Group05BLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -357,6 +369,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...GROUP08C_DECAY,
   // G08B-HOOK (#168): windtunnel + saltspray radii (see layers_group08b.ts GROUP08B_DECAY).
   ...GROUP08B_DECAY,
+  // G05B-HOOK (#162): gardens + buildout radii (see layers_group05b.ts GROUP05B_DECAY).
+  ...GROUP05B_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -499,6 +513,8 @@ export const LAYERS: LayerDef[] = [
   ...GROUP08C_LAYERS,
   // G08B-HOOK (#168): windtunnel (p255) + saltspray (p333) defs from ./layers_group08b.
   ...GROUP08B_LAYERS,
+  // G05B-HOOK (#162): gardens (p106) + buildout (p146) defs from ./layers_group05b.
+  ...GROUP05B_LAYERS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -554,6 +570,8 @@ const TAGS: Record<LayerId, string> = {
   ...GROUP08C_TAGS,
   // G08B-HOOK (#168): windtunnel + saltspray queries (see layers_group08b.ts GROUP08B_TAGS).
   ...GROUP08B_TAGS,
+  // G05B-HOOK (#162): gardens + buildout queries (see layers_group05b.ts GROUP05B_TAGS).
+  ...GROUP05B_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -752,6 +770,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // G08B-HOOK (#168): windtunnel + saltspray specs live in ./layers_group08b.
   const g08b = bonusSpecForGroup08B(layer);
   if (g08b) return g08b;
+  // G05B-HOOK (#162): gardens + buildout specs live in ./layers_group05b.
+  const g05b = bonusSpecForGroup05B(layer);
+  if (g05b) return g05b;
   throw new Error(`unknown layer: ${layer}`);
 }
 
