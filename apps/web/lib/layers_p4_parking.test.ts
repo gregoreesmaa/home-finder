@@ -90,17 +90,17 @@ describe("P4 parking scoring contract (#479)", () => {
   it("locks radius and bonus spec (raster contract + Euclidean fallback)", () => {
     // P4PARK_CAL is the single source (mirrored by the Python
     // builder — parsed by scripts/build/test_batch_p4_parking.py).
-    expect(P4PARK_CAL).toEqual({ parking: { half: 150, sigma: 0.8 } });
+    expect(P4PARK_CAL).toEqual({ parking: { half: 75, sigma: 0.8 } });
     expect(P4PARK_DECAY).toEqual({ parking: 0.8 });
-    expect(P4PARK_BONUS).toEqual({ parking: { kind: "area", half: 150 } });
+    expect(P4PARK_BONUS).toEqual({ parking: { kind: "area", half: 75 } });
     expect(radiusKmFor("parking")).toBeCloseTo(0.8, 5);
-    expect(bonusSpecFor("parking")).toEqual({ kind: "area", half: 150 });
+    expect(bonusSpecFor("parking")).toEqual({ kind: "area", half: 75 });
   });
 
   it("guards and lookups answer parking and ignore other layers", () => {
     expect(isP4ParkingLayerId("parking")).toBe(true);
     expect(isP4ParkingLayerId("parks")).toBe(false);
-    expect(bonusSpecForP4Parking("parking")).toEqual({ kind: "area", half: 150 });
+    expect(bonusSpecForP4Parking("parking")).toEqual({ kind: "area", half: 75 });
     expect(bonusSpecForP4Parking("parks")).toBeUndefined();
   });
 
@@ -109,11 +109,11 @@ describe("P4 parking scoring contract (#479)", () => {
   });
 
   it("raster docs bake matching calibration (matchesContract)", () => {
-    expect(matchesContract({ half: 150, sigma: 0.8, per: 0, cap: 0 }, "parking")).toBe(true);
+    expect(matchesContract({ half: 75, sigma: 0.8, per: 0, cap: 0 }, "parking")).toBe(true);
     // Stale half is rejected, never silently rendered.
     expect(matchesContract({ half: 999, sigma: 0.8, per: 0, cap: 0 }, "parking")).toBe(false);
     // Wrong sigma is rejected too (the 800 m tier is load-bearing).
-    expect(matchesContract({ half: 150, sigma: 0.3, per: 0, cap: 0 }, "parking")).toBe(false);
+    expect(matchesContract({ half: 75, sigma: 0.3, per: 0, cap: 0 }, "parking")).toBe(false);
   });
 
   it("scores 100 on top of a feature, decays with distance", () => {

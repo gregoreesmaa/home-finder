@@ -951,12 +951,12 @@ describe("layer walk rasters", () => {
     const pdir = await fixtureDir([{ lat: 59.4374, lon: 24.7454 }], "parking");
     await writeFile(
       join(pdir, "osm", "parking-walk-raster.json"),
-      JSON.stringify(rasterDoc({ half: 150, sigma: 0.8 })),
+      JSON.stringify(rasterDoc({ half: 75, sigma: 0.8 })),
     );
     try {
       const res = await loadLayerRaster("parking", pdir);
       expect(res.distance).toBe("euclidean");
-      expect(res.raster?.half).toBe(150);
+      expect(res.raster?.half).toBe(75);
     } finally {
       await rm(pdir, { recursive: true, force: true });
     }

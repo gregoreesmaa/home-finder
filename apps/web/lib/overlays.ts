@@ -715,7 +715,7 @@ export function overlayLegendFor(layer: LayerId): string {
     // P4PARK-HOOK (#479): parking (P4-013) — mapped bays + lots, the
     // raster holds the full count field.
     case "parking":
-      return "Kaardistatud parklad (taskud + platsid) · lähedaste arv (asukoha-hinnang, küllastus 150, vabade kohtade arv ega elanikuluba pole)";
+      return "Kaardistatud parklad (taskud + platsid) · lähedaste arv (asukoha-hinnang, küllastus 75, vabade kohtade arv ega elanikuluba pole)";
   }
 }
 

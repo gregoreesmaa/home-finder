@@ -42,20 +42,19 @@
 // Calibration (judgment calls, documented for the reviewer): parking
 // is an area-kind count kernel (Gaussian sigma 0.8 == the P4-013
 // 800 m tier, score 100·S/(S+half), grocery/waste/lawncare shape
-// with a DENSITY half). half=150, NOT 1/6/20: with 13 858 window
+// with a DENSITY half). half=75, NOT 1/6/20: with 13 858 window
 // centroids a small half saturates the whole city to ~99 (verified
 // 2026-09-13 probe: half=20 reads Vanalinn 98, Mustamäe 98,
 // Lasnamäe 96 — the field answers nothing) and the streets stop
-// discriminating. half=150 spreads the real variation —
-//   Vanalinn S=1119.8 -> 88, Mustamäe S=825.3 -> 85,
-//   Lasnamäe S=521.1 -> 78, Pirita S=128.9 -> 46,
-//   Viimsi edge S=119.0 -> 44, rural W (Saue) S=58.9 -> 28,
-//   Nõmme S=7.3 -> 5 —
+// discriminating. half=75 spreads the real variation — built-master
+// probe on the 75 m grid (13 282 reader points, 6368 after the
+// 20 m twin dedupe):
+//   Vanalinn 87, Mustamäe 84, Lasnamäe 76, Õismäe 71,
+//   Viimsi 46, Pirita 31, rural W (Saue) 28, Nõmme 5 —
 // while forgiving unmapped private driveways (a lower half would
 // paint garden-city streets red for a mapping gap). Nõmme's
 // near-zero is a documented mapping hole, not parking truth;
-// water/forest cells read 255 unknown. Tallinn-window grid
-// (2 km cells): med S=24.2, max S=1564.9. Sigma equals the
+// water/forest cells read 255 unknown. Sigma equals the
 // Euclidean fallback decay (DECAY hook) and the raster contract
 // (matchesContract). Halves live in P4PARK_CAL below and in
 // scripts/build/batch_p4_parking.py P4PARK_CAL (kept in sync
@@ -123,7 +122,7 @@ export const P4PARK_DECAY: Record<P4ParkingLayerId, number> = {
  * count, grocery/waste/lawncare precedent with a density half).
  */
 export const P4PARK_CAL = {
-  parking: { half: 150, sigma: 0.8 },
+  parking: { half: 75, sigma: 0.8 },
 } as const;
 
 /**
@@ -132,7 +131,7 @@ export const P4PARK_CAL = {
  * is dense).
  */
 export const P4PARK_BONUS: Record<P4ParkingLayerId, BonusSpec> = {
-  parking: { kind: "area", half: 150 },
+  parking: { kind: "area", half: 75 },
 };
 
 /** Type guard for the bonusSpecFor hook in layers.ts. */
@@ -163,4 +162,4 @@ export const P4PARK_NO_METRO = true;
 
 /** Hook marker, pinned by test so the wiring contract stays greppable. */
 export const P4PARK_HOOK =
-  "P4PARK-HOOK (#479): parking wired into layers/overlays/snapshot; P4-013 OSM bays+lots proxy, half 150 / sigma 0.8.";
+  "P4PARK-HOOK (#479): parking wired into layers/overlays/snapshot; P4-013 OSM bays+lots proxy, half 75 / sigma 0.8.";

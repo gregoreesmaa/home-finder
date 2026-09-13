@@ -284,7 +284,7 @@ describe("overlay legend + colors", () => {
     expect(overlayLegendFor("kovehit")).toContain("lagi 70");
     expect(overlayLegendFor("kovfisc")).toContain("lagi 70");
     // P4PARK-HOOK (#479): parking joins the registry.
-    expect(overlayLegendFor("parking")).toContain("küllastus 150");
+    expect(overlayLegendFor("parking")).toContain("küllastus 75");
     expect(overlayLegendFor("parking")).toContain("hinnang");
   });
 
