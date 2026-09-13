@@ -46,7 +46,7 @@ describe("P4 parking registry (#479)", () => {
     const ids = LAYERS.map((l) => l.id);
     // 89 shipped layers (main at #502: +senscom, +3 statkov) + 1 P4 parking layer.
     // +4 maru layers (MARUKOV-HOOK #486, 90 + 4) + 1 floodzone (FLOOD-HOOK #487, 94 + 1).
-    expect(ids.length).toBe(95);
+    expect(ids.length).toBe(96); // TERVISE-HOOK (#494): +1 points-empty tervise layer (95 + 1)
     expect(ids).toContain("parking");
   });
 

@@ -421,6 +421,17 @@ import {
   FLOOD_TAGS,
   bonusSpecForFlood,
 } from "./layers_flood";
+// TERVISE-HOOK (#494): Terviseamet monitoring-point tables live in
+// ./layers_tervise (P4-017+P4-024 slices, points-empty by dated
+// negative verdict). That module imports layers only as types, so no
+// runtime cycle.
+import type { TerviseLayerId } from "./layers_tervise";
+import {
+  TERVISE_DECAY,
+  TERVISE_DEFS,
+  TERVISE_TAGS,
+  bonusSpecForTervise,
+} from "./layers_tervise";
 
 export type LayerId =
   | "parks"
@@ -509,7 +520,10 @@ export type LayerId =
   // (./layers_maru).
   | MaruKovLayerId
   // FLOOD-HOOK (#487): floodzone id (./layers_flood, p112 KAUR choropleth).
-  | FloodLayerId;
+  | FloodLayerId
+  // TERVISE-HOOK (#494): tervise id (./layers_tervise, P4-017+P4-024
+  // monitoring points, points-empty by dated negative verdict).
+  | TerviseLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -684,6 +698,10 @@ const DECAY_KM: Record<LayerId, number> = {
   // FLOOD-HOOK (#487): floodzone radius (see layers_flood.ts FLOOD_DECAY —
   // INERT placeholder, polygons only: zero points, never evaluated).
   ...FLOOD_DECAY,
+  // TERVISE-HOOK (#494): tervise radius (see layers_tervise.ts
+  // TERVISE_DECAY — INERT placeholder, points empty: zero points,
+  // never evaluated).
+  ...TERVISE_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -870,6 +888,9 @@ export const LAYERS: LayerDef[] = [
   ...MARUKOV_DEFS,
   // FLOOD-HOOK (#487): floodzone def (p112, KAUR zone choropleth) from ./layers_flood.
   ...FLOOD_DEFS,
+  // TERVISE-HOOK (#494): tervise def (P4-017+P4-024 monitoring points,
+  // points-empty by dated negative verdict) from ./layers_tervise.
+  ...TERVISE_DEFS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -968,6 +989,9 @@ const TAGS: Record<LayerId, string> = {
   // FLOOD-HOOK (#487): floodzone source note (see layers_flood.ts FLOOD_TAGS —
   // WFS provenance, NOT runnable Overpass QL).
   ...FLOOD_TAGS,
+  // TERVISE-HOOK (#494): tervise source note (see layers_tervise.ts
+  // TERVISE_TAGS — missing-feed provenance, NOT runnable Overpass QL).
+  ...TERVISE_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -1273,6 +1297,10 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // polygons only, never evaluated).
   const flood = bonusSpecForFlood(layer);
   if (flood) return flood;
+  // TERVISE-HOOK (#494): tervise spec lives in ./layers_tervise
+  // (INERT — points empty, never evaluated).
+  const tervise = bonusSpecForTervise(layer);
+  if (tervise) return tervise;
   throw new Error(`unknown layer: ${layer}`);
 }
 

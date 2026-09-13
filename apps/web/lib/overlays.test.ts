@@ -112,7 +112,8 @@ describe("overlay legend + colors", () => {
     // P4PARK-HOOK (#479): parking joins the registry. (89 + 1).
     // MARUKOV-HOOK (#486): kovkasv + kovkaive + kovedas + kovkiirus join the registry (90 + 4).
     // FLOOD-HOOK (#487): floodzone joins the registry (89 + 1). (94 + 1).
-    expect(ids).toHaveLength(95);
+    // TERVISE-HOOK (#494): tervise joins the registry (95 + 1).
+    expect(ids).toHaveLength(96);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -298,6 +299,10 @@ describe("overlay legend + colors", () => {
     // (polygons only, never a gradient).
     expect(overlayLegendFor("floodzone")).toContain("tsoonis = hinnang");
     expect(overlayLegendFor("floodzone")).toContain("väljaspool = teadmata");
+    // TERVISE-HOOK (#494): tervise missing-feed legend (points empty,
+    // never a health gradient).
+    expect(overlayLegendFor("tervise")).toContain("masinvoog puudub");
+    expect(overlayLegendFor("tervise")).toContain("EI OLE");
   });
 
   it("gives every layer a distinct marker color", () => {
@@ -326,7 +331,8 @@ describe("overlay legend + colors", () => {
     // P4PARK-HOOK (#479): parking joins the registry. (89 + 1).
     // MARUKOV-HOOK (#486): kovkasv + kovkaive + kovedas + kovkiirus join the registry (90 + 4).
     // FLOOD-HOOK (#487): floodzone joins the registry (89 + 1). (94 + 1).
-    expect(seen.size).toBe(95);
+    // TERVISE-HOOK (#494): tervise joins the registry (95 + 1).
+    expect(seen.size).toBe(96);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

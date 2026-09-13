@@ -18,6 +18,8 @@ import {
 } from "./layers";
 // FLOOD-HOOK (#487): polygons-only carve-out for the fallback assertion.
 import { isPolygonOnlyLayer } from "./layers_flood";
+// TERVISE-HOOK (#494): points-empty carve-out for the fallback assertion.
+import { isTerviseLayerId } from "./layers_tervise";
 
 const TALLINN_BBOX: BBoxLike = { minlon: 24.5, minlat: 59.35, maxlon: 24.9, maxlat: 59.5 };
 
@@ -164,6 +166,9 @@ describe("layer registry", () => {
       // FLOOD-HOOK (#487): flood-risk polygon overlay id (p112 floodzone,
       // KAUR zone-membership choropleth, polygons only).
       "floodzone",
+      // TERVISE-HOOK (#494): Terviseamet monitoring-point id
+      // (P4-017+P4-024 slices, points-empty by dated negative verdict).
+      "tervise",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -206,6 +211,11 @@ describe("layer registry", () => {
     expect(LAYERS.find((l) => l.id === "kovkaive")?.paramIds).toEqual([149]);
     expect(LAYERS.find((l) => l.id === "kovedas")?.paramIds).toEqual([43]);
     expect(LAYERS.find((l) => l.id === "kovkiirus")?.paramIds).toEqual([484]);
+    // TERVISE-HOOK (#494): tervise binds NO parameters3 number
+    // (parameters4 namespace — P4-017+P4-024 slices, same lock as
+    // senscom P4-031 and the osmdaily/statkov P4 layers).
+    expect(LAYERS.find((l) => l.id === "tervise")?.paramIds).toEqual([]);
+    expect(LAYERS.find((l) => l.id === "tervise")?.paramLabel).toBe("P4-017+P4-024");
   });
 
   it("wires the B10C utility layers with locked calibration", () => {
@@ -506,7 +516,10 @@ describe("layer registry", () => {
       // FLOOD-HOOK (#487): polygons-only layers carry NO demo points — a
       // demo point would paint a fake gradient splat (pinned by
       // layers_flood.test.ts). Every other layer keeps fallback points.
-      if (!isPolygonOnlyLayer(l.id)) {
+      // TERVISE-HOOK (#494): points-empty layers carry NO demo points
+      // either — monitoring points are never invented (pinned by
+      // layers_tervise.test.ts).
+      if (!isPolygonOnlyLayer(l.id) && !isTerviseLayerId(l.id)) {
         expect(l.fallbackPoints.length).toBeGreaterThan(0);
       }
     }

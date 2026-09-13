@@ -63,6 +63,39 @@ refuses (AGENTS.md §5).
   parameters4.md P4-017/P4-024), and graduate that dim to a
   per-parcel join (P4-017) or coarse hinnang cells (P4-024).
 
+## Layer re-check #494 (2026-09-13) — monitoring-point locations
+
+Group B verify-first (issue #494): if monitoring-point LOCATIONS are
+open, build a point overlay; per-point quality gradients need a dated
+feed or stay NULL.
+
+**Verdict: still no open feed — `tervise` ships as a points-empty
+layer.** Four polite single GETs (labelled one-off user-agent
+`home-finder-research/0.1 (… issue 494)`, headers + visible-text
+keyword scope only, no form driving, no pagination walking), raw
+bodies one-off in `/tmp/tervise494/` (not committed):
+
+| Check | Observed | Meaning |
+|---|---|---|
+| `terviseamet.ee/keskkonnatervis/vesi/suplusvesi` (HTTP 200, ~188 KB) | Visible text ~18.6k chars; `seirepunkt` x1 — glossary prose ("Seirepunkt – koht, kus suplusvee proovid võetakse"), not a list; file links are human PDFs only (kvaliteediklassid 2025, 2026 hooaeg, microbiology indicators, lab certificates) | Monitoring points exist as a defined term + seasonal PDFs — no plottable locations, no coordinates |
+| `vtiav.sm.ee/index.php/?active_tab_id=SV` (HTTP 200, ~31 KB) | Human POST-filter query UI (Maakond/Valdaja/Supluskoha nimi/Veekogu/Staatus/Aasta); `avaandmed` x1 — the JS "Avaandmed" tab label, not a bulk export; zero file links | Per-beach lookups stay human-only; driving the filters page-by-page would be scraping, not polling (AGENTS.md §5 refusal stands) |
+| `andmed.eesti.ee/dataset?q=terviseamet` and `?q=suplusvesi` (HTTP 200, ~75 KB each) | JS "Teabevärav" shell, 12 visible characters each, no server-rendered results | No trivially pollable national-portal dataset (same shell as #264/#277/#284) |
+
+Out of scope (different agencies, different future issues): õhuseire
+air stations (Keskkonnaagentuur, G07 alternate) and the EGT radon WFS
+(nomap.md G7 overturn) — #494 covers Terviseamet P4-017/P4-024 only.
+
+**Layer shape** (`apps/web/lib/layers_tervise.ts`, `TERVISE-HOOK
+(#494)`): `tervise` (parameters4 `P4-017+P4-024`, paramIds `[]`)
+serves zero points and builds zero raster — the map renders basemap +
+honestly-unknown, the status line names the missing feed, and
+per-point quality stays NULL in `dims_p4_tervise.py`. Monitoring
+points are never invented: a hand-transcribed beach triple from a
+seasonal PDF would be unanchored geometry with no poll path and no
+TTL. Overturn: a machine monitoring-point feed (CSV/JSON/WFS) →
+re-open #494, build the polite cached ingestion, graduate to real
+points (quality per point still needs a DATED feed).
+
 ## Why demo + coverage share one PR
 
 The coverage body (#362) states it extends the demoed ingestion

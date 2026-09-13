@@ -3,6 +3,8 @@ import { LAYERS, tileForView, type BBoxLike, type LayerPoint } from "../../../..
 import { isSenscomLayerId } from "../../../../lib/layers_p4_senscom";
 // FLOOD-HOOK (#487): polygons-only branch guard (see below).
 import { isFloodLayerId } from "../../../../lib/layers_flood";
+// TERVISE-HOOK (#494): points-empty branch guard (see below).
+import { isTerviseLayerId } from "../../../../lib/layers_tervise";
 import {
   intersectsCoverage,
   loadLayerRaster,
@@ -77,6 +79,22 @@ export async function GET(
   // fake gradient), and demo fallback points are refused by the layer
   // def (empty fallbackPoints, pinned by test).
   if (isFloodLayerId(def.id)) {
+    const { distance } = await loadLayerRaster(def.id);
+    return NextResponse.json({
+      points: [],
+      provenance: "snapshot",
+      ageMs: Date.now() - SNAPSHOT_AS_OF_MS,
+      distance,
+    });
+  }
+  // TERVISE-HOOK (#494): tervise is points-empty by dated negative
+  // verdict (no open machine feed for monitoring-point locations —
+  // monitoring points are never invented). Answer honestly-empty
+  // points on snapshot provenance: falling through to the generic
+  // path would 500 a healthy layer into labeled demo points (a fake
+  // gradient), and demo fallback points are refused by the layer def
+  // (empty fallbackPoints, pinned by test).
+  if (isTerviseLayerId(def.id)) {
     const { distance } = await loadLayerRaster(def.id);
     return NextResponse.json({
       points: [],

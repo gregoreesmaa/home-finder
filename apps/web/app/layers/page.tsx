@@ -40,6 +40,11 @@ import {
   isPolygonOnlyLayer,
   type FloodArea,
 } from "../../lib/layers_flood";
+// TERVISE-HOOK (#494): tervise is points-empty by dated negative
+// verdict — the status names the missing feed instead of a point
+// count, and the "varu" suffix is skipped (zero points paint no
+// fallback splat).
+import { isTerviseLayerId } from "../../lib/layers_tervise";
 
 /** Viewport bbox rounded for fetch stability (matches server key rounding). */
 function sameView(a: BBoxLike, b: BBoxLike): boolean {
@@ -228,10 +233,17 @@ export default function LayersPage() {
     floodAreas === null
       ? "Laadin KAUR tsoone…"
       : `KAUR üleujutusohuga alad · ${floodAreas.length} tsooni (väljaspool = teadmata, mitte kuiv)`;
+  // TERVISE-HOOK (#494): tervise status names the missing machine feed
+  // (dated negative verdict) instead of a snapshot point count — the
+  // layer serves zero points by design (points empty, never invented).
+  const terviseStatus =
+    "Terviseameti seirepunktide masinvoog puudub (EI OLE, kontroll 2026-09-13) · 0 punkti";
   const base =
     isPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
       ? floodStatus
-      : provenance === null
+      : isTerviseLayerId(layer) && provenance !== null && provenance !== "demo"
+        ? terviseStatus
+        : provenance === null
       ? "Laadin kihi andmeid…"
       : provenance === "snapshot"
         ? pointCount > 0 || !raster
@@ -318,9 +330,12 @@ export default function LayersPage() {
           // FLOOD-HOOK (#487): floodzone paints no field at all (zero
           // points, null raster) -- "varu" would claim a fallback splat
           // exists. Skip the suffix for polygon-only layers too.
+          // TERVISE-HOOK (#494): same skip for the points-empty tervise
+          // layer (zero points paint no fallback splat either).
           (isStatKovLayerId(layer) ||
             isMaruKovLayerId(layer) ||
-            isPolygonOnlyLayer(layer)
+            isPolygonOnlyLayer(layer) ||
+            isTerviseLayerId(layer)
             ? ""
             : distance === "euclidean" && provenance === "snapshot"
               ? raster

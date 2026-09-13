@@ -47,7 +47,7 @@ describe("roadsafety registry (#481)", () => {
     // P4PARK-HOOK (#479): +1 parking layer (89 + 1).
     // MARUKOV-HOOK (#486): +4 MARU KOV choropleths (90 + 4).
     // FLOOD-HOOK (#487): +1 flood-risk polygon overlay (89 + 1). (94 + 1).
-    expect(ids.length).toBe(95);
+    expect(ids.length).toBe(96); // TERVISE-HOOK (#494): +1 points-empty tervise layer (95 + 1)
     expect(ids).toContain("roadsafety");
   });
 

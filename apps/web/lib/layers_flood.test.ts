@@ -57,7 +57,7 @@ describe("floodzone registry (#487)", () => {
   it("merges into LAYERS via the FLOOD-HOOK (page + routes serve it)", () => {
     const ids = LAYERS.map((l) => l.id);
     // 94 shipped layers (main at #503: +parking, +4 maru) + 1 flood-risk polygon overlay (94 + 1).
-    expect(ids.length).toBe(95);
+    expect(ids.length).toBe(96); // TERVISE-HOOK (#494): +1 points-empty tervise layer (95 + 1)
     expect(ids).toContain("floodzone");
   });
 

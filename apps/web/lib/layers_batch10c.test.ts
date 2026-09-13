@@ -49,7 +49,7 @@ describe("batch B10C registry (#121)", () => {
     // P4PARK-HOOK (#479): +1 parking layer. (89 + 1).
     // MARUKOV-HOOK (#486): +4 MARU KOV choropleths join the registry (90 + 4).
     // FLOOD-HOOK (#487): +1 flood-risk polygon overlay (89 + 1). (94 + 1).
-    expect(ids.length).toBe(95);
+    expect(ids.length).toBe(96); // TERVISE-HOOK (#494): +1 points-empty tervise layer (95 + 1)
     for (const id of BATCH10C_LAYER_IDS) expect(ids).toContain(id);
     for (const gone of ["internet", "redundancy", "ota"]) expect(ids).not.toContain(gone);
   });

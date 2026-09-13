@@ -40,7 +40,7 @@ describe("marukov registry (#486)", () => {
     const ids = LAYERS.map((l) => l.id);
     // 90 shipped layers (main at #500: +parking) + 4 maru (90 + 4) +
     // 1 floodzone layer (FLOOD-HOOK #487, 94 + 1).
-    expect(ids.length).toBe(95);
+    expect(ids.length).toBe(96); // TERVISE-HOOK (#494): +1 points-empty tervise layer (95 + 1)
     for (const id of MARUKOV_LAYER_IDS) expect(ids).toContain(id);
   });
 

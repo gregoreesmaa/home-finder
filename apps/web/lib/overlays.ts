@@ -448,6 +448,16 @@ export function overlayColorFor(layer: LayerId): string {
     // every other marker (distinct-color test).
     case "floodzone":
       return "#1e3a8a";
+    // TERVISE-HOOK (#494): tervise marker (points-empty layer — the
+    // color only paints the legend chip and the layer button, never a
+    // point, since zero points are served). #10b981: emerald-500
+    // health-cross green (NOT #059669 — taken by agrifield — and NOT
+    // #047857 — taken by trailprivacy — and NOT #34d399-adjacent
+    // #4ade80 — taken by gardens — and NOT #6ee7b7-adjacent #a7f3d0
+    // family greens above). Distinct from every other marker
+    // (distinct-color test).
+    case "tervise":
+      return "#10b981";
   }
 }
 
@@ -762,6 +772,12 @@ export function overlayLegendFor(layer: LayerId): string {
     // dry — the register carries no T-bands and zero Tallinn polygons.
     case "floodzone":
       return "KAUR üleujutusohuga alad · tsoonis = hinnang (nimeline polügoon), väljaspool = teadmata, mitte kuiv (T-bändid ja Tallinna polügoonid registris puuduvad)";
+    // TERVISE-HOOK (#494): tervise (P4-017+P4-024, points-empty) — no
+    // monitoring points are openly published, so the layer plots
+    // nothing: everywhere stays unknown (EI OLE), never a health
+    // gradient. The legend names the buyer-side checks instead.
+    case "tervise":
+      return "Terviseameti seirepunktid · masinvoog puudub (EI OLE, kontroll 2026-09-13): joogivee/suplusvee hinnang vtiav.sm.ee otsingust + supluskohtade nimekirjast, punkte ei leiutata";
   }
 }
 

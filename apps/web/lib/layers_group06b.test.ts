@@ -67,7 +67,7 @@ describe("batch G06B registry (#139)", () => {
     // P4PARK-HOOK (#479): parking joins the registry. (89 + 1).
     // MARUKOV-HOOK (#486): +4 MARU KOV choropleths join the registry. (90 + 4).
     // FLOOD-HOOK: +1 layers (94 + 1).
-    expect(ids.length).toBe(95); // OSMDAILY-HOOK (#482): +6 daily-life layers (77 + 6) + GTFS-HOOK (#483): +1 stop overlay; RSAFE-HOOK (#481): +1 road-safety layer (84 + 1); P4-031-HOOK (#484): +senscom (85 + 1); STATKOV-HOOK (#485): +3 choropleth layers (86 + 3)
+    expect(ids.length).toBe(96); // OSMDAILY-HOOK (#482): +6 daily-life layers (77 + 6) + GTFS-HOOK (#483): +1 stop overlay; RSAFE-HOOK (#481): +1 road-safety layer (84 + 1); P4-031-HOOK (#484): +senscom (85 + 1); STATKOV-HOOK (#485): +3 choropleth layers (86 + 3)
     for (const id of GROUP06B_LAYER_IDS) expect(ids).toContain(id);
   });
 

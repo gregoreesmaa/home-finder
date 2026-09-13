@@ -95,6 +95,10 @@ import { MARUKOV_RASTER_FILE } from "../layers_maru";
 // (named but NEVER built — polygons-only decision, resolves absent so
 // windows serve honestly-empty, never a gradient).
 import { FLOOD_RASTER_FILE } from "../layers_flood";
+// TERVISE-HOOK (#494): tervise raster file lives in layers_tervise.ts
+// (named but NEVER built — points-empty decision, resolves absent so
+// windows serve honestly-empty, never a gradient).
+import { TERVISE_RASTER_FILE } from "../layers_tervise";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -529,6 +533,9 @@ const RASTER_FILE: Record<LayerId, string> = {
   // FLOOD-HOOK (#487): floodzone raster name only (no master built —
   // polygons-only; absent file serves honestly-empty, never a gradient).
   ...FLOOD_RASTER_FILE,
+  // TERVISE-HOOK (#494): tervise raster name only (no master built —
+  // points-empty; absent file serves honestly-empty, never a gradient).
+  ...TERVISE_RASTER_FILE,
 };
 
 /**
@@ -938,6 +945,9 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // FLOOD-HOOK (#487): no floodzone metro master (polygons-only — the
   // file is absent, so windows serve county everywhere, honestly-empty).
   floodzone: "floodzone-metro",
+  // TERVISE-HOOK (#494): no tervise metro master (points-empty — the
+  // file is absent, so windows serve county everywhere, honestly-empty).
+  tervise: "tervise-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */
