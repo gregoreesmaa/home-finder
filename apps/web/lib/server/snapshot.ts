@@ -24,6 +24,8 @@ import { G07B_RASTER_FILE } from "../layers_group07b";
 import { G11D_METRO_PREFIXES, G11D_RASTER_FILES } from "../layers_group11d";
 // G07D-HOOK(#143): batch G07D raster files live in layers_group07d.ts.
 import { G07D_RASTER_FILE } from "../layers_group07d";
+// G07C-HOOK(#142): batch G07C raster file lives in layers_group07c.ts.
+import { G07C_RASTER_FILE } from "../layers_group07c";
 // G06B-HOOK (#139): Group 6 leftover raster files live in layers_group06b.ts.
 import { GROUP06B_METRO_PREFIXES, GROUP06B_RASTER_FILES } from "../layers_group06b";
 // G11C-HOOK(#134): batch G11C raster files live in layers_group11c.ts.
@@ -319,6 +321,8 @@ const RASTER_FILE: Record<LayerId, string> = {
   ...G11D_RASTER_FILES,
   // G07D-HOOK (#143): env-health D rasters (built by scripts/build/batch_g07d_envhealth.py).
   ...G07D_RASTER_FILE,
+  // G07C-HOOK(#142): env-health C raster (built by scripts/build/batch_g07c_envhealth.py).
+  ...G07C_RASTER_FILE,
   // G07-HOOK (#140): env-health rasters (built by scripts/build/batch_g07_envhealth.py).
   ...G07_RASTER_FILE,
   // B5-HOOK (#102): Group 14 rasters (built by scripts/build/batch_b5_safety.py).
@@ -449,6 +453,10 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // windows fall back to county cleanly.
   agrifield: "agrifield-metro",
   wildcorr: "wildcorr-metro",
+  // G07C-HOOK(#142): no metro master by documented decision (see
+  // layers_group07c.ts G07C_NO_METRO) — the name resolves to an absent
+  // file so windows fall back to county cleanly.
+  vectorhabitat: "vectorhabitat-metro",
   // G07-HOOK (#140): no metro masters by documented decision (see
   // layers_group07.ts G07_NO_METRO) — names resolve to absent files so
   // windows fall back to county cleanly.

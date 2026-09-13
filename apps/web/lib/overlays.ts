@@ -137,6 +137,10 @@ export function overlayColorFor(layer: LayerId): string {
       return "#16a34a";
     case "wildcorr":
       return "#365314";
+    // G07C-HOOK(#142): p257 habitat-edge samples (NOT #365314: sibling
+    // wildcorr already owns that green; colors must stay distinct).
+    case "vectorhabitat":
+      return "#a21caf";
     // Group G06B heritage-leftover layers (point overlays, stride-sampled).
     case "plaster":
       return "#b45309";
@@ -254,6 +258,10 @@ export function overlayLegendFor(layer: LayerId): string {
       return "Põllud, heinamaad ja kasvuhooned · kaugus lähima haritava maani (hinnang, poolkaugus 800 m)";
     case "wildcorr":
       return "Metsad, märgalad ja kaitsealad · kaugus lähima elupaigani (hinnang, poolkaugus 500 m)";
+    // G07C-HOOK(#142): p257 elupaigaproksi — markerid on serva valim,
+    // skoor tuleb kaugusest (poolkaugus 300 m).
+    case "vectorhabitat":
+      return "Puugi-/sääseelupaiga serv · mida kaugemal, seda rahulikum (proksi, hinnang, poolkaugus 300 m)";
     // Group G06B heritage-leftover layers: nearby-POI counts with halves
     // from layers_group06b.ts GROUP06B_BONUS (same numbers as
     // bonusSpecFor); woodfire is inverse (nearest-distance, pöördskaala).

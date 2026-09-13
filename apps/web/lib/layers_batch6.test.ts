@@ -41,10 +41,11 @@ describe("batch B6 registry (#133)", () => {
     }
   });
 
-  it("merges into LAYERS via the B6-HOOK (page + routes serve all forty-three)", () => {
+  it("merges into LAYERS via the B6-HOOK (page + routes serve all forty-four)", () => {
     const ids = LAYERS.map((l) => l.id);
     // G03-HOOK (#151): drainage joins the registry.
-    expect(ids.length).toBe(43);
+    // G07C-HOOK(#142): vectorhabitat joins the registry.
+    expect(ids.length).toBe(44);
     for (const id of BATCH6_LAYER_IDS) expect(ids).toContain(id);
   });
 

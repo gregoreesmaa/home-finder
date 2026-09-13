@@ -84,6 +84,17 @@ import {
   isG07DLayerId,
   type G07DLayerId,
 } from "./layers_group07d";
+// G07C-HOOK(#142): batch G07C (Group 7 env-health C: p257 vector-habitat
+// proxy; p260/p316/p401/p402 documented no-map) tables live in
+// ./layers_group07c (new file, no imports from here — no runtime cycle).
+import {
+  G07C_DECAY_KM,
+  G07C_LAYERS,
+  G07C_TAGS,
+  g07cBonusSpec,
+  isG07CLayerId,
+  type G07CLayerId,
+} from "./layers_group07c";
 // G06B-HOOK (#139): Group 6 leftover tables live in ./layers_group06b
 // (new file). That module imports layers only as types, so no cycle.
 import type { Group06BLayerId } from "./layers_group06b";
@@ -152,6 +163,8 @@ export type LayerId =
   | G07BLayerId
   // G07D-HOOK (#143): Group 7 env-health D ids (defined in ./layers_group07d).
   | G07DLayerId
+  // G07C-HOOK(#142): Group 7 env-health C id (defined in ./layers_group07c).
+  | G07CLayerId
   // G07-HOOK (#140): Group 7 env-health ids (defined in ./layers_group07).
   | G07LayerId
   // B5-HOOK (#102): Group 14 public-safety ids (defined in ./layers_batch5).
@@ -191,7 +204,9 @@ export interface LayerPoint {
 
 /** Tag keys worth caching (small, bounded); names/addresses never leave. */
 // B5-HOOK (#102): "emergency" keeps emergency=fire_hydrant tags (p315).
-const TAG_ALLOWLIST = ["amenity", "leisure", "railway", "public_transport", "highway", "emergency"];
+const TAG_ALLOWLIST = ["amenity", "leisure", "railway", "public_transport", "highway", "emergency",
+  // G07C-HOOK(#142): vector-habitat points carry natural/landuse tags (p257).
+  "natural", "landuse"];
 
 /** Pick allowlisted string tags, or undefined when there are none. */
 export function pickFeatureTags(tags: unknown): Record<string, string> | undefined {
@@ -250,6 +265,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...G07B_DECAY_KM,
   // G07D-HOOK (#143): env-health D radii (see layers_group07d.ts G07D_DECAY_KM).
   ...G07D_DECAY_KM,
+  // G07C-HOOK(#142): env-health C radius (see layers_group07c.ts G07C_DECAY_KM).
+  ...G07C_DECAY_KM,
   // G07-HOOK (#140): env-health radii (see layers_group07.ts G07_DECAY_KM).
   ...G07_DECAY_KM,
   // B5-HOOK (#102): Group 14 radii (see layers_batch5.ts BATCH5_DECAY).
@@ -380,6 +397,8 @@ export const LAYERS: LayerDef[] = [
   ...G07B_LAYERS,
   // G07D-HOOK (#143): env-health D defs (p409/p450) from ./layers_group07d.
   ...G07D_LAYERS,
+  // G07C-HOOK(#142): env-health C def (p257) from ./layers_group07c.
+  ...G07C_LAYERS,
   // G07-HOOK (#140): env-health defs (p61/p62) from ./layers_group07.
   ...G07_LAYERS,
   // B5-HOOK (#102): Group 14 defs (p13/p78/p315/p335/p467) from ./layers_batch5.
@@ -423,6 +442,8 @@ const TAGS: Record<LayerId, string> = {
   ...G07B_TAGS,
   // G07D-HOOK (#143): env-health D queries (see layers_group07d.ts G07D_TAGS).
   ...G07D_TAGS,
+  // G07C-HOOK(#142): env-health C query (see layers_group07c.ts G07C_TAGS).
+  ...G07C_TAGS,
   // G07-HOOK (#140): env-health queries (see layers_group07.ts G07_TAGS).
   ...G07_TAGS,
   // B5-HOOK (#102): Group 14 queries (see layers_batch5.ts BATCH5_TAGS).
@@ -558,6 +579,8 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   if (isG07BLayerId(layer)) return g07bBonusSpecFor(layer);
   // G07D-HOOK(#143): env-health D specs live in layers_group07d.ts.
   if (isG07DLayerId(layer)) return g07dBonusSpecFor(layer);
+  // G07C-HOOK(#142): env-health C specs live in layers_group07c.ts.
+  if (isG07CLayerId(layer)) return g07cBonusSpec(layer);
   // G07-HOOK(#140): env-health specs live in layers_group07.ts.
   if (isG07LayerId(layer)) return g07BonusSpecFor(layer);
   switch (layer) {

@@ -43,9 +43,11 @@ describe("batch G06B registry (#139)", () => {
     for (const v of GROUP06B_NO_MAP) expect(v.reason.length).toBeGreaterThan(20);
   });
 
-  it("merges into LAYERS via the G06B-HOOK (page + routes serve all forty-three)", () => {
+  it("merges into LAYERS via the G06B-HOOK (page + routes serve all forty-four)", () => {
     const ids = LAYERS.map((l) => l.id);
-    expect(ids.length).toBe(43);
+    // G03-HOOK (#151): drainage joined the registry (pin was stale at 42).
+    // G07C-HOOK(#142): vectorhabitat joins the registry.
+    expect(ids.length).toBe(44);
     for (const id of GROUP06B_LAYER_IDS) expect(ids).toContain(id);
   });
 

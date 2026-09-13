@@ -43,6 +43,8 @@ describe("layer registry", () => {
       // G07D-HOOK (#143): Group 7 env-health D ids.
       "agrifield",
       "wildcorr",
+      // G07C-HOOK(#142): Group 7 env-health C id (p257 proxy).
+      "vectorhabitat",
       // G07-HOOK (#140): Group 7 env-health ids.
       "industprox",
       "odorsrc",
@@ -88,6 +90,8 @@ describe("layer registry", () => {
     // G07D-HOOK (#143): env-health D param binding.
     expect(LAYERS.find((l) => l.id === "agrifield")?.paramIds).toEqual([409]);
     expect(LAYERS.find((l) => l.id === "wildcorr")?.paramIds).toEqual([450]);
+    // G07C-HOOK(#142): env-health C param binding (p257 proxy).
+    expect(LAYERS.find((l) => l.id === "vectorhabitat")?.paramIds).toEqual([257]);
     // G07-HOOK (#140): env-health param binding.
     expect(LAYERS.find((l) => l.id === "industprox")?.paramIds).toEqual([61]);
     expect(LAYERS.find((l) => l.id === "odorsrc")?.paramIds).toEqual([62]);

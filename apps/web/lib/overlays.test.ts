@@ -84,7 +84,8 @@ describe("selectOverlayPoints", () => {
 describe("overlay legend + colors", () => {
   it("explains every layer's markers and weights in Estonian", () => {
     const ids = LAYERS.map((l) => l.id);
-    expect(ids).toHaveLength(43);
+    // G07C-HOOK(#142): vectorhabitat joins the registry.
+    expect(ids).toHaveLength(44);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -122,6 +123,8 @@ describe("overlay legend + colors", () => {
     // Batch G07D halves (see g07dBonusSpecFor in layers_group07d.ts).
     expect(overlayLegendFor("agrifield")).toContain("800 m");
     expect(overlayLegendFor("wildcorr")).toContain("500 m");
+    // G07C-HOOK(#142): p257 half (see G07C_BONUS in layers_group07c.ts).
+    expect(overlayLegendFor("vectorhabitat")).toContain("300 m");
     // Group G06B halves (see GROUP06B_BONUS in layers_group06b.ts).
     expect(overlayLegendFor("plaster")).toContain("küllastus 6");
     expect(overlayLegendFor("antiques")).toContain("küllastus 1");
@@ -154,7 +157,7 @@ describe("overlay legend + colors", () => {
 
   it("gives every layer a distinct marker color", () => {
     const seen = new Set((LAYERS.map((l) => l.id) as LayerId[]).map(overlayColorFor));
-    expect(seen.size).toBe(43);
+    expect(seen.size).toBe(44);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });
