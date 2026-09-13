@@ -61,7 +61,8 @@ describe("gtfsstops registry (#483)", () => {
 
     // EELIS-HOOK (#488): +3 nature-polygon layers (101 + 3).
     // PLANKTPR-HOOK (#492): +1 designated-use polygon layer (104 + 1).
-    expect(ids.length).toBe(105);
+    // TERVISE-HOOK (#494): +1 tervise bathing-water layer (105 + 1).
+    expect(ids.length).toBe(106);
   });
 
   it("labels schedules honestly in Estonian (never ridership)", () => {

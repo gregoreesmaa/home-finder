@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { LAYERS, tileForView, type BBoxLike, type LayerPoint } from "../../../../lib/layers";
 import { isSenscomLayerId } from "../../../../lib/layers_p4_senscom";
+// TERVISE-HOOK (#494): committed bathing-water points (see below).
+import {
+  TERVISE_POINTS,
+  TERVISE_VINTAGE,
+  isTerviseLayerId,
+  tervisePointsIn,
+} from "../../../../lib/layers_tervise";
 // FLOOD-HOOK (#487): polygons-only branch guard (see below).
 import { isFloodLayerId } from "../../../../lib/layers_flood";
 // OOKLA-HOOK (#489): ookla tile points come from the Ookla Tallinn
@@ -80,6 +87,23 @@ export async function GET(
       points,
       provenance: points.length > 0 ? "snapshot" : "empty",
       ageMs: Number.isFinite(age) ? Date.now() - age : null,
+    });
+  }
+  // TERVISE-HOOK (#494): tervise points come from the committed
+  // projected extract (TERVISE_POINTS in lib/layers_tervise.ts, built
+  // offline by scripts/build/batch_tervise.py — never the OSM snapshot,
+  // never live). Provenance "snapshot" (local static data); the status
+  // line names the Terviseamet vintage instead of the OSM snapshot date
+  // (see app/layers/page.tsx). An empty view bbox is honestly-empty.
+  if (isTerviseLayerId(def.id)) {
+    const points = tervisePointsIn(TERVISE_POINTS, bbox);
+    // Vintage midnight parses in SERVER-LOCAL time (no Z suffix): the
+    // vintage is a local calendar date (harvest 2026-09-14 00:04 EEST),
+    // and a UTC-midnight parse goes negative before 03:00 UTC.
+    return NextResponse.json({
+      points,
+      provenance: points.length > 0 ? "snapshot" : "empty",
+      ageMs: Date.now() - Date.parse(`${TERVISE_VINTAGE}T00:00:00`),
     });
   }
   // FLOOD-HOOK (#487): floodzone is polygons-only (zero points, zero

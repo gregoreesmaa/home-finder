@@ -120,6 +120,9 @@ import { EELIS_RASTER_FILE } from "../layers_eelis";
 // degrade to null; the sidecar is honestly empty when unharvested).
 import type { PlanktprArea } from "../layers_planktpr";
 import { PLANKTPR_RASTER_FILE, isPlanktprArea } from "../layers_planktpr";
+// TERVISE-HOOK (#494): tervise raster filename lives in
+// layers_tervise.ts (intentionally never built — TERVISE_NO_RASTER).
+import { TERVISE_RASTER_FILE } from "../layers_tervise";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -750,6 +753,10 @@ const RASTER_FILE: Record<LayerId, string> = {
   // PLANKTPR-HOOK (#492): planktpr raster name only (no master built —
   // polygons ARE the field; absent file degrades to null, honestly).
   ...PLANKTPR_RASTER_FILE,
+  // TERVISE-HOOK (#494): tervise raster name (never built by decision —
+  // the points-splat quality kernel IS the field, see TERVISE_NO_RASTER;
+  // the name resolves to an absent file so rasters degrade to null).
+  ...TERVISE_RASTER_FILE,
 };
 
 /**
@@ -819,6 +826,10 @@ export function matchesContract(
   // documented decision (OOKLA_NO_RASTER) — same stale-by-definition
   // contract as bands.
   if (spec.kind === "tileband") return false;
+  // TERVISE-HOOK (#494): "qbands" (tervise) has no raster master by
+  // documented decision (TERVISE_NO_RASTER) — same stale-by-definition
+  // guard under the quality legend.
+  if (spec.kind === "qbands") return false;
   return false;
 }
 
@@ -1197,6 +1208,10 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // decision (see layers_planktpr.ts PLANKTPR_NO_METRO) — the name
   // resolves to an absent file so windows fall back to county cleanly.
   planktpr: "planktpr-metro",
+  // TERVISE-HOOK (#494): no tervise metro master (no county master
+  // either — TERVISE_NO_RASTER; the name resolves to an absent file so
+  // windows fall back to the client points-splat quality kernel).
+  tervise: "tervise-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

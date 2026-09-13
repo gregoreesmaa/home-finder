@@ -48,8 +48,9 @@ describe("accblack registry (#490)", () => {
     const ids = LAYERS.map((l) => l.id);
     // 99 shipped layers on main (#505 ookla) + 1 accident-blackspot
     // (ACCBLACK-HOOK #490, 99 + 1) + 1 maaparcel (MAAPARCEL-HOOK #491, 100 + 1) +
-    // 3 eelis (EELIS-HOOK #488, 101 + 3) + 1 planktpr (PLANKTPR-HOOK #492, 104 + 1).
-    expect(ids.length).toBe(105);
+    // 3 eelis (EELIS-HOOK #488, 101 + 3) + 1 planktpr (PLANKTPR-HOOK #492, 104 + 1) +
+    // 1 tervise (TERVISE-HOOK #494, 105 + 1).
+    expect(ids.length).toBe(106);
     expect(ids).toContain("accblack");
   });
 
