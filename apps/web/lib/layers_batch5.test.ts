@@ -36,10 +36,15 @@ describe("batch B5 registry (#102)", () => {
     }
   });
 
-  it("merges into LAYERS via the B5-HOOK (page + routes serve all twenty-one)", () => {
+  it("merges into LAYERS via the B5-HOOK (page + routes serve all thirty-three)", () => {
     const ids = LAYERS.map((l) => l.id);
-    // G06B-HOOK (#139): Group 6 leftover layers ride the same registry.
-    expect(ids.length).toBe(21);
+    // G06B-HOOK (#139): three Group 6 leftover layers join the registry.
+    // G11C-HOOK (#134): five Group 11 leftover-A layers join the registry.
+    // B6-HOOK (#133): three mobility/access layers join the registry.
+    // G07-HOOK (#140): two env-health layers join the registry.
+    // G06-HOOK (#138): Group 6 heritage layer rides the same registry.
+    // G02B-HOOK (#137): liftproxy joins the registry.
+    expect(ids.length).toBe(33);
     for (const id of BATCH5_LAYER_IDS) expect(ids).toContain(id);
   });
 

@@ -43,11 +43,9 @@ describe("batch G06B registry (#139)", () => {
     for (const v of GROUP06B_NO_MAP) expect(v.reason.length).toBeGreaterThan(20);
   });
 
-  it("merges into LAYERS via the G06B-HOOK (page + routes serve all twenty-one)", () => {
-    // NOTE: rebases onto main after the sibling G06A batch (#138, +1
-    // layer) merges — then this reads twenty-two. See the PR.
+  it("merges into LAYERS via the G06B-HOOK (page + routes serve all thirty-three)", () => {
     const ids = LAYERS.map((l) => l.id);
-    expect(ids.length).toBe(21);
+    expect(ids.length).toBe(33);
     for (const id of GROUP06B_LAYER_IDS) expect(ids).toContain(id);
   });
 
