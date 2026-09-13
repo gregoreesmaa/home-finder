@@ -638,3 +638,129 @@ different surface, never a raster).
 | 500 | G20 | The "Gut Feeling" veto | NULL | dim_gut_veto · layers_group20b.ts | Kõhutunde veto on ostja isiklik bloki-vaatluse hinnang (kohapeal, EI OLE skooritav): kui koht tundub vale, langeb pakkumine välja — kaarti sellele pole — ära feigi. — Lähim kaart: puudub — veto pole skoor, otsustab kohapealne tunne |
 
 <!-- appendix rows: 403 -->
+
+## 5. P4 + overturn index (closeout — 84 P4 verdict notes + 11 overturn notes)
+
+`parameters4.md` P4-001–P4-062 went through the same honest pipeline as
+§1–§4: one openness probe + verdict note per source (`docs/p4_*.md`,
+84 files) with a pinned scorer module
+(`services/scoring/dims_p4_*.py`, 84 modules), plus 11 overturn hunts
+(`docs/overturn_*.md` + `services/scoring/dims_overturn_*.py`) that
+re-tested §3 NULL verdicts against live feeds. Doc↔module pairing is
+1:1 (verified: 91 unique slugs pair exactly; `arireg`/`ata`/`ehr`/
+`emta` exist in both families). None of the 95 ships a raster map
+layer — every honest shape below is a scorer dim
+(`(origin, pois) -> (score | None, Estonian reason)`), so the verdict
+column reuses the §1 kinds at dim level: **proxy** = scores a capped
+hinnang/join when its input snapshot is joined (NULL with `EI OLE`
+otherwise), **no-map** = stays NULL (dated negative, gated/paid feed,
+or no honest signal), **mixed** = both in one note. Index judgment:
+29 proxy / 6 mixed / 49 no-map across the P4 notes; 2 proxy
+(join-gated, live NULL) / 5 mixed / 4 no-map across the overturn
+notes. Probed 2026-09-13 unless the note says otherwise; each note
+carries its own re-probe checklist.
+
+### P4 source verdicts (84)
+
+| Source | P4 params | Verdict | File |
+|:---|:---|:---|:---|
+| Inside Airbnb dumps | P4-003 | no-map (no Tallinn dataset; NULL) | docs/p4_airbnb.md |
+| e-Äriregister KÜ reports | P4-007, 010, 020, 021, 026, 030, 034, 039, 042, 044, 051, 052, 057, 060, 062 | mixed (P4-051 arrears flag proxy; rest no-map) | docs/p4_arireg.md |
+| Ametlikud Teadaanded | P4-004, 020, 021 | proxy (OPEN; per-entity joins; NULL until joined) | docs/p4_ata.md |
+| Bank collateral surveys | P4-038 | no-map (internal underwriting; no feed) | docs/p4_banksurv.md |
+| Bike counters + MPD | P4-032 | proxy join-gated (hex band; NULL until bulk) | docs/p4_bikes.md |
+| Tallinna eelarve | P4-019, 020 | no-map (human pages + PDFs; no table) | docs/p4_citybudget.md |
+| tallinn.ee eelinfo/lumi | P4-014, 018 | proxy join-gated (calendar dims off dated entries) | docs/p4_citynotices.md |
+| Strategic plans + stats | P4-006, 014, 019, 025, 037, 041, 050, 061 | proxy join-gated (fixture-proven shapes; NULL until bulk) | docs/p4_cityplans.md |
+| Smart-city pilots | P4-031 | no-map (press releases; DIY leg lives in senscom) | docs/p4_citysens.md |
+| Civic participation | P4-024, 039 | no-map (ringkond grain, no precinct join) | docs/p4_civic.md |
+| Delivery/ride APIs | P4-027, 049 | no-map (partner/ToS-gated) | docs/p4_comapps.md |
+| Creditinfo | P4-007, 020, 021 | no-map (account/contract-gated) | docs/p4_creditinfo.md |
+| EANS noise zones | P4-023, 055 | proxy join-gated (zone label + notice calendar; viewer-only) | docs/p4_eans.md |
+| EELIS WFS | P4-015, 023, 024, 030, 053 | proxy (POSITIVE; scored joins; flood leg Tallinn-empty) | docs/p4_eelis.md |
+| EGT geology | P4-016, 054 | no-map (no per-parcel bulk) | docs/p4_egt.md |
+| EHIS / HaridusSilm | P4-011, 044 | proxy join-gated (per-linnaosa joins; capacity bulk negative) | docs/p4_ehis.md |
+| EHR / E-ehitus | P4-005, 010, 013, 016, 021, 023, 030, 031, 034, 035, 036 | proxy join-gated (21 per-ehr_code dims) | docs/p4_ehr.md |
+| EIS (ex-KredEx) | P4-007, 010, 060 | proxy join-gated (3 per-building dims) | docs/p4_eis.md |
+| Elektrilevi DSO | P4-008, 009, 036, 046, 051 | no-map (fault-map app / gated / nowhere) | docs/p4_elektrilevi.md |
+| Elering dashboard | P4-009, 036, 046 | no-map (national series = context echo, never score) | docs/p4_elering.md |
+| Elron timetables | P4-014, 032, 055, 061 | no-map (PDFs/news; no GTFS/API) | docs/p4_elron.md |
+| EMTA guides / Võlapäring | P4-004, 019, 037 | proxy join-gated (joined rows only; KOV-table bulk = future) | docs/p4_emta.md |
+| Event / fireworks calendars | P4-033, 047 | no-map (human culture pages) | docs/p4_events.md |
+| Fix-it channels / Mupo | P4-026, 062 | no-map (helpline/app; no lag table) | docs/p4_fixit.md |
+| Green inventory | P4-042, 048, 056 | no-map (no machine-readable inventory) | docs/p4_green.md |
+| Haridusamet | P4-011, 025, 052 | no-map (CMS pages / gated register) | docs/p4_haridus.md |
+| Heat tariffs | P4-008, 036 | proxy join-gated (zone-record joins; NULL until joined) | docs/p4_heat.md |
+| Ilmateenistus Harku | P4-031, 034, 035, 053, 056 | mixed (P4-034/035 baselines + P4-053 rose proxy; P4-031/056 no-map) | docs/p4_ilm.md |
+| Insurer tariff zones | P4-015 | no-map (internal underwriting) | docs/p4_insurers.md |
+| KAUR | P4-015, 016, 023, 024, 031, 042, 046, 053, 056, 058, 059 | proxy (11 zone/station/sector joins) | docs/p4_kaur.md |
+| KOTKAS (Keskkonnaamet) | P4-017, 033, 054, 059 | no-map (open feed, unservable legs) | docs/p4_kesk.md |
+| Kliimakava strategy | P4-010, 020, 059 | no-map (pages + PDFs; no zone table) | docs/p4_kliima.md |
+| Kohanimeregister | P4-049 | no-map (searchable, not joinable; guest test unmeasurable) | docs/p4_kohanimi.md |
+| Kohtute infosüsteem | P4-020 | no-map (no per-entity feed; personal-data bar) | docs/p4_kohtud.md |
+| Kommunaalamet | P4-007, 010, 016, 017, 018, 024, 026, 030, 042, 047, 053, 054, 055, 057, 058, 059, 060, 062 | no-map (all 18 NULL; human pages/viewer) | docs/p4_komun.md |
+| Konkurentsiamet caps | P4-008, 036 | proxy join-gated (zone-table join; cap groundedness) | docs/p4_konkurents.md |
+| KÜ documents | P4-007, 047 | proxy join-gated (per-ku_code joins; no public bulk) | docs/p4_kudocs.md |
+| Kaitsevägi areas | P4-023, 033, 055 | proxy (CONFIRMED OPEN schedule + map JSON; membership/calendar) | docs/p4_kvagi.md |
+| Libraries / culture hours | P4-039, 045 | no-map (human CMS; no visits table) | docs/p4_libs.md |
+| Loomemajandus stats | P4-024, 044 | no-map (prose pages; no per-linnaosa table) | docs/p4_loome.md |
+| Maa-amet fotokaart WMS | P4-006, 022, 029, 030, 041, 056, 057, 058, 060 | proxy (cross-checks + Vesi zone table; vintage/retreat/surface partial-negatives) | docs/p4_maa_aerial.md |
+| Maa-amet kataster / KKIS | P4-004, 006, 013, 020 | proxy (per-parcel joins; RIK depth restricted → caps) | docs/p4_maa_kataster.md |
+| Maa-amet LiDAR / DEM / LoD2 | P4-002, 016, 031, 034, 035, 036, 041, 056 | proxy join-gated (geometry joins; artefacts caller-side) | docs/p4_maa_lidar.md |
+| Maa-amet subsurface WFS | P4-016, 017, 054 | proxy (per-parcel class joins; blast timetable negative) | docs/p4_maa_subsurface.md |
+| Maa-amet tehingud | P4-001, 002, 021, 025, 028, 038, 043, 044, 050, 052, 061 | proxy join-gated (per-address RESTRICTED → production NULL) | docs/p4_maa_tehingud.md |
+| Muinsuskaitse register | P4-005, 041 | no-map (host dead / 520; no endpoint) | docs/p4_muinsus.md |
+| notar.ee guidance | P4-004, 020 | no-map (prose; guidance leg NULL by construction) | docs/p4_notar.md |
+| Ookla Speedtest tiles | P4-009 | proxy (machine-open; SCORES cap 85, coarse tile hinnang) | docs/p4_ookla.md |
+| OpenCellID bulk | P4-009 | no-map (key-gated; 401 anonymous) | docs/p4_opencellid.md |
+| Operator levikaardid | P4-009 | no-map (JS marketing maps; no bulk/API) | docs/p4_opmaps.md |
+| OSM extracts | P4-012, 013, 027, 029, 032, 035, 040, 042, 044, 045, 049, 061 + NULLs 018, 026, 031, 039, 047, 048, 062 | mixed (12 capped proxies / 7 NULLs) | docs/p4_osm.md |
+| Own listing store | P4-001, 002, 003, 005, 007, 021, 022, 028, 029, 034, 038, 040, 041, 043, 046, 049, 051, 052, 057, 059 | mixed (P4-001/022/028/043/046 computed or partial; rest NULL incl. P4-051 hard NULL) | docs/p4_own_store.md |
+| Päästeamet | P4-012, 015, 042, 047, 058, 059, 062 | proxy join-gated (point/calendar/zone joins; machine feed negative) | docs/p4_paaste.md |
+| Parkimine regime | P4-013, 037, 049 | proxy (per-parcel zone join; bulk polygons negative) | docs/p4_park.md |
+| Peatus.ee GTFS | P4-037, 045, 048, 049, 061 | no-map (zip dead; NULL until feed reopens) | docs/p4_peatus.md |
+| PLANK WFS | P4-006 | no-map (endpoint gone → SPA shell) | docs/p4_plank.md |
+| PPA open CSVs | P4-012, 015 | proxy (OPEN feeds; linnaosa tertile choropleth) | docs/p4_ppa.md |
+| PRIA field blocks | P4-024 | no-map (no anonymous bulk; buffer shape fixture-proven) | docs/p4_pria.md |
+| Rahandusministeerium | P4-019, 037 | no-map (prose; dead KOV-budget reference) | docs/p4_rahmin.md |
+| Rail Baltica | P4-006, 014 | no-map (press/docs; no timetable bulk) | docs/p4_rb.md |
+| Recreation / allotments | P4-024, 048 | no-map (directory pages; no queue table) | docs/p4_recre.md |
+| Välireklaam / reklaamimaks | P4-036 | no-map (permit flow; tax ≠ yield) | docs/p4_reklaam.md |
+| REL2021 grid | P4-003, 011, 025, 043, 044, 045, 051, 052 | mixed (asula fallback proxy; 1 km grid joins NULL) | docs/p4_rel2021.md |
+| Rental complaints | P4-003 | no-map (no published dataset) | docs/p4_rentcompl.md |
+| Riigikontroll audits | P4-019, 020 | no-map (prose reports; no finance table) | docs/p4_riigik.md |
+| RIK kinnistusraamat | P4-004 | no-map (paid extracts; contract-gated bulk) | docs/p4_rik.md |
+| Sentinel-2 pixels | P4-030 | no-map (keyed S3 pixels; metadata only) | docs/p4_s2.md |
+| Tallinna Sadam | P4-023, 033, 053, 055 | no-map (human timetables/newsroom) | docs/p4_sadam.md |
+| sensor.community DIY air | P4-031 | proxy (machine-open; SCORES cap 80 density hinnang) | docs/p4_senscom.md |
+| StaMT service maps | P4-011 | no-map (in-app layers only; no bulk) | docs/p4_stamt.md |
+| Statistikaamet PX-Web | P4-001, 002, 003, 019, 025, 038, 043, 050, 051, 061 | proxy (OPEN; exact area-table joins; HH01/KK11 partial-negative) | docs/p4_stat.md |
+| Mapillary / KartaView | P4-022, 029, 040 | proxy join-gated (dated-frame dims; token-gated) | docs/p4_streetimg.md |
+| Kohtutäiturid | P4-004, 020 | proxy join-gated (joined snapshot slices only) | docs/p4_taitur.md |
+| Terviseamet | P4-017, 024 | no-map (query UI / county PDFs; no bulk) | docs/p4_tervise.md |
+| Tervisekassa GP lists | P4-011, 020 | no-map (PowerBI embed; no bulk flags) | docs/p4_tkas.md |
+| TLT / transport.tallinn | P4-012, 018, 027, 032, 037, 045, 048, 049, 061 | no-map (news/app shells; no bulk) | docs/p4_tlt.md |
+| TPR register | P4-005, 006, 050 | no-map (Angular SPA; no bulk) | docs/p4_tpr.md |
+| Transpordiamet | P4-012, 018, 023, 026, 037, 046, 047, 054 | mixed (P4-012 accident-CSV proxy live; rest join-gated) | docs/p4_trans.md |
+| TTJA netikaart | P4-009 | no-map (interactive app; no feed) | docs/p4_ttja_net.md |
+| TTJA complaints (JVIS) | P4-021 | no-map (interactive register; name-only blacklist) | docs/p4_ttjacons.md |
+| Tallinna Vesi | P4-008, 017, 046, 051, 060 | proxy (tariff OPEN + zone joins; per-parcel/hex negatives) | docs/p4_tvesi.md |
+| Veebikaart / lighting | P4-029, 032, 035, 040 | no-map (app shells; no inventory feed) | docs/p4_veebi.md |
+| Veeteede icebreaking | P4-055 | no-map (PDF käskkirjad; no dated feed) | docs/p4_veeteede.md |
+| VIIRS night lights | P4-035 | no-map (login-gated downloads) | docs/p4_viirs.md |
+
+### Overturn verdicts (11)
+
+| Hunt | Params | Verdict | File |
+|:---|:---|:---|:---|
+| e-Äriregister bulk #232 | p361 FLIP (84.3% scored), p369 echo | mixed (flip + no-map; per-listing entity dims, no raster) | docs/overturn_arireg.md |
+| Ametlikud Teadaanded #233 | p362 AT slice FLIP / paid slice NULL | mixed (per-estate join; area gradients stay invalid) | docs/overturn_ata.md |
+| CAMS / EGT / KIK #238 | p66, 204 shapes ready, live NULL; rest NULL | no-map (no open feed; plumbing without data) | docs/overturn_cams.md |
+| EHR bulk #234 | p21, 30, 33, 35, 48, 79, 154, 495 | proxy join-gated (per-code dims; gradients stay invalid; live NULL) | docs/overturn_ehr.md |
+| EMTA / KOV tables #242 | p2, 73, 151, 422, 423 | no-map (PDF-only tables; p73+ permanently NULL) | docs/overturn_emta.md |
+| Flood polygons #239 | p112 FLIP (zone membership); rest NULL | mixed (per-parcel join; never a gradient) | docs/overturn_flood.md |
+| Maa-amet WFS #235 | p29, 68, 71, 75, 76, 229, 364 FLIP; 15 stay NULL | mixed (per-parcel joins, capped/weak; never gradients) | docs/overturn_maa.md |
+| MARU / Stat / ECB #241 | p41, 43, 149, 421, 484 FLIP; rest NULL; p6 display-only | mixed (per-KOV choropleth joins; never walk-gradients) | docs/overturn_maru.md |
+| Muinas register #237 | p158, 272, 320, 351, 354, 355, 359, 360 | no-map (no dump; 4 legs permanently NULL) | docs/overturn_muinas.md |
+| Park upkeep p317 #240 | p317 | no-map (contracts per polygon; no quality key) | docs/overturn_p317.md |
+| PLANK / TPR #236 | p47, p74 exact joins + p274 ceiling proxy | proxy join-gated (all live NULL; deed stays paid-register) | docs/overturn_planktpr.md |
