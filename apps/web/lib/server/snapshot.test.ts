@@ -323,6 +323,32 @@ describe("layer walk rasters", () => {
     }
   });
 
+  it("serves G07 quiet rasters under the halfM contract", async () => {
+    const idir = await fixtureDir([{ lat: 59.466, lon: 24.698 }], "industprox");
+    await writeFile(
+      join(idir, "osm", "industprox-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 500, sigma: 0.5 })),
+    );
+    try {
+      const res = await loadLayerRaster("industprox", idir);
+      expect(res.distance).toBe("walk");
+      expect(res.raster?.half).toBe(500);
+    } finally {
+      await rm(idir, { recursive: true, force: true });
+    }
+    // Stale odor half (area-half scale): rejected.
+    const stale = await fixtureDir([{ lat: 59.466, lon: 24.698 }], "odorsrc");
+    await writeFile(
+      join(stale, "osm", "odorsrc-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 120, sigma: 0.5 })),
+    );
+    try {
+      expect(await loadLayerRaster("odorsrc", stale)).toEqual({ raster: null, distance: "euclidean" });
+    } finally {
+      await rm(stale, { recursive: true, force: true });
+    }
+  });
+
   it("falls back to euclidean when a raster is missing, corrupt, or stale", async () => {
     const missing = await fixtureDir([{ lat: 59.44, lon: 24.75 }], "transit");
     try {
@@ -418,6 +444,19 @@ describe("raster window serving", () => {
       // x=3.5 sees only county 22 -> 22.
       expect(raw[2]).toBe(19);
       expect(raw[3]).toBe(22);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("echoes the quiet halfM on G07 county-only windows (no metro)", async () => {
+    const dir = await fixtureDir([{ lat: 1, lon: 1 }], "odorsrc");
+    await writeFile(join(dir, "osm", "odorsrc-walk-raster.json"), JSON.stringify(countyDoc(500, 0.5)));
+    try {
+      const win = await loadWindowRaster("odorsrc", view, 2, 2, dir);
+      expect(win).not.toBeNull();
+      expect(win?.half).toBe(500);
+      expect(win?.sigma).toBe(0.5);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

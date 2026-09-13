@@ -122,6 +122,17 @@ export function overlayColorFor(layer: LayerId): string {
       return "#15803d";
     case "rentbleed":
       return "#9d174d";
+    // Batch G07 env-health layers (point overlays, stride-sampled).
+    case "industprox":
+      return "#155e75";
+    case "odorsrc":
+      return "#713f12";
+    // Group G06 heritage layer (point overlay, stride-sampled).
+    case "heritage":
+      return "#7c2d12";
+    // G02B-HOOK (#137): lift proxy (point overlay, stride-sampled).
+    case "liftproxy":
+      return "#0891b2";
   }
 }
 
@@ -182,6 +193,20 @@ export function overlayLegendFor(layer: LayerId): string {
       return "Lennuväljad ja maandumisalad · min-hinnang (proksi, mitte EANS DroneMap, küllastus 800 m)";
     case "rentbleed":
       return "Ülikoolid, kolledžid ja ühiselamud · kauguse-hinnang (proksi, mitte üüriregister, küllastus 800 m)";
+    // Batch G07 env-health layers: nearest-source distance, same halves
+    // as g07BonusSpecFor in layers_group07.ts.
+    case "industprox":
+      return "Tööstusalad · kaugus lähima alani (hinnang, poolkaugus 500 m)";
+    case "odorsrc":
+      return "Reoveepuhastid ja prügilad · kaugus lähima allikani (hinnang, poolkaugus 500 m)";
+    // Group G06 heritage layer: nearby-POI count, saturating half from
+    // layers_group06.ts GROUP06_BONUS (same number as bonusSpecFor).
+    case "heritage":
+      return "Muinsusobjektid · lähedaste arv (hinnang, küllastus 2)";
+    // G02B-HOOK (#137): lift proxy — nearby high-rise count, same half
+    // as bonusSpecFor (see layers_group02b.ts G02B_BONUS).
+    case "liftproxy":
+      return "Kõrghooned (5+ korrust) · lähedaste arv (hinnang, küllastus 2)";
   }
 }
 

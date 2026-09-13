@@ -18,6 +18,10 @@ import { sampleRaster } from "../walkRaster";
 import { B1_METRO_PREFIXES, B1_RASTER_FILES } from "../layers_batch1";
 // B6-HOOK(#133): batch B6 raster files live in layers_batch6.ts.
 import { BATCH6_RASTER_FILE } from "../layers_batch6";
+// G07-HOOK(#140): batch G07 raster files live in layers_group07.ts.
+import { G07_RASTER_FILE } from "../layers_group07";
+// G02B-HOOK (#137): lift-proxy raster file lives in ../layers_group02b.
+import { G02B_RASTER_FILE } from "../layers_group02b";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -297,6 +301,8 @@ const RASTER_FILE: Record<LayerId, string> = {
   grocery: "grocery-walk-raster.json",
   healthcare: "healthcare-walk-raster.json",
   ...B1_RASTER_FILES, // B1-HOOK(#98)
+  // G07-HOOK (#140): env-health rasters (built by scripts/build/batch_g07_envhealth.py).
+  ...G07_RASTER_FILE,
   // B5-HOOK (#102): Group 14 rasters (built by scripts/build/batch_b5_safety.py).
   safety: "safety-walk-raster.json",
   emergency: "emergency-walk-raster.json",
@@ -305,6 +311,10 @@ const RASTER_FILE: Record<LayerId, string> = {
   dispatch: "dispatch-walk-raster.json",
   // B6-HOOK (#133): mobility/access rasters (scripts/build/batch_b6_mobility.py).
   ...BATCH6_RASTER_FILE,
+  // G06-HOOK (#138): Group 6 raster (built by scripts/build/batch_g06_heritage.py).
+  heritage: "heritage-walk-raster.json",
+  // G02B-HOOK (#137): lift-proxy raster (built by scripts/build/batch_g02b_lift.py).
+  ...G02B_RASTER_FILE,
 };
 
 /**
@@ -348,6 +358,7 @@ export function matchesContract(
   if (spec.kind === "variety") return doc.per === spec.per && doc.cap === spec.cap;
   if (spec.kind === "area" || spec.kind === "trips") return doc.half === spec.half;
   // B6-HOOK (#133): "quiet" carries halfM on the wire half field.
+  // G07-HOOK (#140): nearest-source cleanliness (0 on the source, 50 at halfM).
   if (spec.kind === "quiet") return doc.half === spec.halfM;
   return false;
 }
@@ -388,6 +399,11 @@ const METRO_PREFIX: Record<LayerId, string> = {
   grocery: "grocery-metro",
   healthcare: "healthcare-metro",
   ...B1_METRO_PREFIXES, // B1-HOOK(#98)
+  // G07-HOOK (#140): no metro masters by documented decision (see
+  // layers_group07.ts G07_NO_METRO) — names resolve to absent files so
+  // windows fall back to county cleanly.
+  industprox: "industprox-metro",
+  odorsrc: "odorsrc-metro",
   // B5-HOOK (#102): Group 14 metro masters (optional; windows fall back to county).
   safety: "safety-metro",
   emergency: "emergency-metro",
@@ -399,6 +415,11 @@ const METRO_PREFIX: Record<LayerId, string> = {
   droneclear: "droneclear-metro",
   droneviab: "droneviab-metro",
   rentbleed: "rentbleed-metro",
+  // G06-HOOK (#138): Group 6 metro master (optional; county-only like B5).
+  heritage: "heritage-metro",
+  // G02B-HOOK (#137): no liftproxy metro master (documented fake
+  // precision — the file is absent, so windows serve county everywhere).
+  liftproxy: "liftproxy-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */
@@ -617,6 +638,7 @@ export async function loadWindowRaster(
     bbox: view,
     step_m: stepM,
     // B6-HOOK (#133): "quiet" specs carry halfM, not half.
+    // G07-HOOK (#140): quiet specs carry halfM, not half.
     half:
       spec.kind === "variety"
         ? null

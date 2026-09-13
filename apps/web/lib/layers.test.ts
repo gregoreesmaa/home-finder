@@ -36,6 +36,9 @@ describe("layer registry", () => {
       "culture",
       "nightlife",
       "libraries",
+      // G07-HOOK (#140): Group 7 env-health ids.
+      "industprox",
+      "odorsrc",
       // B5-HOOK (#102): Group 14 public-safety ids.
       "safety",
       "emergency",
@@ -46,10 +49,28 @@ describe("layer registry", () => {
       "droneclear",
       "droneviab",
       "rentbleed",
+      // G06-HOOK (#138): Group 6 heritage id.
+      "heritage",
+      // G02B-HOOK (#137): Group 2 batch-B lift-proxy id (p196 hinnang).
+      "liftproxy",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
     expect(LAYERS.find((l) => l.id === "schools")?.paramIds).toEqual([12, 123]);
+    // G07-HOOK (#140): env-health param binding.
+    expect(LAYERS.find((l) => l.id === "industprox")?.paramIds).toEqual([61]);
+    expect(LAYERS.find((l) => l.id === "odorsrc")?.paramIds).toEqual([62]);
+    // G02B-HOOK (#137): lift-proxy param binding.
+    expect(LAYERS.find((l) => l.id === "liftproxy")?.paramIds).toEqual([196]);
+  });
+
+  it("wires the G02B lift proxy with locked calibration", () => {
+    // Drift guard: hook specs must equal G02B_HALVES/G02B_DECAY in
+    // layers_group02b.ts and the Python builder (parsed by
+    // test_batch_g02b.py).
+    expect(bonusSpecFor("liftproxy")).toEqual({ kind: "area", half: 2 });
+    expect(radiusKmFor("liftproxy")).toBe(0.3);
+    expect(overpassQueryFor("liftproxy", TALLINN_BBOX)).toContain("building:levels");
   });
 
   it("every layer explains green=good / red=bad in Estonian", () => {

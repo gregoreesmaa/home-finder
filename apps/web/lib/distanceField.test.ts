@@ -339,3 +339,32 @@ describe("field resolution", () => {
     expect(city.rows).toBeGreaterThan(0);
   });
 });
+
+describe("quiet-kind cleanliness (G07 env-health)", () => {
+  const QUIET: BonusSpec = { kind: "quiet", halfM: 500 };
+
+  it("reads 0 on the source, ~50 at halfM, near 100 when far", () => {
+    // Source at grid centre; UNIT degree ~ 57x110 km so halfM=500 m is
+    // sub-cell: use a Tallinn-scale bbox instead for real distances.
+    const box: BBoxLike = { minlon: 24.69, minlat: 59.46, maxlon: 24.71, maxlat: 59.47 };
+    const s = buildScoredField([{ lon: 24.7, lat: 59.465 }], box, 41, 41, 0.5, QUIET);
+    expect(scoredAt(s, 20, 20)).toBe(0);
+    const half = sampleScored(s, 24.7 + 0.5 / 57.29, 59.465);
+    expect(half?.value).toBeCloseTo(50, 0);
+    const far = sampleScored(s, 24.69, 59.47);
+    expect(far?.value).toBeGreaterThan(60);
+  });
+
+  it("never exceeds 100 and reads null where nothing is known", () => {
+    const box: BBoxLike = { minlon: 24.69, minlat: 59.46, maxlon: 24.71, maxlat: 59.47 };
+    const s = buildScoredField([{ lon: 24.7, lat: 59.465 }], box, 21, 21, 0.5, QUIET);
+    for (let iy = 0; iy < 21; iy++) {
+      for (let ix = 0; ix < 21; ix++) {
+        expect(scoredAt(s, ix, iy) ?? -1).toBeLessThanOrEqual(100);
+      }
+    }
+    // Points outside the view: the field is all +Inf -> null, never faked.
+    const empty = buildScoredField([{ lon: 0, lat: 0 }], box, 11, 11, 0.5, QUIET);
+    expect(scoredAt(empty, 5, 5)).toBeNull();
+  });
+});
