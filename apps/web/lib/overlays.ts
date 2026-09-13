@@ -397,6 +397,22 @@ export function overlayColorFor(layer: LayerId): string {
     // (distinct-color test).
     case "roadsafety":
       return "#fde047";
+    // STATKOV-HOOK (#485): choropleth colors (registry contract --
+    // these layers are raster-only exact fills with NO point markers,
+    // so the overlay slot stays empty and the toggle reads (0); the
+    // raster holds the full field). #3b82f6: blue-500 migration tide (NOT
+    // #1d4ed8 -- taken by transit -- and NOT #0284c7 -- taken by
+    // cycling); #d946ef: fuchsia-500 construction crane (NOT #ec4899 --
+    // sibling #482 activity -- and NOT #e879f9 -- taken by strsat);
+    // #14b8a6: teal-500 ledger ink (NOT #0d9488 -- taken by walkability
+    // -- and NOT #2dd4bf -- taken by upcycle). All distinct from every
+    // other marker (distinct-color test).
+    case "kovmigr":
+      return "#3b82f6";
+    case "kovehit":
+      return "#d946ef";
+    case "kovfisc":
+      return "#14b8a6";
   }
 }
 
@@ -679,6 +695,16 @@ export function overlayLegendFor(layer: LayerId): string {
     // hoov stays unknown (scorer NULL: hinnang + EI OLE).
     case "senscom":
       return "DIY-välisandurid (Tallinna väljavõte) · tunnistajate arv 500 m raadiuses (1 -> 60, 2-3 -> 70, 4+ -> 80, lagi; kalibreerimata, mitte mõõtmine)";
+    // STATKOV-HOOK (#485): choropleth legends (P4-025/050/019) -- each
+    // KOV one flat colour off its 2025 PX-table band; rida puudu = EI
+    // OLE (punane = halb VÕI tundmatu, mitte null-hinne). No markers:
+    // the legend describes the fills, the toggle reads (0).
+    case "kovmigr":
+      return "KOV rändesaldo 2025/1000 el (hinnang: +10→75, −5→60, −20→45, muidu 30; rida puudu EI OLE)";
+    case "kovehit":
+      return "KOV valminud eluruumid 2025/1000 el (hinnang, lagi 70: 20→30, 10→45, 4→60, muidu 70; load EI OLE)";
+    case "kovfisc":
+      return "KOV põhitegevuse marginaal 2025 % (hinnang, lagi 70: 10→70, 5→60, 0→45, muidu 30; võlg EI OLE)";
   }
 }
 

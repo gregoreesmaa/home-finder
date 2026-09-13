@@ -146,6 +146,11 @@ describe("layer registry", () => {
       // P4-031-HOOK (#484): senscom DIY-air id (P4-031 slice, no
       // parameters3 id — parameters3 p31 stays inspection no-map).
       "senscom",
+      // STATKOV-HOOK (#485): Statamet per-KOV choropleth ids (P4-025/
+      // 050/019 proxies; paramIds empty — parameters4 namespace).
+      "kovmigr",
+      "kovehit",
+      "kovfisc",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -177,6 +182,11 @@ describe("layer registry", () => {
     // GTFS-HOOK (#483): gtfsstops shares p15 with transit (fiber/mobile
     // share p51 — same precedent).
     expect(LAYERS.find((l) => l.id === "gtfsstops")?.paramIds).toEqual([15]);
+    // STATKOV-HOOK (#485): P4 choropleth layers bind NO parameters3
+    // number (namespace lock -- nearest numbers are taken map layers).
+    for (const id of ["kovmigr", "kovehit", "kovfisc"]) {
+      expect(LAYERS.find((l) => l.id === id)?.paramIds).toEqual([]);
+    }
   });
 
   it("wires the B10C utility layers with locked calibration", () => {

@@ -45,7 +45,8 @@ describe("batch B10C registry (#121)", () => {
     // GTFS-HOOK (#483): +1 stop overlay.
     // RSAFE-HOOK (#481): +1 road-safety layer.
     // P4-031-HOOK (#484): +senscom DIY-air overlay (86 with gtfsstops + roadsafety + senscom).
-    expect(ids.length).toBe(86);
+    // STATKOV-HOOK (#485): +3 choropleth layers join the registry (86 + 3).
+    expect(ids.length).toBe(89);
     for (const id of BATCH10C_LAYER_IDS) expect(ids).toContain(id);
     for (const gone of ["internet", "redundancy", "ota"]) expect(ids).not.toContain(gone);
   });

@@ -51,7 +51,8 @@ describe("gtfsstops registry (#483)", () => {
     // OSMDAILY-HOOK (#482) rebased in: 77 + 6 daily-life + 1 gtfsstops.
     // RSAFE-HOOK (#481): +1 road-safety.
     // P4-031-HOOK (#484): +senscom DIY-air overlay (86 with gtfsstops + roadsafety + senscom).
-    expect(ids.length).toBe(86);
+    // STATKOV-HOOK (#485): +3 choropleth layers (86 + 3).
+    expect(ids.length).toBe(89);
   });
 
   it("labels schedules honestly in Estonian (never ridership)", () => {

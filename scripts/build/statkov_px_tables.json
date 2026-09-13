@@ -1,0 +1,173 @@
+{
+ "harvested_at": "2026-09-13",
+ "period": "2025 (RVR saldo / EH completions / RR budget; population 01.01.2025 + 01.01.2026 mid-year average)",
+ "sources": {
+  "RVR02": "https://andmed.stat.ee/api/v1/et/stat/rahvastik/rahvastikusundmused/ranne/RVR02.px",
+  "EH44U": "https://andmed.stat.ee/api/v1/et/stat/majandus/ehitus/ehitus-ja-kasutusload/EH44U.PX",
+  "RR300": "https://andmed.stat.ee/api/v1/et/stat/majandus/rahandus/valitsemissektori-rahandus/kohalike-omavalitsuste-eelarve/RR300.PX",
+  "RV0291U": "https://andmed.stat.ee/api/v1/et/stat/rahvastik/rahvastikunaitajad-ja-koosseis/rahvaarv-ja-rahvastiku-koosseis/RV0291U.PX"
+ },
+ "ia028_negative": "IA028 eluaskeme hinnaindeks is NATIONAL grain (Aasta/Kvartal/Eluaseme liik, no area dimension) -- refused for the choropleth 2026-09-13.",
+ "kovs": {
+  "Anija": {
+   "rvr_saldo_2025": -41.0,
+   "eh_completions_2025": 19.0,
+   "rr_tulud_2025": 14617.3,
+   "rr_kulud_2025": -13181.3,
+   "rr_tulem_2025": 1436.0,
+   "rr_eelarve_tulem_2025": 355.3,
+   "pop_2025_01_01": 6429.0,
+   "pop_2026_01_01": 6365.0
+  },
+  "Harku": {
+   "rvr_saldo_2025": 478.0,
+   "eh_completions_2025": 278.0,
+   "rr_tulud_2025": 48642.7,
+   "rr_kulud_2025": -42781.5,
+   "rr_tulem_2025": 5861.2,
+   "rr_eelarve_tulem_2025": -6757.9,
+   "pop_2025_01_01": 18661.0,
+   "pop_2026_01_01": 19128.0
+  },
+  "Jõelähtme": {
+   "rvr_saldo_2025": 292.0,
+   "eh_completions_2025": 175.0,
+   "rr_tulud_2025": 20063.4,
+   "rr_kulud_2025": -18964.6,
+   "rr_tulem_2025": 1098.8,
+   "rr_eelarve_tulem_2025": -391.4,
+   "pop_2025_01_01": 7734.0,
+   "pop_2026_01_01": 8007.0
+  },
+  "Keila": {
+   "rvr_saldo_2025": 80.0,
+   "eh_completions_2025": 111.0,
+   "rr_tulud_2025": 26872.2,
+   "rr_kulud_2025": -24797.0,
+   "rr_tulem_2025": 2075.3,
+   "rr_eelarve_tulem_2025": -2903.5,
+   "pop_2025_01_01": 11024.0,
+   "pop_2026_01_01": 10986.0
+  },
+  "Kiili": {
+   "rvr_saldo_2025": 271.0,
+   "eh_completions_2025": 148.0,
+   "rr_tulud_2025": 19816.5,
+   "rr_kulud_2025": -17595.8,
+   "rr_tulem_2025": 2220.7,
+   "rr_eelarve_tulem_2025": 1194.8,
+   "pop_2025_01_01": 7059.0,
+   "pop_2026_01_01": 7360.0
+  },
+  "Kose": {
+   "rvr_saldo_2025": 42.0,
+   "eh_completions_2025": 51.0,
+   "rr_tulud_2025": 20401.8,
+   "rr_kulud_2025": -18867.1,
+   "rr_tulem_2025": 1534.6,
+   "rr_eelarve_tulem_2025": 288.1,
+   "pop_2025_01_01": 7900.0,
+   "pop_2026_01_01": 7891.0
+  },
+  "Kuusalu": {
+   "rvr_saldo_2025": 130.0,
+   "eh_completions_2025": 25.0,
+   "rr_tulud_2025": 16044.0,
+   "rr_kulud_2025": -14751.2,
+   "rr_tulem_2025": 1292.9,
+   "rr_eelarve_tulem_2025": -3246.7,
+   "pop_2025_01_01": 6391.0,
+   "pop_2026_01_01": 6463.0
+  },
+  "Loksa": {
+   "rvr_saldo_2025": 18.0,
+   "eh_completions_2025": 1.0,
+   "rr_tulud_2025": 5289.9,
+   "rr_kulud_2025": -5101.8,
+   "rr_tulem_2025": 188.1,
+   "rr_eelarve_tulem_2025": 419.5,
+   "pop_2025_01_01": 2492.0,
+   "pop_2026_01_01": 2459.0
+  },
+  "Lääne-Harju": {
+   "rvr_saldo_2025": 20.0,
+   "eh_completions_2025": 58.0,
+   "rr_tulud_2025": 31363.5,
+   "rr_kulud_2025": -29742.9,
+   "rr_tulem_2025": 1620.6,
+   "rr_eelarve_tulem_2025": -624.5,
+   "pop_2025_01_01": 13864.0,
+   "pop_2026_01_01": 13754.0
+  },
+  "Maardu": {
+   "rvr_saldo_2025": 71.0,
+   "eh_completions_2025": 41.0,
+   "rr_tulud_2025": 32122.9,
+   "rr_kulud_2025": -28014.4,
+   "rr_tulem_2025": 4108.4,
+   "rr_eelarve_tulem_2025": 1225.4,
+   "pop_2025_01_01": 16875.0,
+   "pop_2026_01_01": 16812.0
+  },
+  "Raasiku": {
+   "rvr_saldo_2025": 37.0,
+   "eh_completions_2025": 38.0,
+   "rr_tulud_2025": 13121.1,
+   "rr_kulud_2025": -12063.7,
+   "rr_tulem_2025": 1057.4,
+   "rr_eelarve_tulem_2025": -2413.8,
+   "pop_2025_01_01": 5352.0,
+   "pop_2026_01_01": 5392.0
+  },
+  "Rae": {
+   "rvr_saldo_2025": 306.0,
+   "eh_completions_2025": 226.0,
+   "rr_tulud_2025": 72051.6,
+   "rr_kulud_2025": -63914.0,
+   "rr_tulem_2025": 8137.6,
+   "rr_eelarve_tulem_2025": -440.6,
+   "pop_2025_01_01": 25399.0,
+   "pop_2026_01_01": 25835.0
+  },
+  "Saku": {
+   "rvr_saldo_2025": 143.0,
+   "eh_completions_2025": 123.0,
+   "rr_tulud_2025": 33516.5,
+   "rr_kulud_2025": -29947.4,
+   "rr_tulem_2025": 3569.1,
+   "rr_eelarve_tulem_2025": -5868.1,
+   "pop_2025_01_01": 11986.0,
+   "pop_2026_01_01": 12155.0
+  },
+  "Saue": {
+   "rvr_saldo_2025": 27.0,
+   "eh_completions_2025": 124.0,
+   "rr_tulud_2025": 65604.5,
+   "rr_kulud_2025": -56815.4,
+   "rr_tulem_2025": 8789.2,
+   "rr_eelarve_tulem_2025": 2912.7,
+   "pop_2025_01_01": 26112.0,
+   "pop_2026_01_01": 26170.0
+  },
+  "Tallinn": {
+   "rvr_saldo_2025": -3171.0,
+   "eh_completions_2025": 2033.0,
+   "rr_tulud_2025": 1109070.5,
+   "rr_kulud_2025": -1010566.2,
+   "rr_tulem_2025": 98504.3,
+   "rr_eelarve_tulem_2025": 5429.4,
+   "pop_2025_01_01": 456518.0,
+   "pop_2026_01_01": 452563.0
+  },
+  "Viimsi": {
+   "rvr_saldo_2025": 233.0,
+   "eh_completions_2025": 372.0,
+   "rr_tulud_2025": 66305.6,
+   "rr_kulud_2025": -57040.1,
+   "rr_tulem_2025": 9265.4,
+   "rr_eelarve_tulem_2025": -6581.9,
+   "pop_2025_01_01": 23228.0,
+   "pop_2026_01_01": 23418.0
+  }
+ }
+}

@@ -83,6 +83,8 @@ import { RSAFE_RASTER_FILE } from "../layers_roadsafety";
 // P4-031-HOOK (#484): senscom raster filename lives in
 // layers_p4_senscom.ts (intentionally never built — SENSCOM_NO_RASTER).
 import { SENSCOM_RASTER_FILE } from "../layers_p4_senscom";
+// STATKOV-HOOK (#485): statkov raster files live in layers_statkov.ts.
+import { STATKOV_RASTER_FILE } from "../layers_statkov";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -438,6 +440,9 @@ const RASTER_FILE: Record<LayerId, string> = {
   // the points-splat band kernel IS the field, see SENSCOM_NO_RASTER;
   // the name resolves to an absent file so rasters degrade to null).
   ...SENSCOM_RASTER_FILE,
+  // STATKOV-HOOK (#485): choropleth rasters
+  // (scripts/build/batch_statkov_choropleth.py).
+  ...STATKOV_RASTER_FILE,
 };
 
 /**
@@ -605,6 +610,14 @@ const B10C_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["mobile"]);
 // roadsafety (Euclidean count kernel, viewshed/moorage/G17A precedent —
 // see scripts/build/batch_rsafety_osm.py).
 const RSAFE_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["roadsafety"]);
+// STATKOV-HOOK (#485): Euclidean-built statkov masters ride "euclidean" --
+// exact KOV fills by construction (no walk graph, no kernel; the page
+// skips the otsekaugus suffix for these ids -- see app/layers/page.tsx).
+const STATKOV_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set([
+  "kovmigr",
+  "kovehit",
+  "kovfisc",
+]);
 
 export async function loadLayerRaster(
   layer: LayerId,
@@ -633,7 +646,8 @@ export async function loadLayerRaster(
       G17B_EUCLIDEAN_MASTER.has(layer) || // G17B-HOOK (#178)
       G17R_EUCLIDEAN_MASTER.has(layer) || // G17R-HOOK (#196)
       B10C_EUCLIDEAN_MASTER.has(layer) || // B10C-HOOK (#230)
-      RSAFE_EUCLIDEAN_MASTER.has(layer); // RSAFE-HOOK (#481)
+      RSAFE_EUCLIDEAN_MASTER.has(layer) || // RSAFE-HOOK (#481)
+      STATKOV_EUCLIDEAN_MASTER.has(layer); // STATKOV-HOOK (#485)
     return { raster: doc, distance: euclidean ? "euclidean" : "walk" };
   }
   return { raster: null, distance: "euclidean" };
@@ -803,6 +817,12 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // either — SENSCOM_NO_RASTER; the name resolves to an absent file so
   // windows fall back to the client points-splat band kernel).
   senscom: "senscom-metro",
+  // STATKOV-HOOK (#485): no metro masters by documented decision (see
+  // layers_statkov.ts STATKOV_NO_METRO) -- names resolve to absent files
+  // so windows fall back to county cleanly.
+  kovmigr: "kovmigr-metro",
+  kovehit: "kovehit-metro",
+  kovfisc: "kovfisc-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */
