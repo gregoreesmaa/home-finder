@@ -50,6 +50,8 @@ import { G08B_RASTER_FILE } from "../layers_group08b";
 import { G05B_RASTER_FILE } from "../layers_group05b";
 // G05D-HOOK(#164): batch G05D raster file lives in layers_group05d.ts.
 import { G05D_RASTER_FILE } from "../layers_group05d";
+// G05A-HOOK(#161): batch G05A raster files live in layers_group05a.ts.
+import { G05A_RASTER_FILE } from "../layers_group05a";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -371,6 +373,8 @@ const RASTER_FILE: Record<LayerId, string> = {
   ...G05B_RASTER_FILE,
   // G05D-HOOK (#164): strsat raster (scripts/build/batch_g05d_plans.py).
   ...G05D_RASTER_FILE,
+  // G05A-HOOK (#161): ehitus + korterstock rasters (scripts/build/batch_g05a_plans.py).
+  ...G05A_RASTER_FILE,
 };
 
 /**
@@ -475,6 +479,10 @@ const G05B_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["gardens", "buildout
 // strsat (same exact-grid Dijkstra story as drainage/G08B — see
 // batch_g05d_plans.py).
 const G05D_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["strsat"]);
+// G05A-HOOK (#161): Euclidean-built G05A masters ride "euclidean" —
+// ehitus + korterstock (same count-kernel-by-construction story as
+// moorage — see scripts/build/batch_g05a_plans.py).
+const G05A_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["ehitus", "korterstock"]);
 
 export async function loadLayerRaster(
   layer: LayerId,
@@ -491,7 +499,8 @@ export async function loadLayerRaster(
       G08C_EUCLIDEAN_MASTER.has(layer) || // G08C-HOOK (#169)
       G08B_EUCLIDEAN_MASTER.has(layer) || // G08B-HOOK (#168)
       G05B_EUCLIDEAN_MASTER.has(layer) || // G05B-HOOK (#162)
-      G05D_EUCLIDEAN_MASTER.has(layer); // G05D-HOOK (#164)
+      G05D_EUCLIDEAN_MASTER.has(layer) || // G05D-HOOK (#164)
+      G05A_EUCLIDEAN_MASTER.has(layer); // G05A-HOOK (#161)
     return { raster: doc, distance: euclidean ? "euclidean" : "walk" };
   }
   return { raster: null, distance: "euclidean" };
@@ -587,6 +596,11 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // precision — the file is absent, so windows serve county
   // everywhere, like G02B/G03/G03D).
   strsat: "strsat-metro",
+  // G05A-HOOK (#161): no ehitus/korterstock metro masters (documented
+  // fake precision — the files are absent, so windows serve county
+  // everywhere, like G02B/G03/G03D).
+  ehitus: "ehitus-metro",
+  korterstock: "korterstock-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

@@ -527,6 +527,47 @@ describe("layer walk rasters", () => {
     }
   });
 
+  it("serves G05A ehitus + korterstock rasters under the area contract", async () => {
+    // G05A-HOOK (#161): ehitus area contract (half 1 on the wire,
+    // sigma 0.3); Euclidean-built like moorage. A stale half is rejected.
+    const edir = await fixtureDir([{ lat: 59.4405, lon: 24.7369 }], "ehitus");
+    await writeFile(
+      join(edir, "osm", "ehitus-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 1, sigma: 0.3 })),
+    );
+    try {
+      const res = await loadLayerRaster("ehitus", edir);
+      expect(res.distance).toBe("euclidean");
+      expect(res.raster?.half).toBe(1);
+    } finally {
+      await rm(edir, { recursive: true, force: true });
+    }
+    // G05A-HOOK (#161): korterstock area contract (half 15 on the
+    // wire, sigma 0.3); Euclidean-built like moorage.
+    const kdir = await fixtureDir([{ lat: 59.44, lon: 24.82 }], "korterstock");
+    await writeFile(
+      join(kdir, "osm", "korterstock-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 15, sigma: 0.3 })),
+    );
+    try {
+      const res = await loadLayerRaster("korterstock", kdir);
+      expect(res.distance).toBe("euclidean");
+      expect(res.raster?.half).toBe(15);
+    } finally {
+      await rm(kdir, { recursive: true, force: true });
+    }
+    const stale = await fixtureDir([{ lat: 59.44, lon: 24.82 }], "korterstock");
+    await writeFile(
+      join(stale, "osm", "korterstock-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 1, sigma: 0.3 })),
+    );
+    try {
+      expect(await loadLayerRaster("korterstock", stale)).toEqual({ raster: null, distance: "euclidean" });
+    } finally {
+      await rm(stale, { recursive: true, force: true });
+    }
+  });
+
   it("serves grocery and walkability rasters under the area contract", async () => {
     const gdir = await fixtureDir([{ lat: 59.44, lon: 24.75, a: 1 }], "grocery");
     await writeFile(
