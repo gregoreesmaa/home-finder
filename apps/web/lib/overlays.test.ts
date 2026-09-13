@@ -99,7 +99,8 @@ describe("overlay legend + colors", () => {
     // G10R-HOOK (#171): skyview joins the registry.
     // G18A-HOOK (#172): dayopen + glassglare join the registry.
     // G18B-HOOK (#173): fishbowl + mossrisk + daylight join the registry.
-    expect(ids).toHaveLength(68);
+    // G17A-HOOK (#177): compost + gritbin + leafdrop join the registry.
+    expect(ids).toHaveLength(71);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -225,6 +226,13 @@ describe("overlay legend + colors", () => {
     expect(overlayLegendFor("mossrisk")).toContain("hinnang");
     expect(overlayLegendFor("daylight")).toContain("150");
     expect(overlayLegendFor("daylight")).toContain("hinnang");
+    // Batch G17A halves (see G17A_CAL in layers_group17a.ts).
+    expect(overlayLegendFor("compost")).toContain("küllastus 1");
+    expect(overlayLegendFor("compost")).toContain("hinnang");
+    expect(overlayLegendFor("gritbin")).toContain("küllastus 1");
+    expect(overlayLegendFor("gritbin")).toContain("hinnang");
+    expect(overlayLegendFor("leafdrop")).toContain("küllastus 1");
+    expect(overlayLegendFor("leafdrop")).toContain("hinnang");
   });
 
   it("gives every layer a distinct marker color", () => {
@@ -241,7 +249,8 @@ describe("overlay legend + colors", () => {
     // G10R-HOOK (#171): skyview joins the registry.
     // G18A-HOOK (#172): dayopen + glassglare join the registry.
     // G18B-HOOK (#173): fishbowl + mossrisk + daylight join the registry.
-    expect(seen.size).toBe(68);
+    // G17A-HOOK (#177): compost + gritbin + leafdrop join the registry.
+    expect(seen.size).toBe(71);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

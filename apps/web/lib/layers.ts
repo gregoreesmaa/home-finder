@@ -209,6 +209,17 @@ import {
   GROUP18B_TAGS,
   bonusSpecForGroup18B,
 } from "./layers_group18restb";
+// G17A-HOOK(#177): batch G17A (Group 17 municipal-services-A compost +
+// gritbin + leafdrop; p60/p347 documented no-map) tables live in
+// ./layers_group17a (new file). That module imports layers only as
+// types, so no runtime cycle.
+import type { Group17ALayerId } from "./layers_group17a";
+import {
+  GROUP17A_DECAY,
+  GROUP17A_LAYERS,
+  GROUP17A_TAGS,
+  bonusSpecForGroup17A,
+} from "./layers_group17a";
 // G11D-HOOK(#135): batch G11D (Group 11 leftovers B: p346/p470/p419/p466;
 // p317 is a documented no-map) tables live in ./layers_group11d (new
 // file). That module imports layers only as types, so no runtime cycle.
@@ -357,7 +368,9 @@ export type LayerId =
   // G18A-HOOK (#172): Group 18 rest-A ids (./layers_group18resta).
   | Group18ARestALayerId
   // G18B-HOOK (#173): Group 18 rest-B ids (./layers_group18restb).
-  | Group18BLayerId;
+  | Group18BLayerId
+  // G17A-HOOK (#177): Group 17 municipal-services-A ids (./layers_group17a).
+  | Group17ALayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -488,6 +501,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...GROUP18ARESTA_DECAY,
   // G18B-HOOK (#173): fishbowl + mossrisk + daylight radii (see layers_group18restb.ts GROUP18B_DECAY).
   ...GROUP18B_DECAY,
+  // G17A-HOOK (#177): compost + gritbin + leafdrop radii (see layers_group17a.ts GROUP17A_DECAY).
+  ...GROUP17A_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -648,6 +663,8 @@ export const LAYERS: LayerDef[] = [
   ...GROUP18ARESTA_LAYERS,
   // G18B-HOOK (#173): fishbowl (p468) + mossrisk (p479) + daylight (p405) defs from ./layers_group18restb.
   ...GROUP18B_LAYERS,
+  // G17A-HOOK (#177): compost (p187) + gritbin (p311) + leafdrop (p312) defs from ./layers_group17a.
+  ...GROUP17A_LAYERS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -721,6 +738,8 @@ const TAGS: Record<LayerId, string> = {
   ...GROUP18ARESTA_TAGS,
   // G18B-HOOK (#173): fishbowl + mossrisk + daylight queries (see layers_group18restb.ts GROUP18B_TAGS).
   ...GROUP18B_TAGS,
+  // G17A-HOOK (#177): compost + gritbin + leafdrop queries (see layers_group17a.ts GROUP17A_TAGS).
+  ...GROUP17A_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -963,6 +982,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // G18B-HOOK (#173): fishbowl + mossrisk + daylight specs live in ./layers_group18restb.
   const g18b = bonusSpecForGroup18B(layer);
   if (g18b) return g18b;
+  // G17A-HOOK (#177): compost + gritbin + leafdrop specs live in ./layers_group17a.
+  const g17a = bonusSpecForGroup17A(layer);
+  if (g17a) return g17a;
   throw new Error(`unknown layer: ${layer}`);
 }
 

@@ -117,6 +117,10 @@ describe("layer registry", () => {
       "fishbowl",
       "mossrisk",
       "daylight",
+      // G17A-HOOK (#177): Group 17 municipal-services-A ids (p187 compost + p311 gritbin + p312 leafdrop).
+      "compost",
+      "gritbin",
+      "leafdrop",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -329,6 +333,24 @@ describe("layer registry", () => {
     expect(radiusKmFor("daylight")).toBe(0.3);
     expect(LAYERS.find((l) => l.id === "daylight")?.paramIds).toEqual([405]);
     expect(overpassQueryFor("daylight", TALLINN_BBOX)).toContain("building");
+  });
+
+  it("wires the G17A compost + gritbin + leafdrop layers with locked calibration", () => {
+    // G17A-HOOK (#177): drift guard — hook specs must equal G17A_CAL in
+    // layers_group17a.ts and the Python builder (parsed by
+    // test_batch_g17_a.py).
+    expect(bonusSpecFor("compost")).toEqual({ kind: "area", half: 1 });
+    expect(radiusKmFor("compost")).toBe(0.3);
+    expect(LAYERS.find((l) => l.id === "compost")?.paramIds).toEqual([187]);
+    expect(overpassQueryFor("compost", TALLINN_BBOX)).toContain("recycling");
+    expect(bonusSpecFor("gritbin")).toEqual({ kind: "area", half: 1 });
+    expect(radiusKmFor("gritbin")).toBe(0.3);
+    expect(LAYERS.find((l) => l.id === "gritbin")?.paramIds).toEqual([311]);
+    expect(overpassQueryFor("gritbin", TALLINN_BBOX)).toContain("grit_bin");
+    expect(bonusSpecFor("leafdrop")).toEqual({ kind: "area", half: 1 });
+    expect(radiusKmFor("leafdrop")).toBe(0.3);
+    expect(LAYERS.find((l) => l.id === "leafdrop")?.paramIds).toEqual([312]);
+    expect(overpassQueryFor("leafdrop", TALLINN_BBOX)).toContain("waste_disposal");
   });
 
   it("every layer explains green=good / red=bad in Estonian", () => {

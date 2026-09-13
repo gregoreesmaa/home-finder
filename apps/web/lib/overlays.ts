@@ -304,6 +304,19 @@ export function overlayColorFor(layer: LayerId): string {
       return "#052e16";
     case "daylight":
       return "#67e8f9";
+    // G17A-HOOK (#177): compost + gritbin + leafdrop markers (point
+    // overlays, stride-sampled like grocery). #a3e635: lime-400 compost
+    // green (NOT #84cc16 — taken by agriland — and NOT #4ade80 — taken
+    // by gardens); #a8a29e: stone-400 galvanized metal (grit bins; NOT
+    // #7dd3fc — taken by skyview); #fb923c: orange-400 autumn leaf (NOT
+    // #ea580c — taken by culture — and NOT #f97316 — taken by dispatch).
+    // All distinct from every other marker (distinct-color test).
+    case "compost":
+      return "#a3e635";
+    case "gritbin":
+      return "#a8a29e";
+    case "leafdrop":
+      return "#fb923c";
   }
 }
 
@@ -519,6 +532,17 @@ export function overlayLegendFor(layer: LayerId): string {
       return "Metsapolügoonid + puuderead (tänavapuud välja) · kauguse-hinnang (samblarisk-proksi, poolkaugus 250 m, niiskusmõõtmine puudub)";
     case "daylight":
       return "Hooned (valim) · PÖÖRATUD tihedus-hinnang (päevavalguse avarus, küllastus 150, luksimõõtmine puudub)";
+    // G17A-HOOK (#177): compost (p187) — mapped composting stations,
+    // the raster holds the full count field; gritbin (p311) — mapped
+    // grit bins, the raster holds the full count field; leafdrop
+    // (p312) — mapped green-waste drop-offs, the raster holds the
+    // full count field.
+    case "compost":
+      return "Jäätmejaamad + biokogumine · lähedaste arv (komposti-hinnang, küllastus 1, võimsusregister puudub)";
+    case "gritbin":
+      return "Liivakastid · lähedaste arv (talihoolduse-hinnang, küllastus 1, sahaplaan puudub)";
+    case "leafdrop":
+      return "Haljasjäätmete punktid · lähedaste arv (kogumise-hinnang, küllastus 1, veograafik puudub)";
   }
 }
 

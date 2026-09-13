@@ -61,7 +61,8 @@ describe("batch G06B registry (#139)", () => {
     // G10R-HOOK (#171): skyview joins the registry.
     // G18A-HOOK (#172): dayopen + glassglare join the registry.
     // G18B-HOOK (#173): fishbowl + mossrisk + daylight join the registry.
-    expect(ids.length).toBe(68);
+    // G17A-HOOK (#177): compost + gritbin + leafdrop join the registry.
+    expect(ids.length).toBe(71);
     for (const id of GROUP06B_LAYER_IDS) expect(ids).toContain(id);
   });
 
