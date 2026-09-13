@@ -60,6 +60,8 @@ import { G05E_RASTER_FILE } from "../layers_group05e";
 import { G05F_RASTER_FILE } from "../layers_group05f";
 // G10R-HOOK (#171): batch G10R raster file lives in layers_group10rest.ts.
 import { G10R_RASTER_FILE } from "../layers_group10rest";
+// G18A-HOOK(#172): batch G18A raster files live in layers_group18resta.ts.
+import { G18A_RASTER_FILE } from "../layers_group18resta";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -391,6 +393,8 @@ const RASTER_FILE: Record<LayerId, string> = {
   ...G05F_RASTER_FILE,
   // G10R-HOOK (#171): skyview raster (scripts/build/batch_g10_rest.py).
   ...G10R_RASTER_FILE,
+  // G18A-HOOK (#172): dayopen + glassglare rasters (scripts/build/batch_g18_resta.py).
+  ...G18A_RASTER_FILE,
 };
 
 /**
@@ -516,6 +520,10 @@ const G05F_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["upcycle"]);
 // skyview (exact-grid Dijkstra by construction — see
 // scripts/build/batch_g10_rest.py).
 const G10R_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["skyview"]);
+// G18A-HOOK (#172): Euclidean-built G18A masters ride "euclidean" —
+// dayopen + glassglare (exact-grid Dijkstra by construction — see
+// scripts/build/batch_g18_resta.py).
+const G18A_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["dayopen", "glassglare"]);
 
 export async function loadLayerRaster(
   layer: LayerId,
@@ -537,7 +545,8 @@ export async function loadLayerRaster(
       G05C_EUCLIDEAN_MASTER.has(layer) || // G05C-HOOK (#163)
       G05E_EUCLIDEAN_MASTER.has(layer) || // G05E-HOOK (#165)
       G05F_EUCLIDEAN_MASTER.has(layer) || // G05F-HOOK (#166)
-      G10R_EUCLIDEAN_MASTER.has(layer); // G10R-HOOK (#171)
+      G10R_EUCLIDEAN_MASTER.has(layer) || // G10R-HOOK (#171)
+      G18A_EUCLIDEAN_MASTER.has(layer); // G18A-HOOK (#172)
     return { raster: doc, distance: euclidean ? "euclidean" : "walk" };
   }
   return { raster: null, distance: "euclidean" };
@@ -656,6 +665,11 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // precision — the file is absent, so windows serve county
   // everywhere, like G02B/G03/G03D/G08B/G05C).
   skyview: "skyview-metro",
+  // G18A-HOOK (#172): no dayopen/glassglare metro masters
+  // (documented fake precision — the files are absent, so windows
+  // serve county everywhere, like G02B/G03/G03D/G08B/G05C).
+  dayopen: "dayopen-metro",
+  glassglare: "glassglare-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

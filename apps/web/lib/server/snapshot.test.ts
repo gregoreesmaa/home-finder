@@ -708,6 +708,48 @@ describe("layer walk rasters", () => {
     }
   });
 
+  it("serves G18A dayopen + glassglare rasters under their contracts", async () => {
+    // G18A-HOOK (#172): dayopen quiet contract (halfM 150 on the
+    // wire as half, sigma 0.3); Euclidean-built like commbleed. A
+    // stale half is rejected.
+    const ddir = await fixtureDir([{ lat: 59.44, lon: 24.82 }], "dayopen");
+    await writeFile(
+      join(ddir, "osm", "dayopen-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 150, sigma: 0.3 })),
+    );
+    try {
+      const res = await loadLayerRaster("dayopen", ddir);
+      expect(res.distance).toBe("euclidean");
+      expect(res.raster?.half).toBe(150);
+    } finally {
+      await rm(ddir, { recursive: true, force: true });
+    }
+    // G18A-HOOK (#172): glassglare quiet contract (halfM 200 on the
+    // wire as half, sigma 0.3); Euclidean-built like windsolar.
+    const gdir = await fixtureDir([{ lat: 59.4313, lon: 24.7619 }], "glassglare");
+    await writeFile(
+      join(gdir, "osm", "glassglare-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 200, sigma: 0.3 })),
+    );
+    try {
+      const res = await loadLayerRaster("glassglare", gdir);
+      expect(res.distance).toBe("euclidean");
+      expect(res.raster?.half).toBe(200);
+    } finally {
+      await rm(gdir, { recursive: true, force: true });
+    }
+    const stale = await fixtureDir([{ lat: 59.4313, lon: 24.7619 }], "glassglare");
+    await writeFile(
+      join(stale, "osm", "glassglare-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 800, sigma: 0.3 })),
+    );
+    try {
+      expect(await loadLayerRaster("glassglare", stale)).toEqual({ raster: null, distance: "euclidean" });
+    } finally {
+      await rm(stale, { recursive: true, force: true });
+    }
+  });
+
   it("serves grocery and walkability rasters under the area contract", async () => {
     const gdir = await fixtureDir([{ lat: 59.44, lon: 24.75, a: 1 }], "grocery");
     await writeFile(

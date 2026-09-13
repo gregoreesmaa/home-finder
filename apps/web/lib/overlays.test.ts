@@ -97,7 +97,8 @@ describe("overlay legend + colors", () => {
     // G05E-HOOK (#165): equestrian joins the registry.
     // G05F-HOOK (#166): upcycle joins the registry.
     // G10R-HOOK (#171): skyview joins the registry.
-    expect(ids).toHaveLength(63);
+    // G18A-HOOK (#172): dayopen + glassglare join the registry.
+    expect(ids).toHaveLength(65);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -211,6 +212,11 @@ describe("overlay legend + colors", () => {
     // G10R-HOOK (#171): skyview joins the registry.
     expect(overlayLegendFor("skyview")).toContain("150 m");
     expect(overlayLegendFor("skyview")).toContain("hinnang");
+    // G18A-HOOK (#172): dayopen + glassglare legends carry halves + honesty.
+    expect(overlayLegendFor("dayopen")).toContain("150 m");
+    expect(overlayLegendFor("dayopen")).toContain("hinnang");
+    expect(overlayLegendFor("glassglare")).toContain("200 m");
+    expect(overlayLegendFor("glassglare")).toContain("hinnang");
   });
 
   it("gives every layer a distinct marker color", () => {
@@ -225,7 +231,8 @@ describe("overlay legend + colors", () => {
     // G05E-HOOK (#165): equestrian joins the registry.
     // G05F-HOOK (#166): upcycle joins the registry.
     // G10R-HOOK (#171): skyview joins the registry.
-    expect(seen.size).toBe(63);
+    // G18A-HOOK (#172): dayopen + glassglare join the registry.
+    expect(seen.size).toBe(65);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });
