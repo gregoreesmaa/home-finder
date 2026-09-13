@@ -45,8 +45,8 @@ describe("statkov registry (#485)", () => {
     // + 1 accblack layer (ACCBLACK-HOOK #490, 89 + 1).
     // MAAPARCEL-HOOK (#491): +1 parcel overlay (100 + 1).
 
-    expect(ids.length).toBe(101);
-
+    // EELIS-HOOK (#488): +3 nature-polygon layers join the registry (101 + 3).
+    expect(ids.length).toBe(104);
     for (const id of STATKOV_LAYER_IDS) expect(ids).toContain(id);
   });
 

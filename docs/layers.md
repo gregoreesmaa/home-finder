@@ -147,8 +147,21 @@ id, no raster master (the points-splat kernel IS the field):
 | `ookla_fixed` + `ookla_mobile` (P4-009, #489) | Ookla quarterly tile download (2026-Q1 re-verified live: HEADs 200 + bounded Tallinn range-reads, 971 fixed / 555 mobile qualifying tiles) | Tallinn extract (`ookla-tallinn-2026Q1.json`, cached, never live) | nearest qualifying tile (≥5 tests) ≤1 km → bands 35/55/75/capped-85 (== scorer) | `lib/layers_p4_ookla.ts` + `lib/server/ookla.ts` |
 | `accblack` (P4-012, #490) | Transpordiamet casualty-accident blackspots, measured slice | monthly `lo_2011_2026.csv` — **empty on purpose**: X/Y are L-EST97 metres (older rows blank), no vendored projection, so zero points plotted rather than misplotted (verdict 2026-09-13) | 300 m avoid window (== scorer `BLACKSPOT_WINDOW_M`; unknown everywhere until the L-EST97 reopen) | `lib/layers_accblack.ts` + `scripts/build/batch_accblack.py` |
 
+| `eeliskaitse` (P4-015, #488) | EELIS kaitsealad (building-restriction drag) | polygons only (`eelis/eelis-areas.json`, kind `kaitse`) | none — zone-membership choropleth (inside vs teadmata) | `lib/layers_eelis.ts` + `scripts/build/batch_eelis_poly.py` |
+| `eelisniit` (P4-024, #488) | EELIS niidud (coarse tick-habitat proxy) | polygons only (same sidecar, kind `niit`) | none — zone-membership choropleth (inside vs teadmata) | same as above |
+| `eelisraie` (P4-030, #488) | EELIS kaadamisalad (coarse change flag) | polygons only (same sidecar, kind `raie`) | none — zone-membership choropleth (inside vs teadmata) | same as above |
+
 Overlay layers carry `paramIds: []` + `paramLabel` (e.g. `P4-031`):
 parameters3 p31 is Structural integrity (inspection no-map) and must
 never gain a map by accident. §3 counts are untouched (still 97
 map-layer params / 403 no-map + scorer dim — overlays visualize P4
 slices, not parameters3 params).
+
+Polygon overlays (`eeliskaitse`/`eelisniit`/`eelisraie`, #488) paint
+EELIS zone fills with no score field at all (zero points, null
+raster — `fallbackPoints: []`, the points route answers
+honestly-empty): outside every polygon stays NULL (teadmata, never
+clear), the scorer's per-parcel join (`dims_p4_eelis.py`) is untouched,
+and the flood table + emitter register stay out (flood owned by #487,
+emitters are a point register with no honest polygon — see
+`docs/p4_eelis.md`).

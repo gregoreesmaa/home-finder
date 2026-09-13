@@ -52,6 +52,16 @@ import {
 } from "../../lib/layers_maaparcel";
 
 
+// EELIS-HOOK (#488): eelis layers paint EELIS nature polygons (polygons
+// only, never a gradient) instead of points.
+import {
+  eelisAreasForKind,
+  eelisKindForLayer,
+  fetchEelisAreas,
+  isEelisPolygonOnlyLayer,
+  type EelisArea,
+} from "../../lib/layers_eelis";
+
 /** Viewport bbox rounded for fetch stability (matches server key rounding). */
 function sameView(a: BBoxLike, b: BBoxLike): boolean {
   return (
@@ -158,6 +168,25 @@ export default function LayersPage() {
     setRaster(null);
   }, [layer]);
 
+  // EELIS-HOOK (#488): EELIS nature polygons (eelis layers only,
+  // fetched once per selection): the choropleth itself — inside a named
+  // polygon vs outside/unknown. No points and no score field are painted
+  // for these layers, by design (polygons only, never a gradient).
+  const [eelisAreas, setEelisAreas] = useState<EelisArea[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!isEelisPolygonOnlyLayer(layer)) {
+      setEelisAreas(null);
+      return;
+    }
+    fetchEelisAreas().then((areas) => {
+      if (!cancelled) setEelisAreas(areas);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [layer]);
+
   // Park boundaries (parks layer only): fetched once per selection, a
   // visual aid so scored-inside vs surroundings reads at a glance.
   const [outlines, setOutlines] = useState<ParkOutline[] | null>(null);
@@ -236,10 +265,16 @@ export default function LayersPage() {
   // Per-layer overlay toggle (all visible by default; undefined = on).
   const [overlayOn, setOverlayOn] = useState<Partial<Record<LayerId, boolean>>>({});
   const showOverlay = overlayOn[layer] !== false;
+  // EELIS-HOOK (#488): this layer's polygons (the shared sidecar carries
+  // all three kinds; each layer paints only its own).
+  const eelisKind = eelisKindForLayer(layer);
+  const eelisOverlay: EelisArea[] | null =
+    eelisKind === null ? null : eelisAreasForKind(eelisAreas, eelisKind);
   const pointOverlay: OverlayPoint[] | null =
     // FLOOD-HOOK (#487): floodzone paints polygons, never point markers.
     // MAAPARCEL-HOOK (#491): maaparcel paints polygons, never point markers.
-    layer === "parks" || isPolygonOnlyLayer(layer) || isPolygonOnlyMaaLayer(layer)
+    // EELIS-HOOK (#488): eelis layers paint polygons, never point markers.
+    layer === "parks" || isPolygonOnlyLayer(layer) || isPolygonOnlyMaaLayer(layer) || isEelisPolygonOnlyLayer(layer)
       ? null
       : needsGraphOverlay(layer)
         ? graphPoints
@@ -248,6 +283,9 @@ export default function LayersPage() {
     ? (floodAreas?.length ?? 0)
     : isPolygonOnlyMaaLayer(layer)
       ? (maaAreas?.length ?? 0)
+
+      : isEelisPolygonOnlyLayer(layer)
+        ? (eelisOverlay?.length ?? 0)
     : layer === "parks"
       ? (outlines?.length ?? 0)
       : (pointOverlay?.length ?? 0);
@@ -274,11 +312,19 @@ export default function LayersPage() {
   // extract, not the OSM snapshot — the status names the extract (+
   // its quarter) instead of the snapshot date.
   const isTileband = bonusSpecFor(layer).kind === "tileband";
+  // EELIS-HOOK (#488): eelis status counts polygons, never points — the
+  // layers serve zero points by design (polygons only).
+  const eelisStatus =
+    eelisAreas === null || eelisKind === null
+      ? "Laadin EELIS tsoone…"
+      : `EELIS ${eelisKind === "kaitse" ? "kaitsealad" : eelisKind === "niit" ? "niiduelupaigad" : "raiealad"} · ${eelisOverlay?.length ?? 0} polügooni (väljaspool = teadmata, mitte puhas)`;
   const base =
     isPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
       ? floodStatus
       : isPolygonOnlyMaaLayer(layer) && provenance !== null && provenance !== "demo"
         ? maaStatus
+      : isEelisPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
+        ? eelisStatus
       : provenance === null
       ? "Laadin kihi andmeid…"
       : provenance === "snapshot"
@@ -356,6 +402,8 @@ export default function LayersPage() {
 
         maaParcels={maaAreas}
 
+
+        eelisAreas={eelisOverlay}
         overlayPoints={pointOverlay}
         overlayColor={overlayColorFor(layer)}
         overlayLegend={overlayLegendFor(layer)}
@@ -375,7 +423,9 @@ export default function LayersPage() {
           // exists. Skip the suffix for polygon-only layers too.
           // MAAPARCEL-HOOK (#491): maaparcel paints no field at all (zero
           // points, null raster) -- same skip for the kataster fills.
-          (isStatKovLayerId(layer) ||
+          // EELIS-HOOK (#488): eelis layers paint no field at all (zero
+          // points, null raster) -- same skip for the nature fills.
+          (isStatKovLayerId(layer) || isEelisPolygonOnlyLayer(layer) ||
             isMaruKovLayerId(layer) ||
             isPolygonOnlyLayer(layer) ||
             isPolygonOnlyMaaLayer(layer)

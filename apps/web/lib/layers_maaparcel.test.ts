@@ -62,8 +62,8 @@ describe("maaparcel registry (#491)", () => {
   it("merges into LAYERS via the MAAPARCEL-HOOK (page + routes serve it)", () => {
     const ids = LAYERS.map((l) => l.id);
     // 100 shipped layers on main (#506 accblack) + 1 kataster parcel
-    // overlay (MAAPARCEL-HOOK #491, 100 + 1).
-    expect(ids.length).toBe(101);
+    // overlay (MAAPARCEL-HOOK #491, 100 + 1) + 3 eelis (EELIS-HOOK #488, 101 + 3).
+    expect(ids.length).toBe(104);
     expect(ids).toContain("maaparcel");
   });
 

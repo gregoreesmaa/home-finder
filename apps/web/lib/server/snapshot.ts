@@ -109,6 +109,11 @@ import { ACCBLACK_RASTER_FILE } from "../layers_accblack";
 // resolves absent so windows serve honestly-empty, never a gradient).
 import { MAAPARCEL_RASTER_FILE } from "../layers_maaparcel";
 
+// EELIS-HOOK (#488): eelis raster files live in layers_eelis.ts
+// (named but NEVER built — polygons-only decision, resolve absent so
+// windows serve honestly-empty, never a gradient).
+import { EELIS_RASTER_FILE } from "../layers_eelis";
+
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
 export const SNAPSHOT_AS_OF_MS = Date.parse(`${SNAPSHOT_AS_OF}T00:00:00Z`);
@@ -225,6 +230,50 @@ function isFloodArea(v: unknown): v is FloodArea {
     typeof p?.nimi === "string" &&
     typeof p?.veekogu === "string" &&
     typeof p?.tyyp === "string" &&
+
+    Array.isArray(p?.b) &&
+    p.b.length === 4 &&
+    p.b.every((n) => typeof n === "number" && Number.isFinite(n)) &&
+    Array.isArray(p?.r) &&
+    p.r.length > 0 &&
+    p.r.every(
+      (ring) =>
+        Array.isArray(ring) &&
+        ring.length >= 3 &&
+        ring.every(
+          (pt) =>
+            Array.isArray(pt) &&
+            pt.length === 2 &&
+            pt.every((n) => typeof n === "number" && Number.isFinite(n)),
+        ),
+    )
+  );
+}
+// EELIS-HOOK (#488): EELIS nature-polygon sidecar
+// (`eelis/eelis-areas.json`): named zone polygons as [lon, lat] rings
+// with a prefilter box (ParkOutline precedent — EelisArea mirrors
+// ParkOutline with zone identity in place of hectares). Written offline
+// by scripts/build/batch_eelis_poly.py off cached WFS GeoJSON; the
+// per-parcel join itself lives in services/scoring/dims_p4_eelis.py.
+export interface EelisArea {
+  kiht: "kaitse" | "niit" | "raie";
+  zone_id: string;
+  nimi: string;
+  lisa: string;
+  /** [minlon, minlat, maxlon, maxlat] prefilter box. */
+  b: [number, number, number, number];
+  /** Zone rings as [lon, lat] pairs (WFS EPSG:4326 GeoJSON order, kept). */
+  r: number[][][];
+}
+
+function isEelisArea(v: unknown): v is EelisArea {
+  const p = v as Partial<EelisArea>;
+  return (
+    (p?.kiht === "kaitse" || p?.kiht === "niit" || p?.kiht === "raie") &&
+    typeof p?.zone_id === "string" &&
+    typeof p?.nimi === "string" &&
+    typeof p?.lisa === "string" &&
+
     Array.isArray(p?.b) &&
     p.b.length === 4 &&
     p.b.every((n) => typeof n === "number" && Number.isFinite(n)) &&
@@ -265,6 +314,31 @@ export async function loadFloodAreas(dir: string): Promise<FloodArea[]> {
     // Optional sidecar: honestly no polygons.
   }
   floodAreaCache.set(dir, areas);
+
+  return areas;
+}
+const eelisAreaCache = new Map<string, EelisArea[]>();
+
+/**
+ * EELIS nature-polygon sidecar (`eelis/eelis-areas.json`): named zone
+ * polygons. Missing or malformed sidecar degrades to [] (honestly no
+ * polygons — the per-parcel join lives in the scorer and stays NULL),
+ * never an error.
+ */
+export async function loadEelisAreas(dir: string): Promise<EelisArea[]> {
+  const hit = eelisAreaCache.get(dir);
+  if (hit) return hit;
+  let areas: EelisArea[] = [];
+  try {
+    const raw = await fs.readFile(path.join(dir, "eelis", "eelis-areas.json"), "utf8");
+    const parsed: unknown = JSON.parse(raw);
+    if (Array.isArray(parsed)) areas = parsed.filter(isEelisArea);
+    else console.warn(`snapshot: ignoring malformed eelis-areas.json in ${dir}`);
+  } catch {
+    // Optional sidecar: honestly no polygons.
+  }
+  eelisAreaCache.set(dir, areas);
+
   return areas;
 }
 
@@ -636,6 +710,10 @@ const RASTER_FILE: Record<LayerId, string> = {
   // documented polygons-only decision — resolves absent so windows
   // serve honestly-empty, never a gradient).
   ...MAAPARCEL_RASTER_FILE,
+
+  // EELIS-HOOK (#488): nature-polygon raster names only (no masters built —
+  // polygons-only; absent files serve honestly-empty, never a gradient).
+  ...EELIS_RASTER_FILE,
 };
 
 /**
@@ -1072,6 +1150,12 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // layers_maaparcel.ts MAAPARCEL_NO_METRO) -- resolves to an absent
   // file so windows fall back to county cleanly.
   maaparcel: "maaparcel-metro",
+
+  // EELIS-HOOK (#488): no metro masters (polygons-only — the files are
+  // absent, so windows serve county everywhere, honestly-empty).
+  eeliskaitse: "eeliskaitse-metro",
+  eelisniit: "eelisniit-metro",
+  eelisraie: "eelisraie-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

@@ -485,6 +485,23 @@ export function overlayColorFor(layer: LayerId): string {
     // every other marker (distinct-color test).
     case "maaparcel":
       return "#701a75";
+
+    // EELIS-HOOK (#488): nature-polygon fills (choropleths, never a
+    // gradient). #1a2e05: lime-950 deep reserve green (NOT #365314 --
+    // taken by wildcorr -- and NOT #3f6212 -- taken by trailprivacy);
+    // #10b981: emerald-500 meadow (NOT #22c55e — taken by kovkasv on
+    // main #486 — and NOT #16a34a -- taken by agrifield -- and NOT
+    // #4ade80 -- taken by lastshop); #9c4221: orange-800 stump brown
+    // (NOT #78350f — taken by blockwalk on main #480 — and NOT
+    // #92400e -- taken by libraries -- and NOT #713f12 -- taken by
+    // odorsrc). All distinct from every other marker
+    // (distinct-color test).
+    case "eeliskaitse":
+      return "#1a2e05";
+    case "eelisniit":
+      return "#10b981";
+    case "eelisraie":
+      return "#9c4221";
   }
 }
 
@@ -831,6 +848,17 @@ export function overlayLegendFor(layer: LayerId): string {
     // verdict off the fill color.
     case "maaparcel":
       return "Katastritunnused omandivormi järgi · roheline = era, oranž = munitsipaal, roosa = riigi, hall = muu/teadmata (fakt, mitte hinnang; munitsipaal/riigi → RIK hoonestuse kontroll) · väljaspool = teadmata, mitte tühi (proovivalim: 100 tunnust Kesklinna aknas)";
+
+    // EELIS-HOOK (#488): nature polygons (P4-015/024/030 slices) — named
+    // zone fills, never a gradient. The outside-unknown caveat rides
+    // along (OTA PR #131 precedent): outside every polygon is teadmata,
+    // never clear — the snapshot rows gate by distance, the LABEL scores.
+    case "eeliskaitse":
+      return "EELIS kaitsealad · tsoonis = piiranguala-hinnang (nimeline polügoon), väljaspool = teadmata, mitte piirangutevaba (I/II liigid EI OLE avalikud)";
+    case "eelisniit":
+      return "EELIS niiduelupaigad · tsoonis = jäme proksi-hinnang (rakk, mitte liigiväide), väljaspool = teadmata, mitte puugivaba (rohevõrgustik EI OLE)";
+    case "eelisraie":
+      return "EELIS raiealad · tsoonis = muutuslipp-hinnang (register, mitte satelliit), väljaspool = teadmata, mitte muutumatu (raieluba EI OLE)";
   }
 }
 

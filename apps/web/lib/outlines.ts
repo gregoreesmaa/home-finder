@@ -1,5 +1,6 @@
 import type { ParkOutline } from "./layers";
 import type { FloodArea } from "./layers_flood";
+import type { EelisArea } from "./layers_eelis";
 import { MAAPARCEL_CLASS_FILL, type MaaParcelArea } from "./layers_maaparcel";
 import type { OverlayPoint } from "./overlays";
 
@@ -29,6 +30,12 @@ const FLOOD_CASING = "flood-zone-casing";
 const MAAPARCEL_SRC = "maaparcel-polys";
 const MAAPARCEL_FILL = "maaparcel-fill";
 const MAAPARCEL_CASING = "maaparcel-casing";
+// EELIS-HOOK (#488): nature-polygon slot (choropleth fills, never a
+// gradient). Clearing covers these ids too — one overlay slot paints
+// either kind, never stacks (see clearVectorOverlays).
+const EELIS_SRC = "eelis-nature-polys";
+const EELIS_FILL = "eelis-nature-fill";
+const EELIS_CASING = "eelis-nature-casing";
 const POINT_SRC = "layer-overlay-src";
 const POINT_CASING = "layer-overlay-casing";
 const POINT_CORE = "layer-overlay-core";
@@ -37,7 +44,8 @@ const POINT_CORE = "layer-overlay-core";
 export function clearVectorOverlays(mapObj: OutlineMap): void {
   // FLOOD-HOOK (#487): flood fill + casing join the cleared slot.
   // MAAPARCEL-HOOK (#491): parcel fill + casing join the cleared slot.
-  for (const id of [PARK_CASING, PARK_CORE, POINT_CASING, POINT_CORE, FLOOD_FILL, FLOOD_CASING, MAAPARCEL_FILL, MAAPARCEL_CASING]) {
+  // EELIS-HOOK (#488): eelis fill + casing join the cleared slot.
+  for (const id of [PARK_CASING, PARK_CORE, POINT_CASING, POINT_CORE, FLOOD_FILL, FLOOD_CASING, MAAPARCEL_FILL, MAAPARCEL_CASING, EELIS_FILL, EELIS_CASING]) {
     try {
       if (mapObj.getLayer(id)) mapObj.removeLayer(id);
     } catch {
@@ -46,7 +54,8 @@ export function clearVectorOverlays(mapObj: OutlineMap): void {
   }
   // FLOOD-HOOK (#487): flood source joins the cleared slot.
   // MAAPARCEL-HOOK (#491): parcel source joins the cleared slot.
-  for (const id of [PARK_SRC, POINT_SRC, FLOOD_SRC, MAAPARCEL_SRC]) {
+  // EELIS-HOOK (#488): eelis source joins the cleared slot.
+  for (const id of [PARK_SRC, POINT_SRC, FLOOD_SRC, MAAPARCEL_SRC, EELIS_SRC]) {
     try {
       if (mapObj.getSource(id)) mapObj.removeSource(id);
     } catch {
@@ -372,6 +381,85 @@ export function applyMaaParcelPolygons(
       type: "line",
       source: MAAPARCEL_SRC,
       paint: { "line-color": opts.casing, "line-width": 1, "line-opacity": 0.9 },
+    },
+    before,
+  );
+}
+
+// EELIS-HOOK (#488): EELIS nature-polygon choropleth fills.
+
+/**
+ * Paint EELIS nature polygons (translucent fill + white casing) so the
+ * inside-a-named-zone vs honestly-unknown-outside boundary reads at a
+ * glance. This is a CHOROPLETH, never a gradient: membership is binary
+ * per parcel (centre and edge of a polygon read alike — the scorer pins
+ * that the LABEL scores, distance only gates), and no score field is
+ * painted anywhere. Clears stale overlay layers first; no-op when the
+ * style is not loaded yet or areas is nullish. Malformed rings are
+ * skipped, never faked.
+ */
+export function applyEelisPolygons(
+  mapObj: OutlineMap,
+  areas: EelisArea[] | null | undefined,
+  opts: { color: string },
+): void {
+  if (!mapObj.getStyle()) return;
+  clearVectorOverlays(mapObj);
+  if (!areas || areas.length === 0) return;
+  const features = [];
+  for (const a of areas) {
+    if (!a || !Array.isArray(a.r)) continue;
+    const polys = [];
+    for (const ring of a.r) {
+      if (!Array.isArray(ring) || ring.length < 3) continue;
+      const pts = ring.filter(
+        (pt) =>
+          Array.isArray(pt) &&
+          pt.length === 2 &&
+          pt.every((n) => typeof n === "number" && Number.isFinite(n)),
+      );
+      if (pts.length < 3) continue;
+      const first = pts[0];
+      const last = pts[pts.length - 1];
+      const closed =
+        first[0] === last[0] && first[1] === last[1] ? pts : [...pts, [first[0], first[1]]];
+      polys.push([closed]);
+    }
+    if (polys.length === 0) continue;
+    features.push({
+      type: "Feature",
+      properties: {
+        nimi: typeof a.nimi === "string" ? a.nimi : "",
+        kiht: typeof a.kiht === "string" ? a.kiht : "",
+      },
+      geometry: { type: "MultiPolygon", coordinates: polys },
+    });
+  }
+  if (features.length === 0) return;
+  mapObj.addSource(EELIS_SRC, {
+    type: "geojson",
+    data: { type: "FeatureCollection", features },
+  });
+  const before = abovePaint(mapObj);
+  mapObj.addLayer(
+    {
+      id: EELIS_FILL,
+      type: "fill",
+      source: EELIS_SRC,
+      paint: {
+        "fill-color": opts.color,
+        "fill-opacity": 0.25,
+        "fill-outline-color": opts.color,
+      },
+    },
+    before,
+  );
+  mapObj.addLayer(
+    {
+      id: EELIS_CASING,
+      type: "line",
+      source: EELIS_SRC,
+      paint: { "line-color": "#ffffff", "line-width": 2, "line-opacity": 0.9 },
     },
     before,
   );
