@@ -46,6 +46,8 @@ import { G08D_RASTER_FILE } from "../layers_group08d";
 import { G08C_RASTER_FILE } from "../layers_group08c";
 // G08B-HOOK(#168): batch G08B raster files live in layers_group08b.ts.
 import { G08B_RASTER_FILE } from "../layers_group08b";
+// G05B-HOOK(#162): batch G05B raster files live in layers_group05b.ts.
+import { G05B_RASTER_FILE } from "../layers_group05b";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -363,6 +365,8 @@ const RASTER_FILE: Record<LayerId, string> = {
   ...G08C_RASTER_FILE,
   // G08B-HOOK (#168): windtunnel + saltspray rasters (scripts/build/batch_g08b_flood.py).
   ...G08B_RASTER_FILE,
+  // G05B-HOOK (#162): gardens + buildout rasters (scripts/build/batch_g05b_plans.py).
+  ...G05B_RASTER_FILE,
 };
 
 /**
@@ -457,6 +461,12 @@ const G08C_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["surgeroad", "slideb
 // windtunnel + saltspray (same Dijkstra-by-construction story as
 // drainage/shoredist — see batch_g08b_flood.py).
 const G08B_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["windtunnel", "saltspray"]);
+// G05B-HOOK (#162): Euclidean-built G05B masters ride "euclidean" —
+// gardens + buildout (Euclidean count kernels: garden beds and fenced
+// pits sit where the foot graph has no vertices, so walk stamping
+// leaves holes AT the facilities — same story as moorage, see
+// scripts/build/batch_g05b_plans.py).
+const G05B_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["gardens", "buildout"]);
 
 export async function loadLayerRaster(
   layer: LayerId,
@@ -471,7 +481,8 @@ export async function loadLayerRaster(
       G08A_EUCLIDEAN_MASTER.has(layer) ||
       G08D_EUCLIDEAN_MASTER.has(layer) || // G08D-HOOK (#170)
       G08C_EUCLIDEAN_MASTER.has(layer) || // G08C-HOOK (#169)
-      G08B_EUCLIDEAN_MASTER.has(layer); // G08B-HOOK (#168)
+      G08B_EUCLIDEAN_MASTER.has(layer) || // G08B-HOOK (#168)
+      G05B_EUCLIDEAN_MASTER.has(layer); // G05B-HOOK (#162)
     return { raster: doc, distance: euclidean ? "euclidean" : "walk" };
   }
   return { raster: null, distance: "euclidean" };
@@ -558,6 +569,11 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // everywhere, like G02B/G03/G03D).
   windtunnel: "windtunnel-metro",
   saltspray: "saltspray-metro",
+  // G05B-HOOK (#162): no gardens/buildout metro masters (documented
+  // fake precision — the files are absent, so windows serve county
+  // everywhere, like G02B/G03/G03D).
+  gardens: "gardens-metro",
+  buildout: "buildout-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */
