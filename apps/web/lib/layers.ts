@@ -500,6 +500,16 @@ import {
   isTerviseLayerId,
   terviseBonusSpecFor,
 } from "./layers_tervise";
+// ASUMEDIA-HOOK (#495): own-snapshot per-asum median tables live in
+// ./layers_asumedia (dated negative 2026-09-14, empty-on-purpose).
+// That module imports layers only as types, so no runtime cycle.
+import type { AsumediaLayerId } from "./layers_asumedia";
+import {
+  ASUMEDIA_DECAY,
+  ASUMEDIA_DEFS,
+  ASUMEDIA_TAGS,
+  bonusSpecForAsumedia,
+} from "./layers_asumedia";
 
 export type LayerId =
   | "parks"
@@ -607,7 +617,10 @@ export type LayerId =
   // (./layers_planktpr, p47 exact fills).
   | PlanktprLayerId
   // TERVISE-HOOK (#494): Terviseamet bathing-water id (./layers_tervise).
-  | TerviseLayerId;
+  | TerviseLayerId
+  // ASUMEDIA-HOOK (#495): own-snapshot per-asum median id
+  // (./layers_asumedia, dated negative, empty-on-purpose).
+  | AsumediaLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -815,6 +828,10 @@ const DECAY_KM: Record<LayerId, number> = {
   ...PLANKTPR_DECAY,
   // TERVISE-HOOK (#494): bathing-water radius (see layers_tervise.ts TERVISE_DECAY).
   ...TERVISE_DECAY,
+
+  // ASUMEDIA-HOOK (#495): per-asum fallback width (see
+  // layers_asumedia.ts ASUMEDIA_DECAY — INERT, empty set).
+  ...ASUMEDIA_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -1022,6 +1039,10 @@ export const LAYERS: LayerDef[] = [
   ...PLANKTPR_DEFS,
   // TERVISE-HOOK (#494): bathing-water def (P4-024 tervise) from ./layers_tervise.
   ...TERVISE_LAYERS,
+
+  // ASUMEDIA-HOOK (#495): per-asum median def (dated negative,
+  // empty-on-purpose) from ./layers_asumedia.
+  ...ASUMEDIA_DEFS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -1140,6 +1161,10 @@ const TAGS: Record<LayerId, string> = {
   ...PLANKTPR_TAGS,
   // TERVISE-HOOK (#494): bathing-water source note (see layers_tervise.ts TERVISE_TAGS).
   ...TERVISE_TAGS,
+
+  // ASUMEDIA-HOOK (#495): own-snapshot provenance note (see
+  // layers_asumedia.ts ASUMEDIA_TAGS — NOT runnable Overpass QL).
+  ...ASUMEDIA_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -1514,6 +1539,11 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // PLANKTPR-HOOK (#492): designated-use spec lives in ./layers_planktpr.
   const planktpr = bonusSpecForPlanktpr(layer);
   if (planktpr) return planktpr;
+
+  // ASUMEDIA-HOOK (#495): per-asum spec lives in ./layers_asumedia
+  // (INERT — empty set, never evaluated).
+  const asumedia = bonusSpecForAsumedia(layer);
+  if (asumedia) return asumedia;
   throw new Error(`unknown layer: ${layer}`);
 }
 

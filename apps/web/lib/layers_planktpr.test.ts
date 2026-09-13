@@ -72,8 +72,9 @@ describe("planktpr registry (#492)", () => {
     const ids = LAYERS.map((l) => l.id);
     expect(ids).toContain("planktpr");
     // 104 shipped layers on main (#508 eelis) + 1 designated-use
-    // polygon layer (PLANKTPR-HOOK #492, 104 + 1) + 1 tervise (TERVISE-HOOK #494, 105 + 1).
-    expect(ids.length).toBe(106);
+    // polygon layer (PLANKTPR-HOOK #492, 104 + 1) + 1 tervise (TERVISE-HOOK #494, 105 + 1) + 1 asumedia
+    // (ASUMEDIA-HOOK #495, 106 + 1).
+    expect(ids.length).toBe(107);
     expect(PLANKTPR_HOOK).toContain("PLANKTPR-HOOK (#492)");
   });
 

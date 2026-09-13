@@ -15,6 +15,8 @@ import { isFloodLayerId } from "../../../../lib/layers_flood";
 import { isOoklaLayerId } from "../../../../lib/layers_p4_ookla";
 // ACCBLACK-HOOK (#490): accblack serves honestly-empty (never 500/demo).
 import { isAccBlackLayerId } from "../../../../lib/layers_accblack";
+// ASUMEDIA-HOOK (#495): asumedia serves honestly-empty (never 500/demo).
+import { isAsumediaLayerId } from "../../../../lib/layers_asumedia";
 // MAAPARCEL-HOOK (#491): polygons-only branch guard (see below).
 import { isMaaParcelLayerId } from "../../../../lib/layers_maaparcel";
 
@@ -177,6 +179,14 @@ export async function GET(
   // "no data", never a faked zero and never labeled demo. A layer with
   // neither points nor raster would otherwise be a 500 here.
   if (isAccBlackLayerId(def.id)) {
+    return NextResponse.json({ points: [], provenance: "empty", ageMs: null });
+  }
+  // ASUMEDIA-HOOK (#495): the measured per-asum set is empty on purpose
+  // (dated negative 2026-09-14 — 0/84 asums reach MIN_N=5, see
+  // lib/layers_asumedia.ts). Serve honestly-empty: the map renders
+  // "no data", never a faked median and never labeled demo. A layer
+  // with neither points nor raster would otherwise be a 500 here.
+  if (isAsumediaLayerId(def.id)) {
     return NextResponse.json({ points: [], provenance: "empty", ageMs: null });
   }
   try {

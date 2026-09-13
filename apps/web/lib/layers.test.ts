@@ -200,6 +200,9 @@ describe("layer registry", () => {
       // TERVISE-HOOK (#494): Terviseamet bathing-water id (P4-024
       // tervise, measured slice — paramIds empty, parameters4 slice).
       "tervise",
+      // ASUMEDIA-HOOK (#495): own-snapshot per-asum median id (dated
+      // negative — parameters4 namespace, empty-on-purpose).
+      "asumedia",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -271,6 +274,10 @@ describe("layer registry", () => {
     // (parameters4 P4-024 slice, no parameters3 number).
     expect(LAYERS.find((l) => l.id === "tervise")?.paramIds).toEqual([]);
     expect(LAYERS.find((l) => l.id === "tervise")?.paramLabel).toBe("P4-024");
+    // ASUMEDIA-HOOK (#495): asumedia binds NO parameters3 number
+    // (namespace lock — the asking-median leg is distinct from P4-002
+    // closed medians and P4-038 gap; statkov/accblack precedent).
+    expect(LAYERS.find((l) => l.id === "asumedia")?.paramIds).toEqual([]);
   });
 
   it("wires the B10C utility layers with locked calibration", () => {
@@ -604,7 +611,11 @@ describe("layer registry", () => {
       // points — the fallback is EMPTY by documented decision (see
       // layers_planktpr.ts); the client renders the empty field, never
       // faked fills. Pinned exactly so no demo junk can creep in.
-      if (l.id === "planktpr") {
+      // ASUMEDIA-HOOK (#495): dated-negative layer with no honest demo
+      // medians — the fallback is EMPTY by documented decision (see
+      // layers_asumedia.ts); demo points would paint a fake gradient
+      // splat on a future exact-fill choropleth.
+      if (l.id === "planktpr" || l.id === "asumedia") {
         expect(l.fallbackPoints).toEqual([]);
         continue;
       }

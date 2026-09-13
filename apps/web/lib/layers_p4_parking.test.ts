@@ -48,9 +48,10 @@ describe("P4 parking registry (#479)", () => {
     // +4 maru layers (MARUKOV-HOOK #486, 90 + 4) + 1 floodzone (FLOOD-HOOK #487, 94 + 1) + 2 P4OSM (P4OSM-HOOK #480, 95 + 2) +
     // 2 ookla tile layers (OOKLA-HOOK #489, 97 + 2) +
     // 1 accblack layer (ACCBLACK-HOOK #490, 99 + 1) + 1 maaparcel (MAAPARCEL-HOOK #491, 100 + 1) +
-    // 3 eelis (EELIS-HOOK #488, 101 + 3) + 1 planktpr (PLANKTPR-HOOK #492, 104 + 1).
-    // TERVISE-HOOK (#494): +1 tervise bathing-water layer (105 + 1).
-    expect(ids.length).toBe(106);
+    // 3 eelis (EELIS-HOOK #488, 101 + 3) + 1 planktpr (PLANKTPR-HOOK #492, 104 + 1) +
+    // 1 tervise (TERVISE-HOOK #494, 105 + 1) +
+    // 1 asumedia (ASUMEDIA-HOOK #495, 106 + 1).
+    expect(ids.length).toBe(107);
     expect(ids).toContain("parking");
   });
 
