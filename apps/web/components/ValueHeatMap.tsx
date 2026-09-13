@@ -12,9 +12,11 @@ import {
 import type { BBoxLike, BonusSpec, ParkOutline, WalkRasterDoc } from "../lib/layers";
 import type { FloodArea } from "../lib/layers_flood";
 import type { MaaParcelArea } from "../lib/layers_maaparcel";
+import type { EelisArea } from "../lib/layers_eelis";
 import {
   applyFloodPolygons,
   applyMaaParcelPolygons,
+  applyEelisPolygons,
   applyOutlines,
   applyPointOverlay,
   clearVectorOverlays,
@@ -37,8 +39,8 @@ const ESTONIA_CENTER: [number, number] = [25.0, 58.75];
 
 /**
  * One overlay slot, painted above the raster: flood polygons win when
- * present, then parcel fills, then point markers (page guarantees
- * flood-areas, maa-parcels, outlines and
+ * present, then parcel fills, then eelis polygons, then point markers
+ * (page guarantees flood-areas, maa-parcels, eelis-areas, outlines and
  * points never coincide), otherwise park outlines; hidden clears the
  * slot. All painters clear stale layers first, so switches never stack.
  */
@@ -49,6 +51,8 @@ function paintOverlay(
     floodAreas?: FloodArea[] | null;
 
     maaParcels?: MaaParcelArea[] | null;
+
+    eelisAreas?: EelisArea[] | null;
     overlayPoints?: OverlayPoint[] | null;
     overlayColor?: string;
     showOverlay?: boolean;
@@ -69,6 +73,13 @@ function paintOverlay(
   // score field is painted for this layer, by design).
   if (opts.maaParcels && opts.maaParcels.length > 0) {
     applyMaaParcelPolygons(mapObj, opts.maaParcels, { casing: opts.overlayColor ?? "#701a75" });
+
+    return;
+  }
+  // EELIS-HOOK (#488): eelis choropleth fills (polygons only — no score
+  // field is painted for these layers, by design).
+  if (opts.eelisAreas && opts.eelisAreas.length > 0) {
+    applyEelisPolygons(mapObj, opts.eelisAreas, { color: opts.overlayColor ?? "#1a2e05" });
     return;
   }
   if (opts.overlayPoints && opts.overlayPoints.length > 0) {
@@ -92,6 +103,8 @@ export function ValueHeatMap({
   floodAreas,
 
   maaParcels,
+
+  eelisAreas,
   overlayPoints,
   overlayColor,
   overlayLegend,
@@ -116,6 +129,9 @@ export function ValueHeatMap({
 
   /** Kataster parcel fills (maaparcel layer only); class choropleth. */
   maaParcels?: MaaParcelArea[] | null;
+
+  /** EELIS nature fills (eelis layers only); choropleth overlay. */
+  eelisAreas?: EelisArea[] | null;
   /** Point markers drawn ABOVE the raster (all layers but parks). */
   overlayPoints?: OverlayPoint[] | null;
   overlayColor?: string;
@@ -150,6 +166,8 @@ export function ValueHeatMap({
     floodAreas,
 
     maaParcels,
+
+    eelisAreas,
     overlayPoints,
     overlayColor,
     showOverlay,
@@ -163,6 +181,8 @@ export function ValueHeatMap({
     floodAreas,
 
     maaParcels,
+
+    eelisAreas,
     overlayPoints,
     overlayColor,
     showOverlay,
@@ -324,9 +344,10 @@ export function ValueHeatMap({
     if (mapRef.current) {
       // FLOOD-HOOK (#487): floodAreas join the painted slot.
       // MAAPARCEL-HOOK (#491): maaParcels join the painted slot.
-      paintOverlay(mapRef.current, { outlines, floodAreas, maaParcels, overlayPoints, overlayColor, showOverlay });
+      // EELIS-HOOK (#488): eelisAreas join the painted slot.
+      paintOverlay(mapRef.current, { outlines, floodAreas, maaParcels, eelisAreas, overlayPoints, overlayColor, showOverlay });
     }
-  }, [outlines, floodAreas, maaParcels, overlayPoints, overlayColor, showOverlay]);
+  }, [outlines, floodAreas, maaParcels, eelisAreas, overlayPoints, overlayColor, showOverlay]);
 
   return (
     <section aria-label={title}>

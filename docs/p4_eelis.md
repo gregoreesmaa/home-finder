@@ -87,6 +87,18 @@ precedent in `dims_p4_trans.py`) — distance gates, the LABEL scores.
 7. No shared-file edits; central hook (snapshot feed + WEIGHTS
    rebalance) stays one joint change across all batches.
 
+## Layer #488 (polygon overlay off this snapshot)
+
+`eeliskaitse` (P4-015) + `eelisniit` (P4-024) + `eelisraie` (P4-030)
+visualize the kaitse/habitat/felling tables as zone-membership
+choropleths (`apps/web/lib/layers_eelis.ts`, sidecar
+`eelis/eelis-areas.json` via `scripts/build/batch_eelis_poly.py`):
+inside-a-named-polygon vs outside/unknown, never a gradient, no score
+field. The scorer above is untouched (NULLs stay NULL); the flood
+table stays out (owned by the #487 floodzone overlay) and the emitter
+register stays out (point locations, no honest polygon — the P4-053
+sector dim stays scorer-side).
+
 ## Reopening checklist (when the map needs live data)
 
 1. Re-run the probes above; paste fresh evidence.

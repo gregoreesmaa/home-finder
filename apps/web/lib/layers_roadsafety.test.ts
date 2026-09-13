@@ -51,8 +51,8 @@ describe("roadsafety registry (#481)", () => {
     // ACCBLACK-HOOK (#490): +1 blackspot layer (99 + 1).
     // MAAPARCEL-HOOK (#491): +1 parcel overlay (100 + 1).
 
-    expect(ids.length).toBe(101);
-
+    // EELIS-HOOK (#488): +3 nature-polygon layers (101 + 3).
+    expect(ids.length).toBe(104);
     expect(ids).toContain("roadsafety");
   });
 

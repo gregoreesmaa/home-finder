@@ -69,8 +69,7 @@ describe("batch B5 registry (#102)", () => {
     // FLOOD-HOOK: +1 layers (94 + 1).
     // P4OSM-HOOK: +2 layers (95 + 2).
 
-    expect(ids.length).toBe(101); // OSMDAILY-HOOK (#482): +6 daily-life layers (77 + 6) + GTFS-HOOK (#483): +1 stop overlay; RSAFE-HOOK (#481): +1 road-safety layer (84 + 1); P4-031-HOOK (#484): +senscom (85 + 1); STATKOV-HOOK (#485): +3 choropleth layers (86 + 3); MAAPARCEL-HOOK (#491): +1 parcel overlay (100 + 1)
-
+    expect(ids.length).toBe(104); // OSMDAILY-HOOK (#482): +6 daily-life layers (77 + 6) + GTFS-HOOK (#483): +1 stop overlay; RSAFE-HOOK (#481): +1 road-safety layer (84 + 1); P4-031-HOOK (#484): +senscom (85 + 1); STATKOV-HOOK (#485): +3 choropleth layers (86 + 3); EELIS-HOOK (#488): +3 nature-polygon layers (101 + 3)
     for (const id of BATCH5_LAYER_IDS) expect(ids).toContain(id);
   });
 

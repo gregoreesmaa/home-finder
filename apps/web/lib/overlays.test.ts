@@ -117,8 +117,8 @@ describe("overlay legend + colors", () => {
     // ACCBLACK-HOOK (#490): accblack joins the registry (99 + 1).
     // MAAPARCEL-HOOK (#491): maaparcel joins the registry (100 + 1).
 
-    expect(ids).toHaveLength(101);
-
+    // EELIS-HOOK (#488): eeliskaitse + eelisniit + eelisraie join the registry (101 + 3).
+    expect(ids).toHaveLength(104);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -349,8 +349,8 @@ describe("overlay legend + colors", () => {
     // ACCBLACK-HOOK (#490): accblack joins the registry (99 + 1).
     // MAAPARCEL-HOOK (#491): maaparcel joins the registry (100 + 1).
 
-    expect(seen.size).toBe(101);
-
+    // EELIS-HOOK (#488): eeliskaitse + eelisniit + eelisraie join the registry (101 + 3).
+    expect(seen.size).toBe(104);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

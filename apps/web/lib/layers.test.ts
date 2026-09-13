@@ -23,6 +23,9 @@ import { isPolygonOnlyLayer } from "./layers_flood";
 import { isPolygonOnlyMaaLayer } from "./layers_maaparcel";
 
 
+// EELIS-HOOK (#488): polygons-only carve-out for the fallback assertion.
+import { isEelisPolygonOnlyLayer } from "./layers_eelis";
+
 const TALLINN_BBOX: BBoxLike = { minlon: 24.5, minlat: 59.35, maxlon: 24.9, maxlat: 59.5 };
 
 describe("layer registry", () => {
@@ -184,6 +187,12 @@ describe("layer registry", () => {
       // omandivorm-class choropleth, polygons only).
       "maaparcel",
 
+
+      // EELIS-HOOK (#488): EELIS nature-polygon ids (P4-015/024/030
+      // slices; paramIds empty — parameters4 namespace, polygons only).
+      "eeliskaitse",
+      "eelisniit",
+      "eelisraie",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -240,6 +249,12 @@ describe("layer registry", () => {
     // ACCBLACK-HOOK (#490): the P4-012 slice binds NO parameters3
     // number either (parameters4 namespace, senscom/statkov precedent).
     expect(LAYERS.find((l) => l.id === "accblack")?.paramIds).toEqual([]);
+
+    // EELIS-HOOK (#488): P4 nature-polygon layers bind NO parameters3
+    // number (namespace lock — P4-015/024/030 ride paramLabel instead).
+    for (const id of ["eeliskaitse", "eelisniit", "eelisraie"]) {
+      expect(LAYERS.find((l) => l.id === id)?.paramIds).toEqual([]);
+    }
   });
 
   it("wires the B10C utility layers with locked calibration", () => {
@@ -567,9 +582,11 @@ describe("layer registry", () => {
       // layers_flood.test.ts). Every other layer keeps fallback points.
       // MAAPARCEL-HOOK (#491): polygon-only layers carry no demo points
       // (a demo point would paint a fake gradient splat).
+      // EELIS-HOOK (#488): eelis polygon layers likewise carry NO demo
+      // points (pinned by layers_eelis.test.ts).
       if (isPolygonOnlyMaaLayer(l.id)) {
         expect(l.fallbackPoints).toEqual([]);
-      } else if (!isPolygonOnlyLayer(l.id)) {
+      } else if (!isPolygonOnlyLayer(l.id) && !isEelisPolygonOnlyLayer(l.id)) {
         expect(l.fallbackPoints.length).toBeGreaterThan(0);
       }
     }

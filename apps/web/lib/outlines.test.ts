@@ -3,6 +3,7 @@ import {
   applyFloodPolygons,
 
   applyMaaParcelPolygons,
+  applyEelisPolygons,
   applyOutlines,
   applyPointOverlay,
   clearVectorOverlays,
@@ -232,6 +233,75 @@ describe("clearVectorOverlays", () => {
     clearVectorOverlays(map);
     expect(map.layers.size).toBe(0);
     expect(map.sources.size).toBe(0);
+  });
+
+  // EELIS-HOOK (#488): the eelis fill + casing + source join the
+  // cleared slot (one overlay slot paints any kind, never stacks).
+  it("removes the eelis polygon slot too", () => {
+    const map = mockMap();
+    map.layers.add("eelis-nature-fill");
+    map.layers.add("eelis-nature-casing");
+    map.sources.add("eelis-nature-polys");
+    clearVectorOverlays(map);
+    expect(map.layers.size).toBe(0);
+    expect(map.sources.size).toBe(0);
+  });
+});
+
+describe("applyEelisPolygons (#488)", () => {
+  const AREA = {
+    kiht: "kaitse" as const,
+    zone_id: "KLO-123",
+    nimi: "Pirita jõeoru maastikukaitseala",
+    lisa: "maastikukaitseala",
+    b: [24.83, 59.44, 24.88, 59.48] as [number, number, number, number],
+    r: [
+      [
+        [24.83, 59.44],
+        [24.88, 59.44],
+        [24.88, 59.48],
+      ],
+    ],
+  };
+
+  it("paints fill + casing layers with closed rings", () => {
+    const map = mockMap();
+    applyEelisPolygons(map, [AREA], { color: "#1a2e05" });
+    expect(map.sources.has("eelis-nature-polys")).toBe(true);
+    expect(map.layers.has("eelis-nature-fill")).toBe(true);
+    expect(map.layers.has("eelis-nature-casing")).toBe(true);
+    const src = map.added[0] as {
+      data: { features: { geometry: { coordinates: number[][][][] } }[] };
+    };
+    expect(src.data.features).toHaveLength(1);
+    const closed = src.data.features[0].geometry.coordinates[0][0];
+    expect(closed[0]).toEqual([24.83, 59.44]);
+    expect(closed[closed.length - 1]).toEqual([24.83, 59.44]);
+  });
+
+  it("clears stale layers on nullish input and skips junk rings", () => {
+    const map = mockMap();
+    map.layers.add("eelis-nature-fill");
+    map.layers.add("eelis-nature-casing");
+    map.sources.add("eelis-nature-polys");
+    applyEelisPolygons(map, null, { color: "#1a2e05" });
+    expect(map.layers.size).toBe(0);
+    expect(map.sources.size).toBe(0);
+    const map2 = mockMap();
+    applyEelisPolygons(
+      map2,
+      [{ ...AREA, r: [[[24.83]]] }, { ...AREA, r: [] }],
+      { color: "#1a2e05" },
+    );
+    expect(map2.sources.size).toBe(0);
+    expect(map2.layers.size).toBe(0);
+  });
+
+  it("no-ops before the style loads", () => {
+    const map = mockMap(null);
+    applyEelisPolygons(map, [AREA], { color: "#1a2e05" });
+    expect(map.sources.size).toBe(0);
+    expect(map.layers.size).toBe(0);
   });
 });
 

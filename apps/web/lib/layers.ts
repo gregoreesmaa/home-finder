@@ -467,6 +467,18 @@ import {
   isPolygonOnlyMaaLayer,
 } from "./layers_maaparcel";
 
+// EELIS-HOOK (#488): EELIS nature-polygon tables live in
+// ./layers_eelis (kr_kaitseala/niidud/kaadamisalad zone-membership
+// choropleths, polygons only). That module imports layers only as
+// types, so no runtime cycle.
+import type { EelisLayerId } from "./layers_eelis";
+import {
+  EELIS_DECAY,
+  EELIS_DEFS,
+  EELIS_TAGS,
+  bonusSpecForEelis,
+} from "./layers_eelis";
+
 export type LayerId =
   | "parks"
   | "transit"
@@ -565,7 +577,10 @@ export type LayerId =
   | OoklaLayerId
   // MAAPARCEL-HOOK (#491): maaparcel id (./layers_maaparcel, p364
   // kataster omandivorm-class choropleth).
-  | MaaParcelLayerId;
+  | MaaParcelLayerId
+  // EELIS-HOOK (#488): EELIS nature-polygon ids (./layers_eelis,
+  // kaitse/niit/raie zone-membership choropleths, polygons only).
+  | EelisLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -759,6 +774,10 @@ const DECAY_KM: Record<LayerId, number> = {
   // MAAPARCEL_DECAY — INERT placeholder, polygons only: zero points,
   // never evaluated).
   ...MAAPARCEL_DECAY,
+
+  // EELIS-HOOK (#488): nature-polygon radii (see layers_eelis.ts EELIS_DECAY —
+  // INERT placeholders, polygons only: zero points, never evaluated).
+  ...EELIS_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -956,6 +975,10 @@ export const LAYERS: LayerDef[] = [
   // MAAPARCEL-HOOK (#491): maaparcel def (p364, kataster omandivorm-class
   // choropleth) from ./layers_maaparcel.
   ...MAAPARCEL_DEFS,
+
+  // EELIS-HOOK (#488): nature-polygon defs (P4-015/024/030 slices, no
+  // parameters3 ids) from ./layers_eelis.
+  ...EELIS_DEFS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -1065,6 +1088,10 @@ const TAGS: Record<LayerId, string> = {
   // layers_maaparcel.ts MAAPARCEL_TAGS — WFS provenance, NOT runnable
   // Overpass QL).
   ...MAAPARCEL_TAGS,
+
+  // EELIS-HOOK (#488): nature-polygon source notes (see layers_eelis.ts EELIS_TAGS —
+  // WFS provenance, NOT runnable Overpass QL).
+  ...EELIS_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -1411,6 +1438,11 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // (INERT — polygons only, never evaluated).
   const maaparcel = bonusSpecForMaaParcel(layer);
   if (maaparcel) return maaparcel;
+
+  // EELIS-HOOK (#488): nature-polygon specs live in ./layers_eelis (INERT —
+  // polygons only, never evaluated).
+  const eelis = bonusSpecForEelis(layer);
+  if (eelis) return eelis;
   throw new Error(`unknown layer: ${layer}`);
 }
 
