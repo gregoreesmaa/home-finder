@@ -141,6 +141,8 @@ describe("layer registry", () => {
       "lastshop",
       // GTFS-HOOK (#483): GTFS stop overlay id (p15, measured-only set).
       "gtfsstops",
+      // RSAFE-HOOK (#481): road-safety id (p13 roadsafety, P4-012 proxy).
+      "roadsafety",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -420,6 +422,17 @@ describe("layer registry", () => {
     expect(radiusKmFor("leafdrop")).toBe(0.3);
     expect(LAYERS.find((l) => l.id === "leafdrop")?.paramIds).toEqual([312]);
     expect(overpassQueryFor("leafdrop", TALLINN_BBOX)).toContain("waste_disposal");
+  });
+
+  it("wires the RSAFE roadsafety layer with locked calibration", () => {
+    // RSAFE-HOOK (#481): drift guard — hook specs must equal RSAFE_CAL in
+    // layers_roadsafety.ts and the Python builder (parsed by
+    // test_batch_rsafety_osm.py).
+    expect(bonusSpecFor("roadsafety")).toEqual({ kind: "area", half: 60 });
+    expect(radiusKmFor("roadsafety")).toBe(0.5);
+    expect(LAYERS.find((l) => l.id === "roadsafety")?.paramIds).toEqual([13]);
+    expect(overpassQueryFor("roadsafety", TALLINN_BBOX)).toContain("crossing");
+    expect(overpassQueryFor("roadsafety", TALLINN_BBOX)).toContain("traffic_calming");
   });
 
   it("wires the G17B lawncare layer with locked calibration", () => {

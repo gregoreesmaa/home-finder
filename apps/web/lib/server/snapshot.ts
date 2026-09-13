@@ -78,6 +78,8 @@ import { OSMDAILY_RASTER_FILE } from "../layers_osmdaily";
 // (named but NOT built — overlay-only decision, resolves absent so the
 // layer rides the Euclidean fallback splat, honestly labeled).
 import { GTFSSTOPS_RASTER_FILE } from "../layers_gtfsstops";
+// RSAFE-HOOK (#481): road-safety raster file lives in layers_roadsafety.ts.
+import { RSAFE_RASTER_FILE } from "../layers_roadsafety";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -427,6 +429,8 @@ const RASTER_FILE: Record<LayerId, string> = {
   // GTFS-HOOK (#483): gtfsstops raster name only (no master built —
   // overlay-only; absent file degrades to Euclidean points scoring).
   ...GTFSSTOPS_RASTER_FILE,
+  // RSAFE-HOOK (#481): roadsafety raster (scripts/build/batch_rsafety_osm.py).
+  ...RSAFE_RASTER_FILE,
 };
 
 /**
@@ -586,6 +590,10 @@ const G17R_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["privroad"]);
 // stamp_cover). Water/waste/fiber ride the walk graph ("walk").
 // Labeling mobile "walk" would claim footpath routing it never used.
 const B10C_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["mobile"]);
+// RSAFE-HOOK (#481): Euclidean-built road-safety master rides "euclidean" —
+// roadsafety (Euclidean count kernel, viewshed/moorage/G17A precedent —
+// see scripts/build/batch_rsafety_osm.py).
+const RSAFE_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["roadsafety"]);
 
 export async function loadLayerRaster(
   layer: LayerId,
@@ -613,7 +621,8 @@ export async function loadLayerRaster(
       G17A_EUCLIDEAN_MASTER.has(layer) || // G17A-HOOK (#177)
       G17B_EUCLIDEAN_MASTER.has(layer) || // G17B-HOOK (#178)
       G17R_EUCLIDEAN_MASTER.has(layer) || // G17R-HOOK (#196)
-      B10C_EUCLIDEAN_MASTER.has(layer); // B10C-HOOK (#230)
+      B10C_EUCLIDEAN_MASTER.has(layer) || // B10C-HOOK (#230)
+      RSAFE_EUCLIDEAN_MASTER.has(layer); // RSAFE-HOOK (#481)
     return { raster: doc, distance: euclidean ? "euclidean" : "walk" };
   }
   return { raster: null, distance: "euclidean" };
@@ -775,6 +784,10 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // GTFS-HOOK (#483): no gtfsstops metro master (overlay-only — the file
   // is absent, so windows serve county everywhere, like G02B/G03/B10C).
   gtfsstops: "gtfsstops-metro",
+  // RSAFE-HOOK (#481): no roadsafety metro master (documented fake
+  // precision — the file is absent, so windows serve county
+  // everywhere, like G02B/G03/G03D/G08B/G05C/G05E).
+  roadsafety: "roadsafety-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

@@ -382,6 +382,13 @@ export function overlayColorFor(layer: LayerId): string {
     // other marker (distinct-color test).
     case "gtfsstops":
       return "#8b5cf6";
+    // RSAFE-HOOK (#481): roadsafety marker (point overlay,
+    // stride-sampled like grocery). #fde047: yellow-400 zebra-crossing
+    // paint (NOT #facc15 — taken — and NOT #fbbf24 — taken by ehitus —
+    // and NOT #eab308 — taken). Distinct from every other marker
+    // (distinct-color test).
+    case "roadsafety":
+      return "#fde047";
   }
 }
 
@@ -652,6 +659,12 @@ export function overlayLegendFor(layer: LayerId): string {
     // Euclidean fallback holds the scheduled-service density field.
     case "gtfsstops":
       return "GTFS peatused (buss/tramm/troll + kaardistatud Elroni jaamad) · suurus = sõiduplaanilised väljumised kolmapäevas (küllastus 1500, õhtune täituvus teadmata — EI OLE loendusandmeid)";
+    // RSAFE-HOOK (#481): roadsafety (p13, P4-012 proxy) — mapped
+    // crossings + calming, the raster holds the full count field. The
+    // usage-not-safety caveat rides along (P4-032 precedent): dots are
+    // mapping usage, never accident truth.
+    case "roadsafety":
+      return "Märgistatud ülekäigud + rahustid · lähedaste arv (kasutus-hinnang, küllastus 60, õnnetusstatistika puudub)";
   }
 }
 
