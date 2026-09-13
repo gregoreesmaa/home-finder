@@ -205,6 +205,16 @@ export function overlayColorFor(layer: LayerId): string {
     // Distinct from every other marker (distinct-color test).
     case "vernalpool":
       return "#475569";
+    // G08C-HOOK (#169): surgeroad + slidebuf markers (point overlays,
+    // stride-sampled like grocery). #64748b: slate storm gray (surge
+    // sky; NOT #475569 — taken by vernalpool — distinct from alley
+    // #44403c and evac #57534c); #78716c: stone cliff gray (distinct
+    // from plaster #b45309 and every other marker — distinct-color
+    // test).
+    case "surgeroad":
+      return "#64748b";
+    case "slidebuf":
+      return "#78716c";
   }
 }
 
@@ -348,6 +358,13 @@ export function overlayLegendFor(layer: LayerId): string {
     // the raster holds the full quietness field.
     case "vernalpool":
       return "Ajutised tiigid/vannid (kraavid/jõed/sood välja) · kauguse-hinnang (kevadlompide proksi, poolkaugus 300 m)";
+    // G08C-HOOK (#169): surgeroad (p334) — exposed streets, the raster
+    // holds the full quietness field; slidebuf (p336) — mapped slopes,
+    // the raster holds the full quietness field.
+    case "surgeroad":
+      return "Lainetustsooni tänavad (rannast ≤150 m) · kauguse-hinnang (kõrgvee proksi, poolkaugus 150 m)";
+    case "slidebuf":
+      return "Pangad ja järsakud (jõed/märgalad välja) · kauguse-hinnang (varingu proksi, poolkaugus 100 m)";
   }
 }
 

@@ -94,6 +94,16 @@ import {
   g08dBonusSpecFor,
   isG08DLayerId,
 } from "./layers_group08d";
+// G08C-HOOK(#169): batch G08C (Group 8 flood/climate-C surgeroad +
+// slidebuf) tables live in ./layers_group08c (new file). That module
+// imports layers only as types, so no runtime cycle.
+import type { Group08CLayerId } from "./layers_group08c";
+import {
+  GROUP08C_DECAY,
+  GROUP08C_LAYERS,
+  GROUP08C_TAGS,
+  bonusSpecForGroup08C,
+} from "./layers_group08c";
 // G11D-HOOK(#135): batch G11D (Group 11 leftovers B: p346/p470/p419/p466;
 // p317 is a documented no-map) tables live in ./layers_group11d (new
 // file). That module imports layers only as types, so no runtime cycle.
@@ -220,7 +230,9 @@ export type LayerId =
   // G08A-HOOK (#167): Group 8 flood/climate A id (./layers_group08a).
   | G08ALayerId
   // G08D-HOOK (#170): Group 8 flood/climate-D id (./layers_group08d).
-  | G08DLayerId;
+  | G08DLayerId
+  // G08C-HOOK (#169): Group 8 flood/climate-C ids (./layers_group08c).
+  | Group08CLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -329,6 +341,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...G08A_DECAY_KM,
   // G08D-HOOK (#170): vernalpool radius (see layers_group08d.ts G08D_DECAY_KM).
   ...G08D_DECAY_KM,
+  // G08C-HOOK (#169): surgeroad + slidebuf radii (see layers_group08c.ts GROUP08C_DECAY).
+  ...GROUP08C_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -467,6 +481,8 @@ export const LAYERS: LayerDef[] = [
   ...G08A_LAYERS,
   // G08D-HOOK (#170): vernalpool def (p447) from ./layers_group08d.
   ...G08D_LAYERS,
+  // G08C-HOOK (#169): surgeroad (p334) + slidebuf (p336) defs from ./layers_group08c.
+  ...GROUP08C_LAYERS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -518,6 +534,8 @@ const TAGS: Record<LayerId, string> = {
   ...G08A_TAGS,
   // G08D-HOOK (#170): vernalpool query (see layers_group08d.ts G08D_TAGS).
   ...G08D_TAGS,
+  // G08C-HOOK (#169): surgeroad + slidebuf queries (see layers_group08c.ts GROUP08C_TAGS).
+  ...GROUP08C_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -710,6 +728,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // G08A-HOOK (#167): wildfire spec lives in ./layers_group08a.
   const g08a = bonusSpecForGroup08A(layer);
   if (g08a) return g08a;
+  // G08C-HOOK (#169): surgeroad + slidebuf specs live in ./layers_group08c.
+  const g08c = bonusSpecForGroup08C(layer);
+  if (g08c) return g08c;
   throw new Error(`unknown layer: ${layer}`);
 }
 

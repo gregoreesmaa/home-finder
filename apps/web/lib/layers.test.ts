@@ -86,6 +86,9 @@ describe("layer registry", () => {
       "wildfire",
       // G08D-HOOK (#170): Group 8 flood/climate-D id (p447 vernalpool).
       "vernalpool",
+      // G08C-HOOK (#169): Group 8 flood/climate-C ids (p334 surgeroad + p336 slidebuf).
+      "surgeroad",
+      "slidebuf",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -154,6 +157,19 @@ describe("layer registry", () => {
     expect(radiusKmFor("vernalpool")).toBe(0.3);
     expect(LAYERS.find((l) => l.id === "vernalpool")?.paramIds).toEqual([447]);
     expect(overpassQueryFor("vernalpool", TALLINN_BBOX)).toContain("intermittent");
+  });
+
+  it("wires the G08C surgeroad + slidebuf layers with locked calibration", () => {
+    // Drift guard: hook specs must equal G08C_CAL in layers_group08c.ts
+    // and the Python builder (parsed by test_batch_g08c_flood.py).
+    expect(bonusSpecFor("surgeroad")).toEqual({ kind: "quiet", halfM: 150 });
+    expect(radiusKmFor("surgeroad")).toBe(0.3);
+    expect(LAYERS.find((l) => l.id === "surgeroad")?.paramIds).toEqual([334]);
+    expect(overpassQueryFor("surgeroad", TALLINN_BBOX)).toContain("highway");
+    expect(bonusSpecFor("slidebuf")).toEqual({ kind: "quiet", halfM: 100 });
+    expect(radiusKmFor("slidebuf")).toBe(0.3);
+    expect(LAYERS.find((l) => l.id === "slidebuf")?.paramIds).toEqual([336]);
+    expect(overpassQueryFor("slidebuf", TALLINN_BBOX)).toContain("cliff");
   });
 
   it("every layer explains green=good / red=bad in Estonian", () => {
