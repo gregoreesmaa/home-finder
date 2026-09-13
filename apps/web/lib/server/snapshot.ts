@@ -36,6 +36,8 @@ import { BATCH6_RASTER_FILE } from "../layers_batch6";
 import { G07_RASTER_FILE } from "../layers_group07";
 // G02B-HOOK (#137): lift-proxy raster file lives in ../layers_group02b.
 import { G02B_RASTER_FILE } from "../layers_group02b";
+// G08A-HOOK(#167): batch G08A raster file lives in layers_group08a.ts.
+import { G08A_RASTER_FILE } from "../layers_group08a";
 // G03D-HOOK(#154): batch G03D raster files live in layers_group03d.ts.
 import { G03D_RASTER_FILE } from "../layers_group03d";
 
@@ -347,6 +349,8 @@ const RASTER_FILE: Record<LayerId, string> = {
   ...G03_RASTER_FILE,
   // G03D-HOOK (#154): moorage + shoredist rasters (scripts/build/batch_g03d_cadastre.py).
   ...G03D_RASTER_FILE,
+  // G08A-HOOK (#167): wildfire raster (scripts/build/batch_g08a_flood.py).
+  ...G08A_RASTER_FILE,
 };
 
 /**
@@ -425,6 +429,10 @@ const G03_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["drainage"]);
 // the foot graph has no vertices, so walk stamping leaves holes AT the
 // facilities — see batch_g03d_cadastre.py).
 const G03D_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["moorage", "shoredist"]);
+// G08A-HOOK (#167): Euclidean-built wildfire master rides "euclidean"
+// (exact-grid Dijkstra by construction, same story as drainage —
+// forest-ring centroids need no foot-graph walk stamping).
+const G08A_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["wildfire"]);
 
 export async function loadLayerRaster(
   layer: LayerId,
@@ -435,7 +443,8 @@ export async function loadLayerRaster(
     const euclidean =
       B6_EUCLIDEAN_MASTER.has(layer) ||
       G03_EUCLIDEAN_MASTER.has(layer) ||
-      G03D_EUCLIDEAN_MASTER.has(layer);
+      G03D_EUCLIDEAN_MASTER.has(layer) ||
+      G08A_EUCLIDEAN_MASTER.has(layer);
     return { raster: doc, distance: euclidean ? "euclidean" : "walk" };
   }
   return { raster: null, distance: "euclidean" };
@@ -504,6 +513,10 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // everywhere, like G02B/G03).
   moorage: "moorage-metro",
   shoredist: "shoredist-metro",
+  // G08A-HOOK (#167): no wildfire metro master (documented fake
+  // precision — the file is absent, so windows serve county
+  // everywhere, like G02B/G03).
+  wildfire: "wildfire-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

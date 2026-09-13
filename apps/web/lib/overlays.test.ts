@@ -86,7 +86,8 @@ describe("overlay legend + colors", () => {
     const ids = LAYERS.map((l) => l.id);
     // G07C-HOOK(#142): vectorhabitat joins the registry.
     // G03D-HOOK (#154): moorage + shoredist join the registry.
-    expect(ids).toHaveLength(46);
+    // G08A-HOOK (#167): wildfire joins the registry.
+    expect(ids).toHaveLength(47);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -159,11 +160,14 @@ describe("overlay legend + colors", () => {
     expect(overlayLegendFor("moorage")).toContain("hinnang");
     expect(overlayLegendFor("shoredist")).toContain("100 m");
     expect(overlayLegendFor("shoredist")).toContain("hinnang");
+    // Batch G08A half (see G08A_CAL in layers_group08a.ts).
+    expect(overlayLegendFor("wildfire")).toContain("100 m");
+    expect(overlayLegendFor("wildfire")).toContain("hinnang");
   });
 
   it("gives every layer a distinct marker color", () => {
     const seen = new Set((LAYERS.map((l) => l.id) as LayerId[]).map(overlayColorFor));
-    expect(seen.size).toBe(46);
+    expect(seen.size).toBe(47);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

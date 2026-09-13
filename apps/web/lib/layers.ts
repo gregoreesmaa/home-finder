@@ -62,6 +62,17 @@ import {
   GROUP03_TAGS,
   bonusSpecForGroup03,
 } from "./layers_group03";
+// G08A-HOOK (#167): batch G08A (Group 8 flood/climate A: p69 wildfire
+// proxy; p46/p112/p117 documented no-map) tables live in
+// ./layers_group08a (new file). That module imports layers only as
+// types, so no runtime cycle.
+import type { G08ALayerId } from "./layers_group08a";
+import {
+  G08A_DECAY_KM,
+  G08A_LAYERS,
+  G08A_TAGS,
+  bonusSpecForGroup08A,
+} from "./layers_group08a";
 // G03D-HOOK(#154): batch G03D (Group 3 cadastre-D moorage + shoredist)
 // tables live in ./layers_group03d (new file). That module imports
 // layers only as types, so no runtime cycle.
@@ -194,7 +205,9 @@ export type LayerId =
   // G03-HOOK (#151): Group 3 cadastre-A drainage id (./layers_group03).
   | Group03LayerId
   // G03D-HOOK (#154): Group 3 cadastre-D ids (./layers_group03d).
-  | Group03DLayerId;
+  | Group03DLayerId
+  // G08A-HOOK (#167): Group 8 flood/climate A id (./layers_group08a).
+  | G08ALayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -299,6 +312,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...GROUP03_DECAY,
   // G03D-HOOK (#154): moorage + shoredist radii (see layers_group03d.ts GROUP03D_DECAY).
   ...GROUP03D_DECAY,
+  // G08A-HOOK (#167): wildfire radius (see layers_group08a.ts G08A_DECAY_KM).
+  ...G08A_DECAY_KM,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -433,6 +448,8 @@ export const LAYERS: LayerDef[] = [
   ...GROUP03_LAYERS,
   // G03D-HOOK (#154): moorage (p332) + shoredist (p340) defs from ./layers_group03d.
   ...GROUP03D_LAYERS,
+  // G08A-HOOK (#167): wildfire def (p69) from ./layers_group08a.
+  ...G08A_LAYERS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -480,6 +497,8 @@ const TAGS: Record<LayerId, string> = {
   ...GROUP03_TAGS,
   // G03D-HOOK (#154): moorage + shoredist queries (see layers_group03d.ts GROUP03D_TAGS).
   ...GROUP03D_TAGS,
+  // G08A-HOOK (#167): wildfire query (see layers_group08a.ts G08A_TAGS).
+  ...G08A_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -667,6 +686,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // G03D-HOOK (#154): moorage + shoredist specs live in ./layers_group03d.
   const g03d = bonusSpecForGroup03D(layer);
   if (g03d) return g03d;
+  // G08A-HOOK (#167): wildfire spec lives in ./layers_group08a.
+  const g08a = bonusSpecForGroup08A(layer);
+  if (g08a) return g08a;
   throw new Error(`unknown layer: ${layer}`);
 }
 
