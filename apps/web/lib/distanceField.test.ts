@@ -303,6 +303,26 @@ describe("distance field", () => {
     expect(sampleScored(s, 24.7, 59.42)?.value).toBeLessThanOrEqual(100);
   });
 
+});
+
+describe("quiet calmness fallback (batch B6, #133)", () => {
+  const QUIET: BonusSpec = { kind: "quiet", halfM: 800 };
+
+  it("scores calm far from the source, exposed on it (never inverted)", () => {
+    const s = buildScoredField([{ lon: 0.5, lat: 0.5 }], UNIT, 11, 11, 0.3, QUIET);
+    expect(s.direct).not.toBeNull();
+    const on = scoredAt(s, 5, 5);
+    const far = scoredAt(s, 0, 0);
+    expect(on).not.toBeNull();
+    expect(far).not.toBeNull();
+    // Green FAR (calm), red ON the source — the shared exponential
+    // decay would render this backwards, hence the baked direct field.
+    expect(on as number).toBeLessThan(5);
+    expect(far as number).toBeGreaterThan(on as number);
+  });
+});
+
+describe("field resolution", () => {
   it("resolution adapts to view span and clamps sanely", () => {
     const wide = fieldResolution(
       { minlon: 21.5, minlat: 57.3, maxlon: 28.5, maxlat: 59.9 },
@@ -320,7 +340,7 @@ describe("distance field", () => {
   });
 });
 
-describe("quiet-kind cleanliness (G07D env-health)", () => {
+describe("quiet-kind cleanliness (G07/G07D env-health)", () => {
   const QUIET: BonusSpec = { kind: "quiet", halfM: 500 };
 
   it("reads 0 on the source, ~50 at halfM, near 100 when far", () => {

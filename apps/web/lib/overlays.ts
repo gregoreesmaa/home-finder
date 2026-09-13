@@ -117,9 +117,47 @@ export function overlayColorFor(layer: LayerId): string {
       return "#6b21a8";
     // Batch G07D env-health layers (point overlays, stride-sampled).
     case "agrifield":
-      return "#a16207";
+      return "#16a34a";
     case "wildcorr":
       return "#365314";
+    // Group G06B heritage-leftover layers (point overlays, stride-sampled).
+    case "plaster":
+      return "#b45309";
+    case "antiques":
+      return "#0f766e";
+    // woodfire marks mapped wooden houses = the risk SOURCES (red family
+    // reads as danger origins; the raster stays green = safe).
+    case "woodfire":
+      return "#991b1b";
+    // Batch G11C leftover-A layers (point overlays, stride-sampled).
+    case "schoolbus":
+      return "#0e7490";
+    case "recspecial":
+      return "#059669";
+    case "medspecial":
+      return "#9d174d";
+    case "worship":
+      return "#6d28d9";
+    case "forage":
+      return "#4d7c0f";
+    // Batch B6 mobility/access layers (point overlays, stride-sampled).
+    case "droneclear":
+      return "#a16207";
+    case "droneviab":
+      return "#15803d";
+    case "rentbleed":
+      return "#be123c";
+    // Batch G07 env-health layers (point overlays, stride-sampled).
+    case "industprox":
+      return "#155e75";
+    case "odorsrc":
+      return "#713f12";
+    // Group G06 heritage layer (point overlay, stride-sampled).
+    case "heritage":
+      return "#7c2d12";
+    // G02B-HOOK (#137): lift proxy (point overlay, stride-sampled).
+    case "liftproxy":
+      return "#0891b2";
   }
 }
 
@@ -176,6 +214,52 @@ export function overlayLegendFor(layer: LayerId): string {
       return "Põllud, heinamaad ja kasvuhooned · kaugus lähima haritava maani (hinnang, poolkaugus 800 m)";
     case "wildcorr":
       return "Metsad, märgalad ja kaitsealad · kaugus lähima elupaigani (hinnang, poolkaugus 500 m)";
+    // Group G06B heritage-leftover layers: nearby-POI counts with halves
+    // from layers_group06b.ts GROUP06B_BONUS (same numbers as
+    // bonusSpecFor); woodfire is inverse (nearest-distance, pöördskaala).
+    case "plaster":
+      return "Krohvfassaadiga hooned · lähedaste arv (hinnang, küllastus 6)";
+    case "antiques":
+      return "Antiigipoed · lähedaste arv (hinnang, küllastus 1)";
+    case "woodfire":
+      return "Puidust hooned · lähim kaugus, pöördskaala (hinnang, poolväärtus 0,21 km)";
+    // Batch G11C leftover-A layers: nearby-POI counts, saturating halves
+    // from layers_group11c.ts G11C_BONUS (same numbers as bonusSpecFor).
+    // Schoolbus is a hinnang proxy (stop-served schools, never a route).
+    case "schoolbus":
+      return "Peatusega koolid · lähedaste arv (hinnang, küllastus 4)";
+    case "recspecial":
+      return "Erispordipaigad · lähedaste arv (küllastus 8)";
+    case "medspecial":
+      return "Haiglad ja hambaarstid · lähedaste arv (küllastus 5)";
+    case "worship":
+      return "Pühakojad · lähedaste arv (küllastus 2,5)";
+    case "forage":
+      return "Metsaüksused · lähedaste arv (küllastus 12)";
+    // Batch B6 mobility/access layers (p220/p270/p386): source features,
+    // honestly labeled proksi/hinnang; halves from layers_batch6.ts
+    // B6_CAL (same numbers as bonusSpecFor). droneviab dots mark the
+    // airspace sites — the park yard leg lives raster-side only.
+    case "droneclear":
+      return "Lennuväljad ja helikopteriväljakud · kauguse-hinnang (proksi, mitte EANS DroneMap, küllastus 1300 m)";
+    case "droneviab":
+      return "Lennuväljad ja maandumisalad · min-hinnang (proksi, mitte EANS DroneMap, küllastus 800 m)";
+    case "rentbleed":
+      return "Ülikoolid, kolledžid ja ühiselamud · kauguse-hinnang (proksi, mitte üüriregister, küllastus 800 m)";
+    // Batch G07 env-health layers: nearest-source distance, same halves
+    // as g07BonusSpecFor in layers_group07.ts.
+    case "industprox":
+      return "Tööstusalad · kaugus lähima alani (hinnang, poolkaugus 500 m)";
+    case "odorsrc":
+      return "Reoveepuhastid ja prügilad · kaugus lähima allikani (hinnang, poolkaugus 500 m)";
+    // Group G06 heritage layer: nearby-POI count, saturating half from
+    // layers_group06.ts GROUP06_BONUS (same number as bonusSpecFor).
+    case "heritage":
+      return "Muinsusobjektid · lähedaste arv (hinnang, küllastus 2)";
+    // G02B-HOOK (#137): lift proxy — nearby high-rise count, same half
+    // as bonusSpecFor (see layers_group02b.ts G02B_BONUS).
+    case "liftproxy":
+      return "Kõrghooned (5+ korrust) · lähedaste arv (hinnang, küllastus 2)";
   }
 }
 
