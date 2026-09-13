@@ -84,7 +84,7 @@ describe("selectOverlayPoints", () => {
 describe("overlay legend + colors", () => {
   it("explains every layer's markers and weights in Estonian", () => {
     const ids = LAYERS.map((l) => l.id);
-    expect(ids).toHaveLength(19);
+    expect(ids).toHaveLength(31);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -110,6 +110,27 @@ describe("overlay legend + colors", () => {
     expect(overlayLegendFor("hydrants")).toContain("küllastus 6");
     expect(overlayLegendFor("evac")).toContain("2 km");
     expect(overlayLegendFor("dispatch")).toContain("küllastus 3");
+    // Batch G11C halves (see G11C_BONUS in layers_group11c.ts).
+    expect(overlayLegendFor("schoolbus")).toContain("küllastus 4");
+    expect(overlayLegendFor("schoolbus")).toContain("hinnang");
+    expect(overlayLegendFor("recspecial")).toContain("küllastus 8");
+    expect(overlayLegendFor("medspecial")).toContain("küllastus 5");
+    expect(overlayLegendFor("worship")).toContain("2,5");
+    expect(overlayLegendFor("forage")).toContain("küllastus 12");
+    // Batch B6 halves/tiers (see B6_CAL in layers_batch6.ts).
+    expect(overlayLegendFor("droneclear")).toContain("1300 m");
+    expect(overlayLegendFor("droneviab")).toContain("800 m");
+    expect(overlayLegendFor("rentbleed")).toContain("800 m");
+    expect(overlayLegendFor("droneclear")).toContain("mitte EANS DroneMap");
+    expect(overlayLegendFor("rentbleed")).toContain("mitte üüriregister");
+    // Batch G07 halves (see g07BonusSpecFor in layers_group07.ts).
+    expect(overlayLegendFor("industprox")).toContain("500 m");
+    expect(overlayLegendFor("odorsrc")).toContain("500 m");
+    // Group G06 half (see GROUP06_BONUS in layers_group06.ts).
+    expect(overlayLegendFor("heritage")).toContain("küllastus 2");
+    // Batch G02B half (see G02B_BONUS in layers_group02b.ts).
+    expect(overlayLegendFor("liftproxy")).toContain("küllastus 2");
+    expect(overlayLegendFor("liftproxy")).toContain("hinnang");
     // Batch G03 half (see G03_CAL in layers_group03.ts).
     expect(overlayLegendFor("drainage")).toContain("300 m");
     expect(overlayLegendFor("drainage")).toContain("drenaažiproksi");
@@ -117,7 +138,7 @@ describe("overlay legend + colors", () => {
 
   it("gives every layer a distinct marker color", () => {
     const seen = new Set((LAYERS.map((l) => l.id) as LayerId[]).map(overlayColorFor));
-    expect(seen.size).toBe(19);
+    expect(seen.size).toBe(31);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

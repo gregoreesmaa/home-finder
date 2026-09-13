@@ -53,10 +53,10 @@
 //
 // Calibration (judgment call, documented for the reviewer): nearest-water
 // quietness 100·d/(d+300), sigma 0.3 km (== halfM/1000, nuisance parity
-// with batch G09). Probes with sea: Kadriorg pond 41 m -> 12, Pirita
-// river 104 m -> 26, Balti 159 m -> 35, Viru 291 m -> 49, Lasnamäe
-// ditches 305 m -> 50, Viimsi shore 429 m -> 59, Nõmme 507 m -> 63,
-// Õismäe 532 m -> 64, rural 669 m -> 69. The city spreads mid-ramp.
+// with batch G09). Measured county-raster reads (2026-09-12 full build,
+// --probe): Kadriorg 0 (probe point on pond water), Pirita 20, Balti
+// 33, airport 38, Kopli 46, Viru 52, Lasnamäe 52, Kalamaja 55, Viimsi
+// 61, Nõmme 64, Õismäe 64, rural 70. The city spreads mid-ramp.
 
 import type { BonusSpec, LayerDef } from "./layers";
 

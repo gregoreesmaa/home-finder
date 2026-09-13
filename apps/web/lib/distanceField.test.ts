@@ -134,16 +134,16 @@ describe("trips-weighted transit", () => {
 
 describe("quiet-kind drainage goodness (G03)", () => {
   // Score = 100·d/(d+halfM): 0 on the source, 50 at halfM. Shared
-  // semantics with the Group 9/GENV quiet specs.
+  // semantics with the B6/G07 quiet branch (one kind, one implementation).
   const quiet: BonusSpec = { kind: "quiet", halfM: 300 };
 
-  it("reads null on the source, ~43 one cell (~231 m) out", () => {
+  it("reads 0 on the source, ~43 one cell (~231 m) out", () => {
     const lon = 24.5 + (50 / 99) * (BBOX.maxlon - BBOX.minlon);
     const lat = 59.35 + (18 / 39) * (BBOX.maxlat - BBOX.minlat);
     const s = buildScoredField([{ lon, lat }], BBOX, 100, 40, 0.3, quiet);
-    // On the water the raw 0 sits below the noise floor: null (renders
-    // red, like the raster's baked 0) — never a faked score.
-    expect(scoredAt(s, 50, 18)).toBeNull();
+    // On the water: 0 (renders red, exactly like the raster's baked 0)
+    // — never a faked score, never null-masked.
+    expect(scoredAt(s, 50, 18)).toBe(0);
     // One node over (~231 m): 100·231/531 ≈ 43.5.
     expect(scoredAt(s, 51, 18)).toBeCloseTo(43.5, 0);
   });
@@ -332,6 +332,26 @@ describe("distance field", () => {
     expect(sampleScored(s, 24.7, 59.42)?.value).toBeLessThanOrEqual(100);
   });
 
+});
+
+describe("quiet calmness fallback (batch B6, #133)", () => {
+  const QUIET: BonusSpec = { kind: "quiet", halfM: 800 };
+
+  it("scores calm far from the source, exposed on it (never inverted)", () => {
+    const s = buildScoredField([{ lon: 0.5, lat: 0.5 }], UNIT, 11, 11, 0.3, QUIET);
+    expect(s.direct).not.toBeNull();
+    const on = scoredAt(s, 5, 5);
+    const far = scoredAt(s, 0, 0);
+    expect(on).not.toBeNull();
+    expect(far).not.toBeNull();
+    // Green FAR (calm), red ON the source — the shared exponential
+    // decay would render this backwards, hence the baked direct field.
+    expect(on as number).toBeLessThan(5);
+    expect(far as number).toBeGreaterThan(on as number);
+  });
+});
+
+describe("field resolution", () => {
   it("resolution adapts to view span and clamps sanely", () => {
     const wide = fieldResolution(
       { minlon: 21.5, minlat: 57.3, maxlon: 28.5, maxlat: 59.9 },
@@ -346,5 +366,34 @@ describe("distance field", () => {
     expect(city.cols).toBeGreaterThanOrEqual(128);
     expect(city.cols).toBeLessThan(wide.cols);
     expect(city.rows).toBeGreaterThan(0);
+  });
+});
+
+describe("quiet-kind cleanliness (G07 env-health)", () => {
+  const QUIET: BonusSpec = { kind: "quiet", halfM: 500 };
+
+  it("reads 0 on the source, ~50 at halfM, near 100 when far", () => {
+    // Source at grid centre; UNIT degree ~ 57x110 km so halfM=500 m is
+    // sub-cell: use a Tallinn-scale bbox instead for real distances.
+    const box: BBoxLike = { minlon: 24.69, minlat: 59.46, maxlon: 24.71, maxlat: 59.47 };
+    const s = buildScoredField([{ lon: 24.7, lat: 59.465 }], box, 41, 41, 0.5, QUIET);
+    expect(scoredAt(s, 20, 20)).toBe(0);
+    const half = sampleScored(s, 24.7 + 0.5 / 57.29, 59.465);
+    expect(half?.value).toBeCloseTo(50, 0);
+    const far = sampleScored(s, 24.69, 59.47);
+    expect(far?.value).toBeGreaterThan(60);
+  });
+
+  it("never exceeds 100 and reads null where nothing is known", () => {
+    const box: BBoxLike = { minlon: 24.69, minlat: 59.46, maxlon: 24.71, maxlat: 59.47 };
+    const s = buildScoredField([{ lon: 24.7, lat: 59.465 }], box, 21, 21, 0.5, QUIET);
+    for (let iy = 0; iy < 21; iy++) {
+      for (let ix = 0; ix < 21; ix++) {
+        expect(scoredAt(s, ix, iy) ?? -1).toBeLessThanOrEqual(100);
+      }
+    }
+    // Points outside the view: the field is all +Inf -> null, never faked.
+    const empty = buildScoredField([{ lon: 0, lat: 0 }], box, 11, 11, 0.5, QUIET);
+    expect(scoredAt(empty, 5, 5)).toBeNull();
   });
 });

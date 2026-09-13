@@ -1,0 +1,6 @@
+{"type": "FeatureCollection", "features": [
+{"type": "Feature", "id": "n101", "properties": {"historic": "manor", "name": "Demo mõis"}, "geometry": {"type": "Point", "coordinates": [24.7454, 59.4374]}},
+{"type": "Feature", "id": "n102", "properties": {"historic": "memorial", "name": "Demo mälestusmärk"}, "geometry": {"type": "Point", "coordinates": [24.75, 59.44]}},
+{"type": "Feature", "id": "w201", "properties": {"historic": "castle", "heritage": "2", "name": "Demo linnus"}, "geometry": {"type": "Polygon", "coordinates": [[[24.76, 59.435], [24.761, 59.435], [24.761, 59.436], [24.76, 59.436], [24.76, 59.435]]]}},
+{"type": "Feature", "id": "n103", "properties": {"shop": "supermarket", "name": "Pood (not G06)"}, "geometry": {"type": "Point", "coordinates": [24.78, 59.44]}}
+]}

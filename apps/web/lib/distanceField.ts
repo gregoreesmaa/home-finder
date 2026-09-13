@@ -222,17 +222,20 @@ export function buildScoredField(
     }
     return { field, bonus, sigmaKm, direct };
   }
+  // B6-HOOK (#133) + G07-HOOK (#140) + G03-HOOK (#151): quiet layers
+  // bake nearest-source calmness/cleanliness/drainage directly
+  // 100·d/(d+halfM) — 0 on the source, 50 at halfM. The shared
+  // proximityValue decay would render them inverted (green ON the
+  // airfield), and without this branch quiet layers would fall into
+  // the variety path below and crash on spec.key. No bonus splat.
+  // droneviab degrades to its clearance leg here (batch4 rideshare
+  // precedent: the raster carries the full two-signal field, the
+  // fallback the honest subset). +Inf stays NaN (unknown, never faked).
   if (spec.kind === "quiet") {
-    // G03-HOOK (#151): nearest-source drainage goodness:
-    // score = 100·d/(d+halfM), 0 on the source, 50 at halfM. Shared
-    // semantics with the Group 9/GENV "quiet" specs (one kind, one
-    // implementation). Unknown (+Inf) stays NaN, never faked; sub-3
-    // scores degrade to null like the area branch.
     const direct = new Float64Array(cols * rows);
     for (let k = 0; k < direct.length; k++) {
-      const dM = field.distKm[k] * 1000;
-      const raw = (100 * dM) / (dM + spec.halfM);
-      direct[k] = Number.isFinite(dM) && raw >= 3 ? Math.min(100, raw) : NaN;
+      const d = field.distKm[k];
+      direct[k] = d === INF ? NaN : Math.min(100, (100 * d * 1000) / (d * 1000 + spec.halfM));
     }
     return { field, bonus, sigmaKm, direct };
   }

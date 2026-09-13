@@ -16,8 +16,16 @@ import { haversineKm } from "../poi";
 import { sampleRaster } from "../walkRaster";
 // B1-HOOK(#98): batch B1 raster files live in layers_batch1.ts.
 import { B1_METRO_PREFIXES, B1_RASTER_FILES } from "../layers_batch1";
-// G03-HOOK(#151): batch G03 raster files live in layers_group03.ts.
+// G03-HOOK(#151): batch G03 raster file lives in layers_group03.ts.
 import { G03_RASTER_FILE } from "../layers_group03";
+// G11C-HOOK(#134): batch G11C raster files live in layers_group11c.ts.
+import { G11C_METRO_PREFIX, G11C_RASTER_FILE } from "../layers_group11c";
+// B6-HOOK(#133): batch B6 raster files live in layers_batch6.ts.
+import { BATCH6_RASTER_FILE } from "../layers_batch6";
+// G07-HOOK(#140): batch G07 raster files live in layers_group07.ts.
+import { G07_RASTER_FILE } from "../layers_group07";
+// G02B-HOOK (#137): lift-proxy raster file lives in ../layers_group02b.
+import { G02B_RASTER_FILE } from "../layers_group02b";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -297,12 +305,22 @@ const RASTER_FILE: Record<LayerId, string> = {
   grocery: "grocery-walk-raster.json",
   healthcare: "healthcare-walk-raster.json",
   ...B1_RASTER_FILES, // B1-HOOK(#98)
+  // G07-HOOK (#140): env-health rasters (built by scripts/build/batch_g07_envhealth.py).
+  ...G07_RASTER_FILE,
   // B5-HOOK (#102): Group 14 rasters (built by scripts/build/batch_b5_safety.py).
   safety: "safety-walk-raster.json",
   emergency: "emergency-walk-raster.json",
   hydrants: "hydrants-walk-raster.json",
   evac: "evac-walk-raster.json",
   dispatch: "dispatch-walk-raster.json",
+  // G11C-HOOK (#134): Group 11 leftover-A rasters (batch_g11c_amenity.py).
+  ...G11C_RASTER_FILE,
+  // B6-HOOK (#133): mobility/access rasters (scripts/build/batch_b6_mobility.py).
+  ...BATCH6_RASTER_FILE,
+  // G06-HOOK (#138): Group 6 raster (built by scripts/build/batch_g06_heritage.py).
+  heritage: "heritage-walk-raster.json",
+  // G02B-HOOK (#137): lift-proxy raster (built by scripts/build/batch_g02b_lift.py).
+  ...G02B_RASTER_FILE,
   // G03-HOOK (#151): drainage raster (scripts/build/batch_g03_cadastre.py).
   ...G03_RASTER_FILE,
 };
@@ -347,20 +365,29 @@ export function matchesContract(
   if (doc.sigma !== radiusKmFor(layer)) return false;
   if (spec.kind === "variety") return doc.per === spec.per && doc.cap === spec.cap;
   if (spec.kind === "area" || spec.kind === "trips") return doc.half === spec.half;
-  // G03-HOOK (#151): "quiet" carries halfM on the wire half field.
+  // B6-HOOK (#133) + G03-HOOK (#151): "quiet" carries halfM on the wire
+  // half field.
+  // G07-HOOK (#140): nearest-source cleanliness (0 on the source, 50 at halfM).
   if (spec.kind === "quiet") return doc.half === spec.halfM;
   return false;
 }
 
 /**
- * Masters stamped with DIRECT distance, not walk time: the G03 drainage
- * proxy field is a smooth Euclidean grid by construction (see its
- * builder). Labeling it "walk" would claim footpath routing the master
- * never used. (Sibling batches extend this set with their own
- * Euclidean-built masters.)
+ * Masters stamped with DIRECT distance, not walk time: airspace cells
+ * radiate through air (drones fly, they do not walk), the rentbleed
+ * pressure field is a smooth Euclidean grid by construction (see the
+ * batch_b6_mobility.py builder), and the G03 drainage proxy field is a
+ * smooth Euclidean grid by construction (see batch_g03_cadastre.py).
+ * Labeling them "walk" would claim footpath routing the master never used.
  */
-// G03-HOOK (#151): Euclidean-built masters ride "euclidean", not "walk".
-const EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["drainage"]);
+// B6-HOOK (#133): Euclidean-by-construction masters.
+const B6_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set([
+  "droneclear",
+  "droneviab",
+  "rentbleed",
+]);
+// G03-HOOK (#151): Euclidean-built drainage master rides "euclidean".
+const G03_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["drainage"]);
 
 export async function loadLayerRaster(
   layer: LayerId,
@@ -368,7 +395,8 @@ export async function loadLayerRaster(
 ): Promise<{ raster: WalkRasterDoc | null; distance: TransitDistance }> {
   const doc = await loadWalkRaster(layer, dir);
   if (doc && matchesContract(doc, layer)) {
-    return { raster: doc, distance: EUCLIDEAN_MASTER.has(layer) ? "euclidean" : "walk" };
+    const euclidean = B6_EUCLIDEAN_MASTER.has(layer) || G03_EUCLIDEAN_MASTER.has(layer);
+    return { raster: doc, distance: euclidean ? "euclidean" : "walk" };
   }
   return { raster: null, distance: "euclidean" };
 }
@@ -384,14 +412,32 @@ const METRO_PREFIX: Record<LayerId, string> = {
   grocery: "grocery-metro",
   healthcare: "healthcare-metro",
   ...B1_METRO_PREFIXES, // B1-HOOK(#98)
+  // G07-HOOK (#140): no metro masters by documented decision (see
+  // layers_group07.ts G07_NO_METRO) — names resolve to absent files so
+  // windows fall back to county cleanly.
+  industprox: "industprox-metro",
+  odorsrc: "odorsrc-metro",
   // B5-HOOK (#102): Group 14 metro masters (optional; windows fall back to county).
   safety: "safety-metro",
   emergency: "emergency-metro",
   hydrants: "hydrants-metro",
   evac: "evac-metro",
   dispatch: "dispatch-metro",
-  // G03-HOOK (#151): no metro master (documented fake precision — the
-  // file is absent, so windows serve county everywhere, like B5).
+  // G11C-HOOK (#134): county-only layers (no metro masters; windows fall
+  // back to county cleanly, B5 precedent).
+  ...G11C_METRO_PREFIX,
+  // B6-HOOK (#133): no metro masters (documented fake precision — the
+  // files are absent, so windows serve county everywhere, like B5).
+  droneclear: "droneclear-metro",
+  droneviab: "droneviab-metro",
+  rentbleed: "rentbleed-metro",
+  // G06-HOOK (#138): Group 6 metro master (optional; county-only like B5).
+  heritage: "heritage-metro",
+  // G02B-HOOK (#137): no liftproxy metro master (documented fake
+  // precision — the file is absent, so windows serve county everywhere).
+  liftproxy: "liftproxy-metro",
+  // G03-HOOK (#151): no drainage metro master (documented fake precision
+  // — the file is absent, so windows serve county everywhere, like B5).
   drainage: "drainage-metro",
 };
 
@@ -610,7 +656,8 @@ export async function loadWindowRaster(
     rows: outRows,
     bbox: view,
     step_m: stepM,
-    // G03-HOOK (#151): "quiet" specs carry halfM, not half.
+    // B6-HOOK (#133) + G03-HOOK (#151): "quiet" specs carry halfM, not half.
+    // G07-HOOK (#140): quiet specs carry halfM, not half.
     half:
       spec.kind === "variety"
         ? null

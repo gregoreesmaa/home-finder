@@ -28,12 +28,12 @@ Model (locked 2026-09-12 from snapshot probes at Balti / Viru /
 Kadriorg / Oismae / Lasnamae / Viimsi / rural / airport / Kalamaja /
 Kopli / Nomme / Pirita):
 * drainage (p50): exact full-grid 8-connectivity Dijkstra distance to
-  the nearest source cell, score = 100*d/(d+300). Probes (with sea):
-  Kadriorg pond 41 m -> 12, Pirita river 104 m -> 26, Balti 159 m ->
-  35, Viru 291 m -> 49, Lasnamae ditches 305 m -> 50, Nomme 507 m ->
-  63, Oismae 532 m -> 64, Viimsi shore 429 m -> 59, rural 669 m -> 69.
-  The city spreads mid-ramp instead of blobbing; the sea keeps
-  Kalamaja/Kopli/Pirita honestly low (low fill near the bay).
+  the nearest source cell, score = 100*d/(d+300). Measured county-
+  raster reads (--probe, 2026-09-12 full build): Kadriorg 0 (probe
+  point sits on pond water), Pirita 20, Balti 33, airport 38, Kopli
+  46, Viru 52, Lasnamae 52, Kalamaja 55, Viimsi 61, Nomme 64,
+  Oismae 64, rural 70. The city spreads mid-ramp instead of
+  blobbing; the sea keeps Pirita/Kalamaja/Kopli honestly low.
 
 Sources (predicate verified on the snapshot extract): natural=coastline
 (sea shore — WITHOUT this the coast reads dry, the exact failure
