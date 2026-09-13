@@ -33,6 +33,13 @@ import {
 import { isStatKovLayerId } from "../../lib/layers_statkov";
 // MARUKOV-HOOK (#486): choropleth distance-suffix skip (see sourceNote).
 import { isMaruKovLayerId } from "../../lib/layers_maru";
+// FLOOD-HOOK (#487): floodzone paints KAUR zone polygons (polygons only,
+// never a gradient) instead of points.
+import {
+  fetchFloodAreas,
+  isPolygonOnlyLayer,
+  type FloodArea,
+} from "../../lib/layers_flood";
 
 /** Viewport bbox rounded for fetch stability (matches server key rounding). */
 function sameView(a: BBoxLike, b: BBoxLike): boolean {
@@ -157,6 +164,25 @@ export default function LayersPage() {
     };
   }, [layer]);
 
+  // FLOOD-HOOK (#487): KAUR zone polygons (floodzone layer only, fetched
+  // once per selection): the choropleth itself — inside a named polygon
+  // vs outside/unknown. No points and no score field are painted for
+  // this layer, by design (polygons only, never a gradient).
+  const [floodAreas, setFloodAreas] = useState<FloodArea[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!isPolygonOnlyLayer(layer)) {
+      setFloodAreas(null);
+      return;
+    }
+    fetchFloodAreas().then((areas) => {
+      if (!cancelled) setFloodAreas(areas);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [layer]);
+
   // Density layers (walkability/pedinfra/cycling) have no snapshot
   // points: their overlay is a viewport-capped foot-graph sample that
   // refetches with the view, same cadence as the points path. Point
@@ -180,20 +206,32 @@ export default function LayersPage() {
   const [overlayOn, setOverlayOn] = useState<Partial<Record<LayerId, boolean>>>({});
   const showOverlay = overlayOn[layer] !== false;
   const pointOverlay: OverlayPoint[] | null =
-    layer === "parks"
+    // FLOOD-HOOK (#487): floodzone paints polygons, never point markers.
+    layer === "parks" || isPolygonOnlyLayer(layer)
       ? null
       : needsGraphOverlay(layer)
         ? graphPoints
         : selectOverlayPoints(featurePoints ?? [], layer);
-  const overlayCount =
-    layer === "parks" ? (outlines?.length ?? 0) : (pointOverlay?.length ?? 0);
+  const overlayCount = isPolygonOnlyLayer(layer)
+    ? (floodAreas?.length ?? 0)
+    : layer === "parks"
+      ? (outlines?.length ?? 0)
+      : (pointOverlay?.length ?? 0);
 
   // P4-031-HOOK (#484): bands-layer points ride the sensor.community
   // extract, not the OSM snapshot — the status names the extract (+ its
   // age) instead of the snapshot date.
   const isBands = bonusSpecFor(layer).kind === "bands";
+  // FLOOD-HOOK (#487): floodzone status counts polygons, never points —
+  // the layer serves zero points by design (polygons only).
+  const floodStatus =
+    floodAreas === null
+      ? "Laadin KAUR tsoone…"
+      : `KAUR üleujutusohuga alad · ${floodAreas.length} tsooni (väljaspool = teadmata, mitte kuiv)`;
   const base =
-    provenance === null
+    isPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
+      ? floodStatus
+      : provenance === null
       ? "Laadin kihi andmeid…"
       : provenance === "snapshot"
         ? pointCount > 0 || !raster
@@ -262,6 +300,7 @@ export default function LayersPage() {
         bonus={bonusSpecFor(layer)}
         raster={raster}
         outlines={outlines}
+        floodAreas={floodAreas}
         overlayPoints={pointOverlay}
         overlayColor={overlayColorFor(layer)}
         overlayLegend={overlayLegendFor(layer)}
@@ -276,7 +315,12 @@ export default function LayersPage() {
           // STATKOV-HOOK (#485): choropleth fields are exact KOV fills,
           // not distances -- skip the otsekaugus/varu suffix for them.
           // MARUKOV-HOOK (#486): same skip for the MARU KOV fills.
-          (isStatKovLayerId(layer) || isMaruKovLayerId(layer)
+          // FLOOD-HOOK (#487): floodzone paints no field at all (zero
+          // points, null raster) -- "varu" would claim a fallback splat
+          // exists. Skip the suffix for polygon-only layers too.
+          (isStatKovLayerId(layer) ||
+            isMaruKovLayerId(layer) ||
+            isPolygonOnlyLayer(layer)
             ? ""
             : distance === "euclidean" && provenance === "snapshot"
               ? raster

@@ -16,6 +16,8 @@ import {
   tileForView,
   type BBoxLike,
 } from "./layers";
+// FLOOD-HOOK (#487): polygons-only carve-out for the fallback assertion.
+import { isPolygonOnlyLayer } from "./layers_flood";
 
 const TALLINN_BBOX: BBoxLike = { minlon: 24.5, minlat: 59.35, maxlon: 24.9, maxlat: 59.5 };
 
@@ -159,6 +161,9 @@ describe("layer registry", () => {
       "kovkaive",
       "kovedas",
       "kovkiirus",
+      // FLOOD-HOOK (#487): flood-risk polygon overlay id (p112 floodzone,
+      // KAUR zone-membership choropleth, polygons only).
+      "floodzone",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -498,7 +503,12 @@ describe("layer registry", () => {
       expect(l.goodLabel.length).toBeGreaterThan(0);
       expect(l.badLabel.length).toBeGreaterThan(0);
       expect(l.source.length).toBeGreaterThan(0);
-      expect(l.fallbackPoints.length).toBeGreaterThan(0);
+      // FLOOD-HOOK (#487): polygons-only layers carry NO demo points — a
+      // demo point would paint a fake gradient splat (pinned by
+      // layers_flood.test.ts). Every other layer keeps fallback points.
+      if (!isPolygonOnlyLayer(l.id)) {
+        expect(l.fallbackPoints.length).toBeGreaterThan(0);
+      }
     }
   });
 });

@@ -54,7 +54,8 @@ describe("gtfsstops registry (#483)", () => {
     // STATKOV-HOOK (#485): +3 choropleth layers (86 + 3).
     // P4PARK-HOOK (#479): +1 parking layer (89 + 1).
     // MARUKOV-HOOK (#486): +4 MARU KOV choropleths (90 + 4).
-    expect(ids.length).toBe(94);
+    // FLOOD-HOOK (#487): +1 flood-risk polygon overlay (89 + 1). (94 + 1).
+    expect(ids.length).toBe(95);
   });
 
   it("labels schedules honestly in Estonian (never ridership)", () => {

@@ -1,4 +1,5 @@
 import type { ParkOutline } from "./layers";
+import type { FloodArea } from "./layers_flood";
 import type { OverlayPoint } from "./overlays";
 
 /** Minimal map surface for vector overlays (sources + paint layers). */
@@ -15,20 +16,28 @@ export interface OutlineMap {
 const PARK_SRC = "park-outlines";
 const PARK_CASING = "park-outline-casing";
 const PARK_CORE = "park-outline-core";
+// FLOOD-HOOK (#487): flood-zone polygon slot (choropleth fills, never a
+// gradient). Clearing covers these ids too — one overlay slot paints
+// either kind, never stacks (see clearVectorOverlays).
+const FLOOD_SRC = "flood-zone-polys";
+const FLOOD_FILL = "flood-zone-fill";
+const FLOOD_CASING = "flood-zone-casing";
 const POINT_SRC = "layer-overlay-src";
 const POINT_CASING = "layer-overlay-casing";
 const POINT_CORE = "layer-overlay-core";
 
-/** One overlay slot: painting either kind clears the other, never stacks. */
+/** One overlay slot: painting any kind clears the others, never stacks. */
 export function clearVectorOverlays(mapObj: OutlineMap): void {
-  for (const id of [PARK_CASING, PARK_CORE, POINT_CASING, POINT_CORE]) {
+  // FLOOD-HOOK (#487): flood fill + casing join the cleared slot.
+  for (const id of [PARK_CASING, PARK_CORE, POINT_CASING, POINT_CORE, FLOOD_FILL, FLOOD_CASING]) {
     try {
       if (mapObj.getLayer(id)) mapObj.removeLayer(id);
     } catch {
       /* already gone */
     }
   }
-  for (const id of [PARK_SRC, POINT_SRC]) {
+  // FLOOD-HOOK (#487): flood source joins the cleared slot.
+  for (const id of [PARK_SRC, POINT_SRC, FLOOD_SRC]) {
     try {
       if (mapObj.getSource(id)) mapObj.removeSource(id);
     } catch {
@@ -193,6 +202,81 @@ export function applyPointOverlay(
         "circle-color": opts.color,
         "circle-opacity": 0.9,
       },
+    },
+    before,
+  );
+}
+
+// FLOOD-HOOK (#487): KAUR flood-zone choropleth fills.
+
+/**
+ * Paint flood-zone polygons (translucent blue fill + white casing) so
+ * the inside-a-named-zone vs honestly-unknown-outside boundary reads at
+ * a glance. This is a CHOROPLETH, never a gradient: membership is binary
+ * per parcel (centre and edge of a polygon read alike — the scorer pins
+ * that), and no score field is painted anywhere. Clears stale overlay
+ * layers first; no-op when the style is not loaded yet or areas is
+ * nullish. Malformed rings are skipped, never faked.
+ */
+export function applyFloodPolygons(
+  mapObj: OutlineMap,
+  areas: FloodArea[] | null | undefined,
+  opts: { color: string },
+): void {
+  if (!mapObj.getStyle()) return;
+  clearVectorOverlays(mapObj);
+  if (!areas || areas.length === 0) return;
+  const features = [];
+  for (const a of areas) {
+    if (!a || !Array.isArray(a.r)) continue;
+    const polys = [];
+    for (const ring of a.r) {
+      if (!Array.isArray(ring) || ring.length < 3) continue;
+      const pts = ring.filter(
+        (pt) =>
+          Array.isArray(pt) &&
+          pt.length === 2 &&
+          pt.every((n) => typeof n === "number" && Number.isFinite(n)),
+      );
+      if (pts.length < 3) continue;
+      const first = pts[0];
+      const last = pts[pts.length - 1];
+      const closed =
+        first[0] === last[0] && first[1] === last[1] ? pts : [...pts, [first[0], first[1]]];
+      polys.push([closed]);
+    }
+    if (polys.length === 0) continue;
+    features.push({
+      type: "Feature",
+      properties: { nimi: typeof a.nimi === "string" ? a.nimi : "" },
+      geometry: { type: "MultiPolygon", coordinates: polys },
+    });
+  }
+  if (features.length === 0) return;
+  mapObj.addSource(FLOOD_SRC, {
+    type: "geojson",
+    data: { type: "FeatureCollection", features },
+  });
+  const before = abovePaint(mapObj);
+  mapObj.addLayer(
+    {
+      id: FLOOD_FILL,
+      type: "fill",
+      source: FLOOD_SRC,
+      paint: {
+        "fill-color": opts.color,
+        "fill-opacity": 0.25,
+        "fill-outline-color": opts.color,
+      },
+    },
+    before,
+  );
+  mapObj.addLayer(
+    {
+      id: FLOOD_CASING,
+      type: "line",
+      source: FLOOD_SRC,
+      paint: { "line-color": "#ffffff", "line-width": 2, "line-opacity": 0.9 },
     },
     before,
   );

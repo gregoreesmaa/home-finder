@@ -440,6 +440,14 @@ export function overlayColorFor(layer: LayerId): string {
       return "#a855f7";
     case "kovkiirus":
       return "#ef4444";
+    // FLOOD-HOOK (#487): floodzone polygon fill (choropleth, never a
+    // gradient). #1e3a8a: blue-900 deep flood water (NOT #1e40af —
+    // taken by drainage — and NOT #0c4a6e — taken by moorage — and NOT
+    // #0ea5e9 — taken by saltspray — and NOT #7dd3fc — taken by
+    // skyview — and NOT #3b82f6 — taken by kovmigr). Distinct from
+    // every other marker (distinct-color test).
+    case "floodzone":
+      return "#1e3a8a";
   }
 }
 
@@ -748,6 +756,12 @@ export function overlayLegendFor(layer: LayerId): string {
       return "KOV sügavus + suund (hinnang: 70/55/50/35; poolik jalapaar EI OLE, maaklerivõrdlus EI OLE)";
     case "kovkiirus":
       return "KOV käibe QoQ-muutus % (NÕRK hinnang, lagi 70: +10→70, −10→55, muidu 40; laoseis EI OLE)";
+    // FLOOD-HOOK (#487): floodzone (p112, KAUR choropleth) — named zone
+    // fills, never a gradient. The outside-unknown caveat rides along
+    // (OTA PR #131 precedent): outside every polygon is teadmata, never
+    // dry — the register carries no T-bands and zero Tallinn polygons.
+    case "floodzone":
+      return "KAUR üleujutusohuga alad · tsoonis = hinnang (nimeline polügoon), väljaspool = teadmata, mitte kuiv (T-bändid ja Tallinna polügoonid registris puuduvad)";
   }
 }
 
