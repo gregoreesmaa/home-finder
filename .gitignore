@@ -14,3 +14,9 @@ __pycache__/
 .DS_Store
 .env
 .env.local
+# Live local secrets / agent scratch — never committed (AGENTS.md §5;
+# docs/p4_streetimg.md pairing notes). The OpenCellID token is consumed
+# manually (see scripts/build/batch_mobile_import.py docstring);
+# .agents/ is local multi-agent memory.
+opencellid.token
+.agents/
