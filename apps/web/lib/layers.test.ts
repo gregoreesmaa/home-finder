@@ -153,6 +153,12 @@ describe("layer registry", () => {
       "kovfisc",
       // P4PARK-HOOK (#479): P4 OSM parking id (P4-013 bays+lots proxy).
       "parking",
+      // MARUKOV-HOOK (#486): MARU per-KOV choropleth ids (p41 kovkasv +
+      // p149 kovkaive + p43 kovedas + p484 kovkiirus; p421 refused).
+      "kovkasv",
+      "kovkaive",
+      "kovedas",
+      "kovkiirus",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -189,6 +195,12 @@ describe("layer registry", () => {
     for (const id of ["kovmigr", "kovehit", "kovfisc"]) {
       expect(LAYERS.find((l) => l.id === id)?.paramIds).toEqual([]);
     }
+    // MARUKOV-HOOK (#486): MARU layers bind the flipped G16 numbers
+    // (parameters3 audit params, overturn #241 verdict).
+    expect(LAYERS.find((l) => l.id === "kovkasv")?.paramIds).toEqual([41]);
+    expect(LAYERS.find((l) => l.id === "kovkaive")?.paramIds).toEqual([149]);
+    expect(LAYERS.find((l) => l.id === "kovedas")?.paramIds).toEqual([43]);
+    expect(LAYERS.find((l) => l.id === "kovkiirus")?.paramIds).toEqual([484]);
   });
 
   it("wires the B10C utility layers with locked calibration", () => {

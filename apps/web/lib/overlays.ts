@@ -420,6 +420,26 @@ export function overlayColorFor(layer: LayerId): string {
     // from every other marker (distinct-color test).
     case "parking":
       return "#1f2937";
+    // MARUKOV-HOOK (#486): choropleth colors (registry contract --
+    // these layers are raster-only exact fills with NO point markers,
+    // so the overlay slot stays empty and the toggle reads (0); the
+    // raster holds the full field). #22c55e: green-500 new-growth
+    // green (NOT #16a34a -- taken by agrifield -- and NOT #4ade80 --
+    // taken by gardens); #6366f1: indigo-500 ledger-flow indigo (NOT
+    // #4f46e5 -- taken by community); #a855f7: purple-500 resale
+    // purple (NOT #9333ea -- taken by schools -- and NOT #7c3aed --
+    // taken by herd -- and NOT #8b5cf6 -- taken by gtfsstops);
+    // #ef4444: red-500 market-pulse red (NOT #dc2626 -- taken by
+    // safety -- and NOT #f43f5e; NOT #06b6d4 -- taken by senscom).
+    // All distinct from every other marker (distinct-color test).
+    case "kovkasv":
+      return "#22c55e";
+    case "kovkaive":
+      return "#6366f1";
+    case "kovedas":
+      return "#a855f7";
+    case "kovkiirus":
+      return "#ef4444";
   }
 }
 
@@ -716,6 +736,18 @@ export function overlayLegendFor(layer: LayerId): string {
     // raster holds the full count field.
     case "parking":
       return "Kaardistatud parklad (taskud + platsid) · lähedaste arv (asukoha-hinnang, küllastus 75, vabade kohtade arv ega elanikuluba pole)";
+    // MARUKOV-HOOK (#486): choropleth legends (p41/p149/p43/p484) --
+    // each KOV one flat colour off its quarterly MARU band; rida/paar
+    // puudu = EI OLE (punane = halb VÕI tundmatu, mitte null-hinne).
+    // No markers: the legend describes the fills, the toggle reads (0).
+    case "kovkasv":
+      return "KOV mediaanhinna aastakasv YoY% (hinnang: −5→75, 0→65, +5→50, +10→40, muidu 30; paaritu KOV EI OLE)";
+    case "kovkaive":
+      return "KOV kvartali tehingute arv (hinnang: 300→80, 100→65, 30→50, muidu 35; rida puudu EI OLE)";
+    case "kovedas":
+      return "KOV sügavus + suund (hinnang: 70/55/50/35; poolik jalapaar EI OLE, maaklerivõrdlus EI OLE)";
+    case "kovkiirus":
+      return "KOV käibe QoQ-muutus % (NÕRK hinnang, lagi 70: +10→70, −10→55, muidu 40; laoseis EI OLE)";
   }
 }
 

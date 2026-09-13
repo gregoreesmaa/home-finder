@@ -401,6 +401,16 @@ import {
   P4PARK_TAGS,
   bonusSpecForP4Parking,
 } from "./layers_p4_parking";
+// MARUKOV-HOOK (#486): MARU per-KOV market choropleth tables live in
+// ./layers_maru (p41/p149/p43/p484 exact KOV fills; p421 refused).
+// That module imports layers only as types, so no runtime cycle.
+import type { MaruKovLayerId } from "./layers_maru";
+import {
+  MARUKOV_DECAY,
+  MARUKOV_DEFS,
+  MARUKOV_TAGS,
+  bonusSpecForMaruKov,
+} from "./layers_maru";
 
 export type LayerId =
   | "parks"
@@ -484,7 +494,10 @@ export type LayerId =
   // (./layers_statkov).
   | StatKovLayerId
   // P4PARK-HOOK (#479): P4 OSM parking id (./layers_p4_parking).
-  | P4ParkingLayerId;
+  | P4ParkingLayerId
+  // MARUKOV-HOOK (#486): MARU per-KOV market choropleth ids
+  // (./layers_maru).
+  | MaruKovLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -654,6 +667,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...STATKOV_DECAY,
   // P4PARK-HOOK (#479): parking radius (see layers_p4_parking.ts P4PARK_DECAY).
   ...P4PARK_DECAY,
+  // MARUKOV-HOOK (#486): choropleth fallback widths (see layers_maru.ts).
+  ...MARUKOV_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -836,6 +851,8 @@ export const LAYERS: LayerDef[] = [
   ...STATKOV_DEFS,
   // P4PARK-HOOK (#479): parking def (P4-013 bays+lots proxy) from ./layers_p4_parking.
   ...P4PARK_DEFS,
+  // MARUKOV-HOOK (#486): choropleth defs (p41/p149/p43/p484) from ./layers_maru.
+  ...MARUKOV_DEFS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -929,6 +946,8 @@ const TAGS: Record<LayerId, string> = {
   ...STATKOV_TAGS,
   // P4PARK-HOOK (#479): parking query (see layers_p4_parking.ts P4PARK_TAGS).
   ...P4PARK_TAGS,
+  // MARUKOV-HOOK (#486): KOV polygon queries (see layers_maru.ts MARUKOV_TAGS).
+  ...MARUKOV_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -1227,6 +1246,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // P4PARK-HOOK (#479): parking spec lives in ./layers_p4_parking.
   const p4park = bonusSpecForP4Parking(layer);
   if (p4park) return p4park;
+  // MARUKOV-HOOK (#486): choropleth specs live in ./layers_maru.
+  const marukov = bonusSpecForMaruKov(layer);
+  if (marukov) return marukov;
   throw new Error(`unknown layer: ${layer}`);
 }
 

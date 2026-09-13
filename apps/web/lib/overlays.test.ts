@@ -110,7 +110,8 @@ describe("overlay legend + colors", () => {
     // P4-031-HOOK (#484): senscom joins the registry.
     // STATKOV-HOOK (#485): kovmigr + kovehit + kovfisc join the registry (86 + 3).
     // P4PARK-HOOK (#479): parking joins the registry. (89 + 1).
-    expect(ids).toHaveLength(90);
+    // MARUKOV-HOOK (#486): kovkasv + kovkaive + kovedas + kovkiirus join the registry (90 + 4).
+    expect(ids).toHaveLength(94);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -286,6 +287,12 @@ describe("overlay legend + colors", () => {
     // P4PARK-HOOK (#479): parking joins the registry.
     expect(overlayLegendFor("parking")).toContain("küllastus 75");
     expect(overlayLegendFor("parking")).toContain("hinnang");
+    // MARUKOV-HOOK (#486): choropleth bands (see MARUKOV_BANDS).
+    expect(overlayLegendFor("kovkasv")).toContain("hinnang");
+    expect(overlayLegendFor("kovkasv")).toContain("EI OLE");
+    expect(overlayLegendFor("kovkaive")).toContain("hinnang");
+    expect(overlayLegendFor("kovedas")).toContain("EI OLE");
+    expect(overlayLegendFor("kovkiirus")).toContain("lagi 70");
   });
 
   it("gives every layer a distinct marker color", () => {
@@ -312,7 +319,8 @@ describe("overlay legend + colors", () => {
     // P4-031-HOOK (#484): senscom joins the registry.
     // STATKOV-HOOK (#485): kovmigr + kovehit + kovfisc join the registry (86 + 3).
     // P4PARK-HOOK (#479): parking joins the registry. (89 + 1).
-    expect(seen.size).toBe(90);
+    // MARUKOV-HOOK (#486): kovkasv + kovkaive + kovedas + kovkiirus join the registry (90 + 4).
+    expect(seen.size).toBe(94);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

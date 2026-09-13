@@ -31,6 +31,8 @@ import {
 } from "../../lib/overlays";
 // STATKOV-HOOK (#485): choropleth distance-suffix skip (see sourceNote).
 import { isStatKovLayerId } from "../../lib/layers_statkov";
+// MARUKOV-HOOK (#486): choropleth distance-suffix skip (see sourceNote).
+import { isMaruKovLayerId } from "../../lib/layers_maru";
 
 /** Viewport bbox rounded for fetch stability (matches server key rounding). */
 function sameView(a: BBoxLike, b: BBoxLike): boolean {
@@ -273,7 +275,8 @@ export default function LayersPage() {
           `Allikas: ${def.source}` +
           // STATKOV-HOOK (#485): choropleth fields are exact KOV fills,
           // not distances -- skip the otsekaugus/varu suffix for them.
-          (isStatKovLayerId(layer)
+          // MARUKOV-HOOK (#486): same skip for the MARU KOV fills.
+          (isStatKovLayerId(layer) || isMaruKovLayerId(layer)
             ? ""
             : distance === "euclidean" && provenance === "snapshot"
               ? raster
