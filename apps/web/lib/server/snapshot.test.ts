@@ -898,4 +898,53 @@ describe("G07D quiet rasters (agrifield/wildcorr)", () => {
     }
   });
 });
+
+describe("G07C quiet raster (vectorhabitat, #142)", () => {
+  // G07C-HOOK(#142): quiet kind echoes halfM 300 on the wire half slot.
+  const rasterDoc = (contract: { half?: number | null; sigma: number }) => ({
+    cols: 2,
+    rows: 2,
+    bbox: { minlon: 24.0, minlat: 59.0, maxlon: 24.2, maxlat: 59.1 },
+    step_m: 75,
+    half: contract.half ?? null,
+    sigma: contract.sigma,
+    per: 0,
+    cap: 0,
+    unknown: 255,
+    dtype: "uint8",
+    data: Buffer.from([80, 255, 40, 60]).toString("base64"),
+  });
+
+  it("serves the vectorhabitat raster under the quiet contract (halfM on half)", async () => {
+    const dir = await fixtureDir(
+      [{ lat: 59.3862, lon: 24.6611, tags: { natural: "wood" } }],
+      "vectorhabitat",
+    );
+    await writeFile(
+      join(dir, "osm", "vectorhabitat-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 300, sigma: 0.3 })),
+    );
+    try {
+      const res = await loadLayerRaster("vectorhabitat", dir);
+      expect(res.distance).toBe("walk");
+      expect(res.raster?.half).toBe(300);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+    // Wrong halfM: rejected, never silently rendered.
+    const stale = await fixtureDir([{ lat: 59.3862, lon: 24.6611 }], "vectorhabitat");
+    await writeFile(
+      join(stale, "osm", "vectorhabitat-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 500, sigma: 0.3 })),
+    );
+    try {
+      expect(await loadLayerRaster("vectorhabitat", stale)).toEqual({
+        raster: null,
+        distance: "euclidean",
+      });
+    } finally {
+      await rm(stale, { recursive: true, force: true });
+    }
+  });
+});
 });
