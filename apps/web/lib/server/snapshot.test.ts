@@ -457,6 +457,48 @@ describe("layer walk rasters", () => {
     }
   });
 
+  it("serves G08B windtunnel + saltspray rasters under the quiet contract", async () => {
+    // G08B-HOOK (#168): windtunnel quiet contract (halfM 200 on the
+    // wire as half, sigma 0.2); Euclidean-built like drainage. A stale
+    // half is rejected.
+    const wdir = await fixtureDir([{ lat: 59.412, lon: 24.655 }], "windtunnel");
+    await writeFile(
+      join(wdir, "osm", "windtunnel-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 200, sigma: 0.2 })),
+    );
+    try {
+      const res = await loadLayerRaster("windtunnel", wdir);
+      expect(res.distance).toBe("euclidean");
+      expect(res.raster?.half).toBe(200);
+    } finally {
+      await rm(wdir, { recursive: true, force: true });
+    }
+    // G08B-HOOK (#168): saltspray quiet contract (halfM 500 on the
+    // wire as half, sigma 0.5); Euclidean-built like shoredist.
+    const sdir = await fixtureDir([{ lat: 59.468, lon: 24.821 }], "saltspray");
+    await writeFile(
+      join(sdir, "osm", "saltspray-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 500, sigma: 0.5 })),
+    );
+    try {
+      const res = await loadLayerRaster("saltspray", sdir);
+      expect(res.distance).toBe("euclidean");
+      expect(res.raster?.half).toBe(500);
+    } finally {
+      await rm(sdir, { recursive: true, force: true });
+    }
+    const stale = await fixtureDir([{ lat: 59.468, lon: 24.821 }], "saltspray");
+    await writeFile(
+      join(stale, "osm", "saltspray-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 100, sigma: 0.5 })),
+    );
+    try {
+      expect(await loadLayerRaster("saltspray", stale)).toEqual({ raster: null, distance: "euclidean" });
+    } finally {
+      await rm(stale, { recursive: true, force: true });
+    }
+  });
+
   it("serves grocery and walkability rasters under the area contract", async () => {
     const gdir = await fixtureDir([{ lat: 59.44, lon: 24.75, a: 1 }], "grocery");
     await writeFile(

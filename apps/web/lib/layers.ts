@@ -104,6 +104,16 @@ import {
   GROUP08C_TAGS,
   bonusSpecForGroup08C,
 } from "./layers_group08c";
+// G08B-HOOK(#168): batch G08B (Group 8 flood/climate-B windtunnel +
+// saltspray) tables live in ./layers_group08b (new file). That module
+// imports layers only as types, so no runtime cycle.
+import type { Group08BLayerId } from "./layers_group08b";
+import {
+  GROUP08B_DECAY,
+  GROUP08B_LAYERS,
+  GROUP08B_TAGS,
+  bonusSpecForGroup08B,
+} from "./layers_group08b";
 // G11D-HOOK(#135): batch G11D (Group 11 leftovers B: p346/p470/p419/p466;
 // p317 is a documented no-map) tables live in ./layers_group11d (new
 // file). That module imports layers only as types, so no runtime cycle.
@@ -232,7 +242,9 @@ export type LayerId =
   // G08D-HOOK (#170): Group 8 flood/climate-D id (./layers_group08d).
   | G08DLayerId
   // G08C-HOOK (#169): Group 8 flood/climate-C ids (./layers_group08c).
-  | Group08CLayerId;
+  | Group08CLayerId
+  // G08B-HOOK (#168): Group 8 flood/climate-B ids (./layers_group08b).
+  | Group08BLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -343,6 +355,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...G08D_DECAY_KM,
   // G08C-HOOK (#169): surgeroad + slidebuf radii (see layers_group08c.ts GROUP08C_DECAY).
   ...GROUP08C_DECAY,
+  // G08B-HOOK (#168): windtunnel + saltspray radii (see layers_group08b.ts GROUP08B_DECAY).
+  ...GROUP08B_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -483,6 +497,8 @@ export const LAYERS: LayerDef[] = [
   ...G08D_LAYERS,
   // G08C-HOOK (#169): surgeroad (p334) + slidebuf (p336) defs from ./layers_group08c.
   ...GROUP08C_LAYERS,
+  // G08B-HOOK (#168): windtunnel (p255) + saltspray (p333) defs from ./layers_group08b.
+  ...GROUP08B_LAYERS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -536,6 +552,8 @@ const TAGS: Record<LayerId, string> = {
   ...G08D_TAGS,
   // G08C-HOOK (#169): surgeroad + slidebuf queries (see layers_group08c.ts GROUP08C_TAGS).
   ...GROUP08C_TAGS,
+  // G08B-HOOK (#168): windtunnel + saltspray queries (see layers_group08b.ts GROUP08B_TAGS).
+  ...GROUP08B_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -731,6 +749,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // G08C-HOOK (#169): surgeroad + slidebuf specs live in ./layers_group08c.
   const g08c = bonusSpecForGroup08C(layer);
   if (g08c) return g08c;
+  // G08B-HOOK (#168): windtunnel + saltspray specs live in ./layers_group08b.
+  const g08b = bonusSpecForGroup08B(layer);
+  if (g08b) return g08b;
   throw new Error(`unknown layer: ${layer}`);
 }
 
