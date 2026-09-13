@@ -80,6 +80,9 @@ import { OSMDAILY_RASTER_FILE } from "../layers_osmdaily";
 import { GTFSSTOPS_RASTER_FILE } from "../layers_gtfsstops";
 // RSAFE-HOOK (#481): road-safety raster file lives in layers_roadsafety.ts.
 import { RSAFE_RASTER_FILE } from "../layers_roadsafety";
+// P4-031-HOOK (#484): senscom raster filename lives in
+// layers_p4_senscom.ts (intentionally never built — SENSCOM_NO_RASTER).
+import { SENSCOM_RASTER_FILE } from "../layers_p4_senscom";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -431,6 +434,10 @@ const RASTER_FILE: Record<LayerId, string> = {
   ...GTFSSTOPS_RASTER_FILE,
   // RSAFE-HOOK (#481): roadsafety raster (scripts/build/batch_rsafety_osm.py).
   ...RSAFE_RASTER_FILE,
+  // P4-031-HOOK (#484): senscom raster name (never built by decision —
+  // the points-splat band kernel IS the field, see SENSCOM_NO_RASTER;
+  // the name resolves to an absent file so rasters degrade to null).
+  ...SENSCOM_RASTER_FILE,
 };
 
 /**
@@ -492,6 +499,10 @@ export function matchesContract(
   // on the wire (the measured ranges ARE the calibration); sigma must
   // still match the Euclidean fallback kernel width.
   if (spec.kind === "cover") return doc.half === null && doc.sigma === spec.sigma;
+  // P4-031-HOOK (#484): "bands" (senscom) has no raster master by
+  // documented decision (SENSCOM_NO_RASTER) — any raster on disk is
+  // stale by definition and must never render under the band legend.
+  if (spec.kind === "bands") return false;
   return false;
 }
 
@@ -788,6 +799,10 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // precision — the file is absent, so windows serve county
   // everywhere, like G02B/G03/G03D/G08B/G05C/G05E).
   roadsafety: "roadsafety-metro",
+  // P4-031-HOOK (#484): no senscom metro master (no county master
+  // either — SENSCOM_NO_RASTER; the name resolves to an absent file so
+  // windows fall back to the client points-splat band kernel).
+  senscom: "senscom-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

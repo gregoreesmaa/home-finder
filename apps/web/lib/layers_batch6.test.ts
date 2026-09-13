@@ -62,7 +62,7 @@ describe("batch B6 registry (#133)", () => {
     // G17A-HOOK (#177): compost + gritbin + leafdrop join the registry.
     // G17B-HOOK (#178): lawncare joins the registry.
     // G17R-HOOK (#196): privroad joins the registry.
-    expect(ids.length).toBe(85); // OSMDAILY-HOOK (#482): +6 daily-life layers (77 + 6) + GTFS-HOOK (#483): +1 stop overlay; RSAFE-HOOK (#481): +1 road-safety layer (84 + 1)
+    expect(ids.length).toBe(86); // OSMDAILY-HOOK (#482): +6 daily-life layers (77 + 6) + GTFS-HOOK (#483): +1 stop overlay; RSAFE-HOOK (#481): +1 road-safety layer; P4-031-HOOK (#484): +senscom (85 + 1)
     for (const id of BATCH6_LAYER_IDS) expect(ids).toContain(id);
   });
 

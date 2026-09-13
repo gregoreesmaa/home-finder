@@ -370,6 +370,17 @@ import {
   RSAFE_TAGS,
   bonusSpecForRsafe,
 } from "./layers_roadsafety";
+// P4-031-HOOK (#484): senscom DIY-air overlay (P4-031 slice) tables live
+// in ./layers_p4_senscom (new file). That module imports layers only as
+// types, so no runtime cycle.
+import type { SenscomLayerId } from "./layers_p4_senscom";
+import {
+  SENSCOM_DECAY_KM,
+  SENSCOM_LAYERS,
+  SENSCOM_TAGS,
+  isSenscomLayerId,
+  senscomBonusSpecFor,
+} from "./layers_p4_senscom";
 
 export type LayerId =
   | "parks"
@@ -446,7 +457,9 @@ export type LayerId =
   // GTFS-HOOK (#483): GTFS stop overlay id (./layers_gtfsstops).
   | GtfsstopsLayerId
   // RSAFE-HOOK (#481): road-safety id (./layers_roadsafety, P4-012 proxy).
-  | RsafeLayerId;
+  | RsafeLayerId
+  // P4-031-HOOK (#484): senscom DIY-air id (./layers_p4_senscom).
+  | SenscomLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -487,6 +500,13 @@ export interface LayerDef {
   id: LayerId;
   /** parameters3.md parameter numbers this layer implements. */
   paramIds: number[];
+  /**
+   * Non-parameters3 provenance tag for the layer button (P4-031-HOOK
+   * #484: P4 buyer-param slices are not parameters3 ids — parameters3
+   * p31 is "Structural integrity", so paramIds stays [] and this label
+   * names the slice instead). Absent for parameters3 layers.
+   */
+  paramLabel?: string;
   title: string;
   /** Legend text: what green means. */
   goodLabel: string;
@@ -503,6 +523,18 @@ export interface LayerHex {
   score_goodness: number;
   lon: number;
   lat: number;
+}
+
+/**
+ * Layer-button tag: "(p19, p15)" for parameters3 layers, "(P4-031)" for
+ * P4 buyer-param slices, "" for layers with neither (P4-031-HOOK #484 —
+ * paramLabel, never a faked parameters3 id; OSMDAILY-HOOK #482 P4 layers
+ * carry an empty paramIds and must render NO tag, not "(p)").
+ */
+export function layerParamTag(def: LayerDef): string {
+  if (def.paramLabel) return `(${def.paramLabel})`;
+  if (def.paramIds.length === 0) return "";
+  return `(p${def.paramIds.join(", p")})`;
 }
 
 /**
@@ -591,6 +623,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...GTFSSTOPS_DECAY,
   // RSAFE-HOOK (#481): blackspot kernel radius (see layers_roadsafety.ts RSAFE_DECAY).
   ...RSAFE_DECAY,
+  // P4-031-HOOK (#484): senscom radius (see layers_p4_senscom.ts SENSCOM_DECAY_KM).
+  ...SENSCOM_DECAY_KM,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -766,6 +800,9 @@ export const LAYERS: LayerDef[] = [
   ...GTFSSTOPS_DEFS,
   // RSAFE-HOOK (#481): roadsafety def (p13, P4-012 proxy) from ./layers_roadsafety.
   ...RSAFE_DEFS,
+  // P4-031-HOOK (#484): senscom DIY-air def (P4-031 slice, no
+  // parameters3 id) from ./layers_p4_senscom.
+  ...SENSCOM_LAYERS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -853,6 +890,8 @@ const TAGS: Record<LayerId, string> = {
   ...GTFSSTOPS_TAGS,
   // RSAFE-HOOK (#481): roadsafety query (see layers_roadsafety.ts RSAFE_TAGS).
   ...RSAFE_TAGS,
+  // P4-031-HOOK (#484): senscom source note (see layers_p4_senscom.ts SENSCOM_TAGS).
+  ...SENSCOM_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -983,9 +1022,33 @@ export type BonusSpec =
   | { kind: "variety"; key: string; values: string[]; per: number; cap: number }
   // B6-HOOK (#133) + G07-HOOK (#140): nearest-source calmness/cleanliness
   // (0 on the source, 50 at halfM).
-  | { kind: "quiet"; halfM: number };
+  | { kind: "quiet"; halfM: number }
+  // P4-031-HOOK (#484): hard-radius witness-count bands (senscom DIY
+  // air): cells count distinct sensor points within radiusM (hard
+  // cutoff, no smoothing) and map to one/twoThree/fourPlus — byte
+  // parity with the dims_p4_senscom scorer bands. Zero witnesses stays
+  // unknown (renders red, never zero).
+  | BandsSpec;
+
+/**
+ * Hard-radius witness-count band spec (P4-031-HOOK #484 — senscom DIY
+ * air, first use). Values live in ./layers_p4_senscom (SENSCOM_BANDS).
+ */
+export interface BandsSpec {
+  kind: "bands";
+  /** Hard join radius in metres (senscom: 500). */
+  radiusM: number;
+  /** Band for exactly 1 witness in radius (senscom: 60). */
+  one: number;
+  /** Band for 2-3 witnesses (senscom: 70). */
+  twoThree: number;
+  /** Band for 4+ witnesses (senscom: 80, cap). */
+  fourPlus: number;
+}
 
 export function bonusSpecFor(layer: LayerId): BonusSpec {
+  // P4-031-HOOK (#484): senscom band spec lives in layers_p4_senscom.ts.
+  if (isSenscomLayerId(layer)) return senscomBonusSpecFor(layer);
   // B1-HOOK(#98): batch B1 specs live in layers_batch1.ts.
   if (isB1LayerId(layer)) return b1BonusSpecFor(layer);
   // G07B-HOOK(#141): env-health B specs live in layers_group07b.ts.
@@ -1277,6 +1340,11 @@ export async function fetchWindow(
   view: BBoxLike,
   fetchImpl: typeof fetch = fetch,
 ): Promise<WalkRasterDoc | null> {
+  // P4-031-HOOK (#484): bands layers have no raster master by decision
+  // (SENSCOM_NO_RASTER) — skip the window fetch so the map goes
+  // straight to the points-splat band kernel instead of a designed 500
+  // (which only litters the console; the fallback renders identically).
+  if (bonusSpecFor(layer).kind === "bands") return null;
   try {
     const spanM = (view.maxlon - view.minlon) * 57300;
     const latM = (view.maxlat - view.minlat) * 110570;

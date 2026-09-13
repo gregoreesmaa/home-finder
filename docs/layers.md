@@ -96,8 +96,8 @@ zero: null encodes 255 and renders red (red = bad *or* honestly-unknown).
 
 ## 4. P4 buyer params (parameters4.md P4-001–P4-062) — scorer dims, honest shapes
 
-The 62 buyer-question params (`parameters4.md`) are NOT map layers and
-duplicate no §3 layer: each is owned by exactly one verdict note
+The 62 buyer-question params (`parameters4.md`) are scorer dims, not
+§3 map layers, and duplicate no §3 layer: each is owned by exactly one verdict note
 (`docs/p4_*.md`, 84 notes — several params draw on multiple sources)
 with a pinned hermetic scorer module
 (`services/scoring/dims_p4_*.py`, 84 modules, doc↔module 1:1;
@@ -132,3 +132,19 @@ Overturn flips that graduated NULL→join dims (Maa-amet parcels,
 MARU per-KOV choropleths, EHR per-code, AT probate, flood zone
 membership) stay scorer-side — no raster follows (OTA PR #131
 precedent).
+
+## 5. P4-slice overlays on /layers (Group A layer issues, #479+)
+
+POSITIVE-verdict P4 slices with point data gain a thin overlay on
+`/layers` — sensor points + the scorer's honest kernel, no parameters3
+id, no raster master (the points-splat kernel IS the field). First:
+
+| Overlay | Slice | Points | Kernel | Files |
+|---|---|---|---|---|
+| `senscom` (P4-031, #484) | sensor.community DIY-air density | Tallinn extract (`sensor-community-tallinn.json`, cached, never live) | hard ≤500 m witness bands 60/70/80 (== scorer) | `lib/layers_p4_senscom.ts` + `lib/server/senscom.ts` |
+
+Overlay layers carry `paramIds: []` + `paramLabel` (e.g. `P4-031`):
+parameters3 p31 is Structural integrity (inspection no-map) and must
+never gain a map by accident. §3 counts are untouched (still 97
+map-layer params / 403 no-map + scorer dim — overlays visualize P4
+slices, not parameters3 params).
