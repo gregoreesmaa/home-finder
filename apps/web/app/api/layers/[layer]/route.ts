@@ -6,6 +6,8 @@ import { isFloodLayerId } from "../../../../lib/layers_flood";
 // OOKLA-HOOK (#489): ookla tile points come from the Ookla Tallinn
 // extract (never the OSM snapshot, never live).
 import { isOoklaLayerId } from "../../../../lib/layers_p4_ookla";
+// ACCBLACK-HOOK (#490): accblack serves honestly-empty (never 500/demo).
+import { isAccBlackLayerId } from "../../../../lib/layers_accblack";
 import {
   intersectsCoverage,
   loadLayerRaster,
@@ -106,6 +108,14 @@ export async function GET(
       provenance: points.length > 0 ? "snapshot" : "empty",
       ageMs: null,
     });
+  }
+  // ACCBLACK-HOOK (#490): the measured blackspot set is empty on
+  // purpose (L-EST97 verdict 2026-09-13 — zero projected points, see
+  // lib/layers_accblack.ts). Serve honestly-empty: the map renders
+  // "no data", never a faked zero and never labeled demo. A layer with
+  // neither points nor raster would otherwise be a 500 here.
+  if (isAccBlackLayerId(def.id)) {
+    return NextResponse.json({ points: [], provenance: "empty", ageMs: null });
   }
   try {
     // Density layers (walkability/pedinfra/cycling) have no points file:

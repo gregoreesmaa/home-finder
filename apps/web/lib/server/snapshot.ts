@@ -100,6 +100,10 @@ import { P4OSM_RASTER_FILE } from "../layers_p4osm";
 // OOKLA-HOOK (#489): ookla raster filenames live in layers_p4_ookla.ts
 // (intentionally never built — OOKLA_NO_RASTER).
 import { OOKLA_RASTER_FILE } from "../layers_p4_ookla";
+// ACCBLACK-HOOK (#490): accblack raster filename lives in
+// layers_accblack.ts (intentionally never built — ACCBLACK_NO_RASTER).
+import { ACCBLACK_RASTER_FILE } from "../layers_accblack";
+
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
 export const SNAPSHOT_AS_OF_MS = Date.parse(`${SNAPSHOT_AS_OF}T00:00:00Z`);
@@ -537,7 +541,12 @@ const RASTER_FILE: Record<LayerId, string> = {
   // (scripts/build/batch_p4_osmwalk.py; absent files fall back cleanly).
   ...P4OSM_RASTER_FILE,  // OOKLA-HOOK (#489): ookla raster names only (no masters built —
   // overlay-only; absent files degrade to the tileband points kernel).
-  ...OOKLA_RASTER_FILE,};
+  ...OOKLA_RASTER_FILE,
+  // ACCBLACK-HOOK (#490): accblack raster name (never built by
+  // decision — the measured set is empty, see ACCBLACK_NO_RASTER; the
+  // name resolves to an absent file so rasters degrade to null).
+  ...ACCBLACK_RASTER_FILE,
+};
 
 /**
  * One layer's walk-access raster for the whole snapshot bbox, or null when
@@ -963,7 +972,12 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // (see layers_p4_ookla.ts OOKLA_NO_RASTER) — names resolve to absent
   // files so windows fall back to the client tileband splat.
   ookla_fixed: "ookla-fixed-metro",
-  ookla_mobile: "ookla-mobile-metro",};
+  ookla_mobile: "ookla-mobile-metro",
+  // ACCBLACK-HOOK (#490): no accblack metro master by documented
+  // decision (see layers_accblack.ts ACCBLACK_NO_RASTER) — the name
+  // resolves to an absent file so windows fall back to county cleanly.
+  accblack: "accblack-metro",
+};
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */
 const countyBytes = new Map<string, Uint8Array>();

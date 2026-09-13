@@ -45,8 +45,9 @@ describe("p4osm registry (#480)", () => {
   it("merges into LAYERS via the P4OSM-HOOK (page + routes serve all layers)", () => {
     const ids = LAYERS.map((l) => l.id);
     // 95 shipped layers (main at #504) + 2 P4OSM (95 + 2) +
-    // 2 ookla tile layers (OOKLA-HOOK #489, 97 + 2).
-    expect(ids.length).toBe(99);
+    // 2 ookla tile layers (OOKLA-HOOK #489, 97 + 2) +
+    // 1 accblack layer (ACCBLACK-HOOK #490, 99 + 1).
+    expect(ids.length).toBe(100);
     for (const id of P4OSM_LAYER_IDS) expect(ids).toContain(id);
   });
 
