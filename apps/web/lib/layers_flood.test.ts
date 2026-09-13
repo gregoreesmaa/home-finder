@@ -56,8 +56,8 @@ describe("floodzone registry (#487)", () => {
 
   it("merges into LAYERS via the FLOOD-HOOK (page + routes serve it)", () => {
     const ids = LAYERS.map((l) => l.id);
-    // 89 shipped layers (P4-031-HOOK #484 + STATKOV-HOOK #485 on main) + 1 flood-risk polygon overlay.
-    expect(ids.length).toBe(90);
+    // 94 shipped layers (main at #503: +parking, +4 maru) + 1 flood-risk polygon overlay (94 + 1).
+    expect(ids.length).toBe(95);
     expect(ids).toContain("floodzone");
   });
 
