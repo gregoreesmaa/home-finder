@@ -58,6 +58,8 @@ import { G05C_RASTER_FILE } from "../layers_group05c";
 import { G05E_RASTER_FILE } from "../layers_group05e";
 // G05F-HOOK(#166): batch G05F raster file lives in layers_group05f.ts.
 import { G05F_RASTER_FILE } from "../layers_group05f";
+// G10R-HOOK (#171): batch G10R raster file lives in layers_group10rest.ts.
+import { G10R_RASTER_FILE } from "../layers_group10rest";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -387,6 +389,8 @@ const RASTER_FILE: Record<LayerId, string> = {
   ...G05E_RASTER_FILE,
   // G05F-HOOK (#166): upcycle raster (scripts/build/batch_g05f_plans.py).
   ...G05F_RASTER_FILE,
+  // G10R-HOOK (#171): skyview raster (scripts/build/batch_g10_rest.py).
+  ...G10R_RASTER_FILE,
 };
 
 /**
@@ -508,6 +512,10 @@ const G05E_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["equestrian"]);
 // upcycle (Euclidean count kernel, buildout precedent — see
 // scripts/build/batch_g05f_plans.py).
 const G05F_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["upcycle"]);
+// G10R-HOOK (#171): Euclidean-built G10R master rides "euclidean" —
+// skyview (exact-grid Dijkstra by construction — see
+// scripts/build/batch_g10_rest.py).
+const G10R_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["skyview"]);
 
 export async function loadLayerRaster(
   layer: LayerId,
@@ -528,7 +536,8 @@ export async function loadLayerRaster(
       G05A_EUCLIDEAN_MASTER.has(layer) || // G05A-HOOK (#161)
       G05C_EUCLIDEAN_MASTER.has(layer) || // G05C-HOOK (#163)
       G05E_EUCLIDEAN_MASTER.has(layer) || // G05E-HOOK (#165)
-      G05F_EUCLIDEAN_MASTER.has(layer); // G05F-HOOK (#166)
+      G05F_EUCLIDEAN_MASTER.has(layer) || // G05F-HOOK (#166)
+      G10R_EUCLIDEAN_MASTER.has(layer); // G10R-HOOK (#171)
     return { raster: doc, distance: euclidean ? "euclidean" : "walk" };
   }
   return { raster: null, distance: "euclidean" };
@@ -643,6 +652,10 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // precision — the file is absent, so windows serve county
   // everywhere, like G02B/G03/G03D/G08B/G05B/G05C).
   upcycle: "upcycle-metro",
+  // G10R-HOOK (#171): no skyview metro master (documented fake
+  // precision — the file is absent, so windows serve county
+  // everywhere, like G02B/G03/G03D/G08B/G05C).
+  skyview: "skyview-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */
