@@ -305,6 +305,8 @@ const RASTER_FILE: Record<LayerId, string> = {
   hydrants: "hydrants-walk-raster.json",
   evac: "evac-walk-raster.json",
   dispatch: "dispatch-walk-raster.json",
+  // G06-HOOK (#138): Group 6 raster (built by scripts/build/batch_g06_heritage.py).
+  heritage: "heritage-walk-raster.json",
 };
 
 /**
@@ -385,6 +387,8 @@ const METRO_PREFIX: Record<LayerId, string> = {
   hydrants: "hydrants-metro",
   evac: "evac-metro",
   dispatch: "dispatch-metro",
+  // G06-HOOK (#138): Group 6 metro master (optional; county-only like B5).
+  heritage: "heritage-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */
