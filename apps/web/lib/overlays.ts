@@ -249,6 +249,17 @@ export function overlayColorFor(layer: LayerId): string {
       return "#fbbf24";
     case "korterstock":
       return "#f9a8d4";
+    // G05C-HOOK (#163): commbleed + windsolar + viewshed markers (point
+    // overlays, stride-sampled like grocery). #7e22ce: purple-700 neon
+    // (retail glow); #facc15: yellow-400 solar (NOT #eab308 — taken by
+    // buildout); #f43f5e: rose-500 scenic. All distinct from every
+    // other marker (distinct-color test).
+    case "commbleed":
+      return "#7e22ce";
+    case "windsolar":
+      return "#facc15";
+    case "viewshed":
+      return "#f43f5e";
   }
 }
 
@@ -424,6 +435,17 @@ export function overlayLegendFor(layer: LayerId): string {
       return "Ehitusplatsid (maa-ala + hooned) · arengu-hinnang (lähedaste arv, küllastus 1, planeeringuotsust mõõdetud pole)";
     case "korterstock":
       return "Korterelamud · üürituru-hinnang (lähedaste arv, küllastus 15, üürihindu mõõdetud pole)";
+    // G05C-HOOK (#163): commbleed (p223) — mapped commercial zones,
+    // the raster holds the full calmness field; windsolar (p224) —
+    // mapped farm-scale turbines/solar, the raster holds the full
+    // field; viewshed (p225) — mapped viewpoints, the raster holds
+    // the full count field.
+    case "commbleed":
+      return "Äri- ja kaubandusmaad + kaubanduskeskused · kauguse-hinnang (valgumisproksi, poolkaugus 300 m, KOV otsus puudub)";
+    case "windsolar":
+      return "Tuulikud + maapealsed päikesepargid (katusepaneelid välja) · kauguse-hinnang (poolkaugus 800 m, tootmisregister puudub)";
+    case "viewshed":
+      return "Vaatepunktid · lähedaste arv (vaatekaitse-hinnang, küllastus 1, kõrguspiirangute register puudub)";
   }
 }
 

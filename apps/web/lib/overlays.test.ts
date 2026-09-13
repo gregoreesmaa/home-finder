@@ -93,7 +93,8 @@ describe("overlay legend + colors", () => {
     // G05B-HOOK (#162): gardens + buildout join the registry.
     // G05D-HOOK (#164): strsat joins the registry.
     // G05A-HOOK (#161): ehitus + korterstock join the registry.
-    expect(ids).toHaveLength(57);
+    // G05C-HOOK (#163): commbleed + windsolar + viewshed join the registry.
+    expect(ids).toHaveLength(60);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -190,6 +191,13 @@ describe("overlay legend + colors", () => {
     // Batch G05D half (see G05D_CAL in layers_group05d.ts).
     expect(overlayLegendFor("strsat")).toContain("350 m");
     expect(overlayLegendFor("strsat")).toContain("hinnang");
+    // Batch G05C halves (see G05C_CAL in layers_group05c.ts).
+    expect(overlayLegendFor("commbleed")).toContain("300 m");
+    expect(overlayLegendFor("commbleed")).toContain("hinnang");
+    expect(overlayLegendFor("windsolar")).toContain("800 m");
+    expect(overlayLegendFor("windsolar")).toContain("hinnang");
+    expect(overlayLegendFor("viewshed")).toContain("küllastus 1");
+    expect(overlayLegendFor("viewshed")).toContain("hinnang");
   });
 
   it("gives every layer a distinct marker color", () => {
@@ -200,7 +208,8 @@ describe("overlay legend + colors", () => {
     // G05B-HOOK (#162): gardens + buildout join the registry.
     // G05D-HOOK (#164): strsat joins the registry.
     // G05A-HOOK (#161): ehitus + korterstock join the registry.
-    expect(seen.size).toBe(57);
+    // G05C-HOOK (#163): commbleed + windsolar + viewshed join the registry.
+    expect(seen.size).toBe(60);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });
