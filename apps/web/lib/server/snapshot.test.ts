@@ -415,6 +415,48 @@ describe("layer walk rasters", () => {
     }
   });
 
+  it("serves G08C surgeroad + slidebuf rasters under quiet contracts", async () => {
+    // G08C-HOOK (#169): surgeroad quiet contract (halfM 150 on the wire
+    // as half, sigma 0.3) — Euclidean Dijkstra-built (see
+    // batch_g08c_flood.py), so the distance label says euclidean.
+    const rdir = await fixtureDir([{ lat: 59.46048, lon: 24.81723 }], "surgeroad");
+    await writeFile(
+      join(rdir, "osm", "surgeroad-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 150, sigma: 0.3 })),
+    );
+    try {
+      const res = await loadLayerRaster("surgeroad", rdir);
+      expect(res.distance).toBe("euclidean");
+      expect(res.raster?.half).toBe(150);
+    } finally {
+      await rm(rdir, { recursive: true, force: true });
+    }
+    // G08C-HOOK (#169): slidebuf quiet contract (halfM 100, sigma 0.3).
+    // A stale half is rejected.
+    const sdir = await fixtureDir([{ lat: 59.44208, lon: 24.80809 }], "slidebuf");
+    await writeFile(
+      join(sdir, "osm", "slidebuf-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 100, sigma: 0.3 })),
+    );
+    try {
+      const res = await loadLayerRaster("slidebuf", sdir);
+      expect(res.distance).toBe("euclidean");
+      expect(res.raster?.half).toBe(100);
+    } finally {
+      await rm(sdir, { recursive: true, force: true });
+    }
+    const stale = await fixtureDir([{ lat: 59.44208, lon: 24.80809 }], "slidebuf");
+    await writeFile(
+      join(stale, "osm", "slidebuf-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 300, sigma: 0.3 })),
+    );
+    try {
+      expect(await loadLayerRaster("slidebuf", stale)).toEqual({ raster: null, distance: "euclidean" });
+    } finally {
+      await rm(stale, { recursive: true, force: true });
+    }
+  });
+
   it("serves grocery and walkability rasters under the area contract", async () => {
     const gdir = await fixtureDir([{ lat: 59.44, lon: 24.75, a: 1 }], "grocery");
     await writeFile(

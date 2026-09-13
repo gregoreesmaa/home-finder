@@ -42,6 +42,8 @@ import { G08A_RASTER_FILE } from "../layers_group08a";
 import { G03D_RASTER_FILE } from "../layers_group03d";
 // G08D-HOOK(#170): batch G08D raster file lives in layers_group08d.ts.
 import { G08D_RASTER_FILE } from "../layers_group08d";
+// G08C-HOOK(#169): batch G08C raster files live in layers_group08c.ts.
+import { G08C_RASTER_FILE } from "../layers_group08c";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -355,6 +357,8 @@ const RASTER_FILE: Record<LayerId, string> = {
   ...G08A_RASTER_FILE,
   // G08D-HOOK (#170): vernalpool raster (scripts/build/batch_g08d_flood.py).
   ...G08D_RASTER_FILE,
+  // G08C-HOOK (#169): surgeroad + slidebuf rasters (scripts/build/batch_g08c_flood.py).
+  ...G08C_RASTER_FILE,
 };
 
 /**
@@ -441,6 +445,10 @@ const G08A_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["wildfire"]);
 // "euclidean" — same Dijkstra-by-construction story as drainage
 // (see batch_g08d_flood.py).
 const G08D_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["vernalpool"]);
+// G08C-HOOK (#169): Euclidean-built G08C masters ride "euclidean" —
+// both are exact-grid Dijkstra fields by construction (same story as
+// drainage/shoredist, see scripts/build/batch_g08c_flood.py).
+const G08C_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["surgeroad", "slidebuf"]);
 
 export async function loadLayerRaster(
   layer: LayerId,
@@ -453,7 +461,8 @@ export async function loadLayerRaster(
       G03_EUCLIDEAN_MASTER.has(layer) ||
       G03D_EUCLIDEAN_MASTER.has(layer) ||
       G08A_EUCLIDEAN_MASTER.has(layer) ||
-      G08D_EUCLIDEAN_MASTER.has(layer); // G08D-HOOK (#170)
+      G08D_EUCLIDEAN_MASTER.has(layer) || // G08D-HOOK (#170)
+      G08C_EUCLIDEAN_MASTER.has(layer); // G08C-HOOK (#169)
     return { raster: doc, distance: euclidean ? "euclidean" : "walk" };
   }
   return { raster: null, distance: "euclidean" };
@@ -530,6 +539,11 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // precision — the file is absent, so windows serve county
   // everywhere, like G02B/G03/G03D).
   vernalpool: "vernalpool-metro",
+  // G08C-HOOK (#169): no surgeroad/slidebuf metro masters (documented
+  // fake precision — the files are absent, so windows serve county
+  // everywhere, like G02B/G03/G03D).
+  surgeroad: "surgeroad-metro",
+  slidebuf: "slidebuf-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */
