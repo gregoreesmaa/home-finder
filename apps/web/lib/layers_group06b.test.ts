@@ -49,7 +49,8 @@ describe("batch G06B registry (#139)", () => {
     // G07C-HOOK(#142): vectorhabitat joins the registry.
     // G03D-HOOK (#154): moorage + shoredist join the registry.
     // G08A-HOOK (#167): wildfire joins the registry.
-    expect(ids.length).toBe(47);
+    // G08D-HOOK (#170): vernalpool joins the registry.
+    expect(ids.length).toBe(48);
     for (const id of GROUP06B_LAYER_IDS) expect(ids).toContain(id);
   });
 
