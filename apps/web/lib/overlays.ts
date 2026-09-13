@@ -193,6 +193,12 @@ export function overlayColorFor(layer: LayerId): string {
       return "#0c4a6e";
     case "shoredist":
       return "#047857";
+    // G08A-HOOK (#167): wildfire fuel-edge markers (point overlay,
+    // stride-sampled like grocery). #9a3412: burnt orange (fire
+    // association), distinct from woodfire #991b1b, forage #4d7c0f
+    // and every other marker (distinct-color test).
+    case "wildfire":
+      return "#9a3412";
   }
 }
 
@@ -328,6 +334,10 @@ export function overlayLegendFor(layer: LayerId): string {
       return "Sadamad ja sildumiskohad · lähedaste arv (hinnang, küllastus 1, luba krundi-põhine)";
     case "shoredist":
       return "Rannajoon ja järved (jõed/märgalad välja) · kauguse-hinnang (ehituskeeluvööndi proksi, küllastus 100 m)";
+    // G08A-HOOK (#167): wildfire (p69) — mapped fuel edges, the raster
+    // holds the full quietness field.
+    case "wildfire":
+      return "Mets ja võsa (kütus, niit/soo välja) · kauguse-hinnang (tuleohutusproksi, küllastus 100 m)";
   }
 }
 

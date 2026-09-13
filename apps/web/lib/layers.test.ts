@@ -82,6 +82,8 @@ describe("layer registry", () => {
       // G03D-HOOK (#154): Group 3 cadastre-D ids (p332 moorage + p340 shoredist).
       "moorage",
       "shoredist",
+      // G08A-HOOK (#167): Group 8 flood/climate A id (p69 wildfire).
+      "wildfire",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -131,6 +133,15 @@ describe("layer registry", () => {
     expect(radiusKmFor("shoredist")).toBe(0.3);
     expect(LAYERS.find((l) => l.id === "shoredist")?.paramIds).toEqual([340]);
     expect(overpassQueryFor("shoredist", TALLINN_BBOX)).toContain("coastline");
+  });
+
+  it("wires the G08A wildfire proxy with locked calibration", () => {
+    // Drift guard: hook spec must equal G08A_CAL in layers_group08a.ts
+    // and the Python builder (parsed by test_batch_g08a.py).
+    expect(bonusSpecFor("wildfire")).toEqual({ kind: "quiet", halfM: 100 });
+    expect(radiusKmFor("wildfire")).toBe(0.3);
+    expect(LAYERS.find((l) => l.id === "wildfire")?.paramIds).toEqual([69]);
+    expect(overpassQueryFor("wildfire", TALLINN_BBOX)).toContain("forest");
   });
 
   it("every layer explains green=good / red=bad in Estonian", () => {

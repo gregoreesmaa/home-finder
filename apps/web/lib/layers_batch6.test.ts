@@ -41,12 +41,13 @@ describe("batch B6 registry (#133)", () => {
     }
   });
 
-  it("merges into LAYERS via the B6-HOOK (page + routes serve all forty-six)", () => {
+  it("merges into LAYERS via the B6-HOOK (page + routes serve all forty-seven)", () => {
     const ids = LAYERS.map((l) => l.id);
     // G03-HOOK (#151): drainage joins the registry.
     // G07C-HOOK(#142): vectorhabitat joins the registry.
     // G03D-HOOK (#154): moorage + shoredist join the registry.
-    expect(ids.length).toBe(46);
+    // G08A-HOOK (#167): wildfire joins the registry.
+    expect(ids.length).toBe(47);
     for (const id of BATCH6_LAYER_IDS) expect(ids).toContain(id);
   });
 

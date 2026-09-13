@@ -359,6 +359,34 @@ describe("layer walk rasters", () => {
     }
   });
 
+  it("serves the G08A wildfire raster under the quiet contract", async () => {
+    // G08A-HOOK (#167): wildfire quiet contract (halfM 100 on the wire
+    // as half, sigma 0.3); Euclidean-built like drainage/shoredist. A
+    // stale half is rejected.
+    const dir = await fixtureDir([{ lat: 59.3862, lon: 24.6611 }], "wildfire");
+    await writeFile(
+      join(dir, "osm", "wildfire-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 100, sigma: 0.3 })),
+    );
+    try {
+      const res = await loadLayerRaster("wildfire", dir);
+      expect(res.distance).toBe("euclidean");
+      expect(res.raster?.half).toBe(100);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+    const stale = await fixtureDir([{ lat: 59.3862, lon: 24.6611 }], "wildfire");
+    await writeFile(
+      join(stale, "osm", "wildfire-walk-raster.json"),
+      JSON.stringify(rasterDoc({ half: 300, sigma: 0.3 })),
+    );
+    try {
+      expect(await loadLayerRaster("wildfire", stale)).toEqual({ raster: null, distance: "euclidean" });
+    } finally {
+      await rm(stale, { recursive: true, force: true });
+    }
+  });
+
   it("serves grocery and walkability rasters under the area contract", async () => {
     const gdir = await fixtureDir([{ lat: 59.44, lon: 24.75, a: 1 }], "grocery");
     await writeFile(
