@@ -123,6 +123,9 @@ export function overlayColorFor(layer: LayerId): string {
     // Group G06 heritage layer (point overlay, stride-sampled).
     case "heritage":
       return "#7c2d12";
+    // G02B-HOOK (#137): lift proxy (point overlay, stride-sampled).
+    case "liftproxy":
+      return "#0891b2";
   }
 }
 
@@ -183,6 +186,10 @@ export function overlayLegendFor(layer: LayerId): string {
     // layers_group06.ts GROUP06_BONUS (same number as bonusSpecFor).
     case "heritage":
       return "Muinsusobjektid · lähedaste arv (hinnang, küllastus 2)";
+    // G02B-HOOK (#137): lift proxy — nearby high-rise count, same half
+    // as bonusSpecFor (see layers_group02b.ts G02B_BONUS).
+    case "liftproxy":
+      return "Kõrghooned (5+ korrust) · lähedaste arv (hinnang, küllastus 2)";
   }
 }
 

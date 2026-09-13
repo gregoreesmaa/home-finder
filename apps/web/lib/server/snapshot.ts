@@ -18,6 +18,8 @@ import { sampleRaster } from "../walkRaster";
 import { B1_METRO_PREFIXES, B1_RASTER_FILES } from "../layers_batch1";
 // G07-HOOK(#140): batch G07 raster files live in layers_group07.ts.
 import { G07_RASTER_FILE } from "../layers_group07";
+// G02B-HOOK (#137): lift-proxy raster file lives in ../layers_group02b.
+import { G02B_RASTER_FILE } from "../layers_group02b";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -307,6 +309,8 @@ const RASTER_FILE: Record<LayerId, string> = {
   dispatch: "dispatch-walk-raster.json",
   // G06-HOOK (#138): Group 6 raster (built by scripts/build/batch_g06_heritage.py).
   heritage: "heritage-walk-raster.json",
+  // G02B-HOOK (#137): lift-proxy raster (built by scripts/build/batch_g02b_lift.py).
+  ...G02B_RASTER_FILE,
 };
 
 /**
@@ -389,6 +393,9 @@ const METRO_PREFIX: Record<LayerId, string> = {
   dispatch: "dispatch-metro",
   // G06-HOOK (#138): Group 6 metro master (optional; county-only like B5).
   heritage: "heritage-metro",
+  // G02B-HOOK (#137): no liftproxy metro master (documented fake
+  // precision — the file is absent, so windows serve county everywhere).
+  liftproxy: "liftproxy-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

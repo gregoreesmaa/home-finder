@@ -41,6 +41,16 @@ import {
   BATCH5_TAGS,
   bonusSpecForBatch5,
 } from "./layers_batch5";
+// G02B-HOOK(#137): batch G02B (Group 2 EHR batch B, p196 lift proxy)
+// tables live in ./layers_group02b (new file). That module imports
+// layers only as types, so no runtime cycle.
+import type { Group02bLayerId } from "./layers_group02b";
+import {
+  G02B_DECAY,
+  G02B_DEFS,
+  G02B_TAGS,
+  bonusSpecForGroup02b,
+} from "./layers_group02b";
 // G02-HOOK(#136): Group 2 EHR batch-A verdicts live in ./layers_group02
 // (new file, five documented no-map verdicts). That module imports
 // nothing, so no runtime cycle.
@@ -70,7 +80,9 @@ export type LayerId =
   // B5-HOOK (#102): Group 14 public-safety ids (defined in ./layers_batch5).
   | Batch5LayerId
   // G06-HOOK (#138): Group 6 heritage id (defined in ./layers_group06).
-  | Group06LayerId;
+  | Group06LayerId
+  // G02B-HOOK (#137): Group 2 batch-B lift-proxy id (./layers_group02b).
+  | Group02bLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -153,6 +165,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...BATCH5_DECAY,
   // G06-HOOK (#138): Group 6 radius (see layers_group06.ts GROUP06_DECAY).
   ...GROUP06_DECAY,
+  // G02B-HOOK (#137): lift-proxy radius (see layers_group02b.ts G02B_DECAY).
+  ...G02B_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -267,6 +281,8 @@ export const LAYERS: LayerDef[] = [
   ...BATCH5_DEFS,
   // G06-HOOK (#138): Group 6 def (p72) from ./layers_group06.
   ...GROUP06_DEFS,
+  // G02B-HOOK (#137): lift-proxy def (p196) from ./layers_group02b.
+  ...G02B_DEFS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -294,6 +310,8 @@ const TAGS: Record<LayerId, string> = {
   ...BATCH5_TAGS,
   // G06-HOOK (#138): Group 6 query (see layers_group06.ts GROUP06_TAGS).
   ...GROUP06_TAGS,
+  // G02B-HOOK (#137): lift-proxy query (see layers_group02b.ts G02B_TAGS).
+  ...G02B_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -425,6 +443,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // G06-HOOK (#138): Group 6 spec lives in ./layers_group06.
   const g06 = bonusSpecForGroup06(layer);
   if (g06) return g06;
+  // G02B-HOOK (#137): lift-proxy spec lives in ./layers_group02b.
+  const g02b = bonusSpecForGroup02b(layer);
+  if (g02b) return g02b;
   throw new Error(`unknown layer: ${layer}`);
 }
 
