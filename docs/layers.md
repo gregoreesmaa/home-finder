@@ -64,8 +64,8 @@ print('missing:', sorted(set(range(1, 501)) - owned))
 "
 ```
 
-Split (same method, `paramIds` values only): **94 map-layer params**,
-**406 documented no-map + scorer dim**. Map layers never render unknown as
+Split (same method, `paramIds` values only): **97 map-layer params**,
+**403 documented no-map + scorer dim**. Map layers never render unknown as
 zero: null encodes 255 and renders red (red = bad *or* honestly-unknown).
 
 ## 3. Group reconciliation (parameters3.md §5 → implementation)
@@ -81,7 +81,7 @@ zero: null encodes 255 and renders red (red = bad *or* honestly-unknown).
 | 7 Env health (20) | 20 | 61, 62, 189, 202, 227, 257, 409, 450 | 12 | `layers_group07/07b/07c/07d` (#140–#143) |
 | 8 Climate/flood (16) | 16 | 69, 255, 333, 334, 336, 447 | 10 | `layers_group08a–08d` (#167–#170) |
 | 9 Noise (8) | 8 | 16, 138, 162, 234, 301, 408, 445, 493 (proxies) | — | `layers_group09` + `layers_genv` (#104, #124) |
-| 10 Utilities (18) | 18 | 215 | 17 incl. 51, 53, 54, 262, 265 (dims; map masters on local-wip-savepoint, not yet merged) | `layers_group10rest` + `dims_group10/10b/10c/10rest` (#105, #107, #121, #171) |
+| 10 Utilities (18) | 18 | 215, 51, 53, 54 | 14 incl. 262, 265 (dims; p51 ships twice — fiber + mobile — on one param) | `layers_group10rest` + `layers_batch10c` + `dims_group10/10b/10c/10rest` (#105, #107, #121, #171, #230) |
 | 11 OSM amenities (24) | 24 | 23: 14, 19, 20, 84, 86–89, 101–103, 108, 124, 169, 190, 313, 338, 346, 419, 442, 462, 466, 470 | 317 (no-map) | `layers.ts` core + `layers_batch1` + `layers_group11c/d` + dims (#98, #134, #135) |
 | 12 Transit (5) | 5 | 15, 125, 343 | 11, 17 (commute dims, no layer) | core + `layers_batch4` + `dims_group12`/`dims_batch6` (#99, #126, #133) |
 | 13 Logistics (5) | 5 | 141, 220, 270, 282, 342 | — (all five ship; 220/270 via batch6 mobility proxies) | `layers_batch4/6` + `dims_group13` (#99, #126, #133) |
@@ -92,4 +92,4 @@ zero: null encodes 255 and renders red (red = bad *or* honestly-unknown).
 | 18 Spatial sim (29) | 29 | 7: 34, 63, 181, 305, 405, 468, 479 | 22 (scorer dims: solar/shade/traffic/vegetation proxies + no-map verdicts) | `layers_group18resta/b/c` + `layers_genv` + `dims_group18*` (#113, #122–#124, #172, #173, #197) |
 | 19 Inspection (134) | 134 | — | 134: forensic facts needing presence/meters | `layers_group19a–19d` + `dims_group19a–19d` (#208–#211) |
 | 20 Subjective (38) | 38 | — | 38: buyer-profile inputs, never area scores | `layers_group20a/b` + `dims_group20a/b` (#212, #213) |
-| **Total** | **500** | **94** | **406** | **§4** |
+| **Total** | **500** | **97** | **403** | **§4** |

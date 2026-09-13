@@ -102,7 +102,8 @@ describe("overlay legend + colors", () => {
     // G17A-HOOK (#177): compost + gritbin + leafdrop join the registry.
     // G17B-HOOK (#178): lawncare joins the registry.
     // G17R-HOOK (#196): privroad joins the registry.
-    expect(ids).toHaveLength(73);
+    // B10C-HOOK (#230): water + waste + fiber + mobile join the registry.
+    expect(ids).toHaveLength(77);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -241,6 +242,11 @@ describe("overlay legend + colors", () => {
     // G17R-HOOK (#196): privroad joins the registry.
     expect(overlayLegendFor("privroad")).toContain("200 m");
     expect(overlayLegendFor("privroad")).toContain("hinnang");
+    // B10C-HOOK (#230): utility halves (see BATCH10C_BONUS).
+    expect(overlayLegendFor("water")).toContain("küllastus 1");
+    expect(overlayLegendFor("waste")).toContain("küllastus 6");
+    expect(overlayLegendFor("fiber")).toContain("küllastus 50");
+    expect(overlayLegendFor("mobile")).toContain("mitte mastid");
   });
 
   it("gives every layer a distinct marker color", () => {
@@ -260,7 +266,8 @@ describe("overlay legend + colors", () => {
     // G17A-HOOK (#177): compost + gritbin + leafdrop join the registry.
     // G17B-HOOK (#178): lawncare joins the registry.
     // G17R-HOOK (#196): privroad joins the registry.
-    expect(seen.size).toBe(73);
+    // B10C-HOOK (#230): water + waste + fiber + mobile join the registry.
+    expect(seen.size).toBe(77);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

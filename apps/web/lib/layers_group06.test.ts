@@ -62,7 +62,7 @@ describe("batch G06 registry (#138)", () => {
     // G17A-HOOK (#177): compost + gritbin + leafdrop join the registry.
     // G17B-HOOK (#178): lawncare joins the registry.
     // G17R-HOOK (#196): privroad joins the registry.
-    expect(ids.length).toBe(73);
+    expect(ids.length).toBe(77); // B10C-HOOK (#230): +4 utility layers
     for (const id of GROUP06_LAYER_IDS) expect(ids).toContain(id);
   });
 

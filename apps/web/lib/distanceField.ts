@@ -291,6 +291,43 @@ export function buildScoredField(
     }
     return { field, bonus, sigmaKm, direct };
   }
+  // B10C-HOOK (#230): measured-coverage discs (mobile fallback when the
+  // raster is missing). Each point carries its MEASURED footprint radius
+  // in tags.ulatus_m — the centroid is a measurement site, never a
+  // tower. Cell score = strongest covering disc 100·(1-d/r),
+  // max-merged; outside every disc stays NaN (unknown, never zero).
+  // Points without a range carry no usable measurement and are skipped.
+  if (spec.kind === "cover") {
+    const direct = new Float64Array(cols * rows);
+    const discs: { x: number; y: number; rKm: number }[] = [];
+    for (const p of points) {
+      const rM = Number(p.tags?.ulatus_m);
+      if (!Number.isFinite(rM) || rM <= 0) continue;
+      discs.push({ x: p.lon, y: p.lat, rKm: rM / 1000 });
+    }
+    // Same geometry as buildDistanceField: fencepost nodes, equirect
+    // projection at mid latitude (not haversine — consistent in-module).
+    const spanLon = bbox.maxlon - bbox.minlon;
+    const spanLat = bbox.maxlat - bbox.minlat;
+    const kx = 111.32 * Math.cos((((bbox.minlat + bbox.maxlat) / 2) * Math.PI) / 180);
+    for (let k = 0; k < direct.length; k++) {
+      const iy = Math.floor(k / cols);
+      const ix = k % cols;
+      const clon = bbox.minlon + (cols > 1 ? (ix / (cols - 1)) * spanLon : 0);
+      const clat = bbox.minlat + (rows > 1 ? (iy / (rows - 1)) * spanLat : 0);
+      let best = 0;
+      let covered = false;
+      for (const d of discs) {
+        const dist = Math.hypot((clon - d.x) * kx, (clat - d.y) * 110.57);
+        if (dist > d.rKm) continue;
+        covered = true;
+        const v = 1 - dist / d.rKm;
+        if (v > best) best = v;
+      }
+      direct[k] = covered ? Math.min(100, 100 * best) : NaN;
+    }
+    return { field, bonus, sigmaKm, direct };
+  }
   {
     const classes = classSplats(
       points,

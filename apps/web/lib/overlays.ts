@@ -331,6 +331,23 @@ export function overlayColorFor(layer: LayerId): string {
     // Distinct from every other marker (distinct-color test).
     case "privroad":
       return "#d4a373";
+    // B10C-HOOK (#230): utility markers (point overlays, stride-sampled
+    // like grocery). #075985: sky-800 deep tap-water blue (NOT #0c4a6e
+    // — taken by moorage — and NOT #0369a1 — taken by hydrants);
+    // #14532d: green-900 dark recycling green (NOT #3f6212 — taken by
+    // trailprivacy — and NOT #166534 — taken by parks); #164e63:
+    // cyan-950 fiber-optic teal (NOT #155e75 — taken by industprox —
+    // and NOT #0e7490 — taken by schoolbus); #831843: pink-900
+    // crowdsource magenta (measurement sites, never masts). All
+    // distinct from every other marker (distinct-color test).
+    case "water":
+      return "#075985";
+    case "waste":
+      return "#14532d";
+    case "fiber":
+      return "#164e63";
+    case "mobile":
+      return "#831843";
   }
 }
 
@@ -565,6 +582,20 @@ export function overlayLegendFor(layer: LayerId): string {
     // roads, the raster holds the full calmness field.
     case "privroad":
       return "Jagatud erateed (parklad ja sissesõiduteed välja) · kauguse-hinnang (teehooldusproksi, poolkaugus 200 m, KÜ leping puudub)";
+    // B10C-HOOK (#230): utility layers (p53/p54) — mapped amenity counts.
+    // The communal networks (tap water, organized collection) are NOT on
+    // these maps — the dots are the public points themselves. Fiber
+    // (p51) dots are a thinned honest sample (valim), the raster holds
+    // the full field; mobile (p51) dots are measurement sites (never
+    // masts), the raster models coverage discs.
+    case "water":
+      return "Avalikud veepunktid · lähedaste arv (küllastus 1)";
+    case "waste":
+      return "Taara- ja jäätmepunktid · lähedaste arv (küllastus 6)";
+    case "fiber":
+      return "Fiiber-katvusega aadresside valim · tihedus (teatatud, küllastus 50)";
+    case "mobile":
+      return "Mõõtmiskohad (mitte mastid!) · tugevaima kärje leviala";
   }
 }
 
