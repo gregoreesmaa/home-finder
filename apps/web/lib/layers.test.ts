@@ -36,6 +36,10 @@ describe("layer registry", () => {
       "culture",
       "nightlife",
       "libraries",
+      // G07B-HOOK (#141): Group 7 env-health B ids.
+      "brownsoil",
+      "oiltank",
+      "agriland",
       // G07D-HOOK (#143): Group 7 env-health D ids.
       "agrifield",
       "wildcorr",
@@ -75,6 +79,10 @@ describe("layer registry", () => {
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
     expect(LAYERS.find((l) => l.id === "schools")?.paramIds).toEqual([12, 123]);
+    // G07B-HOOK (#141): env-health B param binding.
+    expect(LAYERS.find((l) => l.id === "brownsoil")?.paramIds).toEqual([189]);
+    expect(LAYERS.find((l) => l.id === "oiltank")?.paramIds).toEqual([202]);
+    expect(LAYERS.find((l) => l.id === "agriland")?.paramIds).toEqual([227]);
     // G07D-HOOK (#143): env-health D param binding.
     expect(LAYERS.find((l) => l.id === "agrifield")?.paramIds).toEqual([409]);
     expect(LAYERS.find((l) => l.id === "wildcorr")?.paramIds).toEqual([450]);

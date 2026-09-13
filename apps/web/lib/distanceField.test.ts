@@ -377,6 +377,17 @@ describe("quiet-kind cleanliness (G07/G07D env-health)", () => {
     expect(far?.value).toBeGreaterThan(60);
   });
 
+  it("agriland halves at 800 m (spray-drift scale)", () => {
+    // Wider box: the 800 m half-offset must stay inside the view.
+    const box: BBoxLike = { minlon: 24.67, minlat: 59.45, maxlon: 24.73, maxlat: 59.48 };
+    const s = buildScoredField([{ lon: 24.7, lat: 59.465 }], box, 61, 31, 0.8, {
+      kind: "quiet",
+      halfM: 800,
+    });
+    const half = sampleScored(s, 24.7 + 0.8 / 57.29, 59.465);
+    expect(half?.value).toBeCloseTo(50, 0);
+  });
+
   it("agrifield halves at 800 m (drift scale)", () => {
     // Wider box: 800 m east of the source must stay inside the view.
     const box: BBoxLike = { minlon: 24.69, minlat: 59.46, maxlon: 24.72, maxlat: 59.47 };

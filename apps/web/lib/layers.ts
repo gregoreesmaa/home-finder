@@ -20,6 +20,17 @@ import {
   isB1LayerId,
   type B1LayerId,
 } from "./layers_batch1";
+// G07B-HOOK(#141): batch G07B (Group 7 env-health B) tables live in
+// ./layers_group07b (new file). That module imports layers only as
+// types, so no runtime cycle.
+import {
+  G07B_DECAY_KM,
+  G07B_LAYERS,
+  G07B_TAGS,
+  g07bBonusSpecFor,
+  isG07BLayerId,
+  type G07BLayerId,
+} from "./layers_group07b";
 // G07-HOOK(#140): batch G07 (Group 7 env-health) tables live in
 // ./layers_group07 (new file). That module imports layers only as types,
 // so no runtime cycle.
@@ -127,6 +138,8 @@ export type LayerId =
   | "grocery"
   | "healthcare"
   | B1LayerId // B1-HOOK(#98)
+  // G07B-HOOK (#141): Group 7 env-health B ids (defined in ./layers_group07b).
+  | G07BLayerId
   // G07D-HOOK (#143): Group 7 env-health D ids (defined in ./layers_group07d).
   | G07DLayerId
   // G07-HOOK (#140): Group 7 env-health ids (defined in ./layers_group07).
@@ -221,6 +234,8 @@ const DECAY_KM: Record<LayerId, number> = {
   grocery: 0.3,
   healthcare: 0.8,
   ...B1_DECAY, // B1-HOOK(#98)
+  // G07B-HOOK (#141): env-health B radii (see layers_group07b.ts G07B_DECAY_KM).
+  ...G07B_DECAY_KM,
   // G07D-HOOK (#143): env-health D radii (see layers_group07d.ts G07D_DECAY_KM).
   ...G07D_DECAY_KM,
   // G07-HOOK (#140): env-health radii (see layers_group07.ts G07_DECAY_KM).
@@ -347,6 +362,8 @@ export const LAYERS: LayerDef[] = [
     ],
   },
   ...B1_LAYERS, // B1-HOOK(#98): Group 11 amenity layers (p86/87/89/108/313)
+  // G07B-HOOK (#141): env-health B defs (p189/p202/p227) from ./layers_group07b.
+  ...G07B_LAYERS,
   // G07D-HOOK (#143): env-health D defs (p409/p450) from ./layers_group07d.
   ...G07D_LAYERS,
   // G07-HOOK (#140): env-health defs (p61/p62) from ./layers_group07.
@@ -386,6 +403,8 @@ const TAGS: Record<LayerId, string> = {
   grocery: 'n["shop"~"supermarket|convenience|greengrocer|grocery|marketplace"];',
   healthcare: 'n["amenity"~"pharmacy|doctors|dentist"];',
   ...B1_TAGS, // B1-HOOK(#98)
+  // G07B-HOOK (#141): env-health B queries (see layers_group07b.ts G07B_TAGS).
+  ...G07B_TAGS,
   // G07D-HOOK (#143): env-health D queries (see layers_group07d.ts G07D_TAGS).
   ...G07D_TAGS,
   // G07-HOOK (#140): env-health queries (see layers_group07.ts G07_TAGS).
@@ -496,6 +515,10 @@ export type BonusSpec =
   | AreaSpec
   | TripsSpec
   | { kind: "variety"; key: string; values: string[]; per: number; cap: number }
+  // G07B-HOOK (#141): nearest-source cleanliness (0 on the source, 50 at
+  // halfM). Same kind the G07-A batch (#140) adds — identical semantics,
+  // shared on purpose; if #140 lands first this union member dedupes on
+  // rebase.
   // G11D-HOOK (#135): nearest-source calmness for inverted badness
   // layers (trailprivacy): 0 on the source, 50 at halfM (GENV designed
   // this kind but never wired it; G11D is the first wired use).
@@ -511,6 +534,8 @@ export type BonusSpec =
 export function bonusSpecFor(layer: LayerId): BonusSpec {
   // B1-HOOK(#98): batch B1 specs live in layers_batch1.ts.
   if (isB1LayerId(layer)) return b1BonusSpecFor(layer);
+  // G07B-HOOK(#141): env-health B specs live in layers_group07b.ts.
+  if (isG07BLayerId(layer)) return g07bBonusSpecFor(layer);
   // G07D-HOOK(#143): env-health D specs live in layers_group07d.ts.
   if (isG07DLayerId(layer)) return g07dBonusSpecFor(layer);
   // G07-HOOK(#140): env-health specs live in layers_group07.ts.
