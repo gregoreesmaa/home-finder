@@ -91,6 +91,10 @@ import { P4PARK_RASTER_FILE } from "../layers_p4_parking";
 // (unbuilt until the maintainer places the MARU KOV export -- absent
 // files degrade to the honest Euclidean fallback, never an error).
 import { MARUKOV_RASTER_FILE } from "../layers_maru";
+// FLOOD-HOOK (#487): floodzone raster file lives in layers_flood.ts
+// (named but NEVER built — polygons-only decision, resolves absent so
+// windows serve honestly-empty, never a gradient).
+import { FLOOD_RASTER_FILE } from "../layers_flood";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -181,6 +185,74 @@ function ringContains(ring: number[][], lon: number, lat: number): boolean {
     }
   }
   return inside;
+}
+
+// FLOOD-HOOK (#487): KAUR flood-zone polygon sidecar
+// (`kaur/flood-areas.json`): named zone polygons as [lon, lat] rings with
+// a prefilter box (ParkOutline precedent — FloodArea mirrors ParkOutline
+// with zone identity in place of hectares). Written offline by
+// scripts/build/batch_flood_kaur.py off the cached GML snapshot; the
+// per-parcel join itself lives in
+// services/scoring/dims_overturn_flood.py.
+export interface FloodArea {
+  zone_id: string;
+  nimi: string;
+  veekogu: string;
+  tyyp: string;
+  /** [minlon, minlat, maxlon, maxlat] prefilter box. */
+  b: [number, number, number, number];
+  /** Zone rings as [lon, lat] pairs (builder flips GML lat/lon on write). */
+  r: number[][][];
+}
+
+function isFloodArea(v: unknown): v is FloodArea {
+  const p = v as Partial<FloodArea>;
+  return (
+    typeof p?.zone_id === "string" &&
+    typeof p?.nimi === "string" &&
+    typeof p?.veekogu === "string" &&
+    typeof p?.tyyp === "string" &&
+    Array.isArray(p?.b) &&
+    p.b.length === 4 &&
+    p.b.every((n) => typeof n === "number" && Number.isFinite(n)) &&
+    Array.isArray(p?.r) &&
+    p.r.length > 0 &&
+    p.r.every(
+      (ring) =>
+        Array.isArray(ring) &&
+        ring.length >= 3 &&
+        ring.every(
+          (pt) =>
+            Array.isArray(pt) &&
+            pt.length === 2 &&
+            pt.every((n) => typeof n === "number" && Number.isFinite(n)),
+        ),
+    )
+  );
+}
+
+const floodAreaCache = new Map<string, FloodArea[]>();
+
+/**
+ * KAUR flood-zone sidecar (`kaur/flood-areas.json`): named zone polygons.
+ * Missing or malformed sidecar degrades to [] (honestly no polygons —
+ * the Tallinn market window holds zero register polygons anyway, see
+ * docs/overturn_flood.md), never an error.
+ */
+export async function loadFloodAreas(dir: string): Promise<FloodArea[]> {
+  const hit = floodAreaCache.get(dir);
+  if (hit) return hit;
+  let areas: FloodArea[] = [];
+  try {
+    const raw = await fs.readFile(path.join(dir, "kaur", "flood-areas.json"), "utf8");
+    const parsed: unknown = JSON.parse(raw);
+    if (Array.isArray(parsed)) areas = parsed.filter(isFloodArea);
+    else console.warn(`snapshot: ignoring malformed flood-areas.json in ${dir}`);
+  } catch {
+    // Optional sidecar: honestly no polygons.
+  }
+  floodAreaCache.set(dir, areas);
+  return areas;
 }
 
 const areaCache = new Map<string, ParkArea[]>();
@@ -454,6 +526,9 @@ const RASTER_FILE: Record<LayerId, string> = {
   // MARUKOV-HOOK (#486): choropleth rasters
   // (scripts/build/batch_maru_choropleth.py).
   ...MARUKOV_RASTER_FILE,
+  // FLOOD-HOOK (#487): floodzone raster name only (no master built —
+  // polygons-only; absent file serves honestly-empty, never a gradient).
+  ...FLOOD_RASTER_FILE,
 };
 
 /**
@@ -860,6 +935,9 @@ const METRO_PREFIX: Record<LayerId, string> = {
   kovkaive: "kovkaive-metro",
   kovedas: "kovedas-metro",
   kovkiirus: "kovkiirus-metro",
+  // FLOOD-HOOK (#487): no floodzone metro master (polygons-only — the
+  // file is absent, so windows serve county everywhere, honestly-empty).
+  floodzone: "floodzone-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

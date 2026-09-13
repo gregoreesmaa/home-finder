@@ -411,6 +411,16 @@ import {
   MARUKOV_TAGS,
   bonusSpecForMaruKov,
 } from "./layers_maru";
+// FLOOD-HOOK (#487): flood-zone tables live in ./layers_flood
+// (p112 KAUR zone-membership choropleth, polygons only). That module
+// imports layers only as types, so no runtime cycle.
+import type { FloodLayerId } from "./layers_flood";
+import {
+  FLOOD_DECAY,
+  FLOOD_DEFS,
+  FLOOD_TAGS,
+  bonusSpecForFlood,
+} from "./layers_flood";
 
 export type LayerId =
   | "parks"
@@ -497,7 +507,9 @@ export type LayerId =
   | P4ParkingLayerId
   // MARUKOV-HOOK (#486): MARU per-KOV market choropleth ids
   // (./layers_maru).
-  | MaruKovLayerId;
+  | MaruKovLayerId
+  // FLOOD-HOOK (#487): floodzone id (./layers_flood, p112 KAUR choropleth).
+  | FloodLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -669,6 +681,9 @@ const DECAY_KM: Record<LayerId, number> = {
   ...P4PARK_DECAY,
   // MARUKOV-HOOK (#486): choropleth fallback widths (see layers_maru.ts).
   ...MARUKOV_DECAY,
+  // FLOOD-HOOK (#487): floodzone radius (see layers_flood.ts FLOOD_DECAY —
+  // INERT placeholder, polygons only: zero points, never evaluated).
+  ...FLOOD_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -853,6 +868,8 @@ export const LAYERS: LayerDef[] = [
   ...P4PARK_DEFS,
   // MARUKOV-HOOK (#486): choropleth defs (p41/p149/p43/p484) from ./layers_maru.
   ...MARUKOV_DEFS,
+  // FLOOD-HOOK (#487): floodzone def (p112, KAUR zone choropleth) from ./layers_flood.
+  ...FLOOD_DEFS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -948,6 +965,9 @@ const TAGS: Record<LayerId, string> = {
   ...P4PARK_TAGS,
   // MARUKOV-HOOK (#486): KOV polygon queries (see layers_maru.ts MARUKOV_TAGS).
   ...MARUKOV_TAGS,
+  // FLOOD-HOOK (#487): floodzone source note (see layers_flood.ts FLOOD_TAGS —
+  // WFS provenance, NOT runnable Overpass QL).
+  ...FLOOD_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -1249,6 +1269,10 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // MARUKOV-HOOK (#486): choropleth specs live in ./layers_maru.
   const marukov = bonusSpecForMaruKov(layer);
   if (marukov) return marukov;
+  // FLOOD-HOOK (#487): floodzone spec lives in ./layers_flood (INERT —
+  // polygons only, never evaluated).
+  const flood = bonusSpecForFlood(layer);
+  if (flood) return flood;
   throw new Error(`unknown layer: ${layer}`);
 }
 

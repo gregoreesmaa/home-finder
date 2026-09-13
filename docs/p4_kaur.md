@@ -17,6 +17,14 @@ deliberately NOT duplicated here (this module proves the P4-015
 zone-join shape on fixtures only). No `dims_group08*` or other
 shared/group files touched.
 
+Layer #487 (p112 `floodzone` overlay) consumes the #239 verdict
+(`docs/overturn_flood.md` + `services/scoring/dims_overturn_flood.py`):
+the map sidecar `kaur/flood-areas.json` (offline build via
+`scripts/build/batch_flood_kaur.py`) carries the same named polygons the
+scorer joins — choropleth fills only, outside stays unknown. The P4-015
+insurability leg above is untouched (distinct POI kinds, no shared
+helper).
+
 ## Openness verdict: mixed (2026-09-13, keeps per #285)
 
 Nine polite requests total (custom UA, short timeouts, paced ≥4 s,

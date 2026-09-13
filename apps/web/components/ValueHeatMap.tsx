@@ -10,7 +10,9 @@ import {
   type ScoredField,
 } from "../lib/distanceField";
 import type { BBoxLike, BonusSpec, ParkOutline, WalkRasterDoc } from "../lib/layers";
+import type { FloodArea } from "../lib/layers_flood";
 import {
+  applyFloodPolygons,
   applyOutlines,
   applyPointOverlay,
   clearVectorOverlays,
@@ -32,15 +34,16 @@ export interface HeatPoint {
 const ESTONIA_CENTER: [number, number] = [25.0, 58.75];
 
 /**
- * One overlay slot, painted above the raster: point markers win when
- * present (page guarantees parks-outlines and points never coincide),
- * otherwise park outlines; hidden clears the slot. Both painters clear
- * stale layers first, so switches never stack.
+ * One overlay slot, painted above the raster: flood polygons win when
+ * present, then point markers (page guarantees flood-areas, outlines and
+ * points never coincide), otherwise park outlines; hidden clears the
+ * slot. All painters clear stale layers first, so switches never stack.
  */
 function paintOverlay(
   mapObj: OutlineMap,
   opts: {
     outlines?: ParkOutline[] | null;
+    floodAreas?: FloodArea[] | null;
     overlayPoints?: OverlayPoint[] | null;
     overlayColor?: string;
     showOverlay?: boolean;
@@ -48,6 +51,12 @@ function paintOverlay(
 ): void {
   if (opts.showOverlay === false) {
     clearVectorOverlays(mapObj);
+    return;
+  }
+  // FLOOD-HOOK (#487): floodzone choropleth fills (polygons only — no
+  // score field is painted for this layer, by design).
+  if (opts.floodAreas && opts.floodAreas.length > 0) {
+    applyFloodPolygons(mapObj, opts.floodAreas, { color: opts.overlayColor ?? "#1e3a8a" });
     return;
   }
   if (opts.overlayPoints && opts.overlayPoints.length > 0) {
@@ -68,6 +77,7 @@ export function ValueHeatMap({
   bonus,
   raster,
   outlines,
+  floodAreas,
   overlayPoints,
   overlayColor,
   overlayLegend,
@@ -87,6 +97,8 @@ export function ValueHeatMap({
   raster?: WalkRasterDoc | null;
   /** Park polygon outlines (parks layer only); boundary overlay. */
   outlines?: ParkOutline[] | null;
+  /** KAUR flood-zone fills (floodzone layer only); choropleth overlay. */
+  floodAreas?: FloodArea[] | null;
   /** Point markers drawn ABOVE the raster (all layers but parks). */
   overlayPoints?: OverlayPoint[] | null;
   overlayColor?: string;
@@ -118,6 +130,7 @@ export function ValueHeatMap({
     bonus,
     raster,
     outlines,
+    floodAreas,
     overlayPoints,
     overlayColor,
     showOverlay,
@@ -128,6 +141,7 @@ export function ValueHeatMap({
     bonus,
     raster,
     outlines,
+    floodAreas,
     overlayPoints,
     overlayColor,
     showOverlay,
@@ -287,9 +301,10 @@ export function ValueHeatMap({
   // Overlay rides the map lifecycle: paint once loaded, clear on switch.
   useEffect(() => {
     if (mapRef.current) {
-      paintOverlay(mapRef.current, { outlines, overlayPoints, overlayColor, showOverlay });
+      // FLOOD-HOOK (#487): floodAreas join the painted slot.
+      paintOverlay(mapRef.current, { outlines, floodAreas, overlayPoints, overlayColor, showOverlay });
     }
-  }, [outlines, overlayPoints, overlayColor, showOverlay]);
+  }, [outlines, floodAreas, overlayPoints, overlayColor, showOverlay]);
 
   return (
     <section aria-label={title}>

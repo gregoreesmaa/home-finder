@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  applyFloodPolygons,
   applyOutlines,
   applyPointOverlay,
   clearVectorOverlays,
@@ -212,5 +213,72 @@ describe("clearVectorOverlays", () => {
     clearVectorOverlays(map);
     expect(map.layers.size).toBe(0);
     expect(map.sources.size).toBe(0);
+  });
+
+  // FLOOD-HOOK (#487): flood fill + casing join the cleared slot — one
+  // overlay slot paints any kind, never stacks.
+  it("removes flood layers at once", () => {
+    const map = mockMap();
+    map.layers.add("flood-zone-fill");
+    map.layers.add("flood-zone-casing");
+    map.sources.add("flood-zone-polys");
+    clearVectorOverlays(map);
+    expect(map.layers.size).toBe(0);
+    expect(map.sources.size).toBe(0);
+  });
+});
+
+// FLOOD-HOOK (#487): KAUR flood-zone choropleth fills (polygons only).
+describe("applyFloodPolygons", () => {
+  const AREA = {
+    zone_id: "KR-001",
+    nimi: "Mullutu-Suurlaht kogu kalda ulatuses",
+    veekogu: "Mullutu-Suurlaht",
+    tyyp: "Suurte üleujutusaladega siseveekogu",
+    b: [22.0, 58.2, 22.2, 58.3] as [number, number, number, number],
+    r: [RING],
+  };
+
+  it("paints a translucent fill + white casing with closed rings", () => {
+    const map = mockMap();
+    applyFloodPolygons(map, [AREA], { color: "#1e3a8a" });
+    expect(map.sources.has("flood-zone-polys")).toBe(true);
+    expect(map.layers.has("flood-zone-fill")).toBe(true);
+    expect(map.layers.has("flood-zone-casing")).toBe(true);
+    const src = map.added[0] as {
+      data: { features: { geometry: { coordinates: number[][][][] } }[] };
+    };
+    expect(src.data.features).toHaveLength(1);
+    const closed = src.data.features[0].geometry.coordinates[0][0];
+    expect(closed[0]).toEqual([24.7, 59.41]);
+    expect(closed[closed.length - 1]).toEqual([24.7, 59.41]);
+    const fill = map.added.find(
+      (l) => (l as { id: string }).id === "flood-zone-fill",
+    ) as { paint: Record<string, unknown> };
+    expect(fill.paint["fill-color"]).toBe("#1e3a8a");
+    expect(fill.paint["fill-opacity"]).toBe(0.25);
+  });
+
+  it("clears stale layers on nullish input and skips junk rings", () => {
+    const map = mockMap();
+    map.layers.add("flood-zone-fill");
+    map.sources.add("flood-zone-polys");
+    applyFloodPolygons(map, null, { color: "#1e3a8a" });
+    expect(map.layers.size).toBe(0);
+    expect(map.sources.size).toBe(0);
+    const map2 = mockMap();
+    applyFloodPolygons(
+      map2,
+      [{ ...AREA, r: [[[22.0]]] }, { ...AREA, r: [] }],
+      { color: "#1e3a8a" },
+    );
+    expect(map2.sources.size).toBe(0);
+  });
+
+  it("no-ops before the style loads", () => {
+    const map = mockMap(null);
+    applyFloodPolygons(map, [AREA], { color: "#1e3a8a" });
+    expect(map.sources.size).toBe(0);
+    expect(map.layers.size).toBe(0);
   });
 });

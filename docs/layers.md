@@ -79,7 +79,7 @@ zero: null encodes 255 and renders red (red = bad *or* honestly-unknown).
 | 5 Plans (27) | 27 | 42, 44, 106, 146, 223, 224, 225, 230, 381, 485 | 17 | `layers_group05a–05f` (#161–#166) |
 | 6 Heritage (12) | 12 | 72, 352, 353, 356 | 8 | `layers_group06/06b` (#138, #139) |
 | 7 Env health (20) | 20 | 61, 62, 189, 202, 227, 257, 409, 450 | 12 | `layers_group07/07b/07c/07d` (#140–#143) |
-| 8 Climate/flood (16) | 16 | 69, 255, 333, 334, 336, 447 | 10 | `layers_group08a–08d` (#167–#170) |
+| 8 Climate/flood (16) | 16 | 69, 112, 255, 333, 334, 336, 447 (p112 ships twice — g08a OSM no-map verdict stands; floodzone KAUR zone-join overlay, polygons only) | 10 (incl. p112-outside: the join stays NULL outside every polygon) | `layers_group08a–08d` (#167–#170) + `layers_flood`/`dims_overturn_flood`/`batch_flood_kaur` (#239, #487) |
 | 9 Noise (8) | 8 | 16, 138, 162, 234, 301, 408, 445, 493 (proxies) | — | `layers_group09` + `layers_genv` (#104, #124) |
 | 10 Utilities (18) | 18 | 215, 51, 53, 54 | 14 incl. 262, 265 (dims; p51 ships twice — fiber + mobile — on one param) | `layers_group10rest` + `layers_batch10c` + `dims_group10/10b/10c/10rest` (#105, #107, #121, #171, #230) |
 | 11 OSM amenities (24) | 24 | 23: 14, 19, 20, 84, 86–89, 101–103, 108, 124, 169, 190, 313, 338, 346, 419, 442, 462, 466, 470 | 317 (no-map) | `layers.ts` core + `layers_batch1` + `layers_group11c/d` + dims (#98, #134, #135) |
