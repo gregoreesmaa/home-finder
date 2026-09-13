@@ -115,6 +115,11 @@ export function overlayColorFor(layer: LayerId): string {
       return "#57534c";
     case "dispatch":
       return "#6b21a8";
+    // Batch G07 env-health layers (point overlays, stride-sampled).
+    case "industprox":
+      return "#155e75";
+    case "odorsrc":
+      return "#713f12";
   }
 }
 
@@ -165,6 +170,12 @@ export function overlayLegendFor(layer: LayerId): string {
       return "Magistraalteede tihedus (hinnang, küllastus 2 km)";
     case "dispatch":
       return "Politsei/pääste/haigla · lähedaste arv (hinnang, küllastus 3)";
+    // Batch G07 env-health layers: nearest-source distance, same halves
+    // as g07BonusSpecFor in layers_group07.ts.
+    case "industprox":
+      return "Tööstusalad · kaugus lähima alani (hinnang, poolkaugus 500 m)";
+    case "odorsrc":
+      return "Reoveepuhastid ja prügilad · kaugus lähima allikani (hinnang, poolkaugus 500 m)";
   }
 }
 

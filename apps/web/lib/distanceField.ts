@@ -222,6 +222,19 @@ export function buildScoredField(
     }
     return { field, bonus, sigmaKm, direct };
   }
+  // G07-HOOK (#140): nearest-source cleanliness 100·d/(d+halfM) —
+  // far reads green (high), on-source reads exposed (0). Uses the
+  // exact distance field above (no splat needed); +Inf stays NaN
+  // (unknown, never faked). Without this branch quiet layers would
+  // fall into the variety path below and crash on spec.key.
+  if (spec.kind === "quiet") {
+    const direct = new Float64Array(cols * rows);
+    for (let k = 0; k < direct.length; k++) {
+      const d = field.distKm[k];
+      direct[k] = d === INF ? NaN : Math.min(100, (100 * d * 1000) / (d * 1000 + spec.halfM));
+    }
+    return { field, bonus, sigmaKm, direct };
+  }
   {
     const classes = classSplats(
       points,
