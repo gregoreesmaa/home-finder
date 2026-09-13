@@ -352,14 +352,15 @@ export function overlayColorFor(layer: LayerId): string {
     case "senscom":
       return "#06b6d4";
     // OOKLA-HOOK (#489): ookla tile markers (point overlay,
-    // stride-sampled like grocery). #1e3a8a: blue-900 wired broadband
-    // (NOT #1e40af — taken by drainage — and NOT #1d4ed8 — taken by
+    // stride-sampled like grocery). #172554: blue-950 wired broadband
+    // (NOT #1e3a8a — taken by floodzone on main #487 — and NOT
+    // #1e40af — taken by drainage — and NOT #1d4ed8 — taken by
     // transit); #be185d: pink-700 airwaves mobile
     // (NOT #be123c — taken — and NOT #9d174d — and NOT #db2777 —
     // taken by culture — and NOT #ec4899 — taken by activity).
     // Distinct from every other marker (distinct-color test).
     case "ookla_fixed":
-      return "#1e3a8a";
+      return "#172554";
     case "ookla_mobile":
       return "#be185d";
     case "water":

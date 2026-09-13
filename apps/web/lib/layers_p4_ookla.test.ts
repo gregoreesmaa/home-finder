@@ -186,7 +186,7 @@ describe("ookla registry wiring", () => {
   });
 
   it("paints ookla markers wired blue vs airwaves pink (distinct pair)", () => {
-    expect(overlayColorFor("ookla_fixed")).toBe("#1e3a8a");
+    expect(overlayColorFor("ookla_fixed")).toBe("#172554");
     expect(overlayColorFor("ookla_mobile")).toBe("#be185d");
   });
 
