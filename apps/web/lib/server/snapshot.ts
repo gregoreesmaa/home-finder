@@ -126,6 +126,10 @@ import { TERVISE_RASTER_FILE } from "../layers_tervise";
 // ASUMEDIA-HOOK (#495): asumedia raster filename lives in
 // layers_asumedia.ts (intentionally never built — ASUMEDIA_NO_RASTER).
 import { ASUMEDIA_RASTER_FILE } from "../layers_asumedia";
+// PAASTE-HOOK (#493): paaste raster file lives in layers_paaste.ts
+// (named but NOT built — honest-empty decision, resolves absent so the
+// layer degrades to the designed 500 → demo-empty path, honestly labeled).
+import { PAASTE_RASTER_FILE } from "../layers_paaste";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -765,6 +769,9 @@ const RASTER_FILE: Record<LayerId, string> = {
   // decision — the measured set is empty, see ASUMEDIA_NO_RASTER; the
   // name resolves to an absent file so rasters degrade to null).
   ...ASUMEDIA_RASTER_FILE,
+  // PAASTE-HOOK (#493): paaste raster name only (no master built —
+  // honest-empty; absent file degrades to the designed 500 path).
+  ...PAASTE_RASTER_FILE,
 };
 
 /**
@@ -1225,6 +1232,9 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // decision (see layers_asumedia.ts ASUMEDIA_NO_METRO) — the name
   // resolves to an absent file so windows fall back to county cleanly.
   asumedia: "asumedia-metro",
+  // PAASTE-HOOK (#493): no paaste metro master (honest-empty — the file
+  // is absent, so windows serve county everywhere, like G02B/G03/B10C).
+  paaste: "paaste-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

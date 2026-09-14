@@ -510,6 +510,17 @@ import {
   ASUMEDIA_TAGS,
   bonusSpecForAsumedia,
 } from "./layers_asumedia";
+// PAASTE-HOOK (#493): Päästeamet komando tables live in ./layers_paaste
+// (P4-012 station half, honest-empty — no machine feed). That module
+// imports layers only as types, so no runtime cycle.
+import type { PaasteLayerId } from "./layers_paaste";
+import {
+  PAASTE_DECAY,
+  PAASTE_LAYERS,
+  PAASTE_TAGS,
+  isPaasteLayerId,
+  paasteBonusSpecFor,
+} from "./layers_paaste";
 
 export type LayerId =
   | "parks"
@@ -620,7 +631,10 @@ export type LayerId =
   | TerviseLayerId
   // ASUMEDIA-HOOK (#495): own-snapshot per-asum median id
   // (./layers_asumedia, dated negative, empty-on-purpose).
-  | AsumediaLayerId;
+  | AsumediaLayerId
+  // PAASTE-HOOK (#493): komando overlay id (./layers_paaste, P4-012
+  // station half, honest-empty).
+  | PaasteLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -832,6 +846,8 @@ const DECAY_KM: Record<LayerId, number> = {
   // ASUMEDIA-HOOK (#495): per-asum fallback width (see
   // layers_asumedia.ts ASUMEDIA_DECAY — INERT, empty set).
   ...ASUMEDIA_DECAY,
+  // PAASTE-HOOK (#493): paaste radius (see layers_paaste.ts PAASTE_DECAY).
+  ...PAASTE_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -1043,6 +1059,9 @@ export const LAYERS: LayerDef[] = [
   // ASUMEDIA-HOOK (#495): per-asum median def (dated negative,
   // empty-on-purpose) from ./layers_asumedia.
   ...ASUMEDIA_DEFS,
+  // PAASTE-HOOK (#493): paaste def (P4-012 slice, no parameters3 id —
+  // parameters3 p12 is schools) from ./layers_paaste.
+  ...PAASTE_LAYERS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -1165,6 +1184,9 @@ const TAGS: Record<LayerId, string> = {
   // ASUMEDIA-HOOK (#495): own-snapshot provenance note (see
   // layers_asumedia.ts ASUMEDIA_TAGS — NOT runnable Overpass QL).
   ...ASUMEDIA_TAGS,
+  // PAASTE-HOOK (#493): paaste source note (see layers_paaste.ts
+  // PAASTE_TAGS — prose, NOT an Overpass fragment).
+  ...PAASTE_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -1544,6 +1566,8 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // (INERT — empty set, never evaluated).
   const asumedia = bonusSpecForAsumedia(layer);
   if (asumedia) return asumedia;
+  // PAASTE-HOOK (#493): paaste spec lives in ./layers_paaste.
+  if (isPaasteLayerId(layer)) return paasteBonusSpecFor(layer);
   throw new Error(`unknown layer: ${layer}`);
 }
 

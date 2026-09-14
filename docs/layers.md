@@ -151,6 +151,7 @@ id, no raster master (the points-splat kernel IS the field):
 | `eeliskaitse` (P4-015, #488) | EELIS kaitsealad (building-restriction drag) | polygons only (`eelis/eelis-areas.json`, kind `kaitse`) | none — zone-membership choropleth (inside vs teadmata) | `lib/layers_eelis.ts` + `scripts/build/batch_eelis_poly.py` |
 | `eelisniit` (P4-024, #488) | EELIS niidud (coarse tick-habitat proxy) | polygons only (same sidecar, kind `niit`) | none — zone-membership choropleth (inside vs teadmata) | same as above |
 | `eelisraie` (P4-030, #488) | EELIS kaadamisalad (coarse change flag) | polygons only (same sidecar, kind `raie`) | none — zone-membership choropleth (inside vs teadmata) | same as above |
+| `paaste` (P4-012, #493) | Päästeamet komando coverage (dated-negative feed → honest-empty) | NO point feed (kontaktipuu addresses w/o coords, 2026-09-13; zero fallback points, never invented) | hard ≤5 km flat-60 cover (== scorer station leg; dormant: all-NaN) | `lib/layers_paaste.ts` |
 
 Overlay layers carry `paramIds: []` + `paramLabel` (e.g. `P4-031`):
 parameters3 p31 is Structural integrity (inspection no-map) and must

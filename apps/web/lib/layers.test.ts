@@ -203,6 +203,9 @@ describe("layer registry", () => {
       // ASUMEDIA-HOOK (#495): own-snapshot per-asum median id (dated
       // negative — parameters4 namespace, empty-on-purpose).
       "asumedia",
+      // PAASTE-HOOK (#493): paaste komando id (P4-012 slice, no
+      // parameters3 id — parameters3 p12 stays schools).
+      "paaste",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -278,6 +281,9 @@ describe("layer registry", () => {
     // (namespace lock — the asking-median leg is distinct from P4-002
     // closed medians and P4-038 gap; statkov/accblack precedent).
     expect(LAYERS.find((l) => l.id === "asumedia")?.paramIds).toEqual([]);
+    // PAASTE-HOOK (#493): paaste binds NO parameters3 number
+    // (namespace lock — 12 is schools).
+    expect(LAYERS.find((l) => l.id === "paaste")?.paramIds).toEqual([]);
   });
 
   it("wires the B10C utility layers with locked calibration", () => {
@@ -616,6 +622,17 @@ describe("layer registry", () => {
       // layers_asumedia.ts); demo points would paint a fake gradient
       // splat on a future exact-fill choropleth.
       if (l.id === "planktpr" || l.id === "asumedia") {
+        expect(l.fallbackPoints).toEqual([]);
+        continue;
+      }
+      // PAASTE-HOOK (#493): paaste is the honest-empty exception — ZERO
+      // fallback points BY HONESTY (no verified komando coordinates
+      // exist; addresses are not points, never invent stations). The
+      // demo fallback renders "DEMO-varu · 0 punkti" + the EI OLE
+      // source (pinned in layers_paaste.test.ts). CONTRACT CHANGE
+      // surfaced for the reviewer (AGENTS.md §7.5): approve by merging,
+      // or reject by demanding a verified anchor point.
+      if (l.id === "paaste") {
         expect(l.fallbackPoints).toEqual([]);
         continue;
       }

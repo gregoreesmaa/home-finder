@@ -38,7 +38,8 @@ describe("asumedia registry (#495)", () => {
     const ids = LAYERS.map((l) => l.id);
     // 106 shipped layers on main (#511 tervise) + 1 asumedia layer (106 + 1).
     // ASUMEDIA-HOOK (#495): asumedia joins the registry (106 + 1).
-    expect(ids.length).toBe(107);
+    // PAASTE-HOOK (#493): +1 komando overlay (107 + 1).
+    expect(ids.length).toBe(108);
     expect(ids).toContain("asumedia");
   });
 
