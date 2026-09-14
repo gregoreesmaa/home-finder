@@ -120,7 +120,8 @@ describe("overlay legend + colors", () => {
     // EELIS-HOOK (#488): eeliskaitse + eelisniit + eelisraie join the registry (101 + 3).
     // PLANKTPR-HOOK (#492): planktpr joins the registry (104 + 1).
     // TERVISE-HOOK (#494): tervise joins the registry. (105 + 1).
-    expect(ids).toHaveLength(106);
+    // ASUMEDIA-HOOK (#495): asumedia joins the registry (106 + 1).
+    expect(ids).toHaveLength(107);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -326,6 +327,14 @@ describe("overlay legend + colors", () => {
     expect(overlayLegendFor("planktpr")).toContain("EI OLE");
     expect(overlayLegendFor("planktpr")).toContain("2026-09-13");
     expect(overlayLegendFor("planktpr")).toContain("elamu");
+
+    // ASUMEDIA-HOOK (#495): asumedia legend carries the dated negative
+    // (0/84 asums at MIN_N=5 — thin asums never faked, see
+    // ASUMEDIA_VERDICT).
+    expect(overlayLegendFor("asumedia")).toContain("ootel-hinnang");
+    expect(overlayLegendFor("asumedia")).toContain("EI FEIGITA");
+    expect(overlayLegendFor("asumedia")).toContain("2026-09-14");
+    expect(overlayLegendFor("asumedia")).toContain("0/84");
   });
 
   it("gives every layer a distinct marker color", () => {
@@ -362,7 +371,8 @@ describe("overlay legend + colors", () => {
     // EELIS-HOOK (#488): eeliskaitse + eelisniit + eelisraie join the registry (101 + 3).
     // PLANKTPR-HOOK (#492): planktpr joins the registry (104 + 1).
     // TERVISE-HOOK (#494): tervise joins the registry. (105 + 1).
-    expect(seen.size).toBe(106);
+    // ASUMEDIA-HOOK (#495): asumedia joins the registry (106 + 1).
+    expect(seen.size).toBe(107);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

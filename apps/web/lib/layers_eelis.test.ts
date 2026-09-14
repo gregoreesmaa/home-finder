@@ -68,8 +68,9 @@ describe("eelis registry (#488)", () => {
     const ids = LAYERS.map((l) => l.id);
     // 101 shipped layers on main (#507 maaparcel) + 3 eelis
     // nature-polygon overlays (EELIS-HOOK #488, 101 + 3) + 1 planktpr (PLANKTPR-HOOK #492, 104 + 1) +
-    // 1 tervise (TERVISE-HOOK #494, 105 + 1).
-    expect(ids.length).toBe(106);
+    // 1 tervise (TERVISE-HOOK #494, 105 + 1) +
+    // 1 asumedia (ASUMEDIA-HOOK #495, 106 + 1).
+    expect(ids.length).toBe(107);
     for (const id of EELIS_LAYER_IDS) expect(ids).toContain(id);
   });
 

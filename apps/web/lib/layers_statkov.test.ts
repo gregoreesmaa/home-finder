@@ -48,7 +48,8 @@ describe("statkov registry (#485)", () => {
     // EELIS-HOOK (#488): +3 nature-polygon layers join the registry (101 + 3).
     // PLANKTPR-HOOK (#492): +1 designated-use polygon layer (104 + 1).
     // TERVISE-HOOK (#494): +1 tervise bathing-water layer (105 + 1).
-    expect(ids.length).toBe(106);
+    // ASUMEDIA-HOOK (#495): +1 per-asum median layer (106 + 1).
+    expect(ids.length).toBe(107);
     for (const id of STATKOV_LAYER_IDS) expect(ids).toContain(id);
   });
 

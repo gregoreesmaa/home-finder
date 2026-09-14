@@ -123,6 +123,9 @@ import { PLANKTPR_RASTER_FILE, isPlanktprArea } from "../layers_planktpr";
 // TERVISE-HOOK (#494): tervise raster filename lives in
 // layers_tervise.ts (intentionally never built — TERVISE_NO_RASTER).
 import { TERVISE_RASTER_FILE } from "../layers_tervise";
+// ASUMEDIA-HOOK (#495): asumedia raster filename lives in
+// layers_asumedia.ts (intentionally never built — ASUMEDIA_NO_RASTER).
+import { ASUMEDIA_RASTER_FILE } from "../layers_asumedia";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -757,6 +760,11 @@ const RASTER_FILE: Record<LayerId, string> = {
   // the points-splat quality kernel IS the field, see TERVISE_NO_RASTER;
   // the name resolves to an absent file so rasters degrade to null).
   ...TERVISE_RASTER_FILE,
+
+  // ASUMEDIA-HOOK (#495): asumedia raster name (never built by
+  // decision — the measured set is empty, see ASUMEDIA_NO_RASTER; the
+  // name resolves to an absent file so rasters degrade to null).
+  ...ASUMEDIA_RASTER_FILE,
 };
 
 /**
@@ -1212,6 +1220,11 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // either — TERVISE_NO_RASTER; the name resolves to an absent file so
   // windows fall back to the client points-splat quality kernel).
   tervise: "tervise-metro",
+
+  // ASUMEDIA-HOOK (#495): no asumedia metro master by documented
+  // decision (see layers_asumedia.ts ASUMEDIA_NO_METRO) — the name
+  // resolves to an absent file so windows fall back to county cleanly.
+  asumedia: "asumedia-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

@@ -64,3 +64,24 @@ ingestion; P4-038 not double-scored; P4-021/P4-052/P4-007 text-wiring noted
 but NULL; P4-051 privacy hard NULL; 40+15/flag cap for NLP claims).
 No edits to shared files (livability.py, WEIGHTS, layers, docs/layers.md,
 docs/nomap.md); WEIGHTS rebalancing stays one joint change across batches.
+
+## Per-asum asking medians (issue #495, dated negative 2026-09-14)
+
+Group B verify-first: per-asum (Tallinn, 84 asumit) median €/m² asking
+prices derived ONLY from this store — no external price source. Tally
+from real repo content (each adapter fixture through that adapter's own
+`parse_search` entry point): 30 records → 26 with price+area, 13
+Tallinn-usable — **0 carrying an `asum` key** (the adapter record schema
+has none; portal addresses sit at street+locality grain, e.g.
+"Sireli tee 4, Haiba, Saue vald"). No Tallinn asum polygons are vendored
+and `listings` has no asum column, so the exact join (statkov #485
+identity-join-or-NULL precedent) cannot run today.
+
+Honest shape: kernel `services/scoring/dims_p4_own_asum.py`
+(`group_by_asum` + `describe_asum`, MIN_N = 5 — Land Board ≥5/settlement
+precedent, asking noisier than closed so the strict bar) with thin asums
+staying NULL (Estonian hinnang + EI OLE + n labeled); map twin
+`apps/web/lib/layers_asumedia.ts` (layer `asumedia`, empty-on-purpose,
+no bands calibrated off fixtures). Reopen bar: accumulated geocoded
+snapshots (≥MIN_N in ≥1 asum) + vendored 84-asum polygons + bands
+calibrated off the real store.

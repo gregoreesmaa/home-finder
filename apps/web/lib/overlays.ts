@@ -520,6 +520,15 @@ export function overlayColorFor(layer: LayerId): string {
     // every other marker (distinct-color test).
     case "tervise":
       return "#34d399";
+    // ASUMEDIA-HOOK (#495): asumedia marker (empty-on-purpose layer —
+    // the point overlay stays empty live, so this colors only the
+    // toggle dot). #fda4af: rose-300 asking-price blush (NOT #fb7185
+    // — taken by glassglare — and NOT #f9a8d4 — taken by korterstock
+    // — and NOT #be123c — taken by rentbleed; lighter value than all,
+    // and layers never co-render). Distinct from every other marker
+    // (distinct-color test).
+    case "asumedia":
+      return "#fda4af";
   }
 }
 
@@ -890,6 +899,12 @@ export function overlayLegendFor(layer: LayerId): string {
     // = hinnangut pole, mitte keskmine).
     case "tervise":
       return "Suplusvee seirepunktid (Terviseameti väljavõte) · lähima punkti kvaliteet 1 km raadiuses (80 väga hea, 70 hea, 60 piisav/teadmata, 45 kesine, 30 halb; lagi 80, joogivee seire puudub)";
+    // ASUMEDIA-HOOK (#495): asumedia (own-snapshot asking medians) —
+    // the dated negative rides along: 0/84 asums reach MIN_N=5, so
+    // the field is unknown everywhere until the reopen lands real
+    // per-asum N (no bands, no fills, never a faked median).
+    case "asumedia":
+      return "Asumite küsi-mediaanid oma snapshotitest (ootel-hinnang: 2026-09-14 loendus 30 kirjet, 0 asumivõtmega, 0/84 asumi MIN_N=5 täis — õhukese N-iga asumeid EI FEIGITA; korduskontroll: geokodeeritud snapshotid + asumiliide)";
   }
 }
 

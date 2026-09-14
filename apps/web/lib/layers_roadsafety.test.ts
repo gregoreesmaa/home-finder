@@ -54,7 +54,8 @@ describe("roadsafety registry (#481)", () => {
     // EELIS-HOOK (#488): +3 nature-polygon layers (101 + 3).
     // PLANKTPR-HOOK (#492): +1 designated-use polygon layer (104 + 1).
     // TERVISE-HOOK (#494): +1 tervise bathing-water layer (105 + 1).
-    expect(ids.length).toBe(106);
+    // ASUMEDIA-HOOK (#495): +1 per-asum median layer (106 + 1).
+    expect(ids.length).toBe(107);
     expect(ids).toContain("roadsafety");
   });
 
