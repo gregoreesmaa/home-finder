@@ -9,6 +9,7 @@ import {
   loadLayerRaster,
   loadParkAreas,
   loadPlanktprAreas,
+  loadEhisPoints,
   loadSnapshotPoints,
   loadSportPoints,
   loadWindowRaster,
@@ -1888,6 +1889,49 @@ describe("sport venue sidecar (#607)", () => {
     await writeFile(join(bad, "sport", "sport-points.json"), "{nope");
     try {
       await expect(loadSportPoints(bad)).resolves.toEqual([]);
+    } finally {
+      await rm(bad, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("measured-school sidecar (#608)", () => {
+  async function ehisDir(payload: unknown): Promise<string> {
+    const dir = await mkdtemp(join(tmpdir(), "hf-snap-ehis-"));
+    await mkdir(join(dir, "ehis"), { recursive: true });
+    await writeFile(join(dir, "ehis", "ehis-points.json"), JSON.stringify(payload));
+    return dir;
+  }
+
+  it("loads {points} sidecar, dropping bad slices and malformed rows", async () => {
+    const dir = await ehisDir({
+      points: [
+        { lon: 24.7, lat: 59.44, slice: "school" },
+        { lon: 24.83, lat: 59.44, slice: "kindergarten" },
+        { lon: 24.79, lat: 59.43, slice: "hobby" },
+        { lon: 24.7, lat: 59.44, slice: "university" },
+        { lon: "x", lat: 59.44, slice: "school" },
+        { lon: 24.7 },
+      ],
+    });
+    try {
+      await expect(loadEhisPoints(dir)).resolves.toEqual([
+        { lon: 24.7, lat: 59.44, slice: "school" },
+        { lon: 24.83, lat: 59.44, slice: "kindergarten" },
+        { lon: 24.79, lat: 59.43, slice: "hobby" },
+      ]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("degrades missing/malformed sidecar to [] (honestly no points)", async () => {
+    await expect(loadEhisPoints("/nonexistent-dir-xyz")).resolves.toEqual([]);
+    const bad = await mkdtemp(join(tmpdir(), "hf-snap-ehisbad-"));
+    await mkdir(join(bad, "ehis"), { recursive: true });
+    await writeFile(join(bad, "ehis", "ehis-points.json"), "{nope");
+    try {
+      await expect(loadEhisPoints(bad)).resolves.toEqual([]);
     } finally {
       await rm(bad, { recursive: true, force: true });
     }

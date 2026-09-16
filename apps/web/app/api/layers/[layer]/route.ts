@@ -26,6 +26,7 @@ import { isEelisLayerId } from "../../../../lib/layers_eelis";
 import {
   intersectsCoverage,
   loadAccblackPoints,
+  loadEhisPoints,
   loadLayerRaster,
   loadSnapshotPoints,
   loadSportPoints,
@@ -39,6 +40,13 @@ import {
   sportPointsIn,
   sportSliceFor,
 } from "../../../../lib/layers_p4_sport";
+// EHIS-HOOK (#608): measured-school sidecar points (see below).
+import {
+  EHIS_VINTAGE,
+  ehisPointsIn,
+  ehisSliceFor,
+  isEhisLayerId,
+} from "../../../../lib/layers_p4_ehis";
 import { loadSenscomSnapshot, senscomPointsIn } from "../../../../lib/server/senscom";
 import { loadOoklaSnapshot, ooklaPointsIn } from "../../../../lib/server/ookla";
 
@@ -223,6 +231,21 @@ export async function GET(
       points,
       provenance: points.length > 0 ? "snapshot" : "empty",
       ageMs: Date.now() - Date.parse(`${SPORT_VINTAGE}T00:00:00`),
+    });
+  }
+  // EHIS-HOOK (#608): measured-school points come from the snapshot
+  // sidecar (ehis/ehis-points.json, built offline by
+  // scripts/build/batch_ehis.py — never the OSM snapshot, never
+  // live). A missing sidecar stays honestly-empty. Vintage rides
+  // EHIS_VINTAGE (the register harvest date), not the OSM snapshot
+  // date. The OSM `schools` layer is untouched (separate tuning).
+  if (isEhisLayerId(def.id)) {
+    const all = await loadEhisPoints(snapshotDir());
+    const points: LayerPoint[] = ehisPointsIn(all, ehisSliceFor(def.id), bbox);
+    return NextResponse.json({
+      points,
+      provenance: points.length > 0 ? "snapshot" : "empty",
+      ageMs: Date.now() - Date.parse(`${EHIS_VINTAGE}T00:00:00`),
     });
   }
   try {

@@ -211,6 +211,12 @@ describe("layer registry", () => {
       "sport_hall",
       "sport_field",
       "sport_pool",
+      // EHIS-HOOK (#608): measured-school slice ids (P4-011
+      // school/kindergarten/hobby — paramIds empty, parameters4
+      // namespace; OSM `schools` tuning untouched).
+      "ehis_school",
+      "ehis_kindergarten",
+      "ehis_hobby",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -294,6 +300,12 @@ describe("layer registry", () => {
     for (const id of ["sport_hall", "sport_field", "sport_pool"]) {
       expect(LAYERS.find((l) => l.id === id)?.paramIds).toEqual([]);
       expect(LAYERS.find((l) => l.id === id)?.paramLabel).toBe("P4-048");
+    }
+    // EHIS-HOOK (#608): ehis slices ride paramLabel, paramIds stays
+    // [] (parameters4 P4-011 slices, no parameters3 number).
+    for (const id of ["ehis_school", "ehis_kindergarten", "ehis_hobby"]) {
+      expect(LAYERS.find((l) => l.id === id)?.paramIds).toEqual([]);
+      expect(LAYERS.find((l) => l.id === id)?.paramLabel).toBe("P4-011");
     }
   });
 

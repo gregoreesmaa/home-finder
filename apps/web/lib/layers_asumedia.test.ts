@@ -39,7 +39,7 @@ describe("asumedia registry (#495)", () => {
     // 106 shipped layers on main (#511 tervise) + 1 asumedia layer (106 + 1).
     // ASUMEDIA-HOOK (#495): asumedia joins the registry (106 + 1).
     // PAASTE-HOOK (#493): +1 komando overlay (107 + 1).
-    expect(ids.length).toBe(111); // SPORT-HOOK (#607): +3 sport slices (108 + 3)
+    expect(ids.length).toBe(114); // SPORT-HOOK (#607): +3 sport slices (108 + 3); EHIS-HOOK (#608): +3 school slices (111 + 3)
     expect(ids).toContain("asumedia");
   });
 
