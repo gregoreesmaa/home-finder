@@ -7,6 +7,7 @@ import { STATELAND_CLASS_FILL, type StatelandArea } from "./layers_p4_stateland"
 import { QUARRY_CLASS_FILL, type QuarryArea } from "./layers_p4_quarry";
 import { MAAPARANDUS_CLASS_FILL, type MaaparandusArea } from "./layers_p4_maaparandus";
 import { SOIL_CLASS_FILL, type SoilArea } from "./layers_p4_soil";
+import { ETAK_CLASS_FILL, type EtakArea } from "./layers_p4_etak";
 import type { OverlayPoint } from "./overlays";
 
 /** Minimal map surface for vector overlays (sources + paint layers). */
@@ -79,6 +80,12 @@ const MAAPARANDUS_OUTFLOW_SRC = "drainage-outflow-lines-src";
 const SOIL_SRC = "soil-contour-polys";
 const SOIL_FILL = "soil-contour-fill";
 const SOIL_CASING = "soil-contour-casing";
+// ETAK-HOOK (#618): wetland/water/yard-polygon slot (class fills, never
+// a gradient). Clearing covers these ids too — one overlay slot paints
+// either kind, never stacks (see clearVectorOverlays).
+const ETAK_SRC = "etak-contour-polys";
+const ETAK_FILL = "etak-contour-fill";
+const ETAK_CASING = "etak-contour-casing";
 const POINT_SRC = "layer-overlay-src";
 const POINT_CASING = "layer-overlay-casing";
 const POINT_CORE = "layer-overlay-core";
@@ -94,9 +101,10 @@ export function clearVectorOverlays(mapObj: OutlineMap): void {
   // QUARRY-HOOK (#614): permit fill + casing join the cleared slot.
   // DRAINAGE-HOOK (#616): network fill + casing + outflow lines join
   // the cleared slot.
-  // STATELAND-HOOK (#615): parcel fill + casing join the cleared slot.
   // SOIL-HOOK (#617): contour fill + casing join the cleared slot.
-  for (const id of [PARK_CASING, PARK_CORE, POINT_CASING, POINT_CORE, FLOOD_FILL, FLOOD_CASING, MAAPARCEL_FILL, MAAPARCEL_CASING, EELIS_FILL, EELIS_CASING, USE_FILL, USE_CASING, SEVESO_FILL, SEVESO_CASING, STATELAND_FILL, STATELAND_CASING, QUARRY_FILL, QUARRY_CASING, MAAPARANDUS_FILL, MAAPARANDUS_CASING, MAAPARANDUS_LINES, SOIL_FILL, SOIL_CASING]) {
+  // ETAK-HOOK (#618): etak contour fill + casing join the cleared
+  // slot.
+  for (const id of [PARK_CASING, PARK_CORE, POINT_CASING, POINT_CORE, FLOOD_FILL, FLOOD_CASING, MAAPARCEL_FILL, MAAPARCEL_CASING, EELIS_FILL, EELIS_CASING, USE_FILL, USE_CASING, SEVESO_FILL, SEVESO_CASING, STATELAND_FILL, STATELAND_CASING, QUARRY_FILL, QUARRY_CASING, MAAPARANDUS_FILL, MAAPARANDUS_CASING, MAAPARANDUS_LINES, SOIL_FILL, SOIL_CASING, ETAK_FILL, ETAK_CASING]) {
     try {
       if (mapObj.getLayer(id)) mapObj.removeLayer(id);
     } catch {
@@ -112,7 +120,8 @@ export function clearVectorOverlays(mapObj: OutlineMap): void {
   // QUARRY-HOOK (#614): the permit-fill source joins the same slot.
   // DRAINAGE-HOOK (#616): the network-fill source joins the same slot.
   // SOIL-HOOK (#617): the contour-fill source joins the same slot.
-  for (const id of [PARK_SRC, POINT_SRC, FLOOD_SRC, MAAPARCEL_SRC, EELIS_SRC, USE_SRC, SEVESO_SRC, STATELAND_SRC, QUARRY_SRC, MAAPARANDUS_SRC, MAAPARANDUS_OUTFLOW_SRC, SOIL_SRC]) {
+  // ETAK-HOOK (#618): the etak-contour source joins the same slot.
+  for (const id of [PARK_SRC, POINT_SRC, FLOOD_SRC, MAAPARCEL_SRC, EELIS_SRC, USE_SRC, SEVESO_SRC, STATELAND_SRC, QUARRY_SRC, MAAPARANDUS_SRC, MAAPARANDUS_OUTFLOW_SRC, SOIL_SRC, ETAK_SRC]) {
     try {
       if (mapObj.getSource(id)) mapObj.removeSource(id);
     } catch {
@@ -1115,6 +1124,99 @@ export function applySoilPolygons(
       type: "line",
       source: SOIL_SRC,
       paint: { "line-color": "#ffffff", "line-width": 1, "line-opacity": 0.9 },
+    },
+    before,
+  );
+}
+
+// ETAK-HOOK (#618): ETAK wetland/water/yard class choropleth fills.
+
+/**
+ * Paint ETAK contours (wetland-class fills + water + yard fills, white
+ * casing) so measured land-cover reads at a glance. This is a
+ * CHOROPLETH of register facts, never a gradient: colors encode the
+ * etak class (see ETAK_CLASS_FILL — wetland blues wettest-first,
+ * standing/flowing water blue, impervious stone, green-yard green, yard
+ * other stone-light), and no score field is painted anywhere. Clears
+ * stale overlay layers first; no-op when the style is not loaded yet or
+ * areas is nullish. Malformed rings are skipped, never faked; unknown
+ * classes fall back to wet_other (never dropped). Outside every contour
+ * is unknown (never dry land): unmapped ground is not dry ground.
+ */
+export function applyEtakPolygons(
+  mapObj: OutlineMap,
+  areas: EtakArea[] | null | undefined,
+): void {
+  if (!mapObj.getStyle()) return;
+  clearVectorOverlays(mapObj);
+  if (!areas || areas.length === 0) return;
+  const features = [];
+  for (const a of areas) {
+    if (!a || !Array.isArray(a.r)) continue;
+    const polys = [];
+    for (const ring of a.r) {
+      if (!Array.isArray(ring) || ring.length < 3) continue;
+      const pts = ring.filter(
+        (pt) =>
+          Array.isArray(pt) &&
+          pt.length === 2 &&
+          pt.every((n) => typeof n === "number" && Number.isFinite(n)),
+      );
+      if (pts.length < 3) continue;
+      const first = pts[0];
+      const last = pts[pts.length - 1];
+      const closed =
+        first[0] === last[0] && first[1] === last[1] ? pts : [...pts, [first[0], first[1]]];
+      polys.push([closed]);
+    }
+    if (polys.length === 0) continue;
+    const cls =
+      typeof a.cls === "string" && a.cls in ETAK_CLASS_FILL ? a.cls : "wet_other";
+    features.push({
+      type: "Feature",
+      properties: {
+        cls,
+        zone_id: typeof a.zone_id === "string" ? a.zone_id : "",
+        label: typeof a.label === "string" ? a.label : "",
+        name: typeof a.name === "string" ? a.name : "",
+      },
+      geometry: { type: "MultiPolygon", coordinates: polys },
+    });
+  }
+  if (features.length === 0) return;
+  mapObj.addSource(ETAK_SRC, {
+    type: "geojson",
+    data: { type: "FeatureCollection", features },
+  });
+  const before = abovePaint(mapObj);
+  mapObj.addLayer(
+    {
+      id: ETAK_FILL,
+      type: "fill",
+      source: ETAK_SRC,
+      paint: {
+        "fill-color": [
+          "match",
+          ["get", "cls"],
+          "wet_wettest", ETAK_CLASS_FILL.wet_wettest,
+          "wet_mid", ETAK_CLASS_FILL.wet_mid,
+          "wet_other", ETAK_CLASS_FILL.wet_other,
+          "water", ETAK_CLASS_FILL.water,
+          "yard_impervious", ETAK_CLASS_FILL.yard_impervious,
+          "yard_green", ETAK_CLASS_FILL.yard_green,
+          ETAK_CLASS_FILL.yard_other,
+        ],
+        "fill-opacity": 0.45,
+      },
+    },
+    before,
+  );
+  mapObj.addLayer(
+    {
+      id: ETAK_CASING,
+      type: "line",
+      source: ETAK_SRC,
+      paint: { "line-color": "#ffffff", "line-width": 2, "line-opacity": 0.9 },
     },
     before,
   );

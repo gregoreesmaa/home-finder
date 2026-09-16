@@ -32,6 +32,8 @@ import { isQuarryLayerId } from "../../../../lib/layers_p4_quarry";
 import { isMaaparandusLayerId } from "../../../../lib/layers_p4_maaparandus";
 // SOIL-HOOK (#617): polygons-only branch guard (see below).
 import { isSoilLayerId } from "../../../../lib/layers_p4_soil";
+// ETAK-HOOK (#618): polygons-only branch guard (see below).
+import { isEtakLayerId } from "../../../../lib/layers_p4_etak";
 
 import {
   intersectsCoverage,
@@ -296,6 +298,21 @@ export async function GET(
   // (a fake gradient), and demo fallback points are refused by the
   // layer def (empty fallbackPoints, pinned by test).
   if (isMaaparandusLayerId(def.id)) {
+    const { distance } = await loadLayerRaster(def.id);
+    return NextResponse.json({
+      points: [],
+      provenance: "snapshot",
+      ageMs: Date.now() - SNAPSHOT_AS_OF_MS,
+      distance,
+    });
+  }
+  // ETAK-HOOK (#618): etak is polygons-only (zero points, zero raster
+  // — the /etak/areas viewport proxy carries the data). Answer
+  // honestly-empty points on snapshot provenance: requiring points or
+  // a raster here would 500 a healthy layer into labeled demo points
+  // (a fake gradient), and demo fallback points are refused by the
+  // layer def (empty fallbackPoints, pinned by test).
+  if (isEtakLayerId(def.id)) {
     const { distance } = await loadLayerRaster(def.id);
     return NextResponse.json({
       points: [],

@@ -190,6 +190,11 @@ import { MAAPARANDUS_RASTER_FILE, isMaaparandusArea } from "../layers_p4_maapara
 // the name resolves to an absent file so windows degrade to null; the
 // viewport proxy is honestly empty when unharvested).
 import { SOIL_RASTER_FILE } from "../layers_p4_soil";
+// ETAK-HOOK (#618): contour raster filename lives in layers_p4_etak.ts
+// (raster intentionally never built — ETAK_NO_RASTER; the name resolves
+// to an absent file so windows degrade to null; the viewport proxy is
+// honestly empty when the WFS is down).
+import { ETAK_RASTER_FILE } from "../layers_p4_etak";
 // OHUSEIRE-HOOK (#610): station raster filename + sidecar point type
 // live in layers_p4_ohuseire.ts (raster intentionally never built —
 // OHUSEIRE_NO_RASTER; the name resolves to an absent file so rasters
@@ -1267,6 +1272,10 @@ const RASTER_FILE: Record<LayerId, string> = {
   // master built — MAAPARANDUS_NO_RASTER; shapes ARE the field; absent
   // file degrades to null, honestly).
   ...MAAPARANDUS_RASTER_FILE,
+  // ETAK-HOOK (#618): etak contour raster name only (no master built
+  // — ETAK_NO_RASTER; contours ARE the field; absent file degrades to
+  // null, honestly).
+  ...ETAK_RASTER_FILE,
   // SEVESO-HOOK (#613): danger-polygon raster name only (no master
   // built — SEVESO_NO_RASTER, CC BY-NC-ND forbids derivatives;
   // polygons ARE the field; absent file degrades to null, honestly).
@@ -1789,6 +1798,10 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // decision (see layers_p4_maaparandus.ts MAAPARANDUS_NO_METRO) — the name
   // resolves to an absent file so windows fall back to county cleanly.
   maaparandus: "maaparandus-metro",
+  // ETAK-HOOK (#618): no etak metro master by documented decision
+  // (see layers_p4_etak.ts ETAK_NO_METRO) — the name resolves to an
+  // absent file so windows fall back to county cleanly.
+  etak: "etak-metro",
   // SEVESO-HOOK (#613): no seveso metro master by documented decision
   // (see layers_p4_seveso.ts SEVESO_NO_METRO) — the name resolves to
   // an absent file so windows fall back to county cleanly.

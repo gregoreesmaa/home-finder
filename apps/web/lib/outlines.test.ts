@@ -11,6 +11,7 @@ import {
   applyStatelandPolygons,
   applyQuarryPolygons,
   applyMaaparandusPolygons,
+  applyEtakPolygons,
   applyUsePolygons,
   clearVectorOverlays,
   type OutlineMap,
@@ -381,6 +382,18 @@ describe("clearVectorOverlays", () => {
     map.layers.add("soil-contour-fill");
     map.layers.add("soil-contour-casing");
     map.sources.add("soil-contour-polys");
+    clearVectorOverlays(map);
+    expect(map.layers.size).toBe(0);
+    expect(map.sources.size).toBe(0);
+  });
+
+  // ETAK-HOOK (#618): the contour fill + casing + source join the
+  // cleared slot (one overlay slot paints any kind, never stacks).
+  it("removes the etak contour slot too", () => {
+    const map = mockMap();
+    map.layers.add("etak-contour-fill");
+    map.layers.add("etak-contour-casing");
+    map.sources.add("etak-contour-polys");
     clearVectorOverlays(map);
     expect(map.layers.size).toBe(0);
     expect(map.sources.size).toBe(0);
@@ -937,6 +950,78 @@ describe("applyMaaparandusPolygons (#616)", () => {
     const map = mockMap();
     applyMaaparandusPolygons(map, null);
     applyMaaparandusPolygons(map, []);
+    expect(map.sources.size).toBe(0);
+    expect(map.layers.size).toBe(0);
+  });
+});
+
+describe("applyEtakPolygons (#618)", () => {
+  const AREA = {
+    zone_id: "etak:8824",
+    theme: "wetland" as const,
+    cls: "wet_wettest" as const,
+    score: 25,
+    label: "Raba",
+    name: "Ellamaa raba",
+    vintage: "2024-06-01",
+    b: [24.62, 59.3, 24.64, 59.31] as [number, number, number, number],
+    r: [
+      [
+        [24.62, 59.3],
+        [24.64, 59.3],
+        [24.64, 59.31],
+        [24.62, 59.3],
+      ],
+    ],
+  };
+
+  it("paints class fills + casing with closed rings", () => {
+    const map = mockMap();
+    applyEtakPolygons(map, [AREA]);
+    expect(map.sources.has("etak-contour-polys")).toBe(true);
+    expect(map.layers.has("etak-contour-fill")).toBe(true);
+    expect(map.layers.has("etak-contour-casing")).toBe(true);
+    const src = map.added[0] as {
+      data: { features: { properties: { cls: string }; geometry: { coordinates: number[][][][] } }[] };
+    };
+    expect(src.data.features).toHaveLength(1);
+    expect(src.data.features[0].properties.cls).toBe("wet_wettest");
+    const ring = src.data.features[0].geometry.coordinates[0][0];
+    expect(ring[0]).toEqual(ring[ring.length - 1]);
+  });
+
+  it("paints the class match expression (facts, never scores)", () => {
+    const map = mockMap();
+    applyEtakPolygons(map, [AREA]);
+    const fill = map.added.find(
+      (l) => (l as { id?: string }).id === "etak-contour-fill",
+    ) as { paint: { "fill-color": unknown[] } };
+    expect(fill.paint["fill-color"][0]).toBe("match");
+    expect(fill.paint["fill-color"]).toContain("wet_wettest");
+    expect(fill.paint["fill-color"]).toContain("#0c4a6e");
+    expect(fill.paint["fill-color"]).toContain("yard_green");
+    expect(fill.paint["fill-color"]).toContain("#4ade80");
+  });
+
+  it("folds unknown classes to wet_other and skips shapeless areas (never faked)", () => {
+    const map = mockMap();
+    const weird = { ...AREA, cls: "bog" };
+    const shapeless = { ...AREA, zone_id: "x:2", r: [] as number[][][] };
+    applyEtakPolygons(map, [
+      weird as unknown as typeof AREA,
+      shapeless,
+    ]);
+    const src = map.added[0] as {
+      data: { features: { properties: { cls: string } }[] };
+    };
+    expect(src.data.features).toHaveLength(1);
+    expect(src.data.features[0].properties.cls).toBe("wet_other");
+  });
+
+  it("is a no-op on nullish input (outside stays unpainted)", () => {
+    const map = mockMap();
+    applyEtakPolygons(map, null);
+    applyEtakPolygons(map, []);
     expect(map.sources.size).toBe(0);
     expect(map.layers.size).toBe(0);
   });

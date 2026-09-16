@@ -18,6 +18,7 @@ import type { StatelandArea } from "../lib/layers_p4_stateland";
 import type { QuarryArea } from "../lib/layers_p4_quarry";
 import type { MaaparandusArea } from "../lib/layers_p4_maaparandus";
 import type { SoilArea } from "../lib/layers_p4_soil";
+import type { EtakArea } from "../lib/layers_p4_etak";
 import {
   applyFloodPolygons,
   applyMaaParcelPolygons,
@@ -29,6 +30,7 @@ import {
   applyStatelandPolygons,
   applyQuarryPolygons,
   applyMaaparandusPolygons,
+  applyEtakPolygons,
   applyUsePolygons,
   clearVectorOverlays,
   type OutlineMap,
@@ -53,12 +55,14 @@ const ESTONIA_CENTER: [number, number] = [25.0, 58.75];
  * One overlay slot, painted above the raster: flood polygons win when
  * present, then parcel fills, then eelis polygons, then seveso danger
  * fills, then stateland state/auction fills, then quarry permit fills,
- * then drainage network/outflow shapes, then point markers, then
- * use-fills (page guarantees flood-areas, maa-parcels, eelis-areas,
- * seveso-areas, stateland-areas, quarry-areas, drainage-areas,
- * outlines and points never coincide — and fills and points never
- * coincide either), otherwise park outlines; hidden clears the slot.
- * All painters clear stale layers first, so switches never stack.
+ * then drainage network/outflow shapes, then soil contour fills, then
+ * etak contour fills, then point markers, then use-fills (page
+ * guarantees flood-areas, maa-parcels, eelis-areas, seveso-areas,
+ * stateland-areas, quarry-areas, drainage-areas, soil-areas,
+ * etak-areas, outlines and points never coincide — and fills and
+ * points never coincide either), otherwise park outlines; hidden
+ * clears the slot. All painters clear stale layers first, so switches
+ * never stack.
  */
 function paintOverlay(
   mapObj: OutlineMap,
@@ -74,6 +78,7 @@ function paintOverlay(
     quarryAreas?: QuarryArea[] | null;
     maaparandusAreas?: MaaparandusArea[] | null;
     soilAreas?: SoilArea[] | null;
+    etakAreas?: EtakArea[] | null;
     overlayPoints?: OverlayPoint[] | null;
     usePolygons?: UseFillPolygon[] | null;
     overlayColor?: string;
@@ -115,9 +120,6 @@ function paintOverlay(
   if (opts.statelandAreas && opts.statelandAreas.length > 0) {
     applyStatelandPolygons(mapObj, opts.statelandAreas);
     return;
-  }  if (opts.statelandAreas && opts.statelandAreas.length > 0) {
-    applyStatelandPolygons(mapObj, opts.statelandAreas);
-    return;
   }
   // SOIL-HOOK (#617): soil contour fills (polygons only — no score
   // field is painted for this layer, by design).
@@ -136,6 +138,12 @@ function paintOverlay(
   // by design).
   if (opts.maaparandusAreas && opts.maaparandusAreas.length > 0) {
     applyMaaparandusPolygons(mapObj, opts.maaparandusAreas);
+    return;
+  }
+  // ETAK-HOOK (#618): etak wetland/water/yard class fills (polygons
+  // only — no score field is painted for this layer, by design).
+  if (opts.etakAreas && opts.etakAreas.length > 0) {
+    applyEtakPolygons(mapObj, opts.etakAreas);
     return;
   }
   if (opts.overlayPoints && opts.overlayPoints.length > 0) {
@@ -172,6 +180,7 @@ export function ValueHeatMap({
   quarryAreas,
   maaparandusAreas,
   soilAreas,
+  etakAreas,
   overlayPoints,
   usePolygons,
   overlayColor,
@@ -210,6 +219,8 @@ export function ValueHeatMap({
   maaparandusAreas?: MaaparandusArea[] | null;
   /** Soil contour fills (soil layer only); family choropleth. */
   soilAreas?: SoilArea[] | null;
+  /** ETAK wetland/water/yard fills (etak layer only); class choropleth. */
+  etakAreas?: EtakArea[] | null;
   /** Point markers drawn ABOVE the raster (all layers but parks). */
   overlayPoints?: OverlayPoint[] | null;
   /** Designated-use fills drawn ABOVE the field (planktpr only). */
@@ -250,6 +261,9 @@ export function ValueHeatMap({
     eelisAreas,
     sevesoAreas,
     quarryAreas,
+    // ETAK-HOOK (#618): etakAreas ride the refresh slot so pans keep
+    // the contour fills (same slot as the painted effect below).
+    etakAreas,
     overlayPoints,
     usePolygons,
     overlayColor,
@@ -268,6 +282,9 @@ export function ValueHeatMap({
     eelisAreas,
     sevesoAreas,
     quarryAreas,
+    // ETAK-HOOK (#618): etakAreas ride the refresh slot so pans keep
+    // the contour fills (same slot as the painted effect below).
+    etakAreas,
     overlayPoints,
     usePolygons,
     overlayColor,
@@ -375,6 +392,20 @@ export function ValueHeatMap({
         mapRef.current = mapObj as unknown as OutlineMap;
         refresh();
         paintOverlay(mapRef.current, dataRef.current);
+        // ETAK-HOOK (#618): report the mount view too, not just settled
+        // moves (see schedule below): a deep-linked camera (?c=lon,lat,z)
+        // never fires moveend, so without this the page keeps the
+        // country-wide ESTONIA_BBOX and the viewport-driven etak fetch
+        // answers too-wide until the first pan. Same-view reports are
+        // cheap (sameView dedupes page-side; the server cache keys the
+        // rounded bbox).
+        const ib = mapObj.getBounds();
+        viewCbRef.current?.({
+          minlon: ib.getWest(),
+          minlat: ib.getSouth(),
+          maxlon: ib.getEast(),
+          maxlat: ib.getNorth(),
+        });
       });
       const schedule = () => {
         if (timer) clearTimeout(timer);
@@ -447,9 +478,10 @@ export function ValueHeatMap({
       // QUARRY-HOOK (#614): quarryAreas join the painted slot.
       // DRAINAGE-HOOK (#616): maaparandusAreas join the painted slot.
       // SOIL-HOOK (#617): soilAreas join the painted slot.
-      paintOverlay(mapRef.current, { outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, overlayPoints, usePolygons, overlayColor, showOverlay });
+      // ETAK-HOOK (#618): etakAreas join the painted slot.
+      paintOverlay(mapRef.current, { outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, overlayPoints, usePolygons, overlayColor, showOverlay });
     }
-  }, [outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, overlayPoints, usePolygons, overlayColor, showOverlay]);
+  }, [outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, overlayPoints, usePolygons, overlayColor, showOverlay]);
 
   return (
     <section aria-label={title}>
