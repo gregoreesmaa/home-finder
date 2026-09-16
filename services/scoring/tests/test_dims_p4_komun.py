@@ -1,14 +1,18 @@
 """P4 komun demo + coverage dims (issues #290, #363): hermetic tests.
 
 No network: all eighteen scorers are unpublished-feed NULLs
-(2026-09-13 dated-negative verdict, see dims_p4_komun docstring), so
-the tests pin the None contract, the Estonian honesty markers
-(hinnang + EI OLE + buyer-side check pointer), the per-param
-missing-input naming, and the registry/aggregator coverage. The
-module itself makes no network calls (pinned by source inspection).
+(2026-09-13 dated-negative verdict + 2026-09-16 lumekaart re-dig,
+see dims_p4_komun docstring), so the tests pin the None contract,
+the Estonian honesty markers (hinnang + EI OLE + buyer-side check
+pointer), the per-param missing-input naming, the re-dig endpoint
+evidence (areas-only layer vs gated class folder), and the
+registry/aggregator coverage. The module itself makes no network
+calls (pinned by source inspection).
 """
 
 import inspect
+import json
+import os
 
 import dims_p4_komun as komun
 from dims_p4_komun import (
@@ -137,6 +141,38 @@ def test_rat_hex_slice_never_names_addresses():
 def test_geology_slice_names_subsurface_sibling():
     _, reason = dim_geology_uvk_crosscheck(TALLINN, POIS)
     assert "dims_p4_maa_subsurface" in reason
+
+
+def test_redig_endpoint_evidence_pinned_in_docstring():
+    src = inspect.getsource(komun)
+    assert "Teehoolduspiirkonnad_veebikaart" in src
+    assert "Token Required" in src
+    assert "Pirita_hooldus" in src
+    assert "config.json" in src
+    assert "#536" in src
+    assert "dims_p4_trans" in src
+
+
+def test_snow_reason_names_areas_layer_and_gated_folder():
+    _, reason = dim_snow_maintenance_class(TALLINN, POIS)
+    assert "Teehoolduspiirkonnad" in reason
+    assert "klassiväljadeta" in reason
+    assert "võtit" in reason
+
+
+def test_areas_fixture_has_no_class_attribute():
+    path = os.path.join(os.path.dirname(__file__), "fixtures",
+                        "komun_teehooldus_layer.json")
+    with open(path, encoding="utf-8") as fh:
+        inv = json.load(fh)
+    assert inv["service"] == (
+        "veebikaart/Teehoolduspiirkonnad_veebikaart/MapServer")
+    assert inv["class_attributes"] == []
+    hay = " ".join(inv["fields"]).lower()
+    assert "klass" not in hay and "tase" not in hay and "level" not in hay
+    assert "nimetus" in inv["fields"] and "markused" in inv["fields"]
+    v, _ = dim_snow_maintenance_class(TALLINN, POIS)
+    assert v is None
 
 
 def test_registry_and_aggregator_cover_all_eighteen():

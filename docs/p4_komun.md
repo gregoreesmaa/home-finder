@@ -1,10 +1,12 @@
 # P4 komun verdict note — Tallinna Keskkonna- ja Kommunaalamet (P4-018 + 17 slices)
 
 > Dated-negative verdict for issues #290 (demo) and #363 (coverage).
-> Checked 2026-09-13. All eighteen params are documented no-map NULL dims
-> (OTA PR #131 precedent); scorers live in
+> Checked 2026-09-13; lumekaart re-dig 2026-09-16 per the #290 re-open
+> contract (AGENTS.md §7.7). All eighteen params are documented no-map
+> NULL dims (OTA PR #131 precedent); scorers live in
 > `services/scoring/dims_p4_komun.py`, pinned by
-> `services/scoring/tests/test_dims_p4_komun.py`.
+> `services/scoring/tests/test_dims_p4_komun.py` (+ field-inventory
+> fixture `services/scoring/tests/fixtures/komun_teehooldus_layer.json`).
 
 ## Verdict
 
@@ -35,10 +37,43 @@ not committed).
 | `https://gis.tallinn.ee/lumekaart/` → HTTP 200 (~5 KB, IIS) | ArcGIS Web AppBuilder viewer shell ("Talihoolduse kaart", jimu-core/init.js); no WFS/WMS/GeoJSON/CSV endpoint at page level | Interactive viewer, not a pollable per-parcel join |
 | `https://andmed.eesti.ee/dataset?q=talihooldus` → HTTP 200 (~76 KB) | 12 visible characters ("Teabevärav" JS shell) | No trivially pollable national-portal talihooldus dataset |
 
-Judgment call: the check stopped at storefront/page/viewer-shell level on
-purpose — no lumekaart service enumeration, no e-service flow driving, no
-complaint-form probing. Deeper probing is exactly the scraping this repo
+Judgment call (2026-09-13): the check stopped at storefront/page/viewer-shell
+level on purpose — no lumekaart service enumeration, no e-service flow driving,
+no complaint-form probing. That stop was superseded by the 2026-09-16 re-dig
+below (re-open contract on #290); the remaining boundary (credentialed
+endpoints, per-record queries/exports) is exactly the scraping this repo
 refuses (AGENTS.md §5).
+
+## Re-dig 2026-09-16 (re-open contract: config.json → service directories → class layers + cadence)
+
+12 paced single GETs with the labelled one-off user-agent
+(`home-finder openness probe #290-reopen`), HTTP 429 = stop (none seen).
+Raw bodies: `/tmp/hf-komun-dig/` (one-off PR record, not committed) —
+9 evidence-bearing probes tabulated; the other 3 (shell re-fetch,
+`/lumekaart/index.js` 404, `/lumekaart/cdn/1/index.js` 200 app entry
+with no baked-in service URLs) are in the raw cache.
+
+| Check | Observed | Meaning |
+|---|---|---|
+| `https://gis.tallinn.ee/lumekaart/config/config.json` → HTTP 404 (IIS) | No static app config at the ExB conventional path | Viewer is an Experience Builder runtime shell (jimu-core/init.js, base `./cdn/1/`), not Web AppBuilder — config is assembled at runtime |
+| `https://gis.tallinn.ee/lumekaart/cdn/1/config/config.json` → HTTP 404 | Same negative under the build base path | config.json step ends here (documented boundary, not a refusal) |
+| `https://gis.tallinn.ee/lumekaart/cdn/1/jimu-core/init.js` → HTTP 200 (48 KB) | Generic SystemJS loader, no service URLs baked in | Static bundle read yields no markers; runtime chunks not chased (diminishing returns, politeness budget) |
+| `https://gis.tallinn.ee/arcgis/rest/services?f=json` → HTTP 200 (3.9 KB) | ArcGIS Server 11.5 directory: 23 folders, 70 root services, all keyless | The services directory itself is open — the dig proceeds per service, metadata only |
+| `.../rest/services/hooldus?f=json` → `{"error":{"code":499,"message":"Token Required"}}` | City-wide maintenance folder is KEY-GATED | Class levels behind the viewer live here (or an equivalent credentialed path) — refused territory, endpoint name pasted as the deliverable |
+| `.../rest/services/veebikaart?f=json` → HTTP 200 (1.9 KB) | 18 public services incl. `veebikaart/Teehoolduspiirkonnad_veebikaart` MapServer | Maintenance AREAS service is keyless |
+| `.../Teehoolduspiirkonnad_veebikaart/MapServer?f=json` → HTTP 200 (2.5 KB) | One layer: `teehoolduspiirkonnad` (id 0, polygons, Tallinn EPSG:3301 extent) | The areas layer exists keylessly |
+| `.../Teehoolduspiirkonnad_veebikaart/MapServer/0?f=json` → HTTP 200 (4.7 KB) | Fields: objectid / nimetus / markused / shape (+ area/length). Description: "Kommunaalameti hoolduspiirkonnad. uuendatakse jooksvalt läbi Hoolduse kaardirakenduse." No class attribute, no editingInfo timestamps | AREAS ONLY (names + notes) — the P4-018 per-street class join cannot be measured; cadence is "jooksvalt" by description, no machine-readable vintage to cache |
+| `.../rest/services/Pirita_hooldus/MapServer?f=json` → HTTP 200 (3.4 KB) | "Teehooldus hooldajatele": Pirita parklad/kõnniteed/tänavad layers + tables | District-scoped contractor data — cannot support a city-wide join |
+
+Verdict after the dig (deliverable per the re-open contract): the keyless layer
+carries maintenance AREAS, the city-wide CLASS levels are key-gated — so
+`winter_road_class` is NOT graduated here (NULL stands with the endpoint
+evidence above). The honest future for the class join is the teeregister WFS
+pull owned by #536 (Transpordiamet, DAILY, CC-BY-4.0); `dim_winter_road_class`
+in `dims_p4_trans` stays the fixture-codelist owner ("remap on first pull") and
+is untouched by this PR — no double-scoring by construction. Re-probe each
+autumn per the P4-018 autumn TTL (next: autumn 2027), or sooner if the
+`hooldus/` folder goes keyless.
 
 ## Honest shapes per param (all NULL until a feed appears)
 

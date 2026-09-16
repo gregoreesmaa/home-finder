@@ -36,14 +36,59 @@ check, kept for the PR record, never committed):
   human viewer (iframe gis.tallinn.ee/lumekaart/), not a feed —
   0 for csv / geojson / wfs / api / masinloetav.
 * https://gis.tallinn.ee/lumekaart/ -> HTTP 200 (~5 KB,
-  Microsoft-IIS). ArcGIS Web AppBuilder viewer shell ("Talihoolduse
-  kaart", jimu-core/init.js); no WFS/WMS/GeoJSON/CSV endpoint
-  advertised at page level. Reading its internals would be map-app
-  scraping, which this repo refuses (AGENTS.md section 5; same
-  stop-at-shell precedent as TLT #277 and Elron #284).
+  Microsoft-IIS). ArcGIS Experience Builder runtime shell
+  ("Talihoolduse kaart", jimu-core/init.js, base ./cdn/1/); no
+  WFS/WMS/GeoJSON/CSV endpoint advertised at page level. The
+  2026-09-16 re-dig (see RE-DIG above) chased it one level deeper
+  per AGENTS.md section 7.7 — static config.json 404s, keyless
+  services directory open, maintenance AREAS layer found (no
+  class attributes), city-wide hooldus/ folder key-gated.
 * https://andmed.eesti.ee/dataset?q=talihooldus -> HTTP 200
   (~76 KB), 12 visible characters ("Teabevärav" JS shell) — no
   trivially pollable national-portal talihooldus dataset.
+
+RE-DIG 2026-09-16 (re-open contract on #290, AGENTS.md section 7.7:
+"open JS shells, don't file them"). 12 paced single GETs, same
+labelled UA, HTTP 429 = stop (none seen), raw bodies kept at
+/tmp/hf-komun-dig/ (PR record, never committed). Findings:
+* The viewer is now an ArcGIS Experience Builder runtime shell
+  (jimu-core/init.js, base ./cdn/1/), NOT Web AppBuilder: there is
+  no static config.json — /lumekaart/config/config.json and
+  /lumekaart/cdn/1/config/config.json both 404, and neither the
+  loader (48 KB) nor the app entry (48 KB) bakes in service URLs.
+  The app config is assembled at runtime, so the config.json step
+  of the dig ends here (documented boundary, not a refusal).
+* The ArcGIS services directory itself IS keyless and open
+  (https://gis.tallinn.ee/arcgis/rest/services?f=json, ArcGIS
+  Server 11.5, 23 folders / 70 root services).
+* veebikaart/Teehoolduspiirkonnad_veebikaart MapServer (keyless)
+  carries layer 0 'teehoolduspiirkonnad' (Feature Layer, polygons,
+  displayField nimetus, Tallinn EPSG:3301 extent): Kommunaalameti
+  hoolduspiirkonnad, "uuendatakse jooksvalt läbi Hoolduse
+  kaardirakenduse". Fields are objectid/nimetus/markused/shape
+  (+ area/length) — AREAS ONLY, no winter-maintenance class
+  attribute (no tase/klass/level field), so the P4-018 per-street
+  class join cannot be measured off it. No editingInfo timestamps
+  are exposed, so there is no machine-readable vintage to cache —
+  cadence is "jooksvalt" by description only. Field inventory is
+  transcribed to tests/fixtures/komun_teehooldus_layer.json.
+* The city-wide maintenance folder hooldus/ is KEY-GATED:
+  /arcgis/rest/services/hooldus?f=json -> {"error": {"code":
+  499, "message": "Token Required"}}. The class levels behind the
+  lumekaart viewer live there (or behind an equivalent credentialed
+  path) — refused territory per the issue contract, endpoint name
+  pasted here as the deliverable.
+* Root-level Pirita_hooldus ("Teehooldus hooldajatele": Pirita
+  parklad/kõnniteed/tänavad + tables) is district-scoped
+  contractor data — it cannot support a city-wide P4-018 join.
+* Coordination with #536 (teeregister WFS, Transpordiamet, DAILY,
+  CC-BY-4.0): the class join's honest future is the teeregister
+  pull owned there, NOT this viewer. dim_winter_road_class in
+  dims_p4_trans stays the fixture-codelist owner ("remap on first
+  pull"); this module's snow_maintenance_class stays the
+  street/sidewalk-class NULL leg beside the TLT winter-bus leg —
+  no double-scoring by construction, nothing here graduates until
+  a keyless class feed appears.
 So all eighteen dims return None for EVERY input including missing
 origin: a per-parcel class painted from a one-off hand-read of the
 human viewer would be fake precision (OTA PR #131 precedent).
@@ -104,9 +149,13 @@ Judgment calls (reviewable per AGENTS.md section 7.5):
   different honest shapes (hex responsiveness rate vs hex
   operational flags), both NULL — no double-scoring by
   construction.
-* The openness check stopped at storefront/page/viewer-shell level
-  on purpose — no lumekaart service enumeration, no e-service
-  flow driving, no complaint-form probing.
+* The 2026-09-13 openness check stopped at storefront/page/
+  viewer-shell level on purpose; the 2026-09-16 re-dig superseded
+  that stop per the #290 re-open contract (config.json chase +
+  one keyless directory read per service, metadata only). Still
+  refused throughout: credentialed endpoints (hooldus/ 499),
+  per-record queries/exports, e-service flow driving, and
+  complaint-form probing.
 
 Integration (deliberately NOT done here): these dims need no
 livability.OVERPASS_QUERY / livability._POI_KIND extension (no
@@ -129,12 +178,22 @@ Score = Tuple[Optional[int], str]  # (score 0..100 | None, Estonian reason)
 
 def dim_snow_maintenance_class(origin: Optional[Tuple[float, float]],
                                pois: Optional[List[dict]]) -> Score:
-    """P4-018: NULL — winter-trap class needs the maintenance-class feed."""
+    """P4-018: NULL — winter-trap class needs the maintenance-class feed.
+
+    2026-09-16 re-dig: the keyless Teehoolduspiirkonnad areas layer
+    carries nimetus/markused only (no class attribute) and the
+    city-wide hooldus/ folder is token-gated, so the class join
+    stays unmeasurable; the honest future is the teeregister pull
+    owned by #536, whose fixture-codelist owner dim_winter_road_class
+    in dims_p4_trans stays untouched here (no double-scoring)."""
     return None, ("Tänava talihooldusklass on talvise lõksu hinnang (EI OLE "
                   "masinloetavat klassitabelit): teede ja kõnniteede "
                   "hoolduspiirkonnad elavad inimloetaval lumekaardil "
                   "(tallinn.ee/et/lumi, gis.tallinn.ee/lumekaart) — "
-                  "kontrolli oma tänava piirkonda kaardilt ja talvist "
+                  "avalik veebikaart/Teehoolduspiirkonnad-teenus "
+                  "kannab vaid alasid (nimetus/markused, klassiväljadeta) "
+                  "ja hooldus-kaust küsib võtit, nii et klassiliidestust "
+                  "pole — kontrolli oma tänava piirkonda kaardilt ja talvist "
                   "bussikärbe-slice'i dims_p4_tlt-st ning OSM "
                   "winter_service-proxy't dims_p4_osm-ist, ära feigi")
 

@@ -1,0 +1,8 @@
+{"cadence": "uuendatakse jooksvalt läbi Hoolduse kaardirakenduse (rolling per layer description; no editingInfo timestamps exposed, so no machine-readable vintage to cache)",
+  "class_attributes": [],
+  "fields": ["objectid", "nimetus", "markused", "shape", "shape_Area", "shape_Length"],
+  "geometry": "esriGeometryPolygon",
+  "layer": "teehoolduspiirkonnad (id 0, displayField nimetus)",
+  "probed": "2026-09-16",
+  "service": "veebikaart/Teehoolduspiirkonnad_veebikaart/MapServer",
+  "verdict": "AREAS ONLY: contractor-area names (nimetus) + notes (markused). No winter-maintenance class attribute (no tase/klass/level field), so the P4-018 per-street class join cannot be measured off this layer. City-wide class levels live behind the token-gated hooldus/ folder (HTTP 499 Token Required, 2026-09-16)."}
