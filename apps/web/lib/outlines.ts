@@ -2,6 +2,7 @@ import type { ParkOutline } from "./layers";
 import type { FloodArea } from "./layers_flood";
 import type { EelisArea } from "./layers_eelis";
 import { MAAPARCEL_CLASS_FILL, type MaaParcelArea } from "./layers_maaparcel";
+import { QUARRY_CLASS_FILL, type QuarryArea } from "./layers_p4_quarry";
 import type { OverlayPoint } from "./overlays";
 
 /** Minimal map surface for vector overlays (sources + paint layers). */
@@ -41,6 +42,12 @@ const EELIS_CASING = "eelis-nature-casing";
 const USE_SRC = "planktpr-use-polys";
 const USE_FILL = "planktpr-use-fill";
 const USE_CASING = "planktpr-use-casing";
+// QUARRY-HOOK (#614): permit/watch-polygon slot (class fills, never a
+// gradient). Clearing covers these ids too — one overlay slot paints
+// either kind, never stacks (see clearVectorOverlays).
+const QUARRY_SRC = "quarry-permit-polys";
+const QUARRY_FILL = "quarry-permit-fill";
+const QUARRY_CASING = "quarry-permit-casing";
 const POINT_SRC = "layer-overlay-src";
 const POINT_CASING = "layer-overlay-casing";
 const POINT_CORE = "layer-overlay-core";
@@ -51,7 +58,8 @@ export function clearVectorOverlays(mapObj: OutlineMap): void {
   // MAAPARCEL-HOOK (#491): parcel fill + casing join the cleared slot.
   // EELIS-HOOK (#488): eelis fill + casing join the cleared slot.
   // PLANKTPR-HOOK (#492): use fill + casing join the cleared slot.
-  for (const id of [PARK_CASING, PARK_CORE, POINT_CASING, POINT_CORE, FLOOD_FILL, FLOOD_CASING, MAAPARCEL_FILL, MAAPARCEL_CASING, EELIS_FILL, EELIS_CASING, USE_FILL, USE_CASING]) {
+  // QUARRY-HOOK (#614): permit fill + casing join the cleared slot.
+  for (const id of [PARK_CASING, PARK_CORE, POINT_CASING, POINT_CORE, FLOOD_FILL, FLOOD_CASING, MAAPARCEL_FILL, MAAPARCEL_CASING, EELIS_FILL, EELIS_CASING, USE_FILL, USE_CASING, QUARRY_FILL, QUARRY_CASING]) {
     try {
       if (mapObj.getLayer(id)) mapObj.removeLayer(id);
     } catch {
@@ -62,7 +70,8 @@ export function clearVectorOverlays(mapObj: OutlineMap): void {
   // MAAPARCEL-HOOK (#491): parcel source joins the cleared slot.
   // EELIS-HOOK (#488): eelis source joins the cleared slot.
   // PLANKTPR-HOOK (#492): the use-fill source joins the same slot.
-  for (const id of [PARK_SRC, POINT_SRC, FLOOD_SRC, MAAPARCEL_SRC, EELIS_SRC, USE_SRC]) {
+  // QUARRY-HOOK (#614): the permit-fill source joins the same slot.
+  for (const id of [PARK_SRC, POINT_SRC, FLOOD_SRC, MAAPARCEL_SRC, EELIS_SRC, USE_SRC, QUARRY_SRC]) {
     try {
       if (mapObj.getSource(id)) mapObj.removeSource(id);
     } catch {
@@ -541,6 +550,93 @@ export function applyUsePolygons(
         "fill-color": ["get", "color"],
         "fill-opacity": 0.45,
       },
+    },
+    before,
+  );
+}
+
+// QUARRY-HOOK (#614): Maa-amet permit/watch class choropleth fills.
+
+/**
+ * Paint quarry permit/watch polygons (class fills + white casing) so
+ * the inside-a-named-permit vs honestly-unknown-outside boundary reads
+ * at a glance. This is a CHOROPLETH of register facts, never a
+ * gradient: colors encode the class (see QUARRY_CLASS_FILL — active
+ * avoidance-red, exploration caution-yellow), and no score field is
+ * painted anywhere. The <= 2 km near-band is scorer-side only (no
+ * buffered fills — fake precision refused). Clears stale overlay
+ * layers first; no-op when the style is not loaded yet or areas is
+ * nullish. Malformed rings are skipped, never faked; unknown classes
+ * fall back to exploration (never dropped).
+ */
+export function applyQuarryPolygons(
+  mapObj: OutlineMap,
+  areas: QuarryArea[] | null | undefined,
+): void {
+  if (!mapObj.getStyle()) return;
+  clearVectorOverlays(mapObj);
+  if (!areas || areas.length === 0) return;
+  const features = [];
+  for (const a of areas) {
+    if (!a || !Array.isArray(a.r)) continue;
+    const polys = [];
+    for (const ring of a.r) {
+      if (!Array.isArray(ring) || ring.length < 3) continue;
+      const pts = ring.filter(
+        (pt) =>
+          Array.isArray(pt) &&
+          pt.length === 2 &&
+          pt.every((n) => typeof n === "number" && Number.isFinite(n)),
+      );
+      if (pts.length < 3) continue;
+      const first = pts[0];
+      const last = pts[pts.length - 1];
+      const closed =
+        first[0] === last[0] && first[1] === last[1] ? pts : [...pts, [first[0], first[1]]];
+      polys.push([closed]);
+    }
+    if (polys.length === 0) continue;
+    const cls =
+      typeof a.cls === "string" && a.cls in QUARRY_CLASS_FILL ? a.cls : "exploration";
+    features.push({
+      type: "Feature",
+      properties: {
+        cls,
+        zone_id: typeof a.zone_id === "string" ? a.zone_id : "",
+        nimi: typeof a.nimi === "string" ? a.nimi : "",
+      },
+      geometry: { type: "MultiPolygon", coordinates: polys },
+    });
+  }
+  if (features.length === 0) return;
+  mapObj.addSource(QUARRY_SRC, {
+    type: "geojson",
+    data: { type: "FeatureCollection", features },
+  });
+  const before = abovePaint(mapObj);
+  mapObj.addLayer(
+    {
+      id: QUARRY_FILL,
+      type: "fill",
+      source: QUARRY_SRC,
+      paint: {
+        "fill-color": [
+          "match",
+          ["get", "cls"],
+          "active", QUARRY_CLASS_FILL.active,
+          QUARRY_CLASS_FILL.exploration,
+        ],
+        "fill-opacity": 0.45,
+      },
+    },
+    before,
+  );
+  mapObj.addLayer(
+    {
+      id: QUARRY_CASING,
+      type: "line",
+      source: QUARRY_SRC,
+      paint: { "line-color": "#ffffff", "line-width": 2, "line-opacity": 0.9 },
     },
     before,
   );

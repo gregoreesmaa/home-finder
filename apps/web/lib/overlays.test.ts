@@ -129,7 +129,8 @@ describe("overlay legend + colors", () => {
     // KLIIMA-HOOK (#611): kliima_frost/wet join the registry (117 + 2).
     // POI-HOOK (#612): poi_library/post/pharmacy join the registry (119 + 3).
     // FIXIT-HOOK (#623): fixit joins the registry (122 + 1).
-    expect(ids).toHaveLength(123);
+    // QUARRY-HOOK (#614): quarry joins the registry (123 + 1).
+    expect(ids).toHaveLength(124);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -414,7 +415,8 @@ describe("overlay legend + colors", () => {
     // KLIIMA-HOOK (#611): kliima_frost/wet join the registry (117 + 2).
     // POI-HOOK (#612): poi_library/post/pharmacy join the registry (119 + 3).
     // FIXIT-HOOK (#623): fixit joins the registry (122 + 1).
-    expect(seen.size).toBe(123);
+    // QUARRY-HOOK (#614): quarry joins the registry (123 + 1).
+    expect(seen.size).toBe(124);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });
