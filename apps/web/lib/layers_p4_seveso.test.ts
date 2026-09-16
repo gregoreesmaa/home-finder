@@ -61,8 +61,9 @@ describe("seveso registry (#613)", () => {
   it("merges into LAYERS via the SEVESO-HOOK (page + routes serve it)", () => {
     const ids = LAYERS.map((l) => l.id);
     // 123 shipped layers on main (#623 fixit) + 1 seveso danger-area
-    // overlay (SEVESO-HOOK #613, 123 + 1).
-    expect(ids.length).toBe(124);
+    // overlay (SEVESO-HOOK #613, 123 + 1) + 1 drainage overlay
+    // (DRAINAGE-HOOK #616, 124 + 1).
+    expect(ids.length).toBe(125);
     expect(ids).toContain("seveso");
   });
 

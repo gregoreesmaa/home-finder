@@ -571,6 +571,13 @@ export function overlayColorFor(layer: LayerId): string {
     // other marker (distinct-color test).
     case "seveso":
       return "#3b0764";
+    // DRAINAGE-HOOK (#616): drainage marker (polygon layer — the point
+    // overlay stays empty live, so this colors only the toggle dot).
+    // #1c1917: stone-950 drainage dark (wet earth; darkest neutral of
+    // the registry, and layers never co-render). Distinct from every
+    // other marker (distinct-color test).
+    case "maaparandus":
+      return "#1c1917";
     // MEDRE-HOOK (#609): medre slice markers (Step-1 honest-empty —
     // the point overlay stays empty live, so this colors only the
     // toggle dot). #ffedd5: orange-100 clinic paper; #ede9fe:
@@ -1061,6 +1068,14 @@ export function overlayLegendFor(layer: LayerId): string {
     // not a ruled-out one.
     case "seveso":
       return "Seveso ohualad (Päästeameti register: 235 ohuala, sh 95 Harjumaal) · tsoonis = ohuala (mürkpunane / kuumusoranž, hinnang — tutvu infovoldikuga; väljaspool = teadmata, mitte ohutu)";
+    // DRAINAGE-HOOK (#616): drainage network/invalid/outflow shapes
+    // (maaparandus GIS) — inside a named network area reads wetness-
+    // blue (condition unproven — the MSR check decides), invalid reads
+    // derelict brown, outflows read as thin ditch lines (the <= 100 m
+    // band stays scorer-side); outside every shape is unknown (never
+    // dry). Duty is refused everywhere (no duty attributes exist).
+    case "maaparandus":
+      return "Kuivendusvõrk ja eesvoolud (maaparanduse register: 1916 võrguala + 785 kehtetut + 1595 eesvoolu) · tsoonis = võrk (sinine, seisukord teadmata — kontrolli MSR-registrist) või eesvool (joon, lähedus ≤100 m hindab skoorija); kehtetu = pruun lagunemisrisk; väljaspool = teadmata, mitte kuiv";
     // ASUMEDIA-HOOK (#495): asumedia (own-snapshot asking medians) —
     // the dated negative rides along: 0/84 asums reach MIN_N=5, so
     // the field is unknown everywhere until the reopen lands real

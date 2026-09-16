@@ -7,6 +7,7 @@ import {
   applyOutlines,
   applyPointOverlay,
   applySevesoPolygons,
+  applyMaaparandusPolygons,
   applyUsePolygons,
   clearVectorOverlays,
   type OutlineMap,
@@ -321,6 +322,21 @@ describe("clearVectorOverlays", () => {
 
   // SEVESO-HOOK (#613): the danger fill + casing + source join the
   // cleared slot (one overlay slot paints any kind, never stacks).
+  // DRAINAGE-HOOK (#616): the network fill + casing + outflow line +
+  // both sources join the cleared slot (one overlay slot paints any
+  // kind, never stacks).
+  it("removes the drainage network slot too", () => {
+    const map = mockMap();
+    map.layers.add("drainage-network-fill");
+    map.layers.add("drainage-network-casing");
+    map.layers.add("drainage-outflow-lines");
+    map.sources.add("drainage-network-polys");
+    map.sources.add("drainage-outflow-lines-src");
+    clearVectorOverlays(map);
+    expect(map.layers.size).toBe(0);
+    expect(map.sources.size).toBe(0);
+  });
+
   it("removes the seveso danger slot too", () => {
     const map = mockMap();
     map.layers.add("seveso-danger-fill");
@@ -578,6 +594,101 @@ describe("applySevesoPolygons (#613)", () => {
     const map = mockMap();
     applySevesoPolygons(map, null);
     applySevesoPolygons(map, []);
+    expect(map.sources.size).toBe(0);
+    expect(map.layers.size).toBe(0);
+  });
+});
+
+describe("applyMaaparandusPolygons (#616)", () => {
+  const AREA = {
+    zone_id: "5111040011290",
+    nimi: "Allika5",
+    cls: "network" as const,
+    ms_kood: "5111040011290",
+    ms_url: "https://portaal.agri.ee/avalik/#/maaparandus/systeem/5111040011290",
+    b: [24.74, 59.43, 24.75, 59.44] as [number, number, number, number],
+    r: [
+      [
+        [24.74, 59.43],
+        [24.75, 59.43],
+        [24.75, 59.44],
+        [24.74, 59.44],
+      ],
+    ],
+  };
+  const LINE = {
+    zone_id: "7",
+    nimi: "Kraav",
+    cls: "outflow" as const,
+    ms_kood: "1",
+    ms_url: "",
+    b: [24.76, 59.43, 24.77, 59.44] as [number, number, number, number],
+    l: [
+      [
+        [24.76, 59.43],
+        [24.77, 59.44],
+      ],
+    ],
+  };
+
+  it("paints network fills + casing with closed rings", () => {
+    const map = mockMap();
+    applyMaaparandusPolygons(map, [AREA]);
+    expect(map.sources.has("drainage-network-polys")).toBe(true);
+    expect(map.layers.has("drainage-network-fill")).toBe(true);
+    expect(map.layers.has("drainage-network-casing")).toBe(true);
+    const src = map.added[0] as {
+      data: { features: { properties: { cls: string }; geometry: { coordinates: number[][][][] } }[] };
+    };
+    expect(src.data.features).toHaveLength(1);
+    expect(src.data.features[0].properties.cls).toBe("network");
+    const ring = src.data.features[0].geometry.coordinates[0][0];
+    expect(ring[0]).toEqual(ring[ring.length - 1]);
+  });
+
+  it("paints the class match expression (facts, never scores)", () => {
+    const map = mockMap();
+    applyMaaparandusPolygons(map, [AREA]);
+    const fill = map.added.find(
+      (l) => (l as { id?: string }).id === "drainage-network-fill",
+    ) as { paint: { "fill-color": unknown[] } };
+    expect(fill.paint["fill-color"][0]).toBe("match");
+    expect(fill.paint["fill-color"]).toContain("invalid");
+    expect(fill.paint["fill-color"]).toContain("#92400e");
+  });
+
+  it("paints outflow centerlines with no fill (band stays scorer-side)", () => {
+    const map = mockMap();
+    applyMaaparandusPolygons(map, [LINE]);
+    expect(map.layers.has("drainage-outflow-lines")).toBe(true);
+    expect(map.layers.has("drainage-network-fill")).toBe(false);
+    const line = map.added.find(
+      (l) => (l as { id?: string }).id === "drainage-outflow-lines",
+    ) as { type: string; paint: { "fill-color"?: unknown; "line-color": unknown } };
+    expect(line.type).toBe("line");
+    expect(line.paint["fill-color"]).toBeUndefined();
+    expect(line.paint["line-color"]).toBe("#38bdf8");
+  });
+
+  it("folds unknown classes to network and skips shapeless areas (never faked)", () => {
+    const map = mockMap();
+    const weird = { ...AREA, cls: "ditch" };
+    const shapeless = { ...AREA, zone_id: "x:2", r: [] as number[][][] };
+    applyMaaparandusPolygons(map, [
+      weird as unknown as typeof AREA,
+      shapeless,
+    ]);
+    const src = map.added[0] as {
+      data: { features: { properties: { cls: string } }[] };
+    };
+    expect(src.data.features).toHaveLength(1);
+    expect(src.data.features[0].properties.cls).toBe("network");
+  });
+
+  it("is a no-op on nullish input (outside stays unpainted)", () => {
+    const map = mockMap();
+    applyMaaparandusPolygons(map, null);
+    applyMaaparandusPolygons(map, []);
     expect(map.sources.size).toBe(0);
     expect(map.layers.size).toBe(0);
   });

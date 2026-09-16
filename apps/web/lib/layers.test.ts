@@ -29,6 +29,9 @@ import { isEelisPolygonOnlyLayer } from "./layers_eelis";
 // SEVESO-HOOK (#613): polygons-only carve-out for the fallback assertion.
 import { isSevesoPolygonOnlyLayer } from "./layers_p4_seveso";
 
+// DRAINAGE-HOOK (#616): polygons-only carve-out for the fallback assertion.
+import { isMaaparandusPolygonOnlyLayer } from "./layers_p4_maaparandus";
+
 const TALLINN_BBOX: BBoxLike = { minlon: 24.5, minlat: 59.35, maxlon: 24.9, maxlat: 59.5 };
 
 describe("layer registry", () => {
@@ -243,6 +246,9 @@ describe("layer registry", () => {
       // SEVESO-HOOK (#613): danger-polygon id (Päästeamet ohualad —
       // paramIds empty, parameters4 namespace, polygons only).
       "seveso",
+      // DRAINAGE-HOOK (#616): network/outflow shape id (maaparandus
+      // GIS — paramIds empty, parameters4 namespace, polygons only).
+      "maaparandus",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -369,6 +375,10 @@ describe("layer registry", () => {
     // (parameters4 danger polygons, no parameters3 number).
     expect(LAYERS.find((l) => l.id === "seveso")?.paramIds).toEqual([]);
     expect(LAYERS.find((l) => l.id === "seveso")?.paramLabel).toBe("P4-ohuala");
+    // DRAINAGE-HOOK (#616): drainage rides paramLabel, paramIds stays []
+    // (parameters4 network shapes, no parameters3 number).
+    expect(LAYERS.find((l) => l.id === "maaparandus")?.paramIds).toEqual([]);
+    expect(LAYERS.find((l) => l.id === "maaparandus")?.paramLabel).toBe("P4-kuivendus");
   });
 
   it("wires the B10C utility layers with locked calibration", () => {
@@ -733,7 +743,7 @@ describe("layer registry", () => {
       }
       if (isPolygonOnlyMaaLayer(l.id)) {
         expect(l.fallbackPoints).toEqual([]);
-      } else if (!isPolygonOnlyLayer(l.id) && !isEelisPolygonOnlyLayer(l.id) && !isSevesoPolygonOnlyLayer(l.id)) {
+      } else if (!isPolygonOnlyLayer(l.id) && !isEelisPolygonOnlyLayer(l.id) && !isSevesoPolygonOnlyLayer(l.id) && !isMaaparandusPolygonOnlyLayer(l.id)) {
         expect(l.fallbackPoints.length).toBeGreaterThan(0);
       }
     }
