@@ -55,3 +55,22 @@ synthetic names; reasons never name a doctor.
 - Eriarstiabi/specialist proximity — future source issue, not scored here.
 - Terviseamet water/bathing verdicts (`p4_tervise.md`) — untouched.
 - OSM health amenities (group 11) stay the fallback cousins.
+
+## Map graduation Step 1 (#609, 2026-09-16)
+
+Two `/layers` overlays ship the P4-011 GP-half slices: `medre_gp`,
+`medre_clinic` (`apps/web/lib/layers_p4_medre.ts`, paramIds [] +
+paramLabel P4-011). Harvester `scripts/build/batch_medre.py` (monthly
+TTL, polite, 429 = stop) pulls both DAILY bulks and builds the
+snapshot sidecar `medre/medre-points.json`: 782 nimistu / 870 kohad
+(378 Harju) + 1571 asutus (759 Harju) / 537 Üldarstiabi kohad tallied,
+linkage_rate 0, points [] — no ADS join adapter is owned anywhere, so
+the caller-joined set is EMPTY and the layers serve honestly-empty
+(paaste precedent: EI OLE legend, "no data" render, zero markers —
+never invented clinics). Kernels reuse the sport #607 dbands kind
+(same band table as the scorer; DORMANT all-NaN until Step 2).
+CC BY-NC-SA 3.0 scope (incl. non-commercial) rides the legends.
+Step 2 (ADS adr_id→AKS join) fills joined points into the same
+sidecar shape and bumps linkage_rate; the loader/kernel/route need no
+changes. P4-011 is shared with the EHIS school slices (#608) by
+scorer design — distinct slices, distinct dim keys, no double-score.

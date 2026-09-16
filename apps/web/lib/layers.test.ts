@@ -217,6 +217,10 @@ describe("layer registry", () => {
       "ehis_school",
       "ehis_kindergarten",
       "ehis_hobby",
+      // MEDRE-HOOK (#609): primary-care slice ids (P4-011 gp/clinic —
+      // paramIds empty, parameters4 namespace, Step-1 honest-empty).
+      "medre_gp",
+      "medre_clinic",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -304,6 +308,14 @@ describe("layer registry", () => {
     // EHIS-HOOK (#608): ehis slices ride paramLabel, paramIds stays
     // [] (parameters4 P4-011 slices, no parameters3 number).
     for (const id of ["ehis_school", "ehis_kindergarten", "ehis_hobby"]) {
+      expect(LAYERS.find((l) => l.id === id)?.paramIds).toEqual([]);
+      expect(LAYERS.find((l) => l.id === id)?.paramLabel).toBe("P4-011");
+    }
+    // MEDRE-HOOK (#609): medre slices ride paramLabel, paramIds stays
+    // [] (parameters4 P4-011 GP-half slices, no parameters3 number;
+    // shared with the EHIS school slices by scorer design — distinct
+    // slices, distinct dim keys, no double-score).
+    for (const id of ["medre_gp", "medre_clinic"]) {
       expect(LAYERS.find((l) => l.id === id)?.paramIds).toEqual([]);
       expect(LAYERS.find((l) => l.id === id)?.paramLabel).toBe("P4-011");
     }
@@ -656,6 +668,16 @@ describe("layer registry", () => {
       // surfaced for the reviewer (AGENTS.md §7.5): approve by merging,
       // or reject by demanding a verified anchor point.
       if (l.id === "paaste") {
+        expect(l.fallbackPoints).toEqual([]);
+        continue;
+      }
+      // MEDRE-HOOK (#609): medre slices are the Step-1 honest-empty
+      // exception — ZERO fallback points BY HONESTY (no ADS join
+      // owned: zero joined points exist; addresses are not points,
+      // never invent clinics — paaste precedent). Pinned in
+      // layers_p4_medre.test.ts; Step 2 fills joined points and this
+      // exception narrows to the slices that stay unjoined.
+      if (l.id === "medre_gp" || l.id === "medre_clinic") {
         expect(l.fallbackPoints).toEqual([]);
         continue;
       }

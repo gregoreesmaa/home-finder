@@ -10,6 +10,7 @@ import {
   loadParkAreas,
   loadPlanktprAreas,
   loadEhisPoints,
+  loadMedrePoints,
   loadSnapshotPoints,
   loadSportPoints,
   loadWindowRaster,
@@ -1932,6 +1933,47 @@ describe("measured-school sidecar (#608)", () => {
     await writeFile(join(bad, "ehis", "ehis-points.json"), "{nope");
     try {
       await expect(loadEhisPoints(bad)).resolves.toEqual([]);
+    } finally {
+      await rm(bad, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("primary-care sidecar (#609)", () => {
+  async function medreDir(payload: unknown): Promise<string> {
+    const dir = await mkdtemp(join(tmpdir(), "hf-snap-medre-"));
+    await mkdir(join(dir, "medre"), { recursive: true });
+    await writeFile(join(dir, "medre", "medre-points.json"), JSON.stringify(payload));
+    return dir;
+  }
+
+  it("loads {points} sidecar, dropping bad slices and malformed rows", async () => {
+    const dir = await medreDir({
+      points: [
+        { lon: 24.75, lat: 59.44, slice: "gp" },
+        { lon: 24.73, lat: 59.43, slice: "clinic" },
+        { lon: 24.73, lat: 59.43, slice: "pharmacy" },
+        { lon: "x", lat: 59.44, slice: "gp" },
+        { lon: 24.75 },
+      ],
+    });
+    try {
+      await expect(loadMedrePoints(dir)).resolves.toEqual([
+        { lon: 24.75, lat: 59.44, slice: "gp" },
+        { lon: 24.73, lat: 59.43, slice: "clinic" },
+      ]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("degrades missing/malformed sidecar to [] (honestly no points)", async () => {
+    await expect(loadMedrePoints("/nonexistent-dir-xyz")).resolves.toEqual([]);
+    const bad = await mkdtemp(join(tmpdir(), "hf-snap-medrebad-"));
+    await mkdir(join(bad, "medre"), { recursive: true });
+    await writeFile(join(bad, "medre", "medre-points.json"), "{nope");
+    try {
+      await expect(loadMedrePoints(bad)).resolves.toEqual([]);
     } finally {
       await rm(bad, { recursive: true, force: true });
     }
