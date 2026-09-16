@@ -33,6 +33,8 @@ import { isSevesoPolygonOnlyLayer } from "./layers_p4_seveso";
 import { isStatelandPolygonOnlyLayer } from "./layers_p4_stateland";
 // QUARRY-HOOK (#614): polygons-only carve-out for the fallback assertion.
 import { isQuarryPolygonOnlyLayer } from "./layers_p4_quarry";
+// DRAINAGE-HOOK (#616): polygons-only carve-out for the fallback assertion.
+import { isMaaparandusPolygonOnlyLayer } from "./layers_p4_maaparandus";
 
 const TALLINN_BBOX: BBoxLike = { minlon: 24.5, minlat: 59.35, maxlon: 24.9, maxlat: 59.5 };
 
@@ -255,6 +257,9 @@ describe("layer registry", () => {
       // QUARRY-HOOK (#614): permit/watch polygon id (Maa-amet permits —
       // paramIds empty, parameters4 namespace, polygons only).
       "quarry",
+      // DRAINAGE-HOOK (#616): network/outflow shape id (maaparandus
+      // GIS — paramIds empty, parameters4 namespace, polygons only).
+      "maaparandus",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -389,6 +394,10 @@ describe("layer registry", () => {
     // (parameters4 permit polygons, no parameters3 number).
     expect(LAYERS.find((l) => l.id === "quarry")?.paramIds).toEqual([]);
     expect(LAYERS.find((l) => l.id === "quarry")?.paramLabel).toBe("P4-maavara");
+    // DRAINAGE-HOOK (#616): drainage rides paramLabel, paramIds stays []
+    // (parameters4 network shapes, no parameters3 number).
+    expect(LAYERS.find((l) => l.id === "maaparandus")?.paramIds).toEqual([]);
+    expect(LAYERS.find((l) => l.id === "maaparandus")?.paramLabel).toBe("P4-kuivendus");
   });
 
   it("wires the B10C utility layers with locked calibration", () => {
@@ -753,7 +762,7 @@ describe("layer registry", () => {
       }
       if (isPolygonOnlyMaaLayer(l.id)) {
         expect(l.fallbackPoints).toEqual([]);
-      } else if (!isPolygonOnlyLayer(l.id) && !isEelisPolygonOnlyLayer(l.id) && !isSevesoPolygonOnlyLayer(l.id) && !isStatelandPolygonOnlyLayer(l.id) && !isQuarryPolygonOnlyLayer(l.id)) {
+      } else if (!isPolygonOnlyLayer(l.id) && !isEelisPolygonOnlyLayer(l.id) && !isSevesoPolygonOnlyLayer(l.id) && !isStatelandPolygonOnlyLayer(l.id) && !isQuarryPolygonOnlyLayer(l.id) && !isMaaparandusPolygonOnlyLayer(l.id)) {
         expect(l.fallbackPoints.length).toBeGreaterThan(0);
       }
     }

@@ -28,6 +28,8 @@ import { isSevesoLayerId } from "../../../../lib/layers_p4_seveso";
 import { isStatelandLayerId } from "../../../../lib/layers_p4_stateland";
 // QUARRY-HOOK (#614): polygons-only branch guard (see below).
 import { isQuarryLayerId } from "../../../../lib/layers_p4_quarry";
+// DRAINAGE-HOOK (#616): polygons-only branch guard (see below).
+import { isMaaparandusLayerId } from "../../../../lib/layers_p4_maaparandus";
 
 import {
   intersectsCoverage,
@@ -254,6 +256,21 @@ export async function GET(
   // (a fake gradient), and demo fallback points are refused by the
   // layer def (empty fallbackPoints, pinned by test).
   if (isQuarryLayerId(def.id)) {
+    const { distance } = await loadLayerRaster(def.id);
+    return NextResponse.json({
+      points: [],
+      provenance: "snapshot",
+      ageMs: Date.now() - SNAPSHOT_AS_OF_MS,
+      distance,
+    });
+  }
+  // DRAINAGE-HOOK (#616): drainage is polygons-only (zero points, zero
+  // raster — the /maaparandus/areas sidecar carries the data). Answer
+  // honestly-empty points on snapshot provenance: requiring points or
+  // a raster here would 500 a healthy layer into labeled demo points
+  // (a fake gradient), and demo fallback points are refused by the
+  // layer def (empty fallbackPoints, pinned by test).
+  if (isMaaparandusLayerId(def.id)) {
     const { distance } = await loadLayerRaster(def.id);
     return NextResponse.json({
       points: [],

@@ -114,6 +114,14 @@ import {
   isQuarryPolygonOnlyLayer,
   type QuarryArea,
 } from "../../lib/layers_p4_quarry";
+// DRAINAGE-HOOK (#616): drainage paints maaparandus network/invalid
+// fills + outflow centerlines (polygons only, never a gradient)
+// instead of points.
+import {
+  fetchMaaparandusAreas,
+  isMaaparandusPolygonOnlyLayer,
+  type MaaparandusArea,
+} from "../../lib/layers_p4_maaparandus";
 
 /** Viewport bbox rounded for fetch stability (matches server key rounding). */
 function sameView(a: BBoxLike, b: BBoxLike): boolean {
@@ -344,6 +352,26 @@ export default function LayersPage() {
     };
   }, [layer]);
 
+  // DRAINAGE-HOOK (#616): maaparandus network/invalid/outflow shapes
+  // (drainage layer only, fetched once per selection): the choropleth
+  // itself — inside a named network area vs outside/unknown. No points
+  // and no score field are painted for this layer, by design (polygons
+  // only, never a gradient).
+  const [maaparandusAreas, setMaaparandusAreas] = useState<MaaparandusArea[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!isMaaparandusPolygonOnlyLayer(layer)) {
+      setMaaparandusAreas(null);
+      return;
+    }
+    fetchMaaparandusAreas().then((areas) => {
+      if (!cancelled) setMaaparandusAreas(areas);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [layer]);
+
   // Park boundaries (parks layer only): fetched once per selection, a
   // visual aid so scored-inside vs surroundings reads at a glance.
   const [outlines, setOutlines] = useState<ParkOutline[] | null>(null);
@@ -466,7 +494,7 @@ export default function LayersPage() {
     // EELIS-HOOK (#488): eelis layers paint polygons, never point markers.
     // SEVESO-HOOK (#613): seveso paints polygons, never point markers.
     // QUARRY-HOOK (#614): quarry paints polygons, never point markers.
-    layer === "parks" || isPolygonOnlyLayer(layer) || isPolygonOnlyMaaLayer(layer) || isEelisPolygonOnlyLayer(layer) || isSevesoPolygonOnlyLayer(layer) || isStatelandPolygonOnlyLayer(layer) || isQuarryPolygonOnlyLayer(layer)
+    layer === "parks" || isPolygonOnlyLayer(layer) || isPolygonOnlyMaaLayer(layer) || isEelisPolygonOnlyLayer(layer) || isSevesoPolygonOnlyLayer(layer) || isStatelandPolygonOnlyLayer(layer) || isQuarryPolygonOnlyLayer(layer) || isMaaparandusPolygonOnlyLayer(layer)
       ? null
       : needsGraphOverlay(layer)
         ? graphPoints
@@ -484,6 +512,8 @@ export default function LayersPage() {
           ? (statelandAreas?.length ?? 0)
         : isQuarryPolygonOnlyLayer(layer)
           ? (quarryAreas?.length ?? 0)
+        : isMaaparandusPolygonOnlyLayer(layer)
+          ? (maaparandusAreas?.length ?? 0)
         : isPlanktprLayerId(layer)
           ? (usePolygons?.length ?? 0)
     : layer === "parks"
@@ -550,6 +580,13 @@ export default function LayersPage() {
     quarryAreas === null
       ? "Laadin karjääripiirkondi…"
       : `Maa-ameti karjäärid ja uuringualad · ${quarryAreas.length} polügooni (väljaspool = teadmata, mitte kaevandusvaba)`;
+  // DRAINAGE-HOOK (#616): drainage status counts network/invalid
+  // shapes + outflow lines, never points — the layer serves zero
+  // points by design (polygons only).
+  const maaparandusStatus =
+    maaparandusAreas === null
+      ? "Laadin kuivendusvõrku…"
+      : `Maaparandusvõrk + eesvoolud · ${maaparandusAreas.length} kujundit (väljaspool = teadmata, mitte kuiv)`;
   const base =
     isPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
       ? floodStatus
@@ -563,6 +600,8 @@ export default function LayersPage() {
         ? statelandStatus
       : isQuarryPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
         ? quarryStatus
+      : isMaaparandusPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
+        ? maaparandusStatus
       : provenance === null
       ? "Laadin kihi andmeid…"
       : provenance === "snapshot"
@@ -669,6 +708,7 @@ export default function LayersPage() {
         sevesoAreas={sevesoAreas}
         statelandAreas={statelandAreas}
         quarryAreas={quarryAreas}
+        maaparandusAreas={maaparandusAreas}
         overlayPoints={pointOverlay}
         usePolygons={usePolygons}
         overlayColor={overlayColorFor(layer)}
@@ -705,6 +745,9 @@ export default function LayersPage() {
             // (zero points, null raster) -- same skip for state fills.
             isStatelandPolygonOnlyLayer(layer) ||
             isQuarryPolygonOnlyLayer(layer) ||
+            // DRAINAGE-HOOK (#616): drainage paints no field at all
+            // (zero points, null raster) -- same skip for network fills.
+            isMaaparandusPolygonOnlyLayer(layer) ||
             isPlanktprLayerId(layer)
             ? ""
             : distance === "euclidean" && provenance === "snapshot"

@@ -612,6 +612,17 @@ import {
   bonusSpecForQuarry,
   isQuarryPolygonOnlyLayer,
 } from "./layers_p4_quarry";
+// DRAINAGE-HOOK (#616): network/outflow shape tables live in
+// ./layers_p4_maaparandus (maaparandus GIS, polygons only). That module
+// imports layers only as types, so no runtime cycle.
+import type { MaaparandusLayerId } from "./layers_p4_maaparandus";
+import {
+  MAAPARANDUS_DECAY,
+  MAAPARANDUS_DEFS,
+  MAAPARANDUS_TAGS,
+  bonusSpecForMaaparandus,
+  isMaaparandusPolygonOnlyLayer,
+} from "./layers_p4_maaparandus";
 // FIXIT-HOOK (#623): report-pin tables live in ./layers_p4_fixit
 // (fixit markers, register sidecar). That module imports layers only
 // as types, so no runtime cycle.
@@ -770,6 +781,10 @@ export type LayerId =
   // (./layers_p4_stateland, KATRI + maaoksjon, polygons only, no
   // parameters3 id).
   | StatelandLayerId
+  // DRAINAGE-HOOK (#616): network/outflow shape id
+  // (./layers_p4_maaparandus, maaparandus GIS, polygons only, no
+  // parameters3 id).
+  | MaaparandusLayerId
   // SEVESO-HOOK (#613): danger-polygon id (./layers_p4_seveso,
   // Päästeamet ohualad, polygons only, no parameters3 id).
   | SevesoLayerId
@@ -1008,6 +1023,10 @@ const DECAY_KM: Record<LayerId, number> = {
   // layers_p4_stateland.ts STATELAND_DECAY — INERT placeholder,
   // polygons only: zero points, never evaluated).
   ...STATELAND_DECAY,
+  // DRAINAGE-HOOK (#616): network/outflow shape radius (see
+  // layers_p4_maaparandus.ts MAAPARANDUS_DECAY — INERT placeholder, polygons
+  // only: zero points, never evaluated).
+  ...MAAPARANDUS_DECAY,
   // SEVESO-HOOK (#613): danger-polygon radius (see layers_p4_seveso.ts
   // SEVESO_DECAY — INERT placeholder, polygons only: zero points,
   // never evaluated).
@@ -1265,6 +1284,9 @@ export const LAYERS: LayerDef[] = [
   // QUARRY-HOOK (#614): permit/watch polygon def (Maa-amet permits,
   // polygons only, no parameters3 id) from ./layers_p4_quarry.
   ...QUARRY_DEFS,
+  // DRAINAGE-HOOK (#616): network/outflow shape def (maaparandus
+  // GIS, polygons only, no parameters3 id) from ./layers_p4_maaparandus.
+  ...MAAPARANDUS_DEFS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -1416,6 +1438,10 @@ const TAGS: Record<LayerId, string> = {
   // layers_p4_stateland.ts STATELAND_TAGS — prose, NOT an Overpass
   // fragment).
   ...STATELAND_TAGS,
+  // DRAINAGE-HOOK (#616): network/outflow source note (see
+  // layers_p4_maaparandus.ts MAAPARANDUS_TAGS — prose, NOT an Overpass
+  // fragment).
+  ...MAAPARANDUS_TAGS,
   // SEVESO-HOOK (#613): danger-polygon source note (see
   // layers_p4_seveso.ts SEVESO_TAGS — prose, NOT an Overpass fragment).
   ...SEVESO_TAGS,
@@ -1684,6 +1710,10 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // ./layers_p4_stateland (INERT — polygons only, never evaluated).
   const stateland = bonusSpecForStateland(layer);
   if (stateland) return stateland;
+  // DRAINAGE-HOOK (#616): network/outflow shape spec lives in
+  // ./layers_p4_maaparandus (INERT — polygons only, never evaluated).
+  const drainage = bonusSpecForMaaparandus(layer);
+  if (drainage) return drainage;
   // SEVESO-HOOK (#613): danger-polygon spec lives in
   // ./layers_p4_seveso (INERT — polygons only, never evaluated).
   const seveso = bonusSpecForSeveso(layer);
@@ -2055,6 +2085,10 @@ export async function fetchWindow(
   // (polygons only — the sidecar carries the data). Same skip, same
   // reason.
   if (isStatelandPolygonOnlyLayer(layer)) return null;
+  // DRAINAGE-HOOK (#616): drainage has no raster master by decision
+  // (polygons only — the sidecar carries the data). Same skip, same
+  // reason.
+  if (isMaaparandusPolygonOnlyLayer(layer)) return null;
   // SEVESO-HOOK (#613): seveso has no raster master by licence decision
   // (polygons only — the sidecar carries the data). Same skip, same
   // reason.

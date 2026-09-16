@@ -16,6 +16,7 @@ import type { EelisArea } from "../lib/layers_eelis";
 import type { SevesoArea } from "../lib/layers_p4_seveso";
 import type { StatelandArea } from "../lib/layers_p4_stateland";
 import type { QuarryArea } from "../lib/layers_p4_quarry";
+import type { MaaparandusArea } from "../lib/layers_p4_maaparandus";
 import {
   applyFloodPolygons,
   applyMaaParcelPolygons,
@@ -25,6 +26,7 @@ import {
   applySevesoPolygons,
   applyStatelandPolygons,
   applyQuarryPolygons,
+  applyMaaparandusPolygons,
   applyUsePolygons,
   clearVectorOverlays,
   type OutlineMap,
@@ -49,12 +51,12 @@ const ESTONIA_CENTER: [number, number] = [25.0, 58.75];
  * One overlay slot, painted above the raster: flood polygons win when
  * present, then parcel fills, then eelis polygons, then seveso danger
  * fills, then stateland state/auction fills, then quarry permit fills,
- * then point markers, then use-fills (page guarantees flood-areas,
- * maa-parcels, eelis-areas, seveso-areas, stateland-areas,
- * quarry-areas, outlines and points never coincide — and fills and
- * points never coincide either), otherwise park outlines; hidden
- * clears the slot. All painters clear stale layers first, so switches
- * never stack.
+ * then drainage network/outflow shapes, then point markers, then
+ * use-fills (page guarantees flood-areas, maa-parcels, eelis-areas,
+ * seveso-areas, stateland-areas, quarry-areas, drainage-areas,
+ * outlines and points never coincide — and fills and points never
+ * coincide either), otherwise park outlines; hidden clears the slot.
+ * All painters clear stale layers first, so switches never stack.
  */
 function paintOverlay(
   mapObj: OutlineMap,
@@ -68,6 +70,7 @@ function paintOverlay(
     sevesoAreas?: SevesoArea[] | null;
     statelandAreas?: StatelandArea[] | null;
     quarryAreas?: QuarryArea[] | null;
+    maaparandusAreas?: MaaparandusArea[] | null;
     overlayPoints?: OverlayPoint[] | null;
     usePolygons?: UseFillPolygon[] | null;
     overlayColor?: string;
@@ -116,6 +119,13 @@ function paintOverlay(
     applyQuarryPolygons(mapObj, opts.quarryAreas);
     return;
   }
+  // DRAINAGE-HOOK (#616): drainage network/invalid fills + outflow
+  // lines (polygons only — no score field is painted for this layer,
+  // by design).
+  if (opts.maaparandusAreas && opts.maaparandusAreas.length > 0) {
+    applyMaaparandusPolygons(mapObj, opts.maaparandusAreas);
+    return;
+  }
   if (opts.overlayPoints && opts.overlayPoints.length > 0) {
     applyPointOverlay(mapObj, opts.overlayPoints, { color: opts.overlayColor ?? "#1d4ed8" });
     return;
@@ -148,6 +158,7 @@ export function ValueHeatMap({
   sevesoAreas,
   statelandAreas,
   quarryAreas,
+  maaparandusAreas,
   overlayPoints,
   usePolygons,
   overlayColor,
@@ -182,6 +193,8 @@ export function ValueHeatMap({
   statelandAreas?: StatelandArea[] | null;
   /** Quarry permit fills (quarry layer only); class choropleth. */
   quarryAreas?: QuarryArea[] | null;
+  /** Network/outflow shapes (drainage layer only); class choropleth. */
+  maaparandusAreas?: MaaparandusArea[] | null;
   /** Point markers drawn ABOVE the raster (all layers but parks). */
   overlayPoints?: OverlayPoint[] | null;
   /** Designated-use fills drawn ABOVE the field (planktpr only). */
@@ -417,9 +430,10 @@ export function ValueHeatMap({
       // SEVESO-HOOK (#613): sevesoAreas join the painted slot.
       // STATELAND-HOOK (#615): statelandAreas join the painted slot.
       // QUARRY-HOOK (#614): quarryAreas join the painted slot.
-      paintOverlay(mapRef.current, { outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, overlayPoints, usePolygons, overlayColor, showOverlay });
+      // DRAINAGE-HOOK (#616): maaparandusAreas join the painted slot.
+      paintOverlay(mapRef.current, { outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, overlayPoints, usePolygons, overlayColor, showOverlay });
     }
-  }, [outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, overlayPoints, usePolygons, overlayColor, showOverlay]);
+  }, [outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, overlayPoints, usePolygons, overlayColor, showOverlay]);
 
   return (
     <section aria-label={title}>

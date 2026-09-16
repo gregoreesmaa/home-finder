@@ -5,6 +5,7 @@ import { MAAPARCEL_CLASS_FILL, type MaaParcelArea } from "./layers_maaparcel";
 import { SEVESO_CLASS_FILL, type SevesoArea } from "./layers_p4_seveso";
 import { STATELAND_CLASS_FILL, type StatelandArea } from "./layers_p4_stateland";
 import { QUARRY_CLASS_FILL, type QuarryArea } from "./layers_p4_quarry";
+import { MAAPARANDUS_CLASS_FILL, type MaaparandusArea } from "./layers_p4_maaparandus";
 import type { OverlayPoint } from "./overlays";
 
 /** Minimal map surface for vector overlays (sources + paint layers). */
@@ -62,6 +63,15 @@ const STATELAND_CASING = "stateland-parcel-casing";
 const QUARRY_SRC = "quarry-permit-polys";
 const QUARRY_FILL = "quarry-permit-fill";
 const QUARRY_CASING = "quarry-permit-casing";
+// DRAINAGE-HOOK (#616): network/invalid fill + outflow line slot
+// (class fills + thin centerlines, never a gradient). Clearing covers
+// these ids too — one overlay slot paints either kind, never stacks
+// (see clearVectorOverlays).
+const MAAPARANDUS_SRC = "drainage-network-polys";
+const MAAPARANDUS_FILL = "drainage-network-fill";
+const MAAPARANDUS_CASING = "drainage-network-casing";
+const MAAPARANDUS_LINES = "drainage-outflow-lines";
+const MAAPARANDUS_OUTFLOW_SRC = "drainage-outflow-lines-src";
 const POINT_SRC = "layer-overlay-src";
 const POINT_CASING = "layer-overlay-casing";
 const POINT_CORE = "layer-overlay-core";
@@ -75,7 +85,9 @@ export function clearVectorOverlays(mapObj: OutlineMap): void {
   // SEVESO-HOOK (#613): danger fill + casing join the cleared slot.
   // STATELAND-HOOK (#615): parcel fill + casing join the cleared slot.
   // QUARRY-HOOK (#614): permit fill + casing join the cleared slot.
-  for (const id of [PARK_CASING, PARK_CORE, POINT_CASING, POINT_CORE, FLOOD_FILL, FLOOD_CASING, MAAPARCEL_FILL, MAAPARCEL_CASING, EELIS_FILL, EELIS_CASING, USE_FILL, USE_CASING, SEVESO_FILL, SEVESO_CASING, STATELAND_FILL, STATELAND_CASING, QUARRY_FILL, QUARRY_CASING]) {
+  // DRAINAGE-HOOK (#616): network fill + casing + outflow lines join
+  // the cleared slot.
+  for (const id of [PARK_CASING, PARK_CORE, POINT_CASING, POINT_CORE, FLOOD_FILL, FLOOD_CASING, MAAPARCEL_FILL, MAAPARCEL_CASING, EELIS_FILL, EELIS_CASING, USE_FILL, USE_CASING, SEVESO_FILL, SEVESO_CASING, STATELAND_FILL, STATELAND_CASING, QUARRY_FILL, QUARRY_CASING, MAAPARANDUS_FILL, MAAPARANDUS_CASING, MAAPARANDUS_LINES]) {
     try {
       if (mapObj.getLayer(id)) mapObj.removeLayer(id);
     } catch {
@@ -89,7 +101,8 @@ export function clearVectorOverlays(mapObj: OutlineMap): void {
   // SEVESO-HOOK (#613): the danger-fill source joins the same slot.
   // STATELAND-HOOK (#615): the parcel-fill source joins the same slot.
   // QUARRY-HOOK (#614): the permit-fill source joins the same slot.
-  for (const id of [PARK_SRC, POINT_SRC, FLOOD_SRC, MAAPARCEL_SRC, EELIS_SRC, USE_SRC, SEVESO_SRC, STATELAND_SRC, QUARRY_SRC]) {
+  // DRAINAGE-HOOK (#616): the network-fill source joins the same slot.
+  for (const id of [PARK_SRC, POINT_SRC, FLOOD_SRC, MAAPARCEL_SRC, EELIS_SRC, USE_SRC, SEVESO_SRC, STATELAND_SRC, QUARRY_SRC, MAAPARANDUS_SRC, MAAPARANDUS_OUTFLOW_SRC]) {
     try {
       if (mapObj.getSource(id)) mapObj.removeSource(id);
     } catch {
@@ -748,6 +761,148 @@ export function applyStatelandPolygons(
     },
     before,
   );
+}
+
+// DRAINAGE-HOOK (#616): maaparandus network/invalid fills + outflow lines.
+
+function closeRingMaaparandus(pts: number[][]): number[][] {
+  const first = pts[0];
+  const last = pts[pts.length - 1];
+  return first[0] === last[0] && first[1] === last[1]
+    ? pts
+    : [...pts, [first[0], first[1]]];
+}
+
+/**
+ * Paint drainage shapes (network/invalid class fills + white casing +
+ * outflow centerlines) so the inside-a-named-network vs
+ * honestly-unknown-outside boundary reads at a glance. This is a
+ * CHOROPLETH of register facts, never a gradient: fills encode the
+ * polygon class (see MAAPARANDUS_CLASS_FILL — network wetness-blue with
+ * condition unproven, invalid derelict-brown), outflow lines paint as
+ * thin centerlines (no fill, no buffer — the <= 100 m band stays
+ * scorer-side), and no score field is painted anywhere. Clears stale
+ * overlay layers first; no-op when the style is not loaded yet or
+ * areas is nullish. Malformed shapes are skipped, never faked;
+ * unknown classes fall back to network (never dropped).
+ */
+export function applyMaaparandusPolygons(
+  mapObj: OutlineMap,
+  areas: MaaparandusArea[] | null | undefined,
+): void {
+  if (!mapObj.getStyle()) return;
+  clearVectorOverlays(mapObj);
+  if (!areas || areas.length === 0) return;
+  const polys = [];
+  const lines = [];
+  for (const a of areas) {
+    if (!a) continue;
+    if (a.cls === "outflow") {
+      if (!Array.isArray(a.l)) continue;
+      const clean = [];
+      for (const ln of a.l) {
+        if (!Array.isArray(ln)) continue;
+        const pts = ln.filter(
+          (pt) =>
+            Array.isArray(pt) &&
+            pt.length === 2 &&
+            pt.every((n) => typeof n === "number" && Number.isFinite(n)),
+        );
+        if (pts.length >= 2) clean.push(pts);
+      }
+      if (clean.length === 0) continue;
+      lines.push({
+        type: "Feature",
+        properties: {
+          zone_id: typeof a.zone_id === "string" ? a.zone_id : "",
+          nimi: typeof a.nimi === "string" ? a.nimi : "",
+        },
+        geometry: {
+          type: clean.length === 1 ? "LineString" : "MultiLineString",
+          coordinates: clean.length === 1 ? clean[0] : clean,
+        },
+      });
+      continue;
+    }
+    if (!Array.isArray(a.r)) continue;
+    const rings = [];
+    for (const ring of a.r) {
+      if (!Array.isArray(ring) || ring.length < 3) continue;
+      const pts = ring.filter(
+        (pt) =>
+          Array.isArray(pt) &&
+          pt.length === 2 &&
+          pt.every((n) => typeof n === "number" && Number.isFinite(n)),
+      );
+      if (pts.length < 3) continue;
+      rings.push([closeRingMaaparandus(pts)]);
+    }
+    if (rings.length === 0) continue;
+    const cls =
+      a.cls === "invalid" ? "invalid" : "network";
+    polys.push({
+      type: "Feature",
+      properties: {
+        cls,
+        zone_id: typeof a.zone_id === "string" ? a.zone_id : "",
+        nimi: typeof a.nimi === "string" ? a.nimi : "",
+      },
+      geometry: { type: "MultiPolygon", coordinates: rings },
+    });
+  }
+  if (polys.length === 0 && lines.length === 0) return;
+  const before = abovePaint(mapObj);
+  if (polys.length > 0) {
+    mapObj.addSource(MAAPARANDUS_SRC, {
+      type: "geojson",
+      data: { type: "FeatureCollection", features: polys },
+    });
+    mapObj.addLayer(
+      {
+        id: MAAPARANDUS_FILL,
+        type: "fill",
+        source: MAAPARANDUS_SRC,
+        paint: {
+          "fill-color": [
+            "match",
+            ["get", "cls"],
+            "invalid", MAAPARANDUS_CLASS_FILL.invalid,
+            MAAPARANDUS_CLASS_FILL.network,
+          ],
+          "fill-opacity": 0.45,
+        },
+      },
+      before,
+    );
+    mapObj.addLayer(
+      {
+        id: MAAPARANDUS_CASING,
+        type: "line",
+        source: MAAPARANDUS_SRC,
+        paint: { "line-color": "#ffffff", "line-width": 2, "line-opacity": 0.9 },
+      },
+      before,
+    );
+  }
+  if (lines.length > 0) {
+    mapObj.addSource(MAAPARANDUS_OUTFLOW_SRC, {
+      type: "geojson",
+      data: { type: "FeatureCollection", features: lines },
+    });
+    mapObj.addLayer(
+      {
+        id: MAAPARANDUS_LINES,
+        type: "line",
+        source: MAAPARANDUS_OUTFLOW_SRC,
+        paint: {
+          "line-color": MAAPARANDUS_CLASS_FILL.outflow,
+          "line-width": 2,
+          "line-opacity": 0.9,
+        },
+      },
+      before,
+    );
+  }
 }
 
 // QUARRY-HOOK (#614): Maa-amet permit/watch class choropleth fills.

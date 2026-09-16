@@ -179,6 +179,12 @@ import { STATELAND_RASTER_FILE, isStatelandArea } from "../layers_p4_stateland";
 // degrade to null; the sidecar is honestly empty when unharvested).
 import type { QuarryArea } from "../layers_p4_quarry";
 import { QUARRY_RASTER_FILE, isQuarryArea } from "../layers_p4_quarry";
+// DRAINAGE-HOOK (#616): network/outflow raster filename + sidecar area
+// type live in layers_p4_maaparandus.ts (raster intentionally never built
+// — MAAPARANDUS_NO_RASTER; the name resolves to an absent file so windows
+// degrade to null; the sidecar is honestly empty when unharvested).
+import type { MaaparandusArea } from "../layers_p4_maaparandus";
+import { MAAPARANDUS_RASTER_FILE, isMaaparandusArea } from "../layers_p4_maaparandus";
 // OHUSEIRE-HOOK (#610): station raster filename + sidecar point type
 // live in layers_p4_ohuseire.ts (raster intentionally never built —
 // OHUSEIRE_NO_RASTER; the name resolves to an absent file so rasters
@@ -910,6 +916,30 @@ export async function loadQuarryAreas(dir: string): Promise<QuarryArea[]> {
   quarryAreaCache.set(dir, areas);
   return areas;
 }
+// DRAINAGE-HOOK (#616): network/outflow sidecar cache (same discipline).
+const maaparandusAreaCache = new Map<string, MaaparandusArea[]>();
+
+// DRAINAGE-HOOK (#616): maaparandus network/outflow sidecar
+// (`maaparandus/maaparandus-areas.json`, written by
+// scripts/build/batch_maaparandus.py off the cached WFS GeoJSON):
+// zone_id + class + MSR check link + polygons/lines. A missing sidecar
+// is honestly empty (register unharvested), never an error; malformed
+// rows are skipped, never faked.
+export async function loadMaaparandusAreas(dir: string): Promise<MaaparandusArea[]> {
+  const hit = maaparandusAreaCache.get(dir);
+  if (hit) return hit;
+  let areas: MaaparandusArea[] = [];
+  try {
+    const raw = await fs.readFile(path.join(dir, "maaparandus", "maaparandus-areas.json"), "utf8");
+    const parsed: unknown = JSON.parse(raw);
+    if (Array.isArray(parsed)) areas = parsed.filter(isMaaparandusArea);
+    else console.warn(`snapshot: ignoring malformed maaparandus/maaparandus-areas.json in ${dir}`);
+  } catch {
+    // Optional sidecar: honestly empty below.
+  }
+  maaparandusAreaCache.set(dir, areas);
+  return areas;
+}
 
 /** ~20 m dedupe cells; areas SUM (total green nearby is what counts). */
 const DEDUPE_LON = 0.0004;
@@ -1060,6 +1090,7 @@ export function clearSnapshotCache(): void {
   sevesoAreaCache.clear(); // SEVESO-HOOK (#613)
   statelandAreaCache.clear(); // STATELAND-HOOK (#615)
   quarryAreaCache.clear(); // QUARRY-HOOK (#614)
+  maaparandusAreaCache.clear(); // DRAINAGE-HOOK (#616)
   freqCache.clear();
   rasterCache.clear();
   countyBytes.clear();
@@ -1227,6 +1258,10 @@ const RASTER_FILE: Record<LayerId, string> = {
   // by decision — FIXIT_NO_RASTER; markers only, no field to stamp;
   // the absent file degrades windows to null).
   ...FIXIT_RASTER_FILE,
+  // DRAINAGE-HOOK (#616): network/outflow raster name only (no
+  // master built — MAAPARANDUS_NO_RASTER; shapes ARE the field; absent
+  // file degrades to null, honestly).
+  ...MAAPARANDUS_RASTER_FILE,
   // SEVESO-HOOK (#613): danger-polygon raster name only (no master
   // built — SEVESO_NO_RASTER, CC BY-NC-ND forbids derivatives;
   // polygons ARE the field; absent file degrades to null, honestly).
@@ -1741,6 +1776,10 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // either — FIXIT_NO_RASTER; the name resolves to an absent file so
   // windows fall back to the markers-only path).
   fixit: "fixit-metro",
+  // DRAINAGE-HOOK (#616): no drainage metro master by documented
+  // decision (see layers_p4_maaparandus.ts MAAPARANDUS_NO_METRO) — the name
+  // resolves to an absent file so windows fall back to county cleanly.
+  maaparandus: "maaparandus-metro",
   // SEVESO-HOOK (#613): no seveso metro master by documented decision
   // (see layers_p4_seveso.ts SEVESO_NO_METRO) — the name resolves to
   // an absent file so windows fall back to county cleanly.

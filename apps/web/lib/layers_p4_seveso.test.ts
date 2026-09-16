@@ -63,8 +63,9 @@ describe("seveso registry (#613)", () => {
     // 123 shipped layers on main (#623 fixit) + 1 seveso danger-area
     // overlay (SEVESO-HOOK #613, 123 + 1) + 1 state/auction overlay
     // (STATELAND-HOOK #615, 124 + 1) + 1 quarry overlay
-    // (QUARRY-HOOK #614, 125 + 1 = 126).
-    expect(ids.length).toBe(126);
+    // (QUARRY-HOOK #614, 125 + 1) + 1 drainage overlay
+    // (DRAINAGE-HOOK #616, 126 + 1 = 127).
+    expect(ids.length).toBe(127);
     expect(ids).toContain("seveso");
   });
 

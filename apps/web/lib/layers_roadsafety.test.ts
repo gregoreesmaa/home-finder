@@ -56,7 +56,7 @@ describe("roadsafety registry (#481)", () => {
     // TERVISE-HOOK (#494): +1 tervise bathing-water layer (105 + 1).
     // ASUMEDIA-HOOK (#495): +1 per-asum median layer (106 + 1).
     // PAASTE-HOOK (#493): +1 komando overlay (107 + 1).
-    expect(ids.length).toBe(126); // MERGE (#613+#614+#615): 123 shipped + seveso + stateland + quarry = 126 (both branch counts superseded).
+    expect(ids.length).toBe(127); // MERGE (#613+#614+#615+#616): 123 shipped + seveso + stateland + quarry + maaparandus = 127 (both branch counts superseded).
     expect(ids).toContain("roadsafety");
   });
 

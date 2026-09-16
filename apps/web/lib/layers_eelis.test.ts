@@ -72,7 +72,7 @@ describe("eelis registry (#488)", () => {
     // 1 asumedia (ASUMEDIA-HOOK #495, 106 + 1).
     // 1 tervise (TERVISE-HOOK #494, 105 + 1).
     // PAASTE-HOOK (#493): +1 komando overlay (107 + 1).
-    expect(ids.length).toBe(126); // MERGE (#613+#614+#615): 123 shipped + seveso + stateland + quarry = 126 (both branch counts superseded).
+    expect(ids.length).toBe(127); // MERGE (#613+#614+#615+#616): 123 shipped + seveso + stateland + quarry + maaparandus = 127 (both branch counts superseded).
     for (const id of EELIS_LAYER_IDS) expect(ids).toContain(id);
   });
 
