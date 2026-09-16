@@ -159,6 +159,20 @@ import type { MedrePoint } from "../layers_p4_medre";
 // degrade to null; the sidecar is honestly empty when unharvested).
 import { FIXIT_RASTER_FILE } from "../layers_p4_fixit";
 import type { FixitPoint } from "../layers_p4_fixit";
+// SEVESO-HOOK (#613): danger-polygon raster filename + sidecar area
+// type live in layers_p4_seveso.ts (raster intentionally never built —
+// SEVESO_NO_RASTER, CC BY-NC-ND forbids derivatives; the name resolves
+// to an absent file so windows degrade to null; the sidecar is honestly
+// empty when unharvested).
+import type { SevesoArea } from "../layers_p4_seveso";
+import { SEVESO_RASTER_FILE, isSevesoArea } from "../layers_p4_seveso";
+// STATELAND-HOOK (#615): state/auction raster filename + sidecar area
+// type live in layers_p4_stateland.ts (raster intentionally never built
+// — STATELAND_NO_RASTER; the name resolves to an absent file so
+// windows degrade to null; the sidecar is honestly empty when
+// unharvested).
+import type { StatelandArea } from "../layers_p4_stateland";
+import { STATELAND_RASTER_FILE, isStatelandArea } from "../layers_p4_stateland";
 // QUARRY-HOOK (#614): permit-polygon raster filename + sidecar area
 // type live in layers_p4_quarry.ts (raster intentionally never built —
 // QUARRY_NO_RASTER; the name resolves to an absent file so windows
@@ -824,6 +838,55 @@ export async function loadPlanktprAreas(dir: string): Promise<PlanktprArea[]> {
   return areas;
 }
 
+// SEVESO-HOOK (#613): danger-polygon sidecar cache (same discipline).
+const sevesoAreaCache = new Map<string, SevesoArea[]>();
+
+// SEVESO-HOOK (#613): Päästeamet danger-polygon sidecar
+// (`seveso/seveso-areas.json`, written by scripts/build/batch_seveso.py
+// off the cached danger CSV): zone_id + danger class + outer rings. A
+// missing sidecar is honestly empty (register unharvested), never an
+// error; malformed rows are skipped, never faked.
+export async function loadSevesoAreas(dir: string): Promise<SevesoArea[]> {
+  const hit = sevesoAreaCache.get(dir);
+  if (hit) return hit;
+  let areas: SevesoArea[] = [];
+  try {
+    const raw = await fs.readFile(path.join(dir, "seveso", "seveso-areas.json"), "utf8");
+    const parsed: unknown = JSON.parse(raw);
+    if (Array.isArray(parsed)) areas = parsed.filter(isSevesoArea);
+    else console.warn(`snapshot: ignoring malformed seveso/seveso-areas.json in ${dir}`);
+  } catch {
+    // Optional sidecar: honestly empty below.
+  }
+  sevesoAreaCache.set(dir, areas);
+
+  return areas;
+}
+
+// STATELAND-HOOK (#615): state/auction sidecar cache (same discipline).
+const statelandAreaCache = new Map<string, StatelandArea[]>();
+
+// STATELAND-HOOK (#615): KATRI state + auction sidecar
+// (`stateland/stateland-areas.json`, written by
+// scripts/build/batch_stateland.py off the cached WFS GeoJSON):
+// zone_id + class + dated auction flags + outer rings. A missing
+// sidecar is honestly empty (register unharvested), never an error;
+// malformed rows are skipped, never faked.
+export async function loadStatelandAreas(dir: string): Promise<StatelandArea[]> {
+  const hit = statelandAreaCache.get(dir);
+  if (hit) return hit;
+  let areas: StatelandArea[] = [];
+  try {
+    const raw = await fs.readFile(path.join(dir, "stateland", "stateland-areas.json"), "utf8");
+    const parsed: unknown = JSON.parse(raw);
+    if (Array.isArray(parsed)) areas = parsed.filter(isStatelandArea);
+    else console.warn(`snapshot: ignoring malformed stateland/stateland-areas.json in ${dir}`);
+  } catch {
+    // Optional sidecar: honestly empty below.
+  }
+  statelandAreaCache.set(dir, areas);
+  return areas;
+}
 // QUARRY-HOOK (#614): permit-polygon sidecar cache (same discipline).
 const quarryAreaCache = new Map<string, QuarryArea[]>();
 
@@ -845,7 +908,6 @@ export async function loadQuarryAreas(dir: string): Promise<QuarryArea[]> {
     // Optional sidecar: honestly empty below.
   }
   quarryAreaCache.set(dir, areas);
-
   return areas;
 }
 
@@ -995,6 +1057,8 @@ export function clearSnapshotCache(): void {
   allPoints.clear();
   areaCache.clear();
   planktprAreaCache.clear(); // PLANKTPR-HOOK (#492)
+  sevesoAreaCache.clear(); // SEVESO-HOOK (#613)
+  statelandAreaCache.clear(); // STATELAND-HOOK (#615)
   quarryAreaCache.clear(); // QUARRY-HOOK (#614)
   freqCache.clear();
   rasterCache.clear();
@@ -1163,6 +1227,14 @@ const RASTER_FILE: Record<LayerId, string> = {
   // by decision — FIXIT_NO_RASTER; markers only, no field to stamp;
   // the absent file degrades windows to null).
   ...FIXIT_RASTER_FILE,
+  // SEVESO-HOOK (#613): danger-polygon raster name only (no master
+  // built — SEVESO_NO_RASTER, CC BY-NC-ND forbids derivatives;
+  // polygons ARE the field; absent file degrades to null, honestly).
+  ...SEVESO_RASTER_FILE,
+  // STATELAND-HOOK (#615): state/auction raster name only (no master
+  // built — STATELAND_NO_RASTER; polygons ARE the field; absent file
+  // degrades to null, honestly).
+  ...STATELAND_RASTER_FILE,
   // QUARRY-HOOK (#614): permit-polygon raster name only (no master
   // built — QUARRY_NO_RASTER; polygons ARE the field; absent file
   // degrades to null, honestly).
@@ -1669,6 +1741,15 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // either — FIXIT_NO_RASTER; the name resolves to an absent file so
   // windows fall back to the markers-only path).
   fixit: "fixit-metro",
+  // SEVESO-HOOK (#613): no seveso metro master by documented decision
+  // (see layers_p4_seveso.ts SEVESO_NO_METRO) — the name resolves to
+  // an absent file so windows fall back to county cleanly.
+  seveso: "seveso-metro",
+  // STATELAND-HOOK (#615): no stateland metro master by documented
+  // decision (see layers_p4_stateland.ts STATELAND_NO_METRO) — the
+  // name resolves to an absent file so windows fall back to county
+  // cleanly.
+  stateland: "stateland-metro",
   // QUARRY-HOOK (#614): no quarry metro master by documented decision
   // (see layers_p4_quarry.ts QUARRY_NO_METRO) — the name resolves to
   // an absent file so windows fall back to county cleanly.

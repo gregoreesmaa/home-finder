@@ -61,9 +61,10 @@ describe("quarry registry (#614)", () => {
 
   it("merges into LAYERS via the QUARRY-HOOK (page + routes serve it)", () => {
     const ids = LAYERS.map((l) => l.id);
-    // 123 shipped layers on main (#623 fixit) + 1 quarry
-    // extraction/exploration overlay (QUARRY-HOOK #614, 123 + 1).
-    expect(ids.length).toBe(124);
+    // 123 shipped layers on main (#623 fixit) + seveso (#613) +
+    // stateland (#615) + 1 quarry extraction/exploration overlay
+    // (QUARRY-HOOK #614, 125 + 1 = 126).
+    expect(ids.length).toBe(126);
     expect(ids).toContain("quarry");
   });
 

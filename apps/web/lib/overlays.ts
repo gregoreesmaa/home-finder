@@ -563,6 +563,22 @@ export function overlayColorFor(layer: LayerId): string {
     // (distinct-color test).
     case "fixit":
       return "#fdba74";
+    // SEVESO-HOOK (#613): seveso marker (polygon layer — the point
+    // overlay stays empty live, so this colors only the toggle dot).
+    // #3b0764: purple-950 hazard violet (NOT #4c1d95 — taken by
+    // planktpr — and NOT #6b21a8/#7e22ce — taken; darkest violet of
+    // the three, and layers never co-render). Distinct from every
+    // other marker (distinct-color test).
+    case "seveso":
+      return "#3b0764";
+    // STATELAND-HOOK (#615): stateland marker (polygon layer — the
+    // point overlay stays empty live, so this colors only the toggle
+    // dot). #083344: cyan-950 registry deep (NOT #0c4a6e — taken by
+    // moorage — and NOT #155e75 — taken; darkest cyan of the three,
+    // and layers never co-render). Distinct from every other marker
+    // (distinct-color test).
+    case "stateland":
+      return "#083344";
     // QUARRY-HOOK (#614): quarry marker (polygon layer — the point
     // overlay stays empty live, so this colors only the toggle dot).
     // #431407: orange-950 quarry soil (darkest earth of the registry;
@@ -1054,6 +1070,19 @@ export function overlayLegendFor(layer: LayerId): string {
     // window — expired pins never render as current.
     case "fixit":
       return "Teated lähedal (annateada väljavõte: 300 teadet, sh 120 lahendatud) · IGA täpp ÜKS teade (libisev 19 päeva aken; tihedus = teatamine, MITTE elukvaliteet — tühi kaart pole kiitus)";
+    // SEVESO-HOOK (#613): seveso danger-class fills (Päästeamet
+    // ohualad) — inside a named polygon reads by class color, outside
+    // every polygon is unknown (never safe): an unregistered hazard is
+    // not a ruled-out one.
+    case "seveso":
+      return "Seveso ohualad (Päästeameti register: 235 ohuala, sh 95 Harjumaal) · tsoonis = ohuala (mürkpunane / kuumusoranž, hinnang — tutvu infovoldikuga; väljaspool = teadmata, mitte ohutu)";
+    // STATELAND-HOOK (#615): stateland state/auction fills (KATRI +
+    // maaoksjon) — inside a named state/auction parcel reads by class
+    // color with the auction date, outside every parcel is unknown
+    // (never state-free): an unregistered interest is not a ruled-out
+    // one. Assurance stays capped hinnang (state CAN sell).
+    case "stateland":
+      return "Riigimaa ja oksjonid (KATRI register: 11068 parselli + 15 aktiivset oksjonit) · tsoonis = riigimaa (roheline, piiratud kinnitus — riik VÕIB müüa) või oksjon (kollane, kuupäevaga hoiatuslipp); väljaspool = teadmata, mitte riigimaavaba";
     // QUARRY-HOOK (#614): quarry permit/watch fills (Maa-amet
     // maardlad) — inside a named permit polygon reads by class color,
     // outside every polygon is unknown (never quarry-free). The <= 2 km

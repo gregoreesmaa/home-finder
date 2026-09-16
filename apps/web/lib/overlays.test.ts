@@ -129,8 +129,11 @@ describe("overlay legend + colors", () => {
     // KLIIMA-HOOK (#611): kliima_frost/wet join the registry (117 + 2).
     // POI-HOOK (#612): poi_library/post/pharmacy join the registry (119 + 3).
     // FIXIT-HOOK (#623): fixit joins the registry (122 + 1).
-    // QUARRY-HOOK (#614): quarry joins the registry (123 + 1).
-    expect(ids).toHaveLength(124);
+    // SEVESO-HOOK (#613): seveso joins the registry (123 + 1).
+    // STATELAND-HOOK (#615): stateland joins the registry (124 + 1).
+    // QUARRY-HOOK (#614): quarry joins the registry (125 + 1).
+    // MERGE (#613+#614+#615): 123 shipped + seveso + stateland + quarry = 126.
+    expect(ids).toHaveLength(126);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -415,8 +418,11 @@ describe("overlay legend + colors", () => {
     // KLIIMA-HOOK (#611): kliima_frost/wet join the registry (117 + 2).
     // POI-HOOK (#612): poi_library/post/pharmacy join the registry (119 + 3).
     // FIXIT-HOOK (#623): fixit joins the registry (122 + 1).
-    // QUARRY-HOOK (#614): quarry joins the registry (123 + 1).
-    expect(seen.size).toBe(124);
+    // SEVESO-HOOK (#613): seveso joins the registry (123 + 1).
+    // STATELAND-HOOK (#615): stateland joins the registry (124 + 1).
+    // QUARRY-HOOK (#614): quarry joins the registry (125 + 1).
+    // MERGE (#613+#614+#615): 123 shipped + seveso + stateland + quarry = 126.
+    expect(seen.size).toBe(126);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

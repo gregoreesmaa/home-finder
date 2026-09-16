@@ -579,6 +579,28 @@ import {
   isKliimaLayerId,
   kliimaBonusSpecFor,
 } from "./layers_kliima";
+// SEVESO-HOOK (#613): danger-polygon tables live in ./layers_p4_seveso
+// (Päästeamet ohualad, polygons only). That module imports layers only
+// as types, so no runtime cycle.
+import type { SevesoLayerId } from "./layers_p4_seveso";
+import {
+  SEVESO_DECAY,
+  SEVESO_DEFS,
+  SEVESO_TAGS,
+  bonusSpecForSeveso,
+  isSevesoPolygonOnlyLayer,
+} from "./layers_p4_seveso";
+// STATELAND-HOOK (#615): state/auction polygon tables live in
+// ./layers_p4_stateland (KATRI + maaoksjon, polygons only). That module
+// imports layers only as types, so no runtime cycle.
+import type { StatelandLayerId } from "./layers_p4_stateland";
+import {
+  STATELAND_DECAY,
+  STATELAND_DEFS,
+  STATELAND_TAGS,
+  bonusSpecForStateland,
+  isStatelandPolygonOnlyLayer,
+} from "./layers_p4_stateland";
 // QUARRY-HOOK (#614): extraction/exploration polygon tables live in
 // ./layers_p4_quarry (Maa-amet permits, polygons only). That module
 // imports layers only as types, so no runtime cycle.
@@ -744,6 +766,13 @@ export type LayerId =
   // FIXIT-HOOK (#623): report-pin id (./layers_p4_fixit, markers
   // only, no parameters3 id).
   | FixitLayerId
+  // STATELAND-HOOK (#615): state/auction polygon id
+  // (./layers_p4_stateland, KATRI + maaoksjon, polygons only, no
+  // parameters3 id).
+  | StatelandLayerId
+  // SEVESO-HOOK (#613): danger-polygon id (./layers_p4_seveso,
+  // Päästeamet ohualad, polygons only, no parameters3 id).
+  | SevesoLayerId
   // QUARRY-HOOK (#614): extraction/exploration polygon id
   // (./layers_p4_quarry, Maa-amet permits, polygons only, no
   // parameters3 id).
@@ -975,6 +1004,14 @@ const DECAY_KM: Record<LayerId, number> = {
   ...POI_DECAY,
   // FIXIT-HOOK (#623): report-pin radius (see layers_p4_fixit.ts FIXIT_DECAY).
   ...FIXIT_DECAY,
+  // STATELAND-HOOK (#615): state/auction polygon radius (see
+  // layers_p4_stateland.ts STATELAND_DECAY — INERT placeholder,
+  // polygons only: zero points, never evaluated).
+  ...STATELAND_DECAY,
+  // SEVESO-HOOK (#613): danger-polygon radius (see layers_p4_seveso.ts
+  // SEVESO_DECAY — INERT placeholder, polygons only: zero points,
+  // never evaluated).
+  ...SEVESO_DECAY,
   // QUARRY-HOOK (#614): permit-polygon radius (see
   // layers_p4_quarry.ts QUARRY_DECAY — INERT placeholder, polygons
   // only: zero points, never evaluated).
@@ -1218,6 +1255,13 @@ export const LAYERS: LayerDef[] = [
   // FIXIT-HOOK (#623): report-pin def (markers only, no parameters3
   // id) from ./layers_p4_fixit.
   ...FIXIT_LAYERS,
+  // SEVESO-HOOK (#613): danger-polygon def (Päästeamet ohualad,
+  // polygons only, no parameters3 id) from ./layers_p4_seveso.
+  ...SEVESO_DEFS,
+  // STATELAND-HOOK (#615): state/auction polygon def (KATRI +
+  // maaoksjon, polygons only, no parameters3 id) from
+  // ./layers_p4_stateland.
+  ...STATELAND_DEFS,
   // QUARRY-HOOK (#614): permit/watch polygon def (Maa-amet permits,
   // polygons only, no parameters3 id) from ./layers_p4_quarry.
   ...QUARRY_DEFS,
@@ -1368,6 +1412,13 @@ const TAGS: Record<LayerId, string> = {
   // FIXIT-HOOK (#623): report-pin source note (see
   // layers_p4_fixit.ts FIXIT_TAGS — prose, NOT an Overpass fragment).
   ...FIXIT_TAGS,
+  // STATELAND-HOOK (#615): state/auction source note (see
+  // layers_p4_stateland.ts STATELAND_TAGS — prose, NOT an Overpass
+  // fragment).
+  ...STATELAND_TAGS,
+  // SEVESO-HOOK (#613): danger-polygon source note (see
+  // layers_p4_seveso.ts SEVESO_TAGS — prose, NOT an Overpass fragment).
+  ...SEVESO_TAGS,
   // QUARRY-HOOK (#614): permit-polygon source note (see
   // layers_p4_quarry.ts QUARRY_TAGS — prose, NOT an Overpass fragment).
   ...QUARRY_TAGS,
@@ -1629,6 +1680,14 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // FIXIT-HOOK (#623): report-pin marker spec lives in
   // layers_p4_fixit.ts (markers only — no scorer table to mirror).
   if (isFixitLayerId(layer)) return fixitBonusSpecFor(layer);
+  // STATELAND-HOOK (#615): state/auction polygon spec lives in
+  // ./layers_p4_stateland (INERT — polygons only, never evaluated).
+  const stateland = bonusSpecForStateland(layer);
+  if (stateland) return stateland;
+  // SEVESO-HOOK (#613): danger-polygon spec lives in
+  // ./layers_p4_seveso (INERT — polygons only, never evaluated).
+  const seveso = bonusSpecForSeveso(layer);
+  if (seveso) return seveso;
   // QUARRY-HOOK (#614): permit-polygon spec lives in
   // ./layers_p4_quarry (INERT — polygons only, never evaluated).
   const quarry = bonusSpecForQuarry(layer);
@@ -1992,6 +2051,14 @@ export async function fetchWindow(
   // (polygons only — the sidecar carries the data). Skip the window
   // fetch for the same reason: a designed 500 only litters the console.
   if (isPolygonOnlyMaaLayer(layer)) return null;
+  // STATELAND-HOOK (#615): stateland has no raster master by decision
+  // (polygons only — the sidecar carries the data). Same skip, same
+  // reason.
+  if (isStatelandPolygonOnlyLayer(layer)) return null;
+  // SEVESO-HOOK (#613): seveso has no raster master by licence decision
+  // (polygons only — the sidecar carries the data). Same skip, same
+  // reason.
+  if (isSevesoPolygonOnlyLayer(layer)) return null;
   // QUARRY-HOOK (#614): quarry has no raster master by decision
   // (polygons only — the sidecar carries the data). Same skip, same
   // reason.
