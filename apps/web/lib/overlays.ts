@@ -563,6 +563,14 @@ export function overlayColorFor(layer: LayerId): string {
     // (distinct-color test).
     case "fixit":
       return "#fdba74";
+    // SEVESO-HOOK (#613): seveso marker (polygon layer — the point
+    // overlay stays empty live, so this colors only the toggle dot).
+    // #3b0764: purple-950 hazard violet (NOT #4c1d95 — taken by
+    // planktpr — and NOT #6b21a8/#7e22ce — taken; darkest violet of
+    // the three, and layers never co-render). Distinct from every
+    // other marker (distinct-color test).
+    case "seveso":
+      return "#3b0764";
     // MEDRE-HOOK (#609): medre slice markers (Step-1 honest-empty —
     // the point overlay stays empty live, so this colors only the
     // toggle dot). #ffedd5: orange-100 clinic paper; #ede9fe:
@@ -1047,6 +1055,12 @@ export function overlayLegendFor(layer: LayerId): string {
     // window — expired pins never render as current.
     case "fixit":
       return "Teated lähedal (annateada väljavõte: 300 teadet, sh 120 lahendatud) · IGA täpp ÜKS teade (libisev 19 päeva aken; tihedus = teatamine, MITTE elukvaliteet — tühi kaart pole kiitus)";
+    // SEVESO-HOOK (#613): seveso danger-class fills (Päästeamet
+    // ohualad) — inside a named polygon reads by class color, outside
+    // every polygon is unknown (never safe): an unregistered hazard is
+    // not a ruled-out one.
+    case "seveso":
+      return "Seveso ohualad (Päästeameti register: 235 ohuala, sh 95 Harjumaal) · tsoonis = ohuala (mürkpunane / kuumusoranž, hinnang — tutvu infovoldikuga; väljaspool = teadmata, mitte ohutu)";
     // ASUMEDIA-HOOK (#495): asumedia (own-snapshot asking medians) —
     // the dated negative rides along: 0/84 asums reach MIN_N=5, so
     // the field is unknown everywhere until the reopen lands real

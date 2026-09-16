@@ -93,6 +93,13 @@ import { isKliimaLayerId } from "../../lib/layers_kliima";
 // POI-HOOK (#612): dbands status names the register extract for poi
 // layers (see isDbands branch below).
 import { isPoiLayerId } from "../../lib/layers_p4_poi";
+// SEVESO-HOOK (#613): seveso paints Päästeamet danger polygons
+// (polygons only, never a gradient) instead of points.
+import {
+  fetchSevesoAreas,
+  isSevesoPolygonOnlyLayer,
+  type SevesoArea,
+} from "../../lib/layers_p4_seveso";
 
 /** Viewport bbox rounded for fetch stability (matches server key rounding). */
 function sameView(a: BBoxLike, b: BBoxLike): boolean {
@@ -263,6 +270,26 @@ export default function LayersPage() {
     };
   }, [layer]);
 
+  // SEVESO-HOOK (#613): Päästeamet danger polygons (seveso layer
+  // only, fetched once per selection): the choropleth itself — inside
+  // a named danger polygon vs outside/unknown. No points and no score
+  // field are painted for this layer, by design (polygons only, never
+  // a gradient).
+  const [sevesoAreas, setSevesoAreas] = useState<SevesoArea[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!isSevesoPolygonOnlyLayer(layer)) {
+      setSevesoAreas(null);
+      return;
+    }
+    fetchSevesoAreas().then((areas) => {
+      if (!cancelled) setSevesoAreas(areas);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [layer]);
+
   // Park boundaries (parks layer only): fetched once per selection, a
   // visual aid so scored-inside vs surroundings reads at a glance.
   const [outlines, setOutlines] = useState<ParkOutline[] | null>(null);
@@ -383,7 +410,8 @@ export default function LayersPage() {
     // FLOOD-HOOK (#487): floodzone paints polygons, never point markers.
     // MAAPARCEL-HOOK (#491): maaparcel paints polygons, never point markers.
     // EELIS-HOOK (#488): eelis layers paint polygons, never point markers.
-    layer === "parks" || isPolygonOnlyLayer(layer) || isPolygonOnlyMaaLayer(layer) || isEelisPolygonOnlyLayer(layer)
+    // SEVESO-HOOK (#613): seveso paints polygons, never point markers.
+    layer === "parks" || isPolygonOnlyLayer(layer) || isPolygonOnlyMaaLayer(layer) || isEelisPolygonOnlyLayer(layer) || isSevesoPolygonOnlyLayer(layer)
       ? null
       : needsGraphOverlay(layer)
         ? graphPoints
@@ -395,6 +423,8 @@ export default function LayersPage() {
       ? (maaAreas?.length ?? 0)
       : isEelisPolygonOnlyLayer(layer)
         ? (eelisOverlay?.length ?? 0)
+        : isSevesoPolygonOnlyLayer(layer)
+          ? (sevesoAreas?.length ?? 0)
         : isPlanktprLayerId(layer)
           ? (usePolygons?.length ?? 0)
     : layer === "parks"
@@ -441,6 +471,12 @@ export default function LayersPage() {
     eelisAreas === null || eelisKind === null
       ? "Laadin EELIS tsoone…"
       : `EELIS ${eelisKind === "kaitse" ? "kaitsealad" : eelisKind === "niit" ? "niiduelupaigad" : "raiealad"} · ${eelisOverlay?.length ?? 0} polügooni (väljaspool = teadmata, mitte puhas)`;
+  // SEVESO-HOOK (#613): seveso status counts danger polygons, never
+  // points — the layer serves zero points by design (polygons only).
+  const sevesoStatus =
+    sevesoAreas === null
+      ? "Laadin Seveso ohualasid…"
+      : `Päästeameti Seveso ohualad · ${sevesoAreas.length} polügooni (väljaspool = teadmata, mitte ohutu)`;
   const base =
     isPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
       ? floodStatus
@@ -448,6 +484,8 @@ export default function LayersPage() {
         ? maaStatus
       : isEelisPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
         ? eelisStatus
+      : isSevesoPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
+        ? sevesoStatus
       : provenance === null
       ? "Laadin kihi andmeid…"
       : provenance === "snapshot"
@@ -551,6 +589,7 @@ export default function LayersPage() {
 
 
         eelisAreas={eelisOverlay}
+        sevesoAreas={sevesoAreas}
         overlayPoints={pointOverlay}
         usePolygons={usePolygons}
         overlayColor={overlayColorFor(layer)}
@@ -574,10 +613,13 @@ export default function LayersPage() {
           // EELIS-HOOK (#488): eelis layers paint no field at all (zero
           // points, null raster) -- same skip for the nature fills.
           // PLANKTPR-HOOK (#492): use-fills are exact parcel joins too.
+          // SEVESO-HOOK (#613): seveso paints no field at all (zero
+          // points, null raster) -- same skip for the danger fills.
           (isStatKovLayerId(layer) || isEelisPolygonOnlyLayer(layer) ||
             isMaruKovLayerId(layer) ||
             isPolygonOnlyLayer(layer) ||
             isPolygonOnlyMaaLayer(layer) ||
+            isSevesoPolygonOnlyLayer(layer) ||
             isPlanktprLayerId(layer)
             ? ""
             : distance === "euclidean" && provenance === "snapshot"

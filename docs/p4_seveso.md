@@ -75,3 +75,41 @@ Hermetic: suite makes zero network calls (live pull env-gated behind
   `combustion` value appearing flips no code (already mapped).
 * P4-012/P4-015/P4-054 cousins untouched — distinct dim key
   (`seveso_zone`), no double-scoring.
+
+## 6. Graduation: map overlay (issue #613, 2026-09-17)
+
+Closes #613. One layer (`seveso`, `paramLabel P4-ohuala`,
+`paramIds []` — parameters4 namespace): the register's danger polygons
+as a danger-class choropleth (toxic red / heat orange / overpressure
+light-orange / combustion brown / unknown slate), outside every polygon
+NULL (never safe).
+
+* Polygon sidecar: `scripts/build/batch_seveso.py --danger
+  <cached ohtlikud_kaitised_ohualad.csv> --snap <snap>` →
+  `<snap>/seveso/seveso-areas.json` (zone_id/nimi/danger/danger_label/
+  aadress + GeoJSON [lon, lat] outer rings + prefilter box). Offline,
+  stdlib-only; rows unmodified apart from the mechanical L-EST97→WGS84
+  projection (same ~1 m port as the scorer, copied per per-issue
+  convention); attribution rides the build stats + every reason string.
+  Rebuild on the cached 2026-09-16 pull: **235 zones, 0 skipped, 95
+  Harju** (heat 182 / toxic 40 / overpressure 13 — byte parity with the
+  §1 probe).
+* No raster master by licence decision (`SEVESO_NO_RASTER`,
+  `SEVESO_NO_METRO`): CC BY-NC-ND forbids derivatives — the points
+  endpoint answers honestly-empty, windows serve county.
+* Wiring: `SEVESO-HOOK (#613)` blocks in layers.ts (import/union/DECAY/
+  LAYERS/TAGS/bonusSpecFor), overlays.ts (marker `#3b0764` + legend),
+  outlines.ts (`applySevesoPolygons` match-expression fills + slot),
+  server/snapshot.ts (`loadSevesoAreas` + raster/metro absent names),
+  route.ts (honestly-empty points branch), new
+  `/api/layers/seveso/areas`, page.tsx (fetch/paint/status `Päästeameti
+  Seveso ohualad · N polügooni (väljaspool = teadmata, mitte ohutu)`),
+  ValueHeatMap (`sevesoAreas` prop). Registry now 124 layers.
+* Scorer parity: `SEVESO_DANGER_SCORE` mirrors `DANGER_SCORES`
+  (toxic 20 / heat+pressure 35 / combustion 50 / unknown 30); the map
+  paints class fills, never numbers.
+
+DoD evidence: `vitest` (new `layers_p4_seveso.test.ts` + painter tests
+in `outlines.test.ts` + `test_batch_seveso.py`), full suites green,
+typecheck clean — pasted in the PR. Screenshot: `/layers?layer=seveso`
+Muuga/Väo fills.
