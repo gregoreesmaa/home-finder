@@ -21,14 +21,16 @@
 //     northing ~6.59M, easting ~568k), NOT WGS84; older rows lack them.
 // So the CSV carries coordinates, but they are NOT directly usable as
 // WGS84 map points: projection (GDAL/pyproj) is not vendored in this
-// repo, and a hand-rolled datum shift would be fake precision. The
-// measured set below is therefore EMPTY ON PURPOSE — the map renders
-// the whole field unknown (never zero, never "safe") until the reopen
-// PR ships projected points (see the checklist).
+// repo, and a hand-rolled datum shift would be fake precision. Reopen
+// #522 ported the batch_tervise.py inverse-LCC transform (~1 m label),
+// and the projected extract ships as the snapshot sidecar
+// (accblack/accblack-points.json) served by /api/layers/accblack —
+// outside the sidecar the field stays unknown (never zero, "safe").
 //
-// HONESTY (load-bearing): zero measured points are plotted rather than
-// misplotted. The title/legend/source say "mõõdetud — ootel" and name
-// the L-EST97 blocker with its date; the P4-012 per-listing scorer dim
+// HONESTY (load-bearing): only projected points inside the Tallinn
+// window are plotted (1 mislabeled out-of-window row excluded and
+// counted, 92 coordless rows NULL and counted). The P4-012 per-listing
+// scorer dim
 // (dims_p4_trans.dim_accident_blackspots, empty buffer stays NULL) and
 // the #481 furniture-density proxy (roadsafety) keep answering their
 // own questions — pinned by the test below.
@@ -41,7 +43,7 @@
 // reconcile with real point density; with today's empty set every
 // lookup returns null ("no data") either way.
 
-import type { AvoidSpec, BonusSpec, LayerDef, LayerPoint } from "./layers";
+import type { AvoidSpec, BonusSpec, LayerDef } from "./layers";
 
 export type AccBlackLayerId = "accblack";
 
@@ -66,13 +68,13 @@ export const ACCBLACK_DEFS: LayerDef[] = [
     id: "accblack",
     paramIds: [],
     paramLabel: ACCBLACK_PARAM_LABEL,
-    title: "Liiklusõnnetuste mustad punktid (mõõdetud — ootel)",
+    title: "Liiklusõnnetuste mustad punktid (mõõdetud)",
     goodLabel:
-      "roheline = lähim teadaolev raske õnnetus kaugel (praegu: mõõdetud punkte pole, kogu väli teadmata)",
+      "roheline = lähim teadaolev raske õnnetus kaugel (Tallinna aken; väljaspool katvust teadmata)",
     badLabel:
-      "punane = mõõdetud musta punkti lähedal VÕI andmed puuduvad (praegu: alati teadmata)",
+      "punane = mõõdetud musta punkti lähedal VÕI andmed puuduvad (alati teadmata väljaspool katvust)",
     source:
-      "Transpordiamet lo_2011_2026.csv (12342189 B, kontrollitud 2026-09-13): X/Y koordinaat on L-EST97 meetrites ja vanemad read on tühjad — WGS84-projektsioonita (GDAL/pyproj repos pole) ei joonistata ühtegi punkti (täpsust ei võltsita); seni vaata #481 proksi-kihti roadsafety",
+      "Transpordiamet lo_2011_2026.csv (12342189 B, tõmmatud 2026-09-16): X/Y L-EST97 meetrid on projekteeritud WGS84-sse portitud pöördega (~1 m); 8197 Tallinna punkti, 1 piiridest välja jäänud rida on loendamata jäetud, 92 rida ilma koordinaatideta on NULL (loetud, mitte joonistatud); väljaspool Tallinna akent andmeid pole",
     fallbackPoints: [
       // ILLUSTRATION-ONLY demo points (the measured set is empty — these
       // are NOT blackspots and claim no safety fact; they exist because
@@ -103,11 +105,14 @@ export const ACCBLACK_TAGS: Record<AccBlackLayerId, string> = {
 };
 
 /**
- * Measured blackspot points in WGS84 (EMPTY ON PURPOSE — see the coord
- * verdict above). The reopen PR fills this from the projected CSV
- * extract; until then the route serves [] with provenance "empty".
+ * Measured blackspot points in WGS84 (reopen #522: the projected CSV
+ * extract now ships as the snapshot sidecar
+ * `accblack/accblack-points.json`, served by /api/layers/accblack —
+ * this constant is retired, the sidecar is the single source).
+ * Kept as an empty export for scorer-parity callers that pin the
+ * pre-sidecar shape; the map never reads it.
  */
-export const ACCBLACK_MEASURED_POINTS: LayerPoint[] = [];
+export const ACCBLACK_MEASURED_POINTS: never[] = [];
 
 /** Scorer window in metres — byte parity with BLACKSPOT_WINDOW_M. */
 export const ACCBLACK_WINDOW_M = 300;

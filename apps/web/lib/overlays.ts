@@ -814,11 +814,11 @@ export function overlayLegendFor(layer: LayerId): string {
     // mapping usage, never accident truth.
     case "roadsafety":
       return "Märgistatud ülekäigud + rahustid · lähedaste arv (kasutus-hinnang, küllastus 60, õnnetusstatistika puudub)";
-    // ACCBLACK-HOOK (#490): accblack (P4-012 measured slice) — the
-    // empty-on-purpose verdict rides along: zero projected points, so
-    // the field is unknown everywhere until the L-EST97 reopen.
+    // ACCBLACK-HOOK (#490, reopen #522): accblack (P4-012 measured
+    // slice) — projected Transpordiamet points from the snapshot
+    // sidecar; the field is unknown outside the Tallinn window.
     case "accblack":
-      return "Rasked liiklusõnnetused (mõõdetud mustad punktid) · 300 m aken (mõõdetud punkte kaardil pole — L-EST97 teisendamata, EI OLE projitseeritud asukohti)";
+      return "Rasked liiklusõnnetused (mõõdetud mustad punktid) · 300 m aken (projekteeritud Tallinna punktid, ~1 m; väljaspool akent teadmata)";
     // P4-031-HOOK (#484): senscom (P4-031) — DIY outdoor locations from
     // the Tallinn extract; the band field (not the dots) is the score:
     // 1 andur <=500 m -> 60, 2-3 -> 70, 4+ -> 80 (lagi); anduriteta

@@ -359,6 +359,53 @@ export async function loadEelisAreas(dir: string): Promise<EelisArea[]> {
   return areas;
 }
 
+/** Projected blackspot point (WGS84, L-EST97 inverse-LCC ~1 m). */
+export interface AccblackPoint {
+  lon: number;
+  lat: number;
+  sev: number;
+  year: string;
+}
+
+function isAccblackPoint(v: unknown): v is AccblackPoint {
+  const p = v as Partial<AccblackPoint>;
+  return (
+    typeof p?.lon === "number" && Number.isFinite(p.lon) &&
+    typeof p?.lat === "number" && Number.isFinite(p.lat) &&
+    typeof p?.sev === "number" && Number.isFinite(p.sev) &&
+    typeof p?.year === "string"
+  );
+}
+
+const accblackPointCache = new Map<string, AccblackPoint[]>();
+
+/**
+ * Projected-blackspot sidecar (`accblack/accblack-points.json`): WGS84
+ * casualty-accident points for the accblack overlay (issue #522 reopen:
+ * L-EST97 -> WGS84 projection landed, so the empty-on-purpose verdict
+ * is lifted where the sidecar exists). Missing or malformed sidecar
+ * degrades to [] (honestly no points — the map renders "no data",
+ * never a faked zero), never an error.
+ */
+export async function loadAccblackPoints(dir: string): Promise<AccblackPoint[]> {
+  const hit = accblackPointCache.get(dir);
+  if (hit) return hit;
+  let points: AccblackPoint[] = [];
+  try {
+    const raw = await fs.readFile(path.join(dir, "accblack", "accblack-points.json"), "utf8");
+    const parsed: unknown = JSON.parse(raw);
+    const list = typeof parsed === "object" && parsed !== null && Array.isArray((parsed as { points?: unknown }).points)
+      ? (parsed as { points: unknown[] }).points
+      : [];
+    points = list.filter(isAccblackPoint);
+    if (!Array.isArray((parsed as { points?: unknown }).points)) console.warn(`snapshot: ignoring malformed accblack-points.json in ${dir}`);
+  } catch {
+    // Optional sidecar: honestly no points.
+  }
+  accblackPointCache.set(dir, points);
+  return points;
+}
+
 const areaCache = new Map<string, ParkArea[]>();
 // PLANKTPR-HOOK (#492): harvested-polygon sidecar cache (same discipline).
 const planktprAreaCache = new Map<string, PlanktprArea[]>();
