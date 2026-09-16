@@ -126,3 +126,29 @@ to the cached snapshot (count + soonest start + snapshot date).
    city/Päästeamet — kultuurikava categories prove nothing more to
    find here; re-check the category list yearly.
 5. Add the explicitly-flagged live integration test (not a unit run).
+
+## Update 2026-09-16 (issue #540): Piletimaailm feed is ALIVE
+
+The reopening condition above is met for ONE leg. Polite probes, one
+GET per endpoint, `home-finder-probe/1.0` User-Agent, `--max-time 25`,
+raw files at /tmp/hf-probes/ (one-off PR record, never committed):
+
+| Probe | Result |
+|---|---|
+| `GET https://www.piletimaailm.com/performances/feed.json` | HTTP 200, 5 087 134 bytes JSON — 397 events, 2026-09-16→2026-10-16 (~30-day forward window), 21-key schema (venue/hall/address/city/category/date, NO coords) |
+| `GET .../downloads/yrituste_voog_api.pdf` | HTTP 404 — guide gone (site restructured); schema self-describing, nothing blocked |
+
+Coverage: venue 100%, city 86%, category 99.5% (Teater 308, Kino 75);
+Tallinn 88 events / 11 venue strings (~8 physical: Draamateater 44,
+Theatrum 14, Mere 9, Noblessner/Kumu 7, Salme 5, Estonia/Süda 1).
+NO Lauluväljak/stadium/Pirita rows — the P4-047 horrors leg stays
+NULL; the feed serves the P4-045 evening-culture leg only.
+
+New module `services/scoring/dims_p4_events_feed.py` (this issue's ONE
+allowed shared-file edit is this note itself): per-venue 30-day
+event-days → joined-0 = 80 (real calm), ≤5 = 60, above = 40, missing
+join NULL (p4_trans precedent); horrors dim always NULL with the
+sibling-leg buyer checks. `dims_p4_events.py` (#310/#375) is
+untouched. Venue→coordinate join: manual feed-address table, coords
+None until the harvest geocodes (never guessed) — reviewer call,
+documented in the module. Licence CC BY-SA 3.0, annual harvest.
