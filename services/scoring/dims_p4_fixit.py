@@ -285,8 +285,11 @@ def _to_float(raw) -> Optional[float]:
 def parse_annateada_snapshot(path: str) -> List[dict]:
     """Parse a cached ask snapshot into minimal pin records. Pure.
 
-    Keeps {lat, lng, handled, category, dtime, region} only — human
-    content (msg/comm/photo/contact) is dropped at parse time.
+    Keeps {lat, lng, handled, category, dtime, ts, region} only —
+    human content (msg/comm/photo/contact) is dropped at parse time.
+    ts is the report epoch (int when parseable, else None) — carried
+    for map-side expiry (issue #623; the scorer itself never reads
+    it, so scoring behavior is unchanged).
     handled = True iff stat is the green "teadmiseks võetud /
     lahendatud" state ('1', per the ask-returned abi text); every
     other stat (incl. red '0' = käsitlemata) is unhandled. Pins
@@ -324,10 +327,25 @@ def parse_annateada_snapshot(path: str) -> List[dict]:
         region = entry.get("region")
         if not isinstance(region, str) or not region:
             region = None
+        ts = _to_int(entry.get("ts"))
         records.append({"lat": lat, "lng": lng, "handled": handled,
-                        "category": category, "dtime": dtime,
+                        "category": category, "dtime": dtime, "ts": ts,
                         "region": region})
     return records
+
+
+def _to_int(raw) -> Optional[int]:
+    """Epoch int: ints and numeric strings pass, bool/garbage -> None."""
+    if isinstance(raw, bool):
+        return None
+    if isinstance(raw, int):
+        return raw
+    if isinstance(raw, str) and raw.strip().lstrip("-").isdigit():
+        try:
+            return int(raw.strip())
+        except ValueError:
+            return None
+    return None
 
 
 def build_annateada_pins(records: List[dict],
@@ -349,7 +367,9 @@ def build_annateada_pins(records: List[dict],
         pois.append({"kind": ANNATEADA_PIN_KIND, "lat": lat, "lon": lng,
                      "handled": 1 if rec.get("handled") else 0,
                      "category": rec.get("category"),
-                     "dtime": rec.get("dtime")})
+                     "dtime": rec.get("dtime"),
+                     "ts": rec.get("ts") if isinstance(
+                         rec.get("ts"), int) else None})
     return pois
 
 

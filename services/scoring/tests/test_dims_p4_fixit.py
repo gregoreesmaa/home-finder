@@ -270,7 +270,9 @@ def test_parse_keeps_minimal_schema_and_drops_human_content(tmp_path):
     assert len(recs) == 5  # unparseable coords + non-dict skipped
     first = recs[0]
     assert set(first) == {"lat", "lng", "handled", "category", "dtime",
-                          "region"}
+                          "ts", "region"}
+    assert first["ts"] == 1789500000  # numeric-string epoch passes
+    assert recs[1]["ts"] is None  # missing ts stays None (map drops it)
     assert first["handled"] is True  # stat '1' = green/handled
     assert first["lat"] == 59.4372 and first["lng"] == 24.7536
     assert recs[1]["handled"] is True  # int 1 also handled
@@ -297,7 +299,8 @@ def test_build_pins_filters_tallinn_and_marks_handled(tmp_path):
     assert {p["kind"] for p in pois} == {ANNATEADA_PIN_KIND}
     assert [p["handled"] for p in pois] == [1, 1, 0, 0]
     assert all(set(p) == {"kind", "lat", "lon", "handled", "category",
-                          "dtime"} for p in pois)
+                          "dtime", "ts"} for p in pois)
+    assert [p["ts"] for p in pois] == [1789500000, None, None, None]
 
 
 # ---------------------------------------------------------------------------

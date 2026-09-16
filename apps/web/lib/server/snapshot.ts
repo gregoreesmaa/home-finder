@@ -153,6 +153,12 @@ import { MEDRE_RASTER_FILE } from "../layers_p4_medre";
 // points-splat quality kernel).
 import { KLIIMA_RASTER_FILE } from "../layers_kliima";
 import type { MedrePoint } from "../layers_p4_medre";
+// FIXIT-HOOK (#623): report-pin raster filename + sidecar point type
+// live in layers_p4_fixit.ts (raster intentionally never built —
+// FIXIT_NO_RASTER; the name resolves to an absent file so windows
+// degrade to null; the sidecar is honestly empty when unharvested).
+import { FIXIT_RASTER_FILE } from "../layers_p4_fixit";
+import type { FixitPoint } from "../layers_p4_fixit";
 // OHUSEIRE-HOOK (#610): station raster filename + sidecar point type
 // live in layers_p4_ohuseire.ts (raster intentionally never built —
 // OHUSEIRE_NO_RASTER; the name resolves to an absent file so rasters
@@ -646,6 +652,46 @@ export async function loadPoiPoints(dir: string): Promise<PoiPoint[]> {
   return points;
 }
 
+// FIXIT-HOOK (#623): report-pin sidecar cache (same discipline).
+const fixitPointCache = new Map<string, FixitPoint[]>();
+
+function isFixitPoint(v: unknown): v is FixitPoint {
+  const p = v as Partial<FixitPoint>;
+  return (
+    typeof p?.lon === "number" && Number.isFinite(p.lon) &&
+    typeof p?.lat === "number" && Number.isFinite(p.lat) &&
+    typeof p?.handled === "boolean" &&
+    typeof p?.ts === "number" && Number.isFinite(p.ts)
+  );
+}
+
+/**
+ * Report-pin sidecar (`fixit/fixit-points.json`): rolling-window
+ * annateada pins for the fixit overlay (issue #623, built offline by
+ * scripts/build/batch_fixit.py — never live). Missing or malformed
+ * sidecar degrades to [] (honestly no pins — the map renders "no
+ * data", never faked pins), never an error. Expiry is enforced by
+ * the caller (fixitPointsIn), not here.
+ */
+export async function loadFixitPoints(dir: string): Promise<FixitPoint[]> {
+  const hit = fixitPointCache.get(dir);
+  if (hit) return hit;
+  let points: FixitPoint[] = [];
+  try {
+    const raw = await fs.readFile(path.join(dir, "fixit", "fixit-points.json"), "utf8");
+    const parsed: unknown = JSON.parse(raw);
+    const list = typeof parsed === "object" && parsed !== null && Array.isArray((parsed as { points?: unknown }).points)
+      ? (parsed as { points: unknown[] }).points
+      : [];
+    points = list.filter(isFixitPoint);
+    if (!Array.isArray((parsed as { points?: unknown }).points)) console.warn(`snapshot: ignoring malformed fixit-points.json in ${dir}`);
+  } catch {
+    // Optional sidecar: honestly no pins.
+  }
+  fixitPointCache.set(dir, points);
+  return points;
+}
+
 const areaCache = new Map<string, ParkArea[]>();
 // PLANKTPR-HOOK (#492): harvested-polygon sidecar cache (same discipline).
 const planktprAreaCache = new Map<string, PlanktprArea[]>();
@@ -1081,6 +1127,10 @@ const RASTER_FILE: Record<LayerId, string> = {
   // POI-HOOK (#612): long-tail raster names only (no masters built
   // by decision — POI_NO_RASTER; same points-splat discipline).
   ...POI_RASTER_FILE,
+  // FIXIT-HOOK (#623): report-pin raster name only (no master built
+  // by decision — FIXIT_NO_RASTER; markers only, no field to stamp;
+  // the absent file degrades windows to null).
+  ...FIXIT_RASTER_FILE,
 };
 
 /**
@@ -1579,6 +1629,10 @@ const METRO_PREFIX: Record<LayerId, string> = {
   poi_library: "poi-library-metro",
   poi_post: "poi-post-metro",
   poi_pharmacy: "poi-pharmacy-metro",
+  // FIXIT-HOOK (#623): no fixit metro master (no county master
+  // either — FIXIT_NO_RASTER; the name resolves to an absent file so
+  // windows fall back to the markers-only path).
+  fixit: "fixit-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

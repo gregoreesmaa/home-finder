@@ -113,3 +113,31 @@ Never 0/100 by absence: thin windows stay NULL.
 3. Re-run the ask probe if the bundle's client constants change
    (`instid`/`version`/`uuid`/`code` are bundle-pinned).
 4. Add the explicitly-flagged live integration test (not a unit run).
+
+## Layer verdict #623 (2026-09-17, polite, labelled UA)
+
+Per maintainer decision the map shows the report PINS with
+reporting-bias labeling — complaints measure reporting activity,
+not place quality. Re-verified live: one JSON ask POST (Tallinn
+bbox 59.30-59.55 / 24.45-25.15) → HTTP 200, 132 653 B, 300 pins,
+2026-08-28 → 2026-09-17 = 19-day rolling window (173 Tallinn: 139
+unhandled red-stat + 34 handled green-stat; neighbours Saue/Harku/
+Viimsi/Rae/Saku vald). Same schema as the scorer probe (now with
+`ts` epoch + `photo`; parser ignores extras). No licence/terms page
+exists; the pins are public by publication.
+
+Daily harvest (`scripts/build/batch_fixit.py`, 24 h TTL, 429 =
+stop; parser + pin builder REUSED from dims_p4_fixit.py): 300 pins,
+120 handled / 180 unhandled, 0 timeless dropped. Sidecar
+`fixit/fixit-points.json` carries lat/lon/handled/ts ONLY —
+category/msg/photo/region never leave the builder (report text can
+identify people). #623 added the `ts` carry to the scorer's parse +
+pin dicts (scorer never reads it; key-set tests updated).
+
+Map: ONE `fixit` layer, new `pins` kernel (markers only — the field
+stays unknown everywhere BY DECISION; ValueHeatMap clears it so no
+red wash). Expiry enforced at serve time (ts within 19 days of
+now): a stale sidecar degrades to honestly-empty (pinned: fresh
+served, 25-day-old dropped, all-stale → []). Legend states the bias
+caveat (density = reporting, empty map ≠ tidy street) + the rolling
+window + the pull vintage. docs/layers.md row added.

@@ -557,6 +557,12 @@ export function overlayColorFor(layer: LayerId): string {
       return "#e0f2fe";
     case "kliima_wet":
       return "#fef3c7";
+    // FIXIT-HOOK (#623): fixit pin marker (point overlay,
+    // stride-sampled like grocery). #fdba74: orange-300 notice pin
+    // (NOT #fb923c/#f97316 — taken). Distinct from every other marker
+    // (distinct-color test).
+    case "fixit":
+      return "#fdba74";
     // MEDRE-HOOK (#609): medre slice markers (Step-1 honest-empty —
     // the point overlay stays empty live, so this colors only the
     // toggle dot). #ffedd5: orange-100 clinic paper; #ede9fe:
@@ -1034,6 +1040,13 @@ export function overlayLegendFor(layer: LayerId): string {
       return "Post lähedal (Maa- ja Ruumiameti väljavõte: 536 Harjumaal, sh 521 pakiautomaati) · lähim post/pakiautomaat 1 km raadiuses (≤300 m -> 85, ≤600 m -> 70, ≤1 km -> 55; kauguse-hinnang linnulennult)";
     case "poi_pharmacy":
       return "Apteegid lähedal (Ravimiameti väljavõte: 187 Harjumaal) · lähim apteek 1 km raadiuses (≤300 m -> 85, ≤600 m -> 70, ≤1 km -> 55; kauguse-hinnang linnulennult, nõuanne teadmata)";
+    // FIXIT-HOOK (#623): fixit pins (P4 kaebused) — individual
+    // reports, NOT place quality. Density measures REPORTING
+    // activity (who bothers to report), never livability: an empty
+    // map means no reports, not a tidy street. Rolling ~19-day
+    // window — expired pins never render as current.
+    case "fixit":
+      return "Teated lähedal (annateada väljavõte: 300 teadet, sh 120 lahendatud) · IGA täpp ÜKS teade (libisev 19 päeva aken; tihedus = teatamine, MITTE elukvaliteet — tühi kaart pole kiitus)";
     // ASUMEDIA-HOOK (#495): asumedia (own-snapshot asking medians) —
     // the dated negative rides along: 0/84 asums reach MIN_N=5, so
     // the field is unknown everywhere until the reopen lands real
