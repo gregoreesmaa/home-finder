@@ -45,6 +45,50 @@ committed):
 * tallinn.ee/et/liikuvus/mikromobiilsus -> HTTP 200, ~63 KB: bike
   PARKING page (Bikeep rattaparklad) — 0 hits for loendur/andmestik/
   avaandmed/CSV, so no counter feed linked from the cycling pages.
+
+DIG (2026-09-16, AGENTS.md section 7.7 — issue #309 re-open: locate
+the actual counter-publication pages/charts, read their bundles
+for keyless data endpoints, or close with the dig evidence).
+Polite evidence, 6 tiny reads total (labelled one-off user-agent
+`home-finder bikes dig (issue #309, one-off, tiny reads, no
+scrape)`, >= 2 s pacing, `--max-time 25`, headers + visible-text
+scope read only, no scraping, no auth, no retries — HTTP 429/errors
+are a stop signal; none hit). Raw pages kept at /tmp/hf-dig-bikes/
+(one-off PR record, never committed):
+* Web search (no target load): the only counter publication is the
+  city studies hub — "Tallinna rattaloendused 2021–2023".
+* GET tallinn.ee/et/search?search_api_fulltext=rattaloendur ->
+  HTTP 301 to /et/otsing (same redirect as 2026-09-13).
+* GET tallinn.ee/et/otsing?search_api_fulltext=rattaloendur ->
+  HTTP 200 (~130 KB, ~7.5k visible chars): results still
+  AJAX-loaded (server HTML nav-only, zero counter hits); hub links
+  to /et/uuringud-ja-statistika (studies & statistics).
+* HEAD uuringud.tallinn.ee/file_download/1620 -> HTTP 200,
+  Content-Disposition attachment
+  "Rattaloenduste_kokkuvote_12.2023.pdf" — the publication is a PDF
+  report, not a dataset.
+* GET uuringud.tallinn.ee/ -> HTTP 302 to /uuring/otsing (server-
+  rendered studies hub, GET form field `marksonad`).
+* GET /uuring/otsing?marksonad=rattaloendused -> HTTP 200: exactly
+  1 study — "Tallinna rattaloendused 2021–2023" (nr 2023-16,
+  Liikuvus, tellija Muu, 2023).
+* GET /uuring/vaata/2023/Tallinna-rattaloendused-20212023 -> HTTP
+  200: summary of MANUAL intersection counts (cyclists at watched
+  crossings nearly doubled in a year; busiest: Vana-Kalamaja +
+  Reisijate/Kopli evening peak; e-scooters ~1/3, up to 40 %
+  downtown) — observer prose, not automatic-counter streams. ONE
+  attachment only: the PDF above. No CSV/XLS/JSON, no chart bundle
+  with a data endpoint, no counter locations, no history depth
+  beyond the prose.
+So the 2026-09-13 negative STANDS, now naming what the counters
+publish and where (the issue's own deliverable): a triennial PDF
+of manual crossing counts at the studies hub — no keyless
+JSON/CSV, no Eco-Counter-style public dashboard surfaced anywhere.
+P4-032 stays on the OSM cycleway proxies; usage_bikes_hex stays
+NULL until the city publishes a counter bulk. Re-check the studies
+hub when the next count round lands (last round 2021–2023,
+published 2023).
+
 So the live path below is honest plumbing with NO live data:
 fetch_bikes_snapshot performs NO request while BIKES_BULK_URL is None,
 the scorer then returns None with an Estonian EI OLE reason, and the
