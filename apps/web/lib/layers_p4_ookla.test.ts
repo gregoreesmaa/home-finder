@@ -12,7 +12,7 @@ import {
   layerParamTag,
   radiusKmFor,
 } from "./layers";
-import { buildScoredField } from "./distanceField";
+import { buildScoredField, fieldResolution } from "./distanceField";
 import { overlayColorFor, overlayLegendFor } from "./overlays";
 import { matchesContract } from "./server/snapshot";
 import {
@@ -27,6 +27,7 @@ import {
   isOoklaLayerId,
   ooklaBandForSpeed,
   ooklaBonusSpecFor,
+  ooklaDirectField,
   ooklaTileAt,
   type OoklaPoint,
 } from "./layers_p4_ookla";
@@ -262,5 +263,109 @@ describe("ookla goodness (hex-sample path)", () => {
 
   it("stays null with no tiles (never a faked hex)", () => {
     expect(goodnessAt(59.4375, 24.7454, [], "ookla_mobile")).toBeNull();
+  });
+});
+
+describe("ookla crash fix (#516: indexed tileband rasterizer)", () => {
+  // All fixtures FULLY SYNTHETIC (deterministic grid spread, no live
+  // extract rows). No network in tests.
+  const TALLINN = { minlon: 24.3, minlat: 59.3, maxlon: 25.1, maxlat: 59.6 };
+  function spreadTiles(n: number): OoklaPoint[] {
+    const pts: OoklaPoint[] = [];
+    const side = Math.ceil(Math.sqrt(n));
+    let k = 0;
+    for (let iy = 0; iy < side && k < n; iy++) {
+      for (let ix = 0; ix < side && k < n; ix++, k++) {
+        pts.push({
+          lon: TALLINN.minlon + ((ix + 0.5) / side) * (TALLINN.maxlon - TALLINN.minlon),
+          lat: TALLINN.minlat + ((iy + 0.5) / side) * (TALLINN.maxlat - TALLINN.minlat),
+          tags: { avg_d: String(50000 + (k % 4) * 100000), tests: "36" },
+        });
+      }
+    }
+    return pts;
+  }
+  function oldLoopCell(
+    pts: OoklaPoint[],
+    clon: number,
+    clat: number,
+  ): number {
+    return ooklaTileAt(clat, clon, pts, OOKLA_RADIUS_M, OOKLA_MIN_TESTS)?.band ?? NaN;
+  }
+
+  it("is cell-identical to the old per-cell ooklaTileAt loop (same kernel, just indexed)", () => {
+    // Adversarial rows included: thin + speed-less tiles (never join)
+    // and two coincident tiles (tie-break path).
+    const pts: OoklaPoint[] = [
+      ...spreadTiles(60),
+      { lat: 59.4375, lon: 24.7454, tags: { avg_d: "381664", tests: "4" } },
+      { lat: 59.44, lon: 24.75, tags: { tests: "40" } },
+      { lat: 59.4375, lon: 24.7454, tags: { avg_d: "92624", tests: "36" } },
+      { lat: 59.4375, lon: 24.7454, tags: { avg_d: "381664", tests: "36" } },
+    ];
+    const cols = 48;
+    const rows = 36;
+    const indexed = ooklaDirectField(pts, TALLINN, cols, rows, OOKLA_RADIUS_M, OOKLA_MIN_TESTS);
+    const spanLon = TALLINN.maxlon - TALLINN.minlon;
+    const spanLat = TALLINN.maxlat - TALLINN.minlat;
+    let known = 0;
+    for (let c = 0; c < cols * rows; c++) {
+      const iy = Math.floor(c / cols);
+      const ix = c % cols;
+      const clon = TALLINN.minlon + (ix / (cols - 1)) * spanLon;
+      const clat = TALLINN.minlat + (iy / (rows - 1)) * spanLat;
+      const want = oldLoopCell(pts, clon, clat);
+      const got = indexed[c];
+      if (Number.isNaN(want)) expect(got).toBeNaN();
+      else {
+        expect(got).toBe(want);
+        known++;
+      }
+    }
+    expect(known).toBeGreaterThan(0);
+  });
+
+  it("renders the production point count (1914 fixed tiles) at production resolution without hanging", () => {
+    // Repro of the buyer report: the Tallinn view resolves to a
+    // ~905x663 grid via fieldResolution; the old cells-x-tiles loop
+    // took ~43 s here (tab freeze/crash). The indexed field must stay
+    // interactive; 15 s is ~35x headroom over the observed ~0.4 s, so
+    // this only trips on an algorithmic regression, never on CI noise.
+    const pts = spreadTiles(1914);
+    const res = fieldResolution(TALLINN, 1.0);
+    expect(res.cols * res.rows).toBeGreaterThan(100000);
+    const t0 = performance.now();
+    const field = buildScoredField(pts, TALLINN, res.cols, res.rows, 1.0, ooklaBonusSpecFor("ookla_fixed"));
+    const ms = performance.now() - t0;
+    expect(ms).toBeLessThan(15000);
+    expect(field.direct).not.toBeNull();
+    let known = 0;
+    for (const v of field.direct!) {
+      if (Number.isNaN(v)) continue;
+      expect([35, 55, 75, 85]).toContain(v);
+      known++;
+    }
+    expect(known).toBeGreaterThan(0);
+  });
+
+  it("serves both layers (fixed + mobile) off the same fixed kernel", () => {
+    const pts = spreadTiles(200);
+    const cols = 40;
+    const rows = 30;
+    const fixed = buildScoredField(pts, TALLINN, cols, rows, 1.0, ooklaBonusSpecFor("ookla_fixed"));
+    const mobile = buildScoredField(pts, TALLINN, cols, rows, 1.0, ooklaBonusSpecFor("ookla_mobile"));
+    expect(fixed.direct).not.toBeNull();
+    expect(mobile.direct).not.toBeNull();
+    for (let c = 0; c < cols * rows; c++) {
+      const a = fixed.direct![c];
+      const b = mobile.direct![c];
+      if (Number.isNaN(a)) expect(b).toBeNaN();
+      else expect(b).toBe(a);
+    }
+  });
+
+  it("stays all-unknown through the indexed path with no tiles", () => {
+    const direct = ooklaDirectField([], TALLINN, 8, 8, OOKLA_RADIUS_M, OOKLA_MIN_TESTS);
+    for (const v of direct) expect(v).toBeNaN();
   });
 });

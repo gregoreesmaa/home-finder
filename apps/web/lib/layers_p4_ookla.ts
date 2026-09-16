@@ -69,7 +69,7 @@
 // measured-coverage precedent (tags.ulatus_m, "cover" branch in
 // distanceField.ts); cleanTags passes string tags through untouched.
 
-import type { LayerDef, LayerId, TilebandSpec } from "./layers";
+import type { BBoxLike, LayerDef, LayerId, TilebandSpec } from "./layers";
 
 export type OoklaLayerId = "ookla_fixed" | "ookla_mobile";
 
@@ -291,6 +291,103 @@ export function ooklaTileAt(
     if (best === null || distM < best.distM) best = { band, avgD, tests, distM };
   }
   return best;
+}
+
+/**
+ * Crash fix (#516): indexed tileband rasterizer — the indexed twin of
+ * the per-cell ooklaTileAt loop in buildScoredField (distanceField.ts).
+ *
+ * Root cause: the old branch called ooklaTileAt once per grid cell,
+ * and ooklaTileAt scans ALL tiles, so opening a layer cost
+ * cells x tiles (Tallinn view: 905x663 cells x 1,914 fixed tiles =
+ * ~1.1B inner iterations, ~43 s on an M-series Mac, all on the UI
+ * thread inside ValueHeatMap refresh — the tab froze/crashed; the
+ * full-Estonia view is ~2x worse). Point count was never the problem
+ * (MapLibre markers are already capped at OVERLAY_CAP 800); the
+ * per-cell full scan was.
+ *
+ * Strategy (rasterize, exact): tile tags are parsed + filtered ONCE,
+ * qualifying centroids go into a degree-space spatial hash with cell
+ * size = the join radius, and each field cell only tests the tiles in
+ * the hash cells its radius box touches. The radius box is
+ * conservative by construction (dist = hypot(dx*57.29, dy*110.57) <=
+ * r implies |dx| <= r/57.29 and |dy| <= r/110.57 — the same constants
+ * as ooklaHavKm — plus 1e-9 deg float slack), so no in-radius tile is
+ * ever excluded; the accept/reject check per candidate is the same
+ * ooklaHavKm arithmetic ooklaTileAt uses, and ties resolve to the
+ * lowest original index exactly as ooklaTileAt's strict-< scan does.
+ * Output is therefore cell-identical to the old loop (pinned by the
+ * parity test below), just ~100x faster. Deliberately NOT a
+ * cap/decimation: dropping measured tiles would punch dishonest gaps
+ * into the field — every tile still renders.
+ */
+export function ooklaDirectField(
+  points: OoklaPoint[],
+  bbox: BBoxLike,
+  cols: number,
+  rows: number,
+  radiusM: number = OOKLA_RADIUS_M,
+  minTests: number = OOKLA_MIN_TESTS,
+): Float64Array {
+  const direct = new Float64Array(cols * rows).fill(NaN);
+  if (cols <= 0 || rows <= 0) return direct;
+  // Parse + filter ONCE (the old path re-parsed every tile's tags per
+  // cell); original order kept so equidistant ties resolve identically.
+  const qual: { lon: number; lat: number; band: number }[] = [];
+  for (const p of points) {
+    if (!Number.isFinite(p.lat) || !Number.isFinite(p.lon)) continue;
+    const avgD = ooklaAvgDOf(p.tags);
+    const tests = ooklaTestsOf(p.tags);
+    if (avgD === null || tests === null || tests < minTests) continue;
+    const band = ooklaBandForSpeed(avgD);
+    if (band === null) continue;
+    qual.push({ lon: p.lon, lat: p.lat, band });
+  }
+  if (qual.length === 0) return direct;
+  const radiusKm = radiusM / 1000;
+  const dLon = radiusKm / 57.29 + 1e-9;
+  const dLat = radiusKm / 110.57 + 1e-9;
+  const buckets = new Map<string, number[]>();
+  for (let i = 0; i < qual.length; i++) {
+    const q = qual[i];
+    const k = `${Math.floor(q.lon / dLon)},${Math.floor(q.lat / dLat)}`;
+    const b = buckets.get(k);
+    if (b) b.push(i);
+    else buckets.set(k, [i]);
+  }
+  const spanLon = bbox.maxlon - bbox.minlon;
+  const spanLat = bbox.maxlat - bbox.minlat;
+  for (let k = 0; k < direct.length; k++) {
+    const iy = Math.floor(k / cols);
+    const ix = k % cols;
+    const clon = bbox.minlon + (cols > 1 ? (ix / (cols - 1)) * spanLon : 0);
+    const clat = bbox.minlat + (rows > 1 ? (iy / (rows - 1)) * spanLat : 0);
+    const x0 = Math.floor((clon - dLon) / dLon);
+    const x1 = Math.floor((clon + dLon) / dLon);
+    const y0 = Math.floor((clat - dLat) / dLat);
+    const y1 = Math.floor((clat + dLat) / dLat);
+    let bestD = Infinity;
+    let bestI = -1;
+    for (let gx = x0; gx <= x1; gx++) {
+      for (let gy = y0; gy <= y1; gy++) {
+        const b = buckets.get(`${gx},${gy}`);
+        if (!b) continue;
+        for (const i of b) {
+          const q = qual[i];
+          const distM = ooklaHavKm(clon, clat, q.lon, q.lat) * 1000;
+          if (distM > radiusM) continue;
+          // Strict < plus lowest-index tiebreak == ooklaTileAt's
+          // `best === null || distM < best.distM` scan exactly.
+          if (distM < bestD || (distM === bestD && i < bestI)) {
+            bestD = distM;
+            bestI = i;
+          }
+        }
+      }
+    }
+    if (bestI >= 0) direct[k] = qual[bestI].band;
+  }
+  return direct;
 }
 
 /** Hook marker, pinned by test so the wiring contract stays greppable. */
