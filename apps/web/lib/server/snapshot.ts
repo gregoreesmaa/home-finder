@@ -166,6 +166,13 @@ import type { FixitPoint } from "../layers_p4_fixit";
 // empty when unharvested).
 import type { SevesoArea } from "../layers_p4_seveso";
 import { SEVESO_RASTER_FILE, isSevesoArea } from "../layers_p4_seveso";
+// STATELAND-HOOK (#615): state/auction raster filename + sidecar area
+// type live in layers_p4_stateland.ts (raster intentionally never built
+// — STATELAND_NO_RASTER; the name resolves to an absent file so
+// windows degrade to null; the sidecar is honestly empty when
+// unharvested).
+import type { StatelandArea } from "../layers_p4_stateland";
+import { STATELAND_RASTER_FILE, isStatelandArea } from "../layers_p4_stateland";
 // OHUSEIRE-HOOK (#610): station raster filename + sidecar point type
 // live in layers_p4_ohuseire.ts (raster intentionally never built —
 // OHUSEIRE_NO_RASTER; the name resolves to an absent file so rasters
@@ -850,6 +857,32 @@ export async function loadSevesoAreas(dir: string): Promise<SevesoArea[]> {
   return areas;
 }
 
+// STATELAND-HOOK (#615): state/auction sidecar cache (same discipline).
+const statelandAreaCache = new Map<string, StatelandArea[]>();
+
+// STATELAND-HOOK (#615): KATRI state + auction sidecar
+// (`stateland/stateland-areas.json`, written by
+// scripts/build/batch_stateland.py off the cached WFS GeoJSON):
+// zone_id + class + dated auction flags + outer rings. A missing
+// sidecar is honestly empty (register unharvested), never an error;
+// malformed rows are skipped, never faked.
+export async function loadStatelandAreas(dir: string): Promise<StatelandArea[]> {
+  const hit = statelandAreaCache.get(dir);
+  if (hit) return hit;
+  let areas: StatelandArea[] = [];
+  try {
+    const raw = await fs.readFile(path.join(dir, "stateland", "stateland-areas.json"), "utf8");
+    const parsed: unknown = JSON.parse(raw);
+    if (Array.isArray(parsed)) areas = parsed.filter(isStatelandArea);
+    else console.warn(`snapshot: ignoring malformed stateland/stateland-areas.json in ${dir}`);
+  } catch {
+    // Optional sidecar: honestly empty below.
+  }
+  statelandAreaCache.set(dir, areas);
+
+  return areas;
+}
+
 /** ~20 m dedupe cells; areas SUM (total green nearby is what counts). */
 const DEDUPE_LON = 0.0004;
 const DEDUPE_LAT = 0.0002;
@@ -997,6 +1030,7 @@ export function clearSnapshotCache(): void {
   areaCache.clear();
   planktprAreaCache.clear(); // PLANKTPR-HOOK (#492)
   sevesoAreaCache.clear(); // SEVESO-HOOK (#613)
+  statelandAreaCache.clear(); // STATELAND-HOOK (#615)
   freqCache.clear();
   rasterCache.clear();
   countyBytes.clear();
@@ -1168,6 +1202,10 @@ const RASTER_FILE: Record<LayerId, string> = {
   // built — SEVESO_NO_RASTER, CC BY-NC-ND forbids derivatives;
   // polygons ARE the field; absent file degrades to null, honestly).
   ...SEVESO_RASTER_FILE,
+  // STATELAND-HOOK (#615): state/auction raster name only (no master
+  // built — STATELAND_NO_RASTER; polygons ARE the field; absent file
+  // degrades to null, honestly).
+  ...STATELAND_RASTER_FILE,
 };
 
 /**
@@ -1674,6 +1712,11 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // (see layers_p4_seveso.ts SEVESO_NO_METRO) — the name resolves to
   // an absent file so windows fall back to county cleanly.
   seveso: "seveso-metro",
+  // STATELAND-HOOK (#615): no stateland metro master by documented
+  // decision (see layers_p4_stateland.ts STATELAND_NO_METRO) — the
+  // name resolves to an absent file so windows fall back to county
+  // cleanly.
+  stateland: "stateland-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */
