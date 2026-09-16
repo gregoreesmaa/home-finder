@@ -31,6 +31,8 @@ import { isSevesoPolygonOnlyLayer } from "./layers_p4_seveso";
 
 // STATELAND-HOOK (#615): polygons-only carve-out for the fallback assertion.
 import { isStatelandPolygonOnlyLayer } from "./layers_p4_stateland";
+// SOIL-HOOK (#617): polygons-only carve-out for the fallback assertion.
+import { isSoilPolygonOnlyLayer } from "./layers_p4_soil";
 
 const TALLINN_BBOX: BBoxLike = { minlon: 24.5, minlat: 59.35, maxlon: 24.9, maxlat: 59.5 };
 
@@ -250,6 +252,10 @@ describe("layer registry", () => {
       // maaoksjon — paramIds empty, parameters4 namespace, polygons
       // only).
       "stateland",
+      // SOIL-HOOK (#617): soil contour id (Maa-amet mullastiku kaart —
+      // paramIds empty, parameters4 namespace, polygons only,
+      // viewport-driven).
+      "soil",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -379,7 +385,12 @@ describe("layer registry", () => {
     // STATELAND-HOOK (#615): stateland rides paramLabel, paramIds stays []
     // (parameters4 state/auction polygons, no parameters3 number).
     expect(LAYERS.find((l) => l.id === "stateland")?.paramIds).toEqual([]);
+    expect(LAYERS.find((l) => l.id === "stateland")?.paramLabel).toBe("P4-riigimaa");    expect(LAYERS.find((l) => l.id === "stateland")?.paramIds).toEqual([]);
     expect(LAYERS.find((l) => l.id === "stateland")?.paramLabel).toBe("P4-riigimaa");
+    // SOIL-HOOK (#617): soil rides paramLabel, paramIds stays []
+    // (parameters4 soil contours, no parameters3 number).
+    expect(LAYERS.find((l) => l.id === "soil")?.paramIds).toEqual([]);
+    expect(LAYERS.find((l) => l.id === "soil")?.paramLabel).toBe("P4-muld");
   });
 
   it("wires the B10C utility layers with locked calibration", () => {
@@ -744,7 +755,7 @@ describe("layer registry", () => {
       }
       if (isPolygonOnlyMaaLayer(l.id)) {
         expect(l.fallbackPoints).toEqual([]);
-      } else if (!isPolygonOnlyLayer(l.id) && !isEelisPolygonOnlyLayer(l.id) && !isSevesoPolygonOnlyLayer(l.id) && !isStatelandPolygonOnlyLayer(l.id)) {
+      } else if (!isPolygonOnlyLayer(l.id) && !isEelisPolygonOnlyLayer(l.id) && !isSevesoPolygonOnlyLayer(l.id) && !isStatelandPolygonOnlyLayer(l.id) && !isSoilPolygonOnlyLayer(l.id)) {
         expect(l.fallbackPoints.length).toBeGreaterThan(0);
       }
     }

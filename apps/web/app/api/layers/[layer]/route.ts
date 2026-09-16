@@ -26,6 +26,8 @@ import { isEelisLayerId } from "../../../../lib/layers_eelis";
 import { isSevesoLayerId } from "../../../../lib/layers_p4_seveso";
 // STATELAND-HOOK (#615): polygons-only branch guard (see below).
 import { isStatelandLayerId } from "../../../../lib/layers_p4_stateland";
+// SOIL-HOOK (#617): polygons-only branch guard (see below).
+import { isSoilLayerId } from "../../../../lib/layers_p4_soil";
 
 import {
   intersectsCoverage,
@@ -237,6 +239,29 @@ export async function GET(
   // demo points (a fake gradient), and demo fallback points are
   // refused by the layer def (empty fallbackPoints, pinned by test).
   if (isStatelandLayerId(def.id)) {
+    const { distance } = await loadLayerRaster(def.id);
+    return NextResponse.json({
+      points: [],
+      provenance: "snapshot",
+      ageMs: Date.now() - SNAPSHOT_AS_OF_MS,
+      distance,
+    });
+  }  if (isStatelandLayerId(def.id)) {
+    const { distance } = await loadLayerRaster(def.id);
+    return NextResponse.json({
+      points: [],
+      provenance: "snapshot",
+      ageMs: Date.now() - SNAPSHOT_AS_OF_MS,
+      distance,
+    });
+  }
+  // SOIL-HOOK (#617): soil is polygons-only (zero points, zero raster
+  // — the /soil/areas viewport proxy carries the data). Answer
+  // honestly-empty points on snapshot provenance: requiring points or
+  // a raster here would 500 a healthy layer into labeled demo points
+  // (a fake gradient), and demo fallback points are refused by the
+  // layer def (empty fallbackPoints, pinned by test).
+  if (isSoilLayerId(def.id)) {
     const { distance } = await loadLayerRaster(def.id);
     return NextResponse.json({
       points: [],

@@ -173,6 +173,11 @@ import { SEVESO_RASTER_FILE, isSevesoArea } from "../layers_p4_seveso";
 // unharvested).
 import type { StatelandArea } from "../layers_p4_stateland";
 import { STATELAND_RASTER_FILE, isStatelandArea } from "../layers_p4_stateland";
+// SOIL-HOOK (#617): soil contour raster filename lives in
+// layers_p4_soil.ts (raster intentionally never built — SOIL_NO_RASTER;
+// the name resolves to an absent file so windows degrade to null; the
+// viewport proxy is honestly empty when unharvested).
+import { SOIL_RASTER_FILE } from "../layers_p4_soil";
 // OHUSEIRE-HOOK (#610): station raster filename + sidecar point type
 // live in layers_p4_ohuseire.ts (raster intentionally never built —
 // OHUSEIRE_NO_RASTER; the name resolves to an absent file so rasters
@@ -1206,6 +1211,10 @@ const RASTER_FILE: Record<LayerId, string> = {
   // built — STATELAND_NO_RASTER; polygons ARE the field; absent file
   // degrades to null, honestly).
   ...STATELAND_RASTER_FILE,
+  // SOIL-HOOK (#617): soil contour raster name only (no master built —
+  // SOIL_NO_RASTER; contours ARE the field; absent file degrades to
+  // null, honestly).
+  ...SOIL_RASTER_FILE,
 };
 
 /**
@@ -1717,6 +1726,10 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // name resolves to an absent file so windows fall back to county
   // cleanly.
   stateland: "stateland-metro",
+  // SOIL-HOOK (#617): no soil metro master by documented decision (see
+  // layers_p4_soil.ts SOIL_NO_METRO) — the name resolves to an absent
+  // file so windows fall back to county cleanly.
+  soil: "soil-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

@@ -15,6 +15,7 @@ import type { MaaParcelArea } from "../lib/layers_maaparcel";
 import type { EelisArea } from "../lib/layers_eelis";
 import type { SevesoArea } from "../lib/layers_p4_seveso";
 import type { StatelandArea } from "../lib/layers_p4_stateland";
+import type { SoilArea } from "../lib/layers_p4_soil";
 import {
   applyFloodPolygons,
   applyMaaParcelPolygons,
@@ -22,6 +23,7 @@ import {
   applyOutlines,
   applyPointOverlay,
   applySevesoPolygons,
+  applySoilPolygons,
   applyStatelandPolygons,
   applyUsePolygons,
   clearVectorOverlays,
@@ -64,6 +66,7 @@ function paintOverlay(
     eelisAreas?: EelisArea[] | null;
     sevesoAreas?: SevesoArea[] | null;
     statelandAreas?: StatelandArea[] | null;
+    soilAreas?: SoilArea[] | null;
     overlayPoints?: OverlayPoint[] | null;
     usePolygons?: UseFillPolygon[] | null;
     overlayColor?: string;
@@ -105,6 +108,15 @@ function paintOverlay(
   if (opts.statelandAreas && opts.statelandAreas.length > 0) {
     applyStatelandPolygons(mapObj, opts.statelandAreas);
     return;
+  }  if (opts.statelandAreas && opts.statelandAreas.length > 0) {
+    applyStatelandPolygons(mapObj, opts.statelandAreas);
+    return;
+  }
+  // SOIL-HOOK (#617): soil contour fills (polygons only — no score
+  // field is painted for this layer, by design).
+  if (opts.soilAreas && opts.soilAreas.length > 0) {
+    applySoilPolygons(mapObj, opts.soilAreas);
+    return;
   }
   if (opts.overlayPoints && opts.overlayPoints.length > 0) {
     applyPointOverlay(mapObj, opts.overlayPoints, { color: opts.overlayColor ?? "#1d4ed8" });
@@ -137,6 +149,7 @@ export function ValueHeatMap({
   eelisAreas,
   sevesoAreas,
   statelandAreas,
+  soilAreas,
   overlayPoints,
   usePolygons,
   overlayColor,
@@ -169,6 +182,8 @@ export function ValueHeatMap({
   sevesoAreas?: SevesoArea[] | null;
   /** State/auction fills (stateland layer only); class choropleth. */
   statelandAreas?: StatelandArea[] | null;
+  /** Soil contour fills (soil layer only); family choropleth. */
+  soilAreas?: SoilArea[] | null;
   /** Point markers drawn ABOVE the raster (all layers but parks). */
   overlayPoints?: OverlayPoint[] | null;
   /** Designated-use fills drawn ABOVE the field (planktpr only). */
@@ -401,9 +416,10 @@ export function ValueHeatMap({
       // PLANKTPR-HOOK (#492): usePolygons join the painted slot.
       // SEVESO-HOOK (#613): sevesoAreas join the painted slot.
       // STATELAND-HOOK (#615): statelandAreas join the painted slot.
-      paintOverlay(mapRef.current, { outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, overlayPoints, usePolygons, overlayColor, showOverlay });
+      // SOIL-HOOK (#617): soilAreas join the painted slot.
+      paintOverlay(mapRef.current, { outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, soilAreas, overlayPoints, usePolygons, overlayColor, showOverlay });
     }
-  }, [outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, overlayPoints, usePolygons, overlayColor, showOverlay]);
+  }, [outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, soilAreas, overlayPoints, usePolygons, overlayColor, showOverlay]);
 
   return (
     <section aria-label={title}>

@@ -4,6 +4,7 @@ import type { EelisArea } from "./layers_eelis";
 import { MAAPARCEL_CLASS_FILL, type MaaParcelArea } from "./layers_maaparcel";
 import { SEVESO_CLASS_FILL, type SevesoArea } from "./layers_p4_seveso";
 import { STATELAND_CLASS_FILL, type StatelandArea } from "./layers_p4_stateland";
+import { SOIL_CLASS_FILL, type SoilArea } from "./layers_p4_soil";
 import type { OverlayPoint } from "./overlays";
 
 /** Minimal map surface for vector overlays (sources + paint layers). */
@@ -55,6 +56,12 @@ const SEVESO_CASING = "seveso-danger-casing";
 const STATELAND_SRC = "stateland-parcel-polys";
 const STATELAND_FILL = "stateland-parcel-fill";
 const STATELAND_CASING = "stateland-parcel-casing";
+// SOIL-HOOK (#617): soil-contour slot (family fills, never a
+// gradient). Clearing covers these ids too — one overlay slot paints
+// either kind, never stacks (see clearVectorOverlays).
+const SOIL_SRC = "soil-contour-polys";
+const SOIL_FILL = "soil-contour-fill";
+const SOIL_CASING = "soil-contour-casing";
 const POINT_SRC = "layer-overlay-src";
 const POINT_CASING = "layer-overlay-casing";
 const POINT_CORE = "layer-overlay-core";
@@ -67,7 +74,9 @@ export function clearVectorOverlays(mapObj: OutlineMap): void {
   // PLANKTPR-HOOK (#492): use fill + casing join the cleared slot.
   // SEVESO-HOOK (#613): danger fill + casing join the cleared slot.
   // STATELAND-HOOK (#615): parcel fill + casing join the cleared slot.
-  for (const id of [PARK_CASING, PARK_CORE, POINT_CASING, POINT_CORE, FLOOD_FILL, FLOOD_CASING, MAAPARCEL_FILL, MAAPARCEL_CASING, EELIS_FILL, EELIS_CASING, USE_FILL, USE_CASING, SEVESO_FILL, SEVESO_CASING, STATELAND_FILL, STATELAND_CASING]) {
+  // STATELAND-HOOK (#615): parcel fill + casing join the cleared slot.
+  // SOIL-HOOK (#617): contour fill + casing join the cleared slot.
+  for (const id of [PARK_CASING, PARK_CORE, POINT_CASING, POINT_CORE, FLOOD_FILL, FLOOD_CASING, MAAPARCEL_FILL, MAAPARCEL_CASING, EELIS_FILL, EELIS_CASING, USE_FILL, USE_CASING, SEVESO_FILL, SEVESO_CASING, STATELAND_FILL, STATELAND_CASING, SOIL_FILL, SOIL_CASING]) {
     try {
       if (mapObj.getLayer(id)) mapObj.removeLayer(id);
     } catch {
@@ -80,7 +89,8 @@ export function clearVectorOverlays(mapObj: OutlineMap): void {
   // PLANKTPR-HOOK (#492): the use-fill source joins the same slot.
   // SEVESO-HOOK (#613): the danger-fill source joins the same slot.
   // STATELAND-HOOK (#615): the parcel-fill source joins the same slot.
-  for (const id of [PARK_SRC, POINT_SRC, FLOOD_SRC, MAAPARCEL_SRC, EELIS_SRC, USE_SRC, SEVESO_SRC, STATELAND_SRC]) {
+  // SOIL-HOOK (#617): the contour-fill source joins the same slot.
+  for (const id of [PARK_SRC, POINT_SRC, FLOOD_SRC, MAAPARCEL_SRC, EELIS_SRC, USE_SRC, SEVESO_SRC, STATELAND_SRC, SOIL_SRC]) {
     try {
       if (mapObj.getSource(id)) mapObj.removeSource(id);
     } catch {
@@ -735,6 +745,110 @@ export function applyStatelandPolygons(
       id: STATELAND_CASING,
       type: "line",
       source: STATELAND_SRC,
+      paint: { "line-color": "#ffffff", "line-width": 1, "line-opacity": 0.9 },
+    },
+    before,
+  );
+}
+
+// SOIL-HOOK (#617): Maa-amet soil-contour family choropleth fills.
+
+/**
+ * Paint soil contours (family fills + white casing) so the
+ * inside-a-named-contour vs honestly-unknown-outside boundary reads at
+ * a glance. This is a CHOROPLETH of register facts, never a gradient:
+ * colors encode the family band (see SOIL_CLASS_FILL — saviliiv lime
+ * through turvas near-black, scorer parity 85→25), and no score field
+ * is painted anywhere. The viewport proxy upstream already drops urban
+ * / water / undecoded contours (the painter draws what it is given).
+ * Clears stale overlay layers first; no-op when the style is not loaded
+ * yet or areas is nullish. Malformed rings are skipped, never faked;
+ * unknown classes fall back to liiv (never dropped — defensive only:
+ * upstream only sends decoded bands).
+ */
+export function applySoilPolygons(
+  mapObj: OutlineMap,
+  areas: SoilArea[] | null | undefined,
+): void {
+  if (!mapObj.getStyle()) return;
+  clearVectorOverlays(mapObj);
+  if (!areas || areas.length === 0) return;
+  const features = [];
+  for (const a of areas) {
+    if (!a || !Array.isArray(a.r)) continue;
+    const polys = [];
+    for (const ring of a.r) {
+      if (!Array.isArray(ring) || ring.length < 3) continue;
+      const pts = ring.filter(
+        (pt) =>
+          Array.isArray(pt) &&
+          pt.length === 2 &&
+          pt.every((n) => typeof n === "number" && Number.isFinite(n)),
+      );
+      if (pts.length < 3) continue;
+      const first = pts[0];
+      const last = pts[pts.length - 1];
+      const closed =
+        first[0] === last[0] && first[1] === last[1] ? pts : [...pts, [first[0], first[1]]];
+      polys.push([closed]);
+    }
+    if (polys.length === 0) continue;
+    const cls =
+      typeof a.cls === "string" && a.cls in SOIL_CLASS_FILL ? a.cls : "liiv";
+    features.push({
+      type: "Feature",
+      properties: {
+        cls,
+        zone_id: typeof a.zone_id === "string" ? a.zone_id : "",
+        family: typeof a.family === "string" ? a.family : "",
+        code: typeof a.code === "string" ? a.code : "",
+      },
+      geometry: { type: "MultiPolygon", coordinates: polys },
+    });
+  }
+  if (features.length === 0) return;
+  mapObj.addSource(SOIL_SRC, {
+    type: "geojson",
+    data: { type: "FeatureCollection", features },
+  });
+  const before = abovePaint(mapObj);
+  mapObj.addLayer(
+    {
+      id: SOIL_FILL,
+      type: "fill",
+      source: SOIL_SRC,
+      paint: {
+        "fill-color": [
+          "match",
+          ["get", "cls"],
+          "saviliiv",
+          SOIL_CLASS_FILL.saviliiv,
+          "liiv",
+          SOIL_CLASS_FILL.liiv,
+          "liivsavi",
+          SOIL_CLASS_FILL.liivsavi,
+          "leede",
+          SOIL_CLASS_FILL.leede,
+          "paepealne",
+          SOIL_CLASS_FILL.paepealne,
+          "savi",
+          SOIL_CLASS_FILL.savi,
+          "glei",
+          SOIL_CLASS_FILL.glei,
+          "turvas",
+          SOIL_CLASS_FILL.turvas,
+          SOIL_CLASS_FILL.liiv,
+        ],
+        "fill-opacity": 0.45,
+      },
+    },
+    before,
+  );
+  mapObj.addLayer(
+    {
+      id: SOIL_CASING,
+      type: "line",
+      source: SOIL_SRC,
       paint: { "line-color": "#ffffff", "line-width": 1, "line-opacity": 0.9 },
     },
     before,

@@ -86,7 +86,7 @@ describe("stateland registry (#615)", () => {
     const ids = LAYERS.map((l) => l.id);
     // 124 shipped layers on main (#613 seveso merged) +
     // 1 state/auction overlay (STATELAND-HOOK #615, 124 + 1).
-    expect(ids.length).toBe(125);
+    expect(ids.length).toBe(126); // SOIL-HOOK (#617): +1 soil contour overlay (125 + 1 = 126).
     expect(ids).toContain("stateland");
   });
 

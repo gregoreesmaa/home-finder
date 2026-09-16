@@ -7,6 +7,7 @@ import {
   applyOutlines,
   applyPointOverlay,
   applySevesoPolygons,
+  applySoilPolygons,
   applyStatelandPolygons,
   applyUsePolygons,
   clearVectorOverlays,
@@ -343,6 +344,18 @@ describe("clearVectorOverlays", () => {
     expect(map.layers.size).toBe(0);
     expect(map.sources.size).toBe(0);
   });
+
+  // SOIL-HOOK (#617): the contour fill + casing + source join the
+  // cleared slot (one overlay slot paints any kind, never stacks).
+  it("removes the soil contour slot too", () => {
+    const map = mockMap();
+    map.layers.add("soil-contour-fill");
+    map.layers.add("soil-contour-casing");
+    map.sources.add("soil-contour-polys");
+    clearVectorOverlays(map);
+    expect(map.layers.size).toBe(0);
+    expect(map.sources.size).toBe(0);
+  });
 });
 
 describe("applyEelisPolygons (#488)", () => {
@@ -662,6 +675,75 @@ describe("applyStatelandPolygons (#615)", () => {
     const map = mockMap();
     applyStatelandPolygons(map, null);
     applyStatelandPolygons(map, []);
+    expect(map.sources.size).toBe(0);
+    expect(map.layers.size).toBe(0);
+  });
+});
+
+describe("applySoilPolygons (#617)", () => {
+  const AREA = {
+    zone_id: "muld_0062DCE0",
+    family: "liivsavi",
+    cls: "liivsavi" as const,
+    score: 65,
+    code: "ls₂;l50-100/s",
+    b: [24.6, 59.28, 24.7, 59.33] as [number, number, number, number],
+    r: [
+      [
+        [24.6, 59.28],
+        [24.7, 59.28],
+        [24.7, 59.33],
+        [24.6, 59.28],
+      ],
+    ],
+  };
+
+  it("paints contour fills + casing with closed rings", () => {
+    const map = mockMap();
+    applySoilPolygons(map, [AREA]);
+    expect(map.sources.has("soil-contour-polys")).toBe(true);
+    expect(map.layers.has("soil-contour-fill")).toBe(true);
+    expect(map.layers.has("soil-contour-casing")).toBe(true);
+    const src = map.added[0] as {
+      data: { features: { properties: { cls: string }; geometry: { coordinates: number[][][][] } }[] };
+    };
+    expect(src.data.features).toHaveLength(1);
+    expect(src.data.features[0].properties.cls).toBe("liivsavi");
+    const ring = src.data.features[0].geometry.coordinates[0][0];
+    expect(ring[0]).toEqual(ring[ring.length - 1]);
+  });
+
+  it("paints the family match expression (facts, never scores)", () => {
+    const map = mockMap();
+    applySoilPolygons(map, [AREA]);
+    const fill = map.added.find(
+      (l) => (l as { id?: string }).id === "soil-contour-fill",
+    ) as { paint: { "fill-color": unknown[] } };
+    expect(fill.paint["fill-color"][0]).toBe("match");
+    expect(fill.paint["fill-color"]).toContain("saviliiv");
+    expect(fill.paint["fill-color"]).toContain("turvas");
+    expect(fill.paint["fill-color"]).toContain("#84cc16");
+  });
+
+  it("folds unknown classes to liiv and skips ringless areas (never faked)", () => {
+    const map = mockMap();
+    const weird = { ...AREA, cls: "chernozem" };
+    const ringless = { ...AREA, zone_id: "x:2", r: [] as number[][][] };
+    applySoilPolygons(map, [
+      weird as unknown as typeof AREA,
+      ringless,
+    ]);
+    const src = map.added[0] as {
+      data: { features: { properties: { cls: string } }[] };
+    };
+    expect(src.data.features).toHaveLength(1);
+    expect(src.data.features[0].properties.cls).toBe("liiv");
+  });
+
+  it("is a no-op on nullish input (outside stays unpainted)", () => {
+    const map = mockMap();
+    applySoilPolygons(map, null);
+    applySoilPolygons(map, []);
     expect(map.sources.size).toBe(0);
     expect(map.layers.size).toBe(0);
   });

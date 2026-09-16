@@ -107,6 +107,13 @@ import {
   isStatelandPolygonOnlyLayer,
   type StatelandArea,
 } from "../../lib/layers_p4_stateland";
+// SOIL-HOOK (#617): soil paints Maa-amet soil contours (polygons only,
+// viewport-driven, never a gradient) instead of points.
+import {
+  fetchSoilAreas,
+  isSoilPolygonOnlyLayer,
+  type SoilArea,
+} from "../../lib/layers_p4_soil";
 
 /** Viewport bbox rounded for fetch stability (matches server key rounding). */
 function sameView(a: BBoxLike, b: BBoxLike): boolean {
@@ -317,6 +324,30 @@ export default function LayersPage() {
     };
   }, [layer]);
 
+  // SOIL-HOOK (#617): soil contours (soil layer only, refetched per
+  // settled viewport): the choropleth itself — inside a named contour
+  // vs outside/unknown. No points and no score field are painted for
+  // this layer, by design (polygons only, never a gradient). The view
+  // bbox is settled upstream (sameView), so pans refetch politely.
+  const [soilAreas, setSoilAreas] = useState<SoilArea[] | null>(null);
+  const [soilNote, setSoilNote] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!isSoilPolygonOnlyLayer(layer)) {
+      setSoilAreas(null);
+      setSoilNote(null);
+      return;
+    }
+    fetchSoilAreas(view).then((res) => {
+      if (cancelled) return;
+      setSoilAreas(res ? res.areas : null);
+      setSoilNote(res ? res.note : null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [layer, view]);
+
   // Park boundaries (parks layer only): fetched once per selection, a
   // visual aid so scored-inside vs surroundings reads at a glance.
   const [outlines, setOutlines] = useState<ParkOutline[] | null>(null);
@@ -438,7 +469,8 @@ export default function LayersPage() {
     // MAAPARCEL-HOOK (#491): maaparcel paints polygons, never point markers.
     // EELIS-HOOK (#488): eelis layers paint polygons, never point markers.
     // SEVESO-HOOK (#613): seveso paints polygons, never point markers.
-    layer === "parks" || isPolygonOnlyLayer(layer) || isPolygonOnlyMaaLayer(layer) || isEelisPolygonOnlyLayer(layer) || isSevesoPolygonOnlyLayer(layer) || isStatelandPolygonOnlyLayer(layer)
+    // SOIL-HOOK (#617): soil paints polygons, never point markers.
+    layer === "parks" || isPolygonOnlyLayer(layer) || isPolygonOnlyMaaLayer(layer) || isEelisPolygonOnlyLayer(layer) || isSevesoPolygonOnlyLayer(layer) || isStatelandPolygonOnlyLayer(layer) || isSoilPolygonOnlyLayer(layer)
       ? null
       : needsGraphOverlay(layer)
         ? graphPoints
@@ -453,7 +485,10 @@ export default function LayersPage() {
         : isSevesoPolygonOnlyLayer(layer)
           ? (sevesoAreas?.length ?? 0)
         : isStatelandPolygonOnlyLayer(layer)
+          ? (statelandAreas?.length ?? 0)        : isStatelandPolygonOnlyLayer(layer)
           ? (statelandAreas?.length ?? 0)
+        : isSoilPolygonOnlyLayer(layer)
+          ? (soilAreas?.length ?? 0)
         : isPlanktprLayerId(layer)
           ? (usePolygons?.length ?? 0)
     : layer === "parks"
@@ -513,6 +548,15 @@ export default function LayersPage() {
     statelandAreas === null
       ? "Laadin riigimaid…"
       : `KATRI riigimaa + oksjonid · ${statelandAreas.length} parselli (väljaspool = teadmata, mitte riigimaavaba)`;
+  // SOIL-HOOK (#617): soil status counts viewport contours, never
+  // points — the layer serves zero points by design (polygons only,
+  // viewport-driven).
+  const soilStatus =
+    soilAreas === null
+      ? "Laadin mullakontuure…"
+      : soilNote !== null
+        ? `Mullastikukaart · ${soilNote}`
+        : `Mullastikukaart · ${soilAreas.length} kontuuri vaates (väljaspool = teadmata, mitte hea pinnas; linn/vesi/määramata EI MAALI)`;
   const base =
     isPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
       ? floodStatus
@@ -523,7 +567,10 @@ export default function LayersPage() {
       : isSevesoPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
         ? sevesoStatus
       : isStatelandPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
+        ? statelandStatus      : isStatelandPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
         ? statelandStatus
+      : isSoilPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
+        ? soilStatus
       : provenance === null
       ? "Laadin kihi andmeid…"
       : provenance === "snapshot"
@@ -629,6 +676,7 @@ export default function LayersPage() {
         eelisAreas={eelisOverlay}
         sevesoAreas={sevesoAreas}
         statelandAreas={statelandAreas}
+        soilAreas={soilAreas}
         overlayPoints={pointOverlay}
         usePolygons={usePolygons}
         overlayColor={overlayColorFor(layer)}
@@ -662,6 +710,9 @@ export default function LayersPage() {
             // STATELAND-HOOK (#615): stateland paints no field at all
             // (zero points, null raster) -- same skip for state fills.
             isStatelandPolygonOnlyLayer(layer) ||
+            // SOIL-HOOK (#617): soil paints no field at all (zero
+            // points, null raster) -- same skip for the contour fills.
+            isSoilPolygonOnlyLayer(layer) ||
             isPlanktprLayerId(layer)
             ? ""
             : distance === "euclidean" && provenance === "snapshot"
