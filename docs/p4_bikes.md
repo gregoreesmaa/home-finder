@@ -18,7 +18,12 @@ files only). This module scores ONLY the counters+MPD leg
 (`usage_bikes_hex`). It never touches `dims_p4_elron.py` or any
 shared/group file.
 
-## Openness verdict: dated negative (2026-09-13, keeps per #309)
+## Openness verdict: dated negative (2026-09-13, re-confirmed 2026-09-16 per #309)
+
+The §7.7 dig ran the issue's own three steps and closed with the
+dig evidence (the negative that names what the counters publish
+and where — itself the deliverable; P4-032 stays on OSM cycleway
+proxies, `usage_bikes_hex` stays NULL):
 
 Tallinna bike-counter counts and MPD aggregates are NOT published as
 an open machine-readable bulk feed. Polite evidence, ~10 tiny requests
@@ -53,8 +58,32 @@ GET tallinn.ee/et/liikuvus/mikromobiilsus -> HTTP 200, ~63 KB bike
   avaandmed/CSV — no counter feed linked from the cycling pages
 ```
 
-Raw headers/pages: `/tmp/hf-p4-bikes/` (one-off PR record, not
-committed). Pull contract: max 1 download / 24 h per cache dir
+### Dig steps (2026-09-16, 6 tiny reads, custom UA, ≥2 s pacing, no 429)
+
+1. Counter-publication pages behind tallinn.ee search:
+   `/et/search?search_api_fulltext=rattaloendur` → 301 to
+   `/et/otsing` → HTTP 200 (~130 KB): results still AJAX-loaded
+   (server HTML nav-only); no counter page, but the hub links to
+   `/et/uuringud-ja-statistika` (studies & statistics).
+2. Chart/page bundles for data endpoints: the trail ends at the
+   studies hub `uuringud.tallinn.ee` (302 → `/uuring/otsing`,
+   server-rendered, `marksonad` search): exactly 1 study,
+   "Tallinna rattaloendused 2021–2023" (nr 2023-16, Liikuvus).
+   Its detail page carries ONE attachment —
+   `Rattaloenduste_kokkuvõte_12.2023.pdf` (HEAD: attachment,
+   PDF) — and the summary is MANUAL intersection counts
+   (crossings nearly doubled in a year; Vana-Kalamaja +
+   Reisijate/Kopli evening peak; e-scooters ~1/3), i.e. observer
+   prose, not automatic-counter streams. No CSV/XLS/JSON, no
+   chart bundle with a data endpoint, no counter locations, no
+   deeper history.
+3. Nothing keyless exists → close with this evidence: the city
+   publishes a triennial PDF of manual crossing counts, not a
+   counter feed; no Eco-Counter-style public dashboard surfaced.
+
+Raw headers/pages: `/tmp/hf-p4-bikes/` (2026-09-13) +
+`/tmp/hf-dig-bikes/` (2026-09-16 dig) — one-off PR records, not
+committed. Pull contract: max 1 download / 24 h per cache dir
 (`BIKES_TTL_S = 86400`; parameters4.md P4-032 states no cadence —
 counters stream continuously, so daily per AGENTS.md §5 polite-cron
 guidance), single GET, no retries — HTTP 429/errors are a stop signal.
@@ -107,7 +136,7 @@ OSM leisure-density and lit-street legs are named EI OLE, never faked.
 
 ## Reopening checklist (when Tallinn publishes counter/MPD bulk data)
 
-1. Re-run the portal + tallinn.ee + API probes; paste fresh evidence.
+1. Re-run the portal + tallinn.ee + studies-hub (`uuringud.tallinn.ee/uuring/otsing?marksonad=rattaloendused`) probes when the next count round lands (last round 2021–2023, published 2023); paste fresh evidence.
 2. Set `BIKES_BULK_URL` to the verified bulk URL; pull one snapshot.
 3. Verify the hex-id scheme + `kind` codelist + evening-window
    definition against the live feed; adjust roster/row handling.

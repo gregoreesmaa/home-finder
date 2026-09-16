@@ -305,6 +305,18 @@ def test_fetch_stores_json_snapshot(tmp_path, monkeypatch):
 # Registry + aggregator.
 # ---------------------------------------------------------------------------
 
+def test_dig_evidence_persists_in_module():
+    # 2026-09-16 §7.7 dig (issue #309 re-open): the negative names
+    # what the counters publish and where — pin the markers so a
+    # revert to the bare 2026-09-13 verdict fails loudly.
+    import inspect as _inspect
+    src = _inspect.getsource(b4k)
+    assert "2026-09-16" in src
+    assert "uuringud.tallinn.ee" in src
+    assert "Rattaloenduste_kokkuvote_12.2023.pdf" in src
+    assert "2023-16" in src
+
+
 def test_registry_and_aggregator_cover_single_param():
     assert [(k, p) for k, p, _ in P4_BIKES_DIMS] == [
         ("usage_bikes_hex", "P4-032"),
