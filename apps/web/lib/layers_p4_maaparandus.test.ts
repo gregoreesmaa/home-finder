@@ -77,9 +77,9 @@ describe("drainage registry (#616)", () => {
   it("merges into LAYERS via the DRAINAGE-HOOK (page + routes serve it)", () => {
     const ids = LAYERS.map((l) => l.id);
     // 124 shipped layers on main (#613 seveso merged) + stateland
-    // (#615) + quarry (#614) + 1 drainage overlay
-    // (DRAINAGE-HOOK #616, 126 + 1 = 127).
-    expect(ids.length).toBe(127);
+    // (#615) + quarry (#614) + soil (#617) + 1 drainage overlay
+    // (DRAINAGE-HOOK #616, 127 + 1 = 128).
+    expect(ids.length).toBe(128);
     expect(ids).toContain("maaparandus");
   });
 

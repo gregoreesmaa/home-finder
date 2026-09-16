@@ -17,6 +17,7 @@ import type { SevesoArea } from "../lib/layers_p4_seveso";
 import type { StatelandArea } from "../lib/layers_p4_stateland";
 import type { QuarryArea } from "../lib/layers_p4_quarry";
 import type { MaaparandusArea } from "../lib/layers_p4_maaparandus";
+import type { SoilArea } from "../lib/layers_p4_soil";
 import {
   applyFloodPolygons,
   applyMaaParcelPolygons,
@@ -24,6 +25,7 @@ import {
   applyOutlines,
   applyPointOverlay,
   applySevesoPolygons,
+  applySoilPolygons,
   applyStatelandPolygons,
   applyQuarryPolygons,
   applyMaaparandusPolygons,
@@ -71,6 +73,7 @@ function paintOverlay(
     statelandAreas?: StatelandArea[] | null;
     quarryAreas?: QuarryArea[] | null;
     maaparandusAreas?: MaaparandusArea[] | null;
+    soilAreas?: SoilArea[] | null;
     overlayPoints?: OverlayPoint[] | null;
     usePolygons?: UseFillPolygon[] | null;
     overlayColor?: string;
@@ -111,6 +114,15 @@ function paintOverlay(
   // only — no score field is painted for this layer, by design).
   if (opts.statelandAreas && opts.statelandAreas.length > 0) {
     applyStatelandPolygons(mapObj, opts.statelandAreas);
+    return;
+  }  if (opts.statelandAreas && opts.statelandAreas.length > 0) {
+    applyStatelandPolygons(mapObj, opts.statelandAreas);
+    return;
+  }
+  // SOIL-HOOK (#617): soil contour fills (polygons only — no score
+  // field is painted for this layer, by design).
+  if (opts.soilAreas && opts.soilAreas.length > 0) {
+    applySoilPolygons(mapObj, opts.soilAreas);
     return;
   }
   // QUARRY-HOOK (#614): quarry permit/watch fills (polygons only — no
@@ -159,6 +171,7 @@ export function ValueHeatMap({
   statelandAreas,
   quarryAreas,
   maaparandusAreas,
+  soilAreas,
   overlayPoints,
   usePolygons,
   overlayColor,
@@ -195,6 +208,8 @@ export function ValueHeatMap({
   quarryAreas?: QuarryArea[] | null;
   /** Network/outflow shapes (drainage layer only); class choropleth. */
   maaparandusAreas?: MaaparandusArea[] | null;
+  /** Soil contour fills (soil layer only); family choropleth. */
+  soilAreas?: SoilArea[] | null;
   /** Point markers drawn ABOVE the raster (all layers but parks). */
   overlayPoints?: OverlayPoint[] | null;
   /** Designated-use fills drawn ABOVE the field (planktpr only). */
@@ -431,9 +446,10 @@ export function ValueHeatMap({
       // STATELAND-HOOK (#615): statelandAreas join the painted slot.
       // QUARRY-HOOK (#614): quarryAreas join the painted slot.
       // DRAINAGE-HOOK (#616): maaparandusAreas join the painted slot.
-      paintOverlay(mapRef.current, { outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, overlayPoints, usePolygons, overlayColor, showOverlay });
+      // SOIL-HOOK (#617): soilAreas join the painted slot.
+      paintOverlay(mapRef.current, { outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, overlayPoints, usePolygons, overlayColor, showOverlay });
     }
-  }, [outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, overlayPoints, usePolygons, overlayColor, showOverlay]);
+  }, [outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, overlayPoints, usePolygons, overlayColor, showOverlay]);
 
   return (
     <section aria-label={title}>

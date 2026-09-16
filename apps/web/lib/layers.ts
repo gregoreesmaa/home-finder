@@ -623,6 +623,17 @@ import {
   bonusSpecForMaaparandus,
   isMaaparandusPolygonOnlyLayer,
 } from "./layers_p4_maaparandus";
+// SOIL-HOOK (#617): soil contour tables live in ./layers_p4_soil
+// (Maa-amet mullastiku kaart, polygons only, viewport proxy). That
+// module imports layers only as types, so no runtime cycle.
+import type { SoilLayerId } from "./layers_p4_soil";
+import {
+  SOIL_DECAY,
+  SOIL_DEFS,
+  SOIL_TAGS,
+  bonusSpecForSoil,
+  isSoilPolygonOnlyLayer,
+} from "./layers_p4_soil";
 // FIXIT-HOOK (#623): report-pin tables live in ./layers_p4_fixit
 // (fixit markers, register sidecar). That module imports layers only
 // as types, so no runtime cycle.
@@ -791,7 +802,10 @@ export type LayerId =
   // QUARRY-HOOK (#614): extraction/exploration polygon id
   // (./layers_p4_quarry, Maa-amet permits, polygons only, no
   // parameters3 id).
-  | QuarryLayerId;
+  | QuarryLayerId
+  // SOIL-HOOK (#617): soil contour id (./layers_p4_soil, Maa-amet
+  // mullastiku kaart, polygons only, no parameters3 id).
+  | SoilLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -1027,6 +1041,11 @@ const DECAY_KM: Record<LayerId, number> = {
   // layers_p4_maaparandus.ts MAAPARANDUS_DECAY — INERT placeholder, polygons
   // only: zero points, never evaluated).
   ...MAAPARANDUS_DECAY,
+  ...STATELAND_DECAY,  ...STATELAND_DECAY,
+  // SOIL-HOOK (#617): soil contour radius (see layers_p4_soil.ts
+  // SOIL_DECAY — INERT placeholder, polygons only: zero points, never
+  // evaluated).
+  ...SOIL_DECAY,
   // SEVESO-HOOK (#613): danger-polygon radius (see layers_p4_seveso.ts
   // SEVESO_DECAY — INERT placeholder, polygons only: zero points,
   // never evaluated).
@@ -1287,6 +1306,9 @@ export const LAYERS: LayerDef[] = [
   // DRAINAGE-HOOK (#616): network/outflow shape def (maaparandus
   // GIS, polygons only, no parameters3 id) from ./layers_p4_maaparandus.
   ...MAAPARANDUS_DEFS,
+  // SOIL-HOOK (#617): soil contour def (Maa-amet mullastiku kaart,
+  // polygons only, no parameters3 id) from ./layers_p4_soil.
+  ...SOIL_DEFS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -1442,6 +1464,10 @@ const TAGS: Record<LayerId, string> = {
   // layers_p4_maaparandus.ts MAAPARANDUS_TAGS — prose, NOT an Overpass
   // fragment).
   ...MAAPARANDUS_TAGS,
+  ...STATELAND_TAGS,  ...STATELAND_TAGS,
+  // SOIL-HOOK (#617): soil contour source note (see
+  // layers_p4_soil.ts SOIL_TAGS — prose, NOT an Overpass fragment).
+  ...SOIL_TAGS,
   // SEVESO-HOOK (#613): danger-polygon source note (see
   // layers_p4_seveso.ts SEVESO_TAGS — prose, NOT an Overpass fragment).
   ...SEVESO_TAGS,
@@ -1714,6 +1740,10 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // ./layers_p4_maaparandus (INERT — polygons only, never evaluated).
   const drainage = bonusSpecForMaaparandus(layer);
   if (drainage) return drainage;
+  // SOIL-HOOK (#617): soil contour spec lives in ./layers_p4_soil
+  // (INERT — polygons only, never evaluated).
+  const soil = bonusSpecForSoil(layer);
+  if (soil) return soil;
   // SEVESO-HOOK (#613): danger-polygon spec lives in
   // ./layers_p4_seveso (INERT — polygons only, never evaluated).
   const seveso = bonusSpecForSeveso(layer);
@@ -2089,6 +2119,11 @@ export async function fetchWindow(
   // (polygons only — the sidecar carries the data). Same skip, same
   // reason.
   if (isMaaparandusPolygonOnlyLayer(layer)) return null;
+  if (isStatelandPolygonOnlyLayer(layer)) return null;  if (isStatelandPolygonOnlyLayer(layer)) return null;
+  // SOIL-HOOK (#617): soil has no raster master by decision
+  // (polygons only — the viewport proxy carries the data). Same skip,
+  // same reason.
+  if (isSoilPolygonOnlyLayer(layer)) return null;
   // SEVESO-HOOK (#613): seveso has no raster master by licence decision
   // (polygons only — the sidecar carries the data). Same skip, same
   // reason.

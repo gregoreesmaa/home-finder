@@ -593,6 +593,13 @@ export function overlayColorFor(layer: LayerId): string {
     // other marker (distinct-color test).
     case "maaparandus":
       return "#1c1917";
+    // SOIL-HOOK (#617): soil marker (polygon layer — the point overlay
+    // stays empty live, so this colors only the toggle dot). #451a03:
+    // amber-950 darkest tilled earth (NOT #422006 — taken by turvas
+    // fill family — and NOT #78350f — taken; layers never co-render).
+    // Distinct from every other marker (distinct-color test).
+    case "soil":
+      return "#451a03";
     // MEDRE-HOOK (#609): medre slice markers (Step-1 honest-empty —
     // the point overlay stays empty live, so this colors only the
     // toggle dot). #ffedd5: orange-100 clinic paper; #ede9fe:
@@ -1088,6 +1095,13 @@ export function overlayLegendFor(layer: LayerId): string {
     // color with the auction date, outside every parcel is unknown
     // (never state-free): an unregistered interest is not a ruled-out
     // one. Assurance stays capped hinnang (state CAN sell).
+    // SOIL-HOOK (#617): soil contour fills (Maa-amet mullastiku
+    // kaart) — inside a named contour reads by family color (bands
+    // 85→25, hinnang), outside every contour is unknown (never good
+    // ground): unmapped ground is not good ground. Urban/water/
+    // undecoded contours never paint (EI OLE hinnangut).
+    case "soil":
+      return "Mullastik (Maa-ameti mullastiku kaart: vaatepõhine WFS) · tsoonis = kaardistatud mullakontuur (saviliiv 85 parim alus/aed, turvas 25 vajab vaiu — hinnang, mitte mõõdetud kandevõime); linnades/veel/määramata alal EI MAALI (teadmata, mitte hea pinnas); väljaspool = teadmata, mitte hea pinnas";
     case "stateland":
       return "Riigimaa ja oksjonid (KATRI register: 11068 parselli + 15 aktiivset oksjonit) · tsoonis = riigimaa (roheline, piiratud kinnitus — riik VÕIB müüa) või oksjon (kollane, kuupäevaga hoiatuslipp); väljaspool = teadmata, mitte riigimaavaba";
     // QUARRY-HOOK (#614): quarry permit/watch fills (Maa-amet
