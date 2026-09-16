@@ -59,3 +59,60 @@ No bidding advice, no valuation, no RMK logging-plan claims.
    guarantee (legend says so).
 3. Optional thin auction-geometry overlay once the join runs on cached
    polygons; expired auctions drop out of the cache.
+
+## Graduation: map overlay (issue #615, 2026-09-17)
+
+Closes #615 (reopening items 1 + 3 land here). One layer
+(`stateland`, `paramLabel P4-riigimaa`, `paramIds []` — parameters4
+namespace): KATRI state parcels (assurance-olive) + active auction
+parcels (caution yellow, deadline carried) as a class choropleth;
+outside every parcel NULL (never state-free). Assurance stays capped
+hinnang (state CAN sell — the legend says so).
+
+* Harvest (polite one-off, 2026-09-17, UA `home-finder-research/0.1`,
+  paced >= 4 s, `--max-time` 60/120, no 429): GeoServer WFS
+  `katri:state_property_ownership` (Harju window lon 24.3–25.6 / lat
+  58.9–59.7: **11068 features**, paged 5000/5000/1068 via WFS 2.0.0
+  `startIndex` — the server caps pages at 5000; MapServer-style
+  `resultType=hits` is ignored, full pulls instead) +
+  `maaoksjon:auction` (**15 features**, all Avaldatud, deadlines
+  17.09–22.10.2026 — two expire end of pull day, still live locally).
+  Raw GeoJSON kept at `/tmp/hf-615-cache` (PR record, not committed).
+  Gotcha recorded: WITHOUT the `,EPSG:4326` bbox suffix the server
+  returns HTTP 200 with zero features (silent empty, not an error).
+* Reopening item 1 CLOSED: `vara_liik` is `MAA` (4125) or null (6943)
+  — NO forest-distinct values; managers are ministries (Kliimamin
+  7231, MKM 3535, Kaitsemin 133, …), zero RMK; nimetus mostly null.
+  The scorer's forest heuristic stays provisional scorer-side; the map
+  paints ONE state class and the legend says the forest leg is
+  unobserved in this harvest.
+* Polygon sidecar: `scripts/build/batch_stateland.py --katri <3
+  pages> --auction <cached> --snap <snap>` →
+  `<snap>/stateland/stateland-areas.json` (zone_id/nimi/cls +
+  tunnus/valitseja or deadline/purpose/url + GeoJSON [lon, lat]
+  exterior rings + prefilter box — service cache is EPSG:4326
+  already, NO axis flip, pinned by test). Offline, stdlib-only.
+  Rebuild: **11083 zones, 0 skipped** (11068 state + 15 auction,
+  one duplicate auction id kept as two part-features — counted, never
+  deduped silently). ~10 MB sidecar (full float precision kept, EELIS
+  precedent); served whole per /areas precedent.
+* No raster master by decision (`STATELAND_NO_RASTER`,
+  `STATELAND_NO_METRO`): polygons ARE the field — the points endpoint
+  answers honestly-empty, windows serve county.
+* Wiring: `STATELAND-HOOK (#615)` blocks in layers.ts (import/union/
+  DECAY/LAYERS/TAGS/bonusSpecFor/fetchWindow skip), overlays.ts
+  (marker `#083344` + legend), outlines.ts (`applyStatelandPolygons`
+  match-expression fills + slot), server/snapshot.ts
+  (`loadStatelandAreas` + raster/metro absent names), route.ts
+  (honestly-empty points branch), new `/api/layers/stateland/areas`,
+  page.tsx (fetch/paint/status `KATRI riigimaa + oksjonid · N
+  parselli (väljaspool = teadmata, mitte riigimaavaba)`),
+  ValueHeatMap (`statelandAreas` prop). Registry now 125 layers.
+* Scorer parity: `STATELAND_CLASS_SCORE` mirrors the scorer legs
+  (state 60 / auction warning 40); the map paints class fills with
+  auction dates, never numbers.
+
+DoD evidence: `vitest` (new `layers_p4_stateland.test.ts` + painter
+tests in `outlines.test.ts` + `test_batch_stateland.py`), full suites
+green, typecheck clean — pasted in the PR. Screenshot:
+`/layers?layer=stateland` state fills + dated auction flag.

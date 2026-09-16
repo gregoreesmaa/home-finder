@@ -24,6 +24,10 @@ import { isMaaParcelLayerId } from "../../../../lib/layers_maaparcel";
 import { isEelisLayerId } from "../../../../lib/layers_eelis";
 // SEVESO-HOOK (#613): polygons-only branch guard (see below).
 import { isSevesoLayerId } from "../../../../lib/layers_p4_seveso";
+// STATELAND-HOOK (#615): polygons-only branch guard (see below).
+import { isStatelandLayerId } from "../../../../lib/layers_p4_stateland";
+// QUARRY-HOOK (#614): polygons-only branch guard (see below).
+import { isQuarryLayerId } from "../../../../lib/layers_p4_quarry";
 // DRAINAGE-HOOK (#616): polygons-only branch guard (see below).
 import { isMaaparandusLayerId } from "../../../../lib/layers_p4_maaparandus";
 
@@ -222,6 +226,36 @@ export async function GET(
   // (a fake gradient), and demo fallback points are refused by the
   // layer def (empty fallbackPoints, pinned by test).
   if (isSevesoLayerId(def.id)) {
+    const { distance } = await loadLayerRaster(def.id);
+    return NextResponse.json({
+      points: [],
+      provenance: "snapshot",
+      ageMs: Date.now() - SNAPSHOT_AS_OF_MS,
+      distance,
+    });
+  }
+  // STATELAND-HOOK (#615): stateland is polygons-only (zero points,
+  // zero raster — the /stateland/areas sidecar carries the data).
+  // Answer honestly-empty points on snapshot provenance: requiring
+  // points or a raster here would 500 a healthy layer into labeled
+  // demo points (a fake gradient), and demo fallback points are
+  // refused by the layer def (empty fallbackPoints, pinned by test).
+  if (isStatelandLayerId(def.id)) {
+    const { distance } = await loadLayerRaster(def.id);
+    return NextResponse.json({
+      points: [],
+      provenance: "snapshot",
+      ageMs: Date.now() - SNAPSHOT_AS_OF_MS,
+      distance,
+    });
+  }
+  // QUARRY-HOOK (#614): quarry is polygons-only (zero points, zero
+  // raster — the /quarry/areas sidecar carries the data). Answer
+  // honestly-empty points on snapshot provenance: requiring points or
+  // a raster here would 500 a healthy layer into labeled demo points
+  // (a fake gradient), and demo fallback points are refused by the
+  // layer def (empty fallbackPoints, pinned by test).
+  if (isQuarryLayerId(def.id)) {
     const { distance } = await loadLayerRaster(def.id);
     return NextResponse.json({
       points: [],

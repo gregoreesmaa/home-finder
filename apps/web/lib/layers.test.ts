@@ -29,6 +29,10 @@ import { isEelisPolygonOnlyLayer } from "./layers_eelis";
 // SEVESO-HOOK (#613): polygons-only carve-out for the fallback assertion.
 import { isSevesoPolygonOnlyLayer } from "./layers_p4_seveso";
 
+// STATELAND-HOOK (#615): polygons-only carve-out for the fallback assertion.
+import { isStatelandPolygonOnlyLayer } from "./layers_p4_stateland";
+// QUARRY-HOOK (#614): polygons-only carve-out for the fallback assertion.
+import { isQuarryPolygonOnlyLayer } from "./layers_p4_quarry";
 // DRAINAGE-HOOK (#616): polygons-only carve-out for the fallback assertion.
 import { isMaaparandusPolygonOnlyLayer } from "./layers_p4_maaparandus";
 
@@ -246,6 +250,13 @@ describe("layer registry", () => {
       // SEVESO-HOOK (#613): danger-polygon id (Päästeamet ohualad —
       // paramIds empty, parameters4 namespace, polygons only).
       "seveso",
+      // STATELAND-HOOK (#615): state/auction polygon id (KATRI +
+      // maaoksjon — paramIds empty, parameters4 namespace, polygons
+      // only).
+      "stateland",
+      // QUARRY-HOOK (#614): permit/watch polygon id (Maa-amet permits —
+      // paramIds empty, parameters4 namespace, polygons only).
+      "quarry",
       // DRAINAGE-HOOK (#616): network/outflow shape id (maaparandus
       // GIS — paramIds empty, parameters4 namespace, polygons only).
       "maaparandus",
@@ -375,6 +386,14 @@ describe("layer registry", () => {
     // (parameters4 danger polygons, no parameters3 number).
     expect(LAYERS.find((l) => l.id === "seveso")?.paramIds).toEqual([]);
     expect(LAYERS.find((l) => l.id === "seveso")?.paramLabel).toBe("P4-ohuala");
+    // STATELAND-HOOK (#615): stateland rides paramLabel, paramIds stays []
+    // (parameters4 state/auction polygons, no parameters3 number).
+    expect(LAYERS.find((l) => l.id === "stateland")?.paramIds).toEqual([]);
+    expect(LAYERS.find((l) => l.id === "stateland")?.paramLabel).toBe("P4-riigimaa");
+    // QUARRY-HOOK (#614): quarry rides paramLabel, paramIds stays []
+    // (parameters4 permit polygons, no parameters3 number).
+    expect(LAYERS.find((l) => l.id === "quarry")?.paramIds).toEqual([]);
+    expect(LAYERS.find((l) => l.id === "quarry")?.paramLabel).toBe("P4-maavara");
     // DRAINAGE-HOOK (#616): drainage rides paramLabel, paramIds stays []
     // (parameters4 network shapes, no parameters3 number).
     expect(LAYERS.find((l) => l.id === "maaparandus")?.paramIds).toEqual([]);
@@ -743,7 +762,7 @@ describe("layer registry", () => {
       }
       if (isPolygonOnlyMaaLayer(l.id)) {
         expect(l.fallbackPoints).toEqual([]);
-      } else if (!isPolygonOnlyLayer(l.id) && !isEelisPolygonOnlyLayer(l.id) && !isSevesoPolygonOnlyLayer(l.id) && !isMaaparandusPolygonOnlyLayer(l.id)) {
+      } else if (!isPolygonOnlyLayer(l.id) && !isEelisPolygonOnlyLayer(l.id) && !isSevesoPolygonOnlyLayer(l.id) && !isStatelandPolygonOnlyLayer(l.id) && !isQuarryPolygonOnlyLayer(l.id) && !isMaaparandusPolygonOnlyLayer(l.id)) {
         expect(l.fallbackPoints.length).toBeGreaterThan(0);
       }
     }

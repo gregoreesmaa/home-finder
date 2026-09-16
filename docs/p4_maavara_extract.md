@@ -66,3 +66,54 @@ No blast timetables (buyer check), no reserve economics.
 2. L-EST97 → WGS84 projection on the first full pull (GDAL/Maa-amet
    converter); fixtures already carry WGS84.
 3. P4-054 truck leg (`dims_p4_trans`) stays the traffic cousin.
+
+## Graduation: map overlay (issue #614, 2026-09-17)
+
+Closes #614. One layer (`quarry`, `paramLabel P4-maavara`,
+`paramIds []` — parameters4 namespace): active extraction permits
+(avoidance red) + exploration watch areas (caution yellow, dated
+permit carried) as a class choropleth; outside every polygon NULL
+(never quarry-free). The <= 2 km near-band (45) is scorer-side only —
+no buffered fills (fake precision refused), the legend says so.
+
+* Harvest (polite one-off, 2026-09-17, UA `home-finder-research/0.1`,
+  paced ≥ 3 s, `--max-time` 30/60, no 429): WFS 1.0.0 GetFeature
+  `ms:maeeraldis_aktiivne` (467 KB, **168 features**, all
+  `ME_OLEK=aktiivne`) + `ms:Aktiivne_uuringuala` (67 KB, **28
+  features**, all `U_ALA_OLEK=aktiivne`) in the Harjumaa L-EST97 window
+  (easting 370000–600000, northing 6540000–6610000 — frame anchored on
+  the Seveso probe's 98 Harju enterprise coordinates). Raw GML kept at
+  `/tmp/hf-614-cache` (PR record, not committed); MapServer ignores
+  `resultType=hits` (returns an empty collection — full pull instead).
+* Polygon sidecar: `scripts/build/batch_quarry.py --extract
+  <cached GML> --explore <cached GML> --snap <snap>` →
+  `<snap>/quarry/quarry-areas.json` (zone_id/nimi/cls/loa/loa_lopp/
+  operaator + GeoJSON [lon, lat] outer rings + prefilter box).
+  Offline, stdlib-only; only live permits join (parseable-future
+  `LOA_LOPP` — **14 expired-permit rows refused**, all with past dates,
+  e.g. Rabivere 20250703, Tondi-Väo III 20250105); `taotletav`
+  refused (application ≠ permit). Rebuild: **182 zones, 0 skipped**
+  (154 active + 28 exploration). Window spillover kept honestly:
+  3 Hiiumaa quarries + 2 regional exploration areas at true location
+  (off-frame in Tallinn view, never clipped — clipping would fake
+  absence).
+* No raster master by decision (`QUARRY_NO_RASTER`,
+  `QUARRY_NO_METRO`): polygons ARE the field — the points endpoint
+  answers honestly-empty, windows serve county.
+* Wiring: `QUARRY-HOOK (#614)` blocks in layers.ts (import/union/DECAY/
+  LAYERS/TAGS/bonusSpecFor/fetchWindow skip), overlays.ts (marker
+  `#431407` + legend), outlines.ts (`applyQuarryPolygons`
+  match-expression fills + slot), server/snapshot.ts
+  (`loadQuarryAreas` + raster/metro absent names), route.ts
+  (honestly-empty points branch), new `/api/layers/quarry/areas`,
+  page.tsx (fetch/paint/status `Maa-ameti karjäärid ja uuringualad · N
+  polügooni (väljaspool = teadmata, mitte kaevandusvaba)`),
+  ValueHeatMap (`quarryAreas` prop). Registry now 124 layers.
+* Scorer parity: `QUARRY_CLASS_SCORE` mirrors the scorer legs (active
+  inside 25 / exploration watch-flag 55); the map paints class fills,
+  never numbers.
+
+DoD evidence: `vitest` (new `layers_p4_quarry.test.ts` + painter tests
+in `outlines.test.ts` + `test_batch_quarry.py`), full suites green,
+typecheck clean — pasted in the PR. Screenshot: `/layers?layer=quarry`
+Männiku/Väo fills.

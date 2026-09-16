@@ -590,6 +590,28 @@ import {
   bonusSpecForSeveso,
   isSevesoPolygonOnlyLayer,
 } from "./layers_p4_seveso";
+// STATELAND-HOOK (#615): state/auction polygon tables live in
+// ./layers_p4_stateland (KATRI + maaoksjon, polygons only). That module
+// imports layers only as types, so no runtime cycle.
+import type { StatelandLayerId } from "./layers_p4_stateland";
+import {
+  STATELAND_DECAY,
+  STATELAND_DEFS,
+  STATELAND_TAGS,
+  bonusSpecForStateland,
+  isStatelandPolygonOnlyLayer,
+} from "./layers_p4_stateland";
+// QUARRY-HOOK (#614): extraction/exploration polygon tables live in
+// ./layers_p4_quarry (Maa-amet permits, polygons only). That module
+// imports layers only as types, so no runtime cycle.
+import type { QuarryLayerId } from "./layers_p4_quarry";
+import {
+  QUARRY_DECAY,
+  QUARRY_DEFS,
+  QUARRY_TAGS,
+  bonusSpecForQuarry,
+  isQuarryPolygonOnlyLayer,
+} from "./layers_p4_quarry";
 // DRAINAGE-HOOK (#616): network/outflow shape tables live in
 // ./layers_p4_maaparandus (maaparandus GIS, polygons only). That module
 // imports layers only as types, so no runtime cycle.
@@ -755,13 +777,21 @@ export type LayerId =
   // FIXIT-HOOK (#623): report-pin id (./layers_p4_fixit, markers
   // only, no parameters3 id).
   | FixitLayerId
+  // STATELAND-HOOK (#615): state/auction polygon id
+  // (./layers_p4_stateland, KATRI + maaoksjon, polygons only, no
+  // parameters3 id).
+  | StatelandLayerId
   // DRAINAGE-HOOK (#616): network/outflow shape id
   // (./layers_p4_maaparandus, maaparandus GIS, polygons only, no
   // parameters3 id).
   | MaaparandusLayerId
   // SEVESO-HOOK (#613): danger-polygon id (./layers_p4_seveso,
   // Päästeamet ohualad, polygons only, no parameters3 id).
-  | SevesoLayerId;
+  | SevesoLayerId
+  // QUARRY-HOOK (#614): extraction/exploration polygon id
+  // (./layers_p4_quarry, Maa-amet permits, polygons only, no
+  // parameters3 id).
+  | QuarryLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -989,6 +1019,10 @@ const DECAY_KM: Record<LayerId, number> = {
   ...POI_DECAY,
   // FIXIT-HOOK (#623): report-pin radius (see layers_p4_fixit.ts FIXIT_DECAY).
   ...FIXIT_DECAY,
+  // STATELAND-HOOK (#615): state/auction polygon radius (see
+  // layers_p4_stateland.ts STATELAND_DECAY — INERT placeholder,
+  // polygons only: zero points, never evaluated).
+  ...STATELAND_DECAY,
   // DRAINAGE-HOOK (#616): network/outflow shape radius (see
   // layers_p4_maaparandus.ts MAAPARANDUS_DECAY — INERT placeholder, polygons
   // only: zero points, never evaluated).
@@ -997,6 +1031,10 @@ const DECAY_KM: Record<LayerId, number> = {
   // SEVESO_DECAY — INERT placeholder, polygons only: zero points,
   // never evaluated).
   ...SEVESO_DECAY,
+  // QUARRY-HOOK (#614): permit-polygon radius (see
+  // layers_p4_quarry.ts QUARRY_DECAY — INERT placeholder, polygons
+  // only: zero points, never evaluated).
+  ...QUARRY_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -1239,6 +1277,13 @@ export const LAYERS: LayerDef[] = [
   // SEVESO-HOOK (#613): danger-polygon def (Päästeamet ohualad,
   // polygons only, no parameters3 id) from ./layers_p4_seveso.
   ...SEVESO_DEFS,
+  // STATELAND-HOOK (#615): state/auction polygon def (KATRI +
+  // maaoksjon, polygons only, no parameters3 id) from
+  // ./layers_p4_stateland.
+  ...STATELAND_DEFS,
+  // QUARRY-HOOK (#614): permit/watch polygon def (Maa-amet permits,
+  // polygons only, no parameters3 id) from ./layers_p4_quarry.
+  ...QUARRY_DEFS,
   // DRAINAGE-HOOK (#616): network/outflow shape def (maaparandus
   // GIS, polygons only, no parameters3 id) from ./layers_p4_maaparandus.
   ...MAAPARANDUS_DEFS,
@@ -1389,6 +1434,10 @@ const TAGS: Record<LayerId, string> = {
   // FIXIT-HOOK (#623): report-pin source note (see
   // layers_p4_fixit.ts FIXIT_TAGS — prose, NOT an Overpass fragment).
   ...FIXIT_TAGS,
+  // STATELAND-HOOK (#615): state/auction source note (see
+  // layers_p4_stateland.ts STATELAND_TAGS — prose, NOT an Overpass
+  // fragment).
+  ...STATELAND_TAGS,
   // DRAINAGE-HOOK (#616): network/outflow source note (see
   // layers_p4_maaparandus.ts MAAPARANDUS_TAGS — prose, NOT an Overpass
   // fragment).
@@ -1396,6 +1445,9 @@ const TAGS: Record<LayerId, string> = {
   // SEVESO-HOOK (#613): danger-polygon source note (see
   // layers_p4_seveso.ts SEVESO_TAGS — prose, NOT an Overpass fragment).
   ...SEVESO_TAGS,
+  // QUARRY-HOOK (#614): permit-polygon source note (see
+  // layers_p4_quarry.ts QUARRY_TAGS — prose, NOT an Overpass fragment).
+  ...QUARRY_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -1654,6 +1706,10 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // FIXIT-HOOK (#623): report-pin marker spec lives in
   // layers_p4_fixit.ts (markers only — no scorer table to mirror).
   if (isFixitLayerId(layer)) return fixitBonusSpecFor(layer);
+  // STATELAND-HOOK (#615): state/auction polygon spec lives in
+  // ./layers_p4_stateland (INERT — polygons only, never evaluated).
+  const stateland = bonusSpecForStateland(layer);
+  if (stateland) return stateland;
   // DRAINAGE-HOOK (#616): network/outflow shape spec lives in
   // ./layers_p4_maaparandus (INERT — polygons only, never evaluated).
   const drainage = bonusSpecForMaaparandus(layer);
@@ -1662,6 +1718,10 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // ./layers_p4_seveso (INERT — polygons only, never evaluated).
   const seveso = bonusSpecForSeveso(layer);
   if (seveso) return seveso;
+  // QUARRY-HOOK (#614): permit-polygon spec lives in
+  // ./layers_p4_quarry (INERT — polygons only, never evaluated).
+  const quarry = bonusSpecForQuarry(layer);
+  if (quarry) return quarry;
   // P4-031-HOOK (#484): senscom band spec lives in layers_p4_senscom.ts.
   if (isSenscomLayerId(layer)) return senscomBonusSpecFor(layer);
   // ACCBLACK-HOOK (#490): accblack avoid spec lives in layers_accblack.ts.
@@ -2021,6 +2081,10 @@ export async function fetchWindow(
   // (polygons only — the sidecar carries the data). Skip the window
   // fetch for the same reason: a designed 500 only litters the console.
   if (isPolygonOnlyMaaLayer(layer)) return null;
+  // STATELAND-HOOK (#615): stateland has no raster master by decision
+  // (polygons only — the sidecar carries the data). Same skip, same
+  // reason.
+  if (isStatelandPolygonOnlyLayer(layer)) return null;
   // DRAINAGE-HOOK (#616): drainage has no raster master by decision
   // (polygons only — the sidecar carries the data). Same skip, same
   // reason.
@@ -2029,6 +2093,10 @@ export async function fetchWindow(
   // (polygons only — the sidecar carries the data). Same skip, same
   // reason.
   if (isSevesoPolygonOnlyLayer(layer)) return null;
+  // QUARRY-HOOK (#614): quarry has no raster master by decision
+  // (polygons only — the sidecar carries the data). Same skip, same
+  // reason.
+  if (isQuarryPolygonOnlyLayer(layer)) return null;
 
   // TERVISE-HOOK (#494): qbands layers have no raster master by decision
   // (TERVISE_NO_RASTER) — same skip for the quality kernel.

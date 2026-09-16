@@ -100,6 +100,20 @@ import {
   isSevesoPolygonOnlyLayer,
   type SevesoArea,
 } from "../../lib/layers_p4_seveso";
+// STATELAND-HOOK (#615): stateland paints KATRI state + auction
+// polygons (polygons only, never a gradient) instead of points.
+import {
+  fetchStatelandAreas,
+  isStatelandPolygonOnlyLayer,
+  type StatelandArea,
+} from "../../lib/layers_p4_stateland";
+// QUARRY-HOOK (#614): quarry paints Maa-amet permit/watch polygons
+// (polygons only, never a gradient) instead of points.
+import {
+  fetchQuarryAreas,
+  isQuarryPolygonOnlyLayer,
+  type QuarryArea,
+} from "../../lib/layers_p4_quarry";
 // DRAINAGE-HOOK (#616): drainage paints maaparandus network/invalid
 // fills + outflow centerlines (polygons only, never a gradient)
 // instead of points.
@@ -298,6 +312,46 @@ export default function LayersPage() {
     };
   }, [layer]);
 
+  // STATELAND-HOOK (#615): KATRI state + auction polygons (stateland
+  // layer only, fetched once per selection): the choropleth itself —
+  // inside a named state/auction parcel vs outside/unknown. No points
+  // and no score field are painted for this layer, by design (polygons
+  // only, never a gradient).
+  const [statelandAreas, setStatelandAreas] = useState<StatelandArea[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!isStatelandPolygonOnlyLayer(layer)) {
+      setStatelandAreas(null);
+      return;
+    }
+    fetchStatelandAreas().then((areas) => {
+      if (!cancelled) setStatelandAreas(areas);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [layer]);
+
+  // QUARRY-HOOK (#614): Maa-amet permit/watch polygons (quarry
+  // layer only, fetched once per selection): the choropleth itself —
+  // inside a named permit polygon vs outside/unknown. No points and no
+  // score field are painted for this layer, by design (polygons only,
+  // never a gradient).
+  const [quarryAreas, setQuarryAreas] = useState<QuarryArea[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!isQuarryPolygonOnlyLayer(layer)) {
+      setQuarryAreas(null);
+      return;
+    }
+    fetchQuarryAreas().then((areas) => {
+      if (!cancelled) setQuarryAreas(areas);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [layer]);
+
   // DRAINAGE-HOOK (#616): maaparandus network/invalid/outflow shapes
   // (drainage layer only, fetched once per selection): the choropleth
   // itself — inside a named network area vs outside/unknown. No points
@@ -439,7 +493,8 @@ export default function LayersPage() {
     // MAAPARCEL-HOOK (#491): maaparcel paints polygons, never point markers.
     // EELIS-HOOK (#488): eelis layers paint polygons, never point markers.
     // SEVESO-HOOK (#613): seveso paints polygons, never point markers.
-    layer === "parks" || isPolygonOnlyLayer(layer) || isPolygonOnlyMaaLayer(layer) || isEelisPolygonOnlyLayer(layer) || isSevesoPolygonOnlyLayer(layer) || isMaaparandusPolygonOnlyLayer(layer)
+    // QUARRY-HOOK (#614): quarry paints polygons, never point markers.
+    layer === "parks" || isPolygonOnlyLayer(layer) || isPolygonOnlyMaaLayer(layer) || isEelisPolygonOnlyLayer(layer) || isSevesoPolygonOnlyLayer(layer) || isStatelandPolygonOnlyLayer(layer) || isQuarryPolygonOnlyLayer(layer) || isMaaparandusPolygonOnlyLayer(layer)
       ? null
       : needsGraphOverlay(layer)
         ? graphPoints
@@ -453,6 +508,10 @@ export default function LayersPage() {
         ? (eelisOverlay?.length ?? 0)
         : isSevesoPolygonOnlyLayer(layer)
           ? (sevesoAreas?.length ?? 0)
+        : isStatelandPolygonOnlyLayer(layer)
+          ? (statelandAreas?.length ?? 0)
+        : isQuarryPolygonOnlyLayer(layer)
+          ? (quarryAreas?.length ?? 0)
         : isMaaparandusPolygonOnlyLayer(layer)
           ? (maaparandusAreas?.length ?? 0)
         : isPlanktprLayerId(layer)
@@ -507,6 +566,20 @@ export default function LayersPage() {
     sevesoAreas === null
       ? "Laadin Seveso ohualasid…"
       : `Päästeameti Seveso ohualad · ${sevesoAreas.length} polügooni (väljaspool = teadmata, mitte ohutu)`;
+  // STATELAND-HOOK (#615): stateland status counts state/auction
+  // parcels, never points — the layer serves zero points by design
+  // (polygons only).
+  const statelandStatus =
+    statelandAreas === null
+      ? "Laadin riigimaid…"
+      : `KATRI riigimaa + oksjonid · ${statelandAreas.length} parselli (väljaspool = teadmata, mitte riigimaavaba)`;
+  // QUARRY-HOOK (#614): quarry status counts permit/watch polygons,
+  // never points — the layer serves zero points by design (polygons
+  // only).
+  const quarryStatus =
+    quarryAreas === null
+      ? "Laadin karjääripiirkondi…"
+      : `Maa-ameti karjäärid ja uuringualad · ${quarryAreas.length} polügooni (väljaspool = teadmata, mitte kaevandusvaba)`;
   // DRAINAGE-HOOK (#616): drainage status counts network/invalid
   // shapes + outflow lines, never points — the layer serves zero
   // points by design (polygons only).
@@ -523,6 +596,10 @@ export default function LayersPage() {
         ? eelisStatus
       : isSevesoPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
         ? sevesoStatus
+      : isStatelandPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
+        ? statelandStatus
+      : isQuarryPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
+        ? quarryStatus
       : isMaaparandusPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
         ? maaparandusStatus
       : provenance === null
@@ -629,6 +706,8 @@ export default function LayersPage() {
 
         eelisAreas={eelisOverlay}
         sevesoAreas={sevesoAreas}
+        statelandAreas={statelandAreas}
+        quarryAreas={quarryAreas}
         maaparandusAreas={maaparandusAreas}
         overlayPoints={pointOverlay}
         usePolygons={usePolygons}
@@ -655,11 +734,17 @@ export default function LayersPage() {
           // PLANKTPR-HOOK (#492): use-fills are exact parcel joins too.
           // SEVESO-HOOK (#613): seveso paints no field at all (zero
           // points, null raster) -- same skip for the danger fills.
+          // QUARRY-HOOK (#614): quarry paints no field at all (zero
+          // points, null raster) -- same skip for the permit fills.
           (isStatKovLayerId(layer) || isEelisPolygonOnlyLayer(layer) ||
             isMaruKovLayerId(layer) ||
             isPolygonOnlyLayer(layer) ||
             isPolygonOnlyMaaLayer(layer) ||
             isSevesoPolygonOnlyLayer(layer) ||
+            // STATELAND-HOOK (#615): stateland paints no field at all
+            // (zero points, null raster) -- same skip for state fills.
+            isStatelandPolygonOnlyLayer(layer) ||
+            isQuarryPolygonOnlyLayer(layer) ||
             // DRAINAGE-HOOK (#616): drainage paints no field at all
             // (zero points, null raster) -- same skip for network fills.
             isMaaparandusPolygonOnlyLayer(layer) ||

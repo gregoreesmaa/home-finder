@@ -7,6 +7,8 @@ import {
   applyOutlines,
   applyPointOverlay,
   applySevesoPolygons,
+  applyStatelandPolygons,
+  applyQuarryPolygons,
   applyMaaparandusPolygons,
   applyUsePolygons,
   clearVectorOverlays,
@@ -346,6 +348,30 @@ describe("clearVectorOverlays", () => {
     expect(map.layers.size).toBe(0);
     expect(map.sources.size).toBe(0);
   });
+
+  // STATELAND-HOOK (#615): the parcel fill + casing + source join the
+  // cleared slot (one overlay slot paints any kind, never stacks).
+  it("removes the stateland parcel slot too", () => {
+    const map = mockMap();
+    map.layers.add("stateland-parcel-fill");
+    map.layers.add("stateland-parcel-casing");
+    map.sources.add("stateland-parcel-polys");
+    clearVectorOverlays(map);
+    expect(map.layers.size).toBe(0);
+    expect(map.sources.size).toBe(0);
+  });
+
+  // QUARRY-HOOK (#614): the permit fill + casing + source join the
+  // cleared slot (one overlay slot paints any kind, never stacks).
+  it("removes the quarry permit slot too", () => {
+    const map = mockMap();
+    map.layers.add("quarry-permit-fill");
+    map.layers.add("quarry-permit-casing");
+    map.sources.add("quarry-permit-polys");
+    clearVectorOverlays(map);
+    expect(map.layers.size).toBe(0);
+    expect(map.sources.size).toBe(0);
+  });
 });
 
 describe("applyEelisPolygons (#488)", () => {
@@ -594,6 +620,146 @@ describe("applySevesoPolygons (#613)", () => {
     const map = mockMap();
     applySevesoPolygons(map, null);
     applySevesoPolygons(map, []);
+    expect(map.sources.size).toBe(0);
+    expect(map.layers.size).toBe(0);
+  });
+});
+
+describe("applyStatelandPolygons (#615)", () => {
+  const AREA = {
+    zone_id: "78401:101:0123",
+    nimi: "",
+    cls: "state" as const,
+    tunnus: "78401:101:0123",
+    valitseja: "Kliimaministeerium",
+    deadline: "",
+    purpose: "",
+    url: "",
+    b: [24.74, 59.43, 24.75, 59.44] as [number, number, number, number],
+    r: [
+      [
+        [24.74, 59.43],
+        [24.75, 59.43],
+        [24.75, 59.44],
+        [24.74, 59.44],
+      ],
+    ],
+  };
+
+  it("paints parcel fills + casing with closed rings", () => {
+    const map = mockMap();
+    applyStatelandPolygons(map, [AREA]);
+    expect(map.sources.has("stateland-parcel-polys")).toBe(true);
+    expect(map.layers.has("stateland-parcel-fill")).toBe(true);
+    expect(map.layers.has("stateland-parcel-casing")).toBe(true);
+    const src = map.added[0] as {
+      data: { features: { properties: { cls: string }; geometry: { coordinates: number[][][][] } }[] };
+    };
+    expect(src.data.features).toHaveLength(1);
+    expect(src.data.features[0].properties.cls).toBe("state");
+    const ring = src.data.features[0].geometry.coordinates[0][0];
+    expect(ring[0]).toEqual(ring[ring.length - 1]);
+  });
+
+  it("paints the class match expression (facts, never scores)", () => {
+    const map = mockMap();
+    applyStatelandPolygons(map, [AREA]);
+    const fill = map.added.find(
+      (l) => (l as { id?: string }).id === "stateland-parcel-fill",
+    ) as { paint: { "fill-color": unknown[] } };
+    expect(fill.paint["fill-color"][0]).toBe("match");
+    expect(fill.paint["fill-color"]).toContain("state");
+    expect(fill.paint["fill-color"]).toContain("#4d7c0f");
+  });
+
+  it("folds unknown classes to state and skips ringless areas (never faked)", () => {
+    const map = mockMap();
+    const weird = { ...AREA, cls: "private" };
+    const ringless = { ...AREA, zone_id: "x:2", r: [] as number[][][] };
+    applyStatelandPolygons(map, [
+      weird as unknown as typeof AREA,
+      ringless,
+    ]);
+    const src = map.added[0] as {
+      data: { features: { properties: { cls: string } }[] };
+    };
+    expect(src.data.features).toHaveLength(1);
+    expect(src.data.features[0].properties.cls).toBe("state");
+  });
+
+  it("is a no-op on nullish input (outside stays unpainted)", () => {
+    const map = mockMap();
+    applyStatelandPolygons(map, null);
+    applyStatelandPolygons(map, []);
+    expect(map.sources.size).toBe(0);
+    expect(map.layers.size).toBe(0);
+  });
+});
+
+describe("applyQuarryPolygons (#614)", () => {
+  const AREA = {
+    zone_id: "13379",
+    nimi: "Huntaugu I liivakarjäär",
+    cls: "active" as const,
+    loa: "HARM-139",
+    loa_lopp: "20310301",
+    operaator: "AS TREV-2 Grupp",
+    b: [25.36, 59.42, 25.38, 59.44] as [number, number, number, number],
+    r: [
+      [
+        [25.36, 59.42],
+        [25.38, 59.42],
+        [25.38, 59.44],
+        [25.36, 59.44],
+      ],
+    ],
+  };
+
+  it("paints permit fills + casing with closed rings", () => {
+    const map = mockMap();
+    applyQuarryPolygons(map, [AREA]);
+    expect(map.sources.has("quarry-permit-polys")).toBe(true);
+    expect(map.layers.has("quarry-permit-fill")).toBe(true);
+    expect(map.layers.has("quarry-permit-casing")).toBe(true);
+    const src = map.added[0] as {
+      data: { features: { properties: { cls: string }; geometry: { coordinates: number[][][][] } }[] };
+    };
+    expect(src.data.features).toHaveLength(1);
+    expect(src.data.features[0].properties.cls).toBe("active");
+    const ring = src.data.features[0].geometry.coordinates[0][0];
+    expect(ring[0]).toEqual(ring[ring.length - 1]);
+  });
+
+  it("paints the class match expression (facts, never scores)", () => {
+    const map = mockMap();
+    applyQuarryPolygons(map, [AREA]);
+    const fill = map.added.find(
+      (l) => (l as { id?: string }).id === "quarry-permit-fill",
+    ) as { paint: { "fill-color": unknown[] } };
+    expect(fill.paint["fill-color"][0]).toBe("match");
+    expect(fill.paint["fill-color"]).toContain("active");
+    expect(fill.paint["fill-color"]).toContain("#c2410c");
+  });
+
+  it("folds unknown classes to exploration and skips ringless areas (never faked)", () => {
+    const map = mockMap();
+    const weird = { ...AREA, cls: "pending" };
+    const ringless = { ...AREA, zone_id: "x:2", r: [] as number[][][] };
+    applyQuarryPolygons(map, [
+      weird as unknown as typeof AREA,
+      ringless,
+    ]);
+    const src = map.added[0] as {
+      data: { features: { properties: { cls: string } }[] };
+    };
+    expect(src.data.features).toHaveLength(1);
+    expect(src.data.features[0].properties.cls).toBe("exploration");
+  });
+
+  it("is a no-op on nullish input (outside stays unpainted)", () => {
+    const map = mockMap();
+    applyQuarryPolygons(map, null);
+    applyQuarryPolygons(map, []);
     expect(map.sources.size).toBe(0);
     expect(map.layers.size).toBe(0);
   });
