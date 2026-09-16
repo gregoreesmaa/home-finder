@@ -1,11 +1,13 @@
 """P4 veebi demo + coverage dims (issues #304, #373): hermetic tests.
 
 No network: all four scorers are unpublished-feed NULLs
-(2026-09-13 dated-negative verdict, see dims_p4_veebi docstring), so
-the tests pin the None contract, the Estonian honesty markers
-(hinnang + EI OLE + buyer-side check pointer), the per-param
-missing-leg naming, and the registry/aggregator coverage. The
-module itself makes no network calls (pinned by source inspection).
+(2026-09-13 dated-negative verdict, confirmed by the 2026-09-16
+§7.7 endpoint dig, see dims_p4_veebi docstring), so the tests pin
+the None contract, the Estonian honesty markers (hinnang + EI OLE
++ buyer-side check pointer), the per-param missing-leg naming, the
+dig inventory (no lighting/current-ortho/lit-street feed), and the
+registry/aggregator coverage. The module itself makes no network
+calls (pinned by source inspection).
 """
 
 import inspect
@@ -13,6 +15,12 @@ import inspect
 import dims_p4_veebi as veebi
 from dims_p4_veebi import (
     P4_VEEBI_DIMS,
+    VEEBI_ABSENT_FEEDS,
+    VEEBI_ARCGIS,
+    VEEBI_BENEFICIARY_SERVICES,
+    VEEBI_DIG_DATE,
+    VEEBI_ORTO_VINTAGES,
+    VEEBI_THEME_SERVICES,
     dim_arrival_lighting,
     dim_december_darkness_veebi,
     dim_lit_street_usage,
@@ -95,6 +103,24 @@ def test_arrival_names_light_gap_and_no_safety_claim():
     assert "Päästeamet/PPA" in reason
     assert "dims_p4_osm" in reason
     assert "dims_p4_maa_aerial" in reason
+
+
+def test_dig_inventory_records_no_lighting_feed():
+    # Second-round dig (2026-09-16) is evidence-complete: the NULL
+    # verdict traces to inventoried services, not to a guess.
+    assert VEEBI_DIG_DATE == "2026-09-16"
+    assert VEEBI_ARCGIS.startswith("https://gis.tallinn.ee/")
+    assert len(VEEBI_THEME_SERVICES) == 16
+    lowered = " ".join(VEEBI_THEME_SERVICES).lower()
+    assert "valgustus" not in lowered and "lamp" not in lowered
+    assert "orto" not in lowered
+    assert VEEBI_ORTO_VINTAGES == ("ortofoto2003", "ortofoto2005")
+    assert len(VEEBI_ABSENT_FEEDS) == 3  # lighting/current-ortho/lit-street
+    # Beneficiaries recorded with no separate digs.
+    assert "veebikaart/tervishoid_veebikaart" in VEEBI_BENEFICIARY_SERVICES
+    assert "veebikaart/sotsiaalteenused" in VEEBI_BENEFICIARY_SERVICES
+    assert "Haljastuse_arengukava_muinsuskaitse" in VEEBI_BENEFICIARY_SERVICES
+    assert "Linnaosad_asumid" in VEEBI_BENEFICIARY_SERVICES
 
 
 def test_registry_and_aggregator_cover_all_four():

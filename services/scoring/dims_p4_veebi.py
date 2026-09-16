@@ -7,6 +7,17 @@ sources, wired end-to-end in Tallinn. Coverage (#373): P4-029 + P4-032
 + P4-040 wired to the same demoed ingestion (no new plumbing expected
 unless a param needs it; none did, see judgment calls).
 
+Second round (2026-09-16, AGENTS.md section 7.7 "Open JS shells,
+don't file them", per the #304 reopen note): the Experience Builder
+shell was opened and its backing ArcGIS Server inventoried service
+by service (12 polite metadata reads, paced single GETs, labelled
+one-off user-agent, 25 s timeout, no retries, no 429; raw bodies at
+/tmp/hf-veebi-probe/ + /tmp/hf-dig/veebi/, one-off PR records, never
+committed). No keyless lighting / current-orthophoto / lit-street
+feed exists (see VEEBI_ABSENT_FEEDS + docs/p4_veebi.md endpoint
+inventory), so all four dims stay NULL with the endpoint evidence
+pasted — the "close again with the endpoint inventory" path.
+
 Params (this module only — demo + its coverage follow-up share one source):
 * P4-035 December darkness (demo, batch 3): lamp inventory × VIIRS ×
   sun hours — the veebikaart/lighting legs (per-street inventory/kaart
@@ -21,15 +32,57 @@ Params (this module only — demo + its coverage follow-up share one source):
   valgustatud-teede + lit-window-density November 23:00 leg
   (per-listing dim with photo date)
 
-OPENNESS VERDICT (checked 2026-09-13, dated negative keeps verdict
-per #304): Tallinn publishes no pollable machine-readable feed for
-any of the four legs below. Polite evidence, 6 requests total (five
-single GETs + one redirect resolution, kaart.tallinn.ee 301 counted
-in its final-URL fetch, labelled one-off user-agent, 25 s timeout,
-no retries, 3 s pacing; headers + visible-text keyword scope read
+OPENNESS VERDICT, first round (checked 2026-09-13, dated negative):
+Tallinn published no pollable machine-readable feed for any of the
+four legs below. Polite evidence, 6 requests total (five single
+GETs + one redirect resolution, kaart.tallinn.ee 301 counted in its
+final-URL fetch, labelled one-off user-agent, 25 s timeout, no
+retries, 3 s pacing; headers + visible-text keyword scope read
 only, no scraping, no auth, no service enumeration), raw bodies
 cached at /tmp/hf-veebi-probe/ (TTL: one-off check, kept for the PR
 record, never committed):
+
+DIG, second round (2026-09-16, per the #304 reopen note — read the
+Experience Builder app config, then one metadata read per
+discovered keyless service; metadata = services directory + layer
+definitions, never feature queries, never credentialed folders):
+* Shell: https://gis.tallinn.ee/veebikaart/ -> HTTP 200 (5 023 B,
+  "Tallinna veebikaart" JS app shell, ExB 1.19 dev-edition
+  bootstrap at cdn/2/jimu-core/init.js — generic loader, no item
+  IDs). config/config.json AND /config.json both 404 (IIS), so the
+  app config is not retrievable at the obvious paths — recorded as
+  a boundary (no app-internals guessing beyond this).
+* Backing server https://gis.tallinn.ee/arcgis/rest/services
+  (ArcGIS Server 11.5, keyless) -> 22 folders + 70 root services.
+  veebikaart/ folder: 16 theme services (VEEBI_THEME_SERVICES) —
+  NO lighting, NO orthophoto. tehnovorgud/ folder: water/heating
+  networks only, no lighting. Utilities/ folder: Esri system tools
+  (Geometry/PrintingTools) only. hooldus/ folder: Token Required
+  (credentialed — refused, boundary recorded).
+* Layer definitions read (one each): Andmed_Tallinn FeatureServer
+  (9 generic layers: parking, terviserada, jäätmejaamad, city
+  offices... — no lighting); Linnaosad_asumid FeatureServer
+  (layers 0=Asumid, 1=Linnaosad polygons — beneficiary note
+  below); ortofoto2005 MapServer (single layer "Ortofoto 2005",
+  EPSG:3301; ortofoto2003 likewise — dated vintages only, no
+  current-year orthophoto service, no per-street history feed).
+* No valgustus/lamp/lit-street service in root, veebikaart/,
+  tehnovorgud/ or Andmed_Tallinn (VEEBI_ABSENT_FEEDS) — the P4-035
+  inventory/kaart legs, the P4-032 lit-street usage-proxy leg and
+  the P4-040 arrival-lighting leg have nothing pollable to join.
+* Beneficiaries (recorded, no separate digs per the reopen note):
+  #273 StaMT -> veebikaart/tervishoid_veebikaart +
+  veebikaart/sotsiaalteenused (Feature+MapServer each);
+  #300 green -> Haljastuse_arengukava_muinsuskaitse (root
+  MapServer; no haljastus service inside veebikaart/);
+  linnaosa/asum polygons -> Linnaosad_asumid (also the named
+  follow-up for the #301 per-linnaosa join).
+So all four dims return None for EVERY input including missing
+origin (second-round confirmation 2026-09-16): a darkness gradient
+painted from a one-off hand-read of human project pages would be
+fake precision (OTA PR #131 precedent).
+
+First-round page-level evidence (kept for the record):
 * https://kaart.tallinn.ee/ -> 301 to https://gis.tallinn.ee/veebikaart/
   -> HTTP 200 (5 023 B, 21 visible chars, "Tallinna veebikaart" JS app
   shell). No WFS/WMS/GeoJSON/CSV endpoint advertised at page level;
@@ -141,6 +194,64 @@ sibling. Rebalancing stays one joint change across all batches.
 from typing import Dict, List, Optional, Tuple
 
 Score = Tuple[Optional[int], str]  # (score 0..100 | None, Estonian reason)
+
+
+# ---------------------------------------------------------------------------
+# Second-round endpoint inventory (2026-09-16 dig, see docstring).
+# Pinned by test so the NULL verdict stays traceable to evidence.
+# ---------------------------------------------------------------------------
+
+#: Dig date (ISO); re-probe yearly or when the app/portal changes.
+VEEBI_DIG_DATE = "2026-09-16"
+
+#: Keyless ArcGIS Server backing the veebikaart app (v11.5, no token).
+VEEBI_ARCGIS = "https://gis.tallinn.ee/arcgis/rest/services"
+
+#: 16 theme services in the veebikaart/ folder (Feature+MapServer
+#: twins unless noted) — agency layers, but NO lighting and NO
+#: orthophoto among them.
+VEEBI_THEME_SERVICES = (
+    "veebikaart/Asumid_veebikaart",
+    "veebikaart/avalik_voim",
+    "veebikaart/avalikud_tualetid",
+    "veebikaart/Haridus_veebikaart",
+    "veebikaart/jalgpallitaristu",
+    "veebikaart/jalgsikaigualad",
+    "veebikaart/kaubanduskeskused",
+    "veebikaart/Kergliiklusteed_veebikaart",  # MapServer only
+    "veebikaart/Raamatukogud",
+    "veebikaart/sotsiaalteenused",
+    "veebikaart/Teehoolduspiirkonnad_veebikaart",  # MapServer only
+    "veebikaart/Tervisespordirajatised",
+    "veebikaart/tervishoid_veebikaart",
+    "veebikaart/transport_ja_parkimine",
+    "veebikaart/Vaba_aeg",
+    "veebikaart/Veev6tukohad",
+)
+
+#: Dated orthophoto vintages on the same server (single-layer
+#: MapServers, EPSG:3301) — no current-year service, no per-street
+#: history feed.
+VEEBI_ORTO_VINTAGES = ("ortofoto2003", "ortofoto2005")
+
+#: Feeds the four veebi legs would need — NONE exists keyless
+#: (root / veebikaart/ / tehnovorgud/ / Andmed_Tallinn swept;
+#: hooldus/ is token-gated and refused).
+VEEBI_ABSENT_FEEDS = (
+    "tänavavalgustuse inventar/kaart per street",
+    "jooksev ortofoto / per-street history feed",
+    "valgustatud teede kaart (lit-street usage proxy)",
+)
+
+#: Beneficiary service URLs recorded for sibling issues (no
+#: separate digs): #273 StaMT + #300 green + linnaosa/asum
+#: polygons (also the #301 per-linnaosa follow-up).
+VEEBI_BENEFICIARY_SERVICES = (
+    "veebikaart/tervishoid_veebikaart",  # #273 StaMT
+    "veebikaart/sotsiaalteenused",  # #273 StaMT
+    "Haljastuse_arengukava_muinsuskaitse",  # #300 green (root)
+    "Linnaosad_asumid",  # Asumid + Linnaosad polygons
+)
 
 
 # ---------------------------------------------------------------------------
