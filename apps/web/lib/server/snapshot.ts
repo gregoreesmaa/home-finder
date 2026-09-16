@@ -173,6 +173,18 @@ import { SEVESO_RASTER_FILE, isSevesoArea } from "../layers_p4_seveso";
 // unharvested).
 import type { StatelandArea } from "../layers_p4_stateland";
 import { STATELAND_RASTER_FILE, isStatelandArea } from "../layers_p4_stateland";
+// QUARRY-HOOK (#614): permit-polygon raster filename + sidecar area
+// type live in layers_p4_quarry.ts (raster intentionally never built —
+// QUARRY_NO_RASTER; the name resolves to an absent file so windows
+// degrade to null; the sidecar is honestly empty when unharvested).
+import type { QuarryArea } from "../layers_p4_quarry";
+import { QUARRY_RASTER_FILE, isQuarryArea } from "../layers_p4_quarry";
+// DRAINAGE-HOOK (#616): network/outflow raster filename + sidecar area
+// type live in layers_p4_maaparandus.ts (raster intentionally never built
+// — MAAPARANDUS_NO_RASTER; the name resolves to an absent file so windows
+// degrade to null; the sidecar is honestly empty when unharvested).
+import type { MaaparandusArea } from "../layers_p4_maaparandus";
+import { MAAPARANDUS_RASTER_FILE, isMaaparandusArea } from "../layers_p4_maaparandus";
 // SOIL-HOOK (#617): soil contour raster filename lives in
 // layers_p4_soil.ts (raster intentionally never built — SOIL_NO_RASTER;
 // the name resolves to an absent file so windows degrade to null; the
@@ -884,7 +896,53 @@ export async function loadStatelandAreas(dir: string): Promise<StatelandArea[]> 
     // Optional sidecar: honestly empty below.
   }
   statelandAreaCache.set(dir, areas);
+  return areas;
+}
+// QUARRY-HOOK (#614): permit-polygon sidecar cache (same discipline).
+const quarryAreaCache = new Map<string, QuarryArea[]>();
 
+// QUARRY-HOOK (#614): Maa-amet permit-polygon sidecar
+// (`quarry/quarry-areas.json`, written by scripts/build/batch_quarry.py
+// off the cached WFS GML): zone_id + class + dated permit + outer
+// rings. A missing sidecar is honestly empty (register unharvested),
+// never an error; malformed rows are skipped, never faked.
+export async function loadQuarryAreas(dir: string): Promise<QuarryArea[]> {
+  const hit = quarryAreaCache.get(dir);
+  if (hit) return hit;
+  let areas: QuarryArea[] = [];
+  try {
+    const raw = await fs.readFile(path.join(dir, "quarry", "quarry-areas.json"), "utf8");
+    const parsed: unknown = JSON.parse(raw);
+    if (Array.isArray(parsed)) areas = parsed.filter(isQuarryArea);
+    else console.warn(`snapshot: ignoring malformed quarry/quarry-areas.json in ${dir}`);
+  } catch {
+    // Optional sidecar: honestly empty below.
+  }
+  quarryAreaCache.set(dir, areas);
+  return areas;
+}
+// DRAINAGE-HOOK (#616): network/outflow sidecar cache (same discipline).
+const maaparandusAreaCache = new Map<string, MaaparandusArea[]>();
+
+// DRAINAGE-HOOK (#616): maaparandus network/outflow sidecar
+// (`maaparandus/maaparandus-areas.json`, written by
+// scripts/build/batch_maaparandus.py off the cached WFS GeoJSON):
+// zone_id + class + MSR check link + polygons/lines. A missing sidecar
+// is honestly empty (register unharvested), never an error; malformed
+// rows are skipped, never faked.
+export async function loadMaaparandusAreas(dir: string): Promise<MaaparandusArea[]> {
+  const hit = maaparandusAreaCache.get(dir);
+  if (hit) return hit;
+  let areas: MaaparandusArea[] = [];
+  try {
+    const raw = await fs.readFile(path.join(dir, "maaparandus", "maaparandus-areas.json"), "utf8");
+    const parsed: unknown = JSON.parse(raw);
+    if (Array.isArray(parsed)) areas = parsed.filter(isMaaparandusArea);
+    else console.warn(`snapshot: ignoring malformed maaparandus/maaparandus-areas.json in ${dir}`);
+  } catch {
+    // Optional sidecar: honestly empty below.
+  }
+  maaparandusAreaCache.set(dir, areas);
   return areas;
 }
 
@@ -1036,6 +1094,8 @@ export function clearSnapshotCache(): void {
   planktprAreaCache.clear(); // PLANKTPR-HOOK (#492)
   sevesoAreaCache.clear(); // SEVESO-HOOK (#613)
   statelandAreaCache.clear(); // STATELAND-HOOK (#615)
+  quarryAreaCache.clear(); // QUARRY-HOOK (#614)
+  maaparandusAreaCache.clear(); // DRAINAGE-HOOK (#616)
   freqCache.clear();
   rasterCache.clear();
   countyBytes.clear();
@@ -1203,6 +1263,10 @@ const RASTER_FILE: Record<LayerId, string> = {
   // by decision — FIXIT_NO_RASTER; markers only, no field to stamp;
   // the absent file degrades windows to null).
   ...FIXIT_RASTER_FILE,
+  // DRAINAGE-HOOK (#616): network/outflow raster name only (no
+  // master built — MAAPARANDUS_NO_RASTER; shapes ARE the field; absent
+  // file degrades to null, honestly).
+  ...MAAPARANDUS_RASTER_FILE,
   // SEVESO-HOOK (#613): danger-polygon raster name only (no master
   // built — SEVESO_NO_RASTER, CC BY-NC-ND forbids derivatives;
   // polygons ARE the field; absent file degrades to null, honestly).
@@ -1211,6 +1275,10 @@ const RASTER_FILE: Record<LayerId, string> = {
   // built — STATELAND_NO_RASTER; polygons ARE the field; absent file
   // degrades to null, honestly).
   ...STATELAND_RASTER_FILE,
+  // QUARRY-HOOK (#614): permit-polygon raster name only (no master
+  // built — QUARRY_NO_RASTER; polygons ARE the field; absent file
+  // degrades to null, honestly).
+  ...QUARRY_RASTER_FILE,
   // SOIL-HOOK (#617): soil contour raster name only (no master built —
   // SOIL_NO_RASTER; contours ARE the field; absent file degrades to
   // null, honestly).
@@ -1717,6 +1785,10 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // either — FIXIT_NO_RASTER; the name resolves to an absent file so
   // windows fall back to the markers-only path).
   fixit: "fixit-metro",
+  // DRAINAGE-HOOK (#616): no drainage metro master by documented
+  // decision (see layers_p4_maaparandus.ts MAAPARANDUS_NO_METRO) — the name
+  // resolves to an absent file so windows fall back to county cleanly.
+  maaparandus: "maaparandus-metro",
   // SEVESO-HOOK (#613): no seveso metro master by documented decision
   // (see layers_p4_seveso.ts SEVESO_NO_METRO) — the name resolves to
   // an absent file so windows fall back to county cleanly.
@@ -1726,6 +1798,10 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // name resolves to an absent file so windows fall back to county
   // cleanly.
   stateland: "stateland-metro",
+  // QUARRY-HOOK (#614): no quarry metro master by documented decision
+  // (see layers_p4_quarry.ts QUARRY_NO_METRO) — the name resolves to
+  // an absent file so windows fall back to county cleanly.
+  quarry: "quarry-metro",
   // SOIL-HOOK (#617): no soil metro master by documented decision (see
   // layers_p4_soil.ts SOIL_NO_METRO) — the name resolves to an absent
   // file so windows fall back to county cleanly.

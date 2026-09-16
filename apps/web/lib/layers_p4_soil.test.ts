@@ -77,9 +77,9 @@ describe("soil class bands (#617)", () => {
 describe("soil registry (#617)", () => {
   it("merges into LAYERS via the SOIL-HOOK (page + routes serve it)", () => {
     const ids = LAYERS.map((l) => l.id);
-    // 125 shipped layers on main (#615 stateland) + 1 soil overlay
-    // (SOIL-HOOK #617, 125 + 1 = 126).
-    expect(ids.length).toBe(126);
+    // 127 shipped layers on main (#616 maaparandus) + 1 soil overlay
+    // (SOIL-HOOK #617, 127 + 1 = 128).
+    expect(ids.length).toBe(128);
     expect(ids).toContain("soil");
   });
   it("rides paramLabel with empty paramIds (polygons only, no parameters3 number)", () => {

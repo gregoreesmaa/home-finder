@@ -9,6 +9,8 @@ import {
   applySevesoPolygons,
   applySoilPolygons,
   applyStatelandPolygons,
+  applyQuarryPolygons,
+  applyMaaparandusPolygons,
   applyUsePolygons,
   clearVectorOverlays,
   type OutlineMap,
@@ -323,6 +325,21 @@ describe("clearVectorOverlays", () => {
 
   // SEVESO-HOOK (#613): the danger fill + casing + source join the
   // cleared slot (one overlay slot paints any kind, never stacks).
+  // DRAINAGE-HOOK (#616): the network fill + casing + outflow line +
+  // both sources join the cleared slot (one overlay slot paints any
+  // kind, never stacks).
+  it("removes the drainage network slot too", () => {
+    const map = mockMap();
+    map.layers.add("drainage-network-fill");
+    map.layers.add("drainage-network-casing");
+    map.layers.add("drainage-outflow-lines");
+    map.sources.add("drainage-network-polys");
+    map.sources.add("drainage-outflow-lines-src");
+    clearVectorOverlays(map);
+    expect(map.layers.size).toBe(0);
+    expect(map.sources.size).toBe(0);
+  });
+
   it("removes the seveso danger slot too", () => {
     const map = mockMap();
     map.layers.add("seveso-danger-fill");
@@ -340,6 +357,18 @@ describe("clearVectorOverlays", () => {
     map.layers.add("stateland-parcel-fill");
     map.layers.add("stateland-parcel-casing");
     map.sources.add("stateland-parcel-polys");
+    clearVectorOverlays(map);
+    expect(map.layers.size).toBe(0);
+    expect(map.sources.size).toBe(0);
+  });
+
+  // QUARRY-HOOK (#614): the permit fill + casing + source join the
+  // cleared slot (one overlay slot paints any kind, never stacks).
+  it("removes the quarry permit slot too", () => {
+    const map = mockMap();
+    map.layers.add("quarry-permit-fill");
+    map.layers.add("quarry-permit-casing");
+    map.sources.add("quarry-permit-polys");
     clearVectorOverlays(map);
     expect(map.layers.size).toBe(0);
     expect(map.sources.size).toBe(0);
@@ -680,6 +709,75 @@ describe("applyStatelandPolygons (#615)", () => {
   });
 });
 
+describe("applyQuarryPolygons (#614)", () => {
+  const AREA = {
+    zone_id: "13379",
+    nimi: "Huntaugu I liivakarjäär",
+    cls: "active" as const,
+    loa: "HARM-139",
+    loa_lopp: "20310301",
+    operaator: "AS TREV-2 Grupp",
+    b: [25.36, 59.42, 25.38, 59.44] as [number, number, number, number],
+    r: [
+      [
+        [25.36, 59.42],
+        [25.38, 59.42],
+        [25.38, 59.44],
+        [25.36, 59.44],
+      ],
+    ],
+  };
+
+  it("paints permit fills + casing with closed rings", () => {
+    const map = mockMap();
+    applyQuarryPolygons(map, [AREA]);
+    expect(map.sources.has("quarry-permit-polys")).toBe(true);
+    expect(map.layers.has("quarry-permit-fill")).toBe(true);
+    expect(map.layers.has("quarry-permit-casing")).toBe(true);
+    const src = map.added[0] as {
+      data: { features: { properties: { cls: string }; geometry: { coordinates: number[][][][] } }[] };
+    };
+    expect(src.data.features).toHaveLength(1);
+    expect(src.data.features[0].properties.cls).toBe("active");
+    const ring = src.data.features[0].geometry.coordinates[0][0];
+    expect(ring[0]).toEqual(ring[ring.length - 1]);
+  });
+
+  it("paints the class match expression (facts, never scores)", () => {
+    const map = mockMap();
+    applyQuarryPolygons(map, [AREA]);
+    const fill = map.added.find(
+      (l) => (l as { id?: string }).id === "quarry-permit-fill",
+    ) as { paint: { "fill-color": unknown[] } };
+    expect(fill.paint["fill-color"][0]).toBe("match");
+    expect(fill.paint["fill-color"]).toContain("active");
+    expect(fill.paint["fill-color"]).toContain("#c2410c");
+  });
+
+  it("folds unknown classes to exploration and skips ringless areas (never faked)", () => {
+    const map = mockMap();
+    const weird = { ...AREA, cls: "pending" };
+    const ringless = { ...AREA, zone_id: "x:2", r: [] as number[][][] };
+    applyQuarryPolygons(map, [
+      weird as unknown as typeof AREA,
+      ringless,
+    ]);
+    const src = map.added[0] as {
+      data: { features: { properties: { cls: string } }[] };
+    };
+    expect(src.data.features).toHaveLength(1);
+    expect(src.data.features[0].properties.cls).toBe("exploration");
+  });
+
+  it("is a no-op on nullish input (outside stays unpainted)", () => {
+    const map = mockMap();
+    applyQuarryPolygons(map, null);
+    applyQuarryPolygons(map, []);
+    expect(map.sources.size).toBe(0);
+    expect(map.layers.size).toBe(0);
+  });
+});
+
 describe("applySoilPolygons (#617)", () => {
   const AREA = {
     zone_id: "muld_0062DCE0",
@@ -744,6 +842,101 @@ describe("applySoilPolygons (#617)", () => {
     const map = mockMap();
     applySoilPolygons(map, null);
     applySoilPolygons(map, []);
+    expect(map.sources.size).toBe(0);
+    expect(map.layers.size).toBe(0);
+  });
+});
+
+describe("applyMaaparandusPolygons (#616)", () => {
+  const AREA = {
+    zone_id: "5111040011290",
+    nimi: "Allika5",
+    cls: "network" as const,
+    ms_kood: "5111040011290",
+    ms_url: "https://portaal.agri.ee/avalik/#/maaparandus/systeem/5111040011290",
+    b: [24.74, 59.43, 24.75, 59.44] as [number, number, number, number],
+    r: [
+      [
+        [24.74, 59.43],
+        [24.75, 59.43],
+        [24.75, 59.44],
+        [24.74, 59.44],
+      ],
+    ],
+  };
+  const LINE = {
+    zone_id: "7",
+    nimi: "Kraav",
+    cls: "outflow" as const,
+    ms_kood: "1",
+    ms_url: "",
+    b: [24.76, 59.43, 24.77, 59.44] as [number, number, number, number],
+    l: [
+      [
+        [24.76, 59.43],
+        [24.77, 59.44],
+      ],
+    ],
+  };
+
+  it("paints network fills + casing with closed rings", () => {
+    const map = mockMap();
+    applyMaaparandusPolygons(map, [AREA]);
+    expect(map.sources.has("drainage-network-polys")).toBe(true);
+    expect(map.layers.has("drainage-network-fill")).toBe(true);
+    expect(map.layers.has("drainage-network-casing")).toBe(true);
+    const src = map.added[0] as {
+      data: { features: { properties: { cls: string }; geometry: { coordinates: number[][][][] } }[] };
+    };
+    expect(src.data.features).toHaveLength(1);
+    expect(src.data.features[0].properties.cls).toBe("network");
+    const ring = src.data.features[0].geometry.coordinates[0][0];
+    expect(ring[0]).toEqual(ring[ring.length - 1]);
+  });
+
+  it("paints the class match expression (facts, never scores)", () => {
+    const map = mockMap();
+    applyMaaparandusPolygons(map, [AREA]);
+    const fill = map.added.find(
+      (l) => (l as { id?: string }).id === "drainage-network-fill",
+    ) as { paint: { "fill-color": unknown[] } };
+    expect(fill.paint["fill-color"][0]).toBe("match");
+    expect(fill.paint["fill-color"]).toContain("invalid");
+    expect(fill.paint["fill-color"]).toContain("#92400e");
+  });
+
+  it("paints outflow centerlines with no fill (band stays scorer-side)", () => {
+    const map = mockMap();
+    applyMaaparandusPolygons(map, [LINE]);
+    expect(map.layers.has("drainage-outflow-lines")).toBe(true);
+    expect(map.layers.has("drainage-network-fill")).toBe(false);
+    const line = map.added.find(
+      (l) => (l as { id?: string }).id === "drainage-outflow-lines",
+    ) as { type: string; paint: { "fill-color"?: unknown; "line-color": unknown } };
+    expect(line.type).toBe("line");
+    expect(line.paint["fill-color"]).toBeUndefined();
+    expect(line.paint["line-color"]).toBe("#38bdf8");
+  });
+
+  it("folds unknown classes to network and skips shapeless areas (never faked)", () => {
+    const map = mockMap();
+    const weird = { ...AREA, cls: "ditch" };
+    const shapeless = { ...AREA, zone_id: "x:2", r: [] as number[][][] };
+    applyMaaparandusPolygons(map, [
+      weird as unknown as typeof AREA,
+      shapeless,
+    ]);
+    const src = map.added[0] as {
+      data: { features: { properties: { cls: string } }[] };
+    };
+    expect(src.data.features).toHaveLength(1);
+    expect(src.data.features[0].properties.cls).toBe("network");
+  });
+
+  it("is a no-op on nullish input (outside stays unpainted)", () => {
+    const map = mockMap();
+    applyMaaparandusPolygons(map, null);
+    applyMaaparandusPolygons(map, []);
     expect(map.sources.size).toBe(0);
     expect(map.layers.size).toBe(0);
   });

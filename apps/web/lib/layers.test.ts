@@ -31,6 +31,10 @@ import { isSevesoPolygonOnlyLayer } from "./layers_p4_seveso";
 
 // STATELAND-HOOK (#615): polygons-only carve-out for the fallback assertion.
 import { isStatelandPolygonOnlyLayer } from "./layers_p4_stateland";
+// QUARRY-HOOK (#614): polygons-only carve-out for the fallback assertion.
+import { isQuarryPolygonOnlyLayer } from "./layers_p4_quarry";
+// DRAINAGE-HOOK (#616): polygons-only carve-out for the fallback assertion.
+import { isMaaparandusPolygonOnlyLayer } from "./layers_p4_maaparandus";
 // SOIL-HOOK (#617): polygons-only carve-out for the fallback assertion.
 import { isSoilPolygonOnlyLayer } from "./layers_p4_soil";
 
@@ -252,6 +256,12 @@ describe("layer registry", () => {
       // maaoksjon — paramIds empty, parameters4 namespace, polygons
       // only).
       "stateland",
+      // QUARRY-HOOK (#614): permit/watch polygon id (Maa-amet permits —
+      // paramIds empty, parameters4 namespace, polygons only).
+      "quarry",
+      // DRAINAGE-HOOK (#616): network/outflow shape id (maaparandus
+      // GIS — paramIds empty, parameters4 namespace, polygons only).
+      "maaparandus",
       // SOIL-HOOK (#617): soil contour id (Maa-amet mullastiku kaart —
       // paramIds empty, parameters4 namespace, polygons only,
       // viewport-driven).
@@ -387,6 +397,14 @@ describe("layer registry", () => {
     expect(LAYERS.find((l) => l.id === "stateland")?.paramIds).toEqual([]);
     expect(LAYERS.find((l) => l.id === "stateland")?.paramLabel).toBe("P4-riigimaa");    expect(LAYERS.find((l) => l.id === "stateland")?.paramIds).toEqual([]);
     expect(LAYERS.find((l) => l.id === "stateland")?.paramLabel).toBe("P4-riigimaa");
+    // QUARRY-HOOK (#614): quarry rides paramLabel, paramIds stays []
+    // (parameters4 permit polygons, no parameters3 number).
+    expect(LAYERS.find((l) => l.id === "quarry")?.paramIds).toEqual([]);
+    expect(LAYERS.find((l) => l.id === "quarry")?.paramLabel).toBe("P4-maavara");
+    // DRAINAGE-HOOK (#616): drainage rides paramLabel, paramIds stays []
+    // (parameters4 network shapes, no parameters3 number).
+    expect(LAYERS.find((l) => l.id === "maaparandus")?.paramIds).toEqual([]);
+    expect(LAYERS.find((l) => l.id === "maaparandus")?.paramLabel).toBe("P4-kuivendus");
     // SOIL-HOOK (#617): soil rides paramLabel, paramIds stays []
     // (parameters4 soil contours, no parameters3 number).
     expect(LAYERS.find((l) => l.id === "soil")?.paramIds).toEqual([]);
@@ -755,7 +773,7 @@ describe("layer registry", () => {
       }
       if (isPolygonOnlyMaaLayer(l.id)) {
         expect(l.fallbackPoints).toEqual([]);
-      } else if (!isPolygonOnlyLayer(l.id) && !isEelisPolygonOnlyLayer(l.id) && !isSevesoPolygonOnlyLayer(l.id) && !isStatelandPolygonOnlyLayer(l.id) && !isSoilPolygonOnlyLayer(l.id)) {
+      } else if (!isPolygonOnlyLayer(l.id) && !isEelisPolygonOnlyLayer(l.id) && !isSevesoPolygonOnlyLayer(l.id) && !isStatelandPolygonOnlyLayer(l.id) && !isQuarryPolygonOnlyLayer(l.id) && !isMaaparandusPolygonOnlyLayer(l.id) && !isSoilPolygonOnlyLayer(l.id)) {
         expect(l.fallbackPoints.length).toBeGreaterThan(0);
       }
     }

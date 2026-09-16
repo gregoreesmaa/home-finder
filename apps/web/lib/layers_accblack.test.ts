@@ -53,7 +53,7 @@ describe("accblack registry (#490)", () => {
     // 1 asumedia (ASUMEDIA-HOOK #495, 106 + 1).
     // 1 tervise (TERVISE-HOOK #494, 105 + 1).
     // PAASTE-HOOK (#493): +1 komando overlay (107 + 1).
-    expect(ids.length).toBe(126); // SOIL-HOOK (#617): +1 soil contour overlay (125 + 1 = 126).
+    expect(ids.length).toBe(128); // MERGE (#613+#614+#615+#616+#617): 123 shipped + seveso + stateland + quarry + maaparandus + soil = 128 (both branch counts superseded).
     expect(ids).toContain("accblack");
   });
 
