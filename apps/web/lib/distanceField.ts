@@ -12,7 +12,7 @@ import { stopMode, type BBoxLike, type BonusSpec } from "./layers";
 // OOKLA-HOOK (#489): nearest-tile join for the tileband branch (the
 // module owns the tile payload tags; this import is values-only one
 // way — layers_p4_ookla imports ./layers as types, so no cycle).
-import { ooklaTileAt } from "./layers_p4_ookla";
+import { ooklaDirectField } from "./layers_p4_ookla";
 import { colorForValue } from "./valueScale";
 import { splatValues, splatWeights } from "./valueGrid";
 
@@ -263,18 +263,12 @@ export function buildScoredField(
   // average: smoothing would fake a gradient between measured
   // squares. No qualifying tile stays NaN (unknown, never zero — the
   // scorer reads the same gap as NULL with hinnang + EI OLE).
+  // OOKLA-HOOK (#516): the per-cell ooklaTileAt loop used to cost
+  // cells x tiles (~43 s for the Tallinn view) and froze the tab — now
+  // routed through the indexed ooklaDirectField (cell-identical
+  // output, see its header + parity test).
   if (spec.kind === "tileband") {
-    const direct = new Float64Array(cols * rows);
-    const spanLon = bbox.maxlon - bbox.minlon;
-    const spanLat = bbox.maxlat - bbox.minlat;
-    for (let k = 0; k < direct.length; k++) {
-      const iy = Math.floor(k / cols);
-      const ix = k % cols;
-      const clon = bbox.minlon + (cols > 1 ? (ix / (cols - 1)) * spanLon : 0);
-      const clat = bbox.minlat + (rows > 1 ? (iy / (rows - 1)) * spanLat : 0);
-      direct[k] =
-        ooklaTileAt(clat, clon, points, spec.radiusM, spec.minTests)?.band ?? NaN;
-    }
+    const direct = ooklaDirectField(points, bbox, cols, rows, spec.radiusM, spec.minTests);
     return { field, bonus, sigmaKm, direct };
   }
   // TERVISE-HOOK (#494): nearest-point quality bands (Terviseamet
