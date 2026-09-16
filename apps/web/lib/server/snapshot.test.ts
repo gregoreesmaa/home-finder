@@ -11,6 +11,7 @@ import {
   loadPlanktprAreas,
   loadEhisPoints,
   loadMedrePoints,
+  loadOhuseirePoints,
   loadSnapshotPoints,
   loadSportPoints,
   loadWindowRaster,
@@ -1974,6 +1975,46 @@ describe("primary-care sidecar (#609)", () => {
     await writeFile(join(bad, "medre", "medre-points.json"), "{nope");
     try {
       await expect(loadMedrePoints(bad)).resolves.toEqual([]);
+    } finally {
+      await rm(bad, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("official air-station sidecar (#610)", () => {
+  async function ohuseireDir(payload: unknown): Promise<string> {
+    const dir = await mkdtemp(join(tmpdir(), "hf-snap-ohuseire-"));
+    await mkdir(join(dir, "ohuseire"), { recursive: true });
+    await writeFile(join(dir, "ohuseire", "ohuseire-points.json"), JSON.stringify(payload));
+    return dir;
+  }
+
+  it("loads {points} sidecar, dropping malformed rows", async () => {
+    const dir = await ohuseireDir({
+      points: [
+        { lon: 24.71513, lat: 59.44729, name: "Tallinn Rahu" },
+        { lon: 24.76, lat: 59.43, name: "Tallinn Liivalaia" },
+        { lon: "x", lat: 59.44, name: "Broken" },
+        { lon: 24.75 },
+      ],
+    });
+    try {
+      await expect(loadOhuseirePoints(dir)).resolves.toEqual([
+        { lon: 24.71513, lat: 59.44729, name: "Tallinn Rahu" },
+        { lon: 24.76, lat: 59.43, name: "Tallinn Liivalaia" },
+      ]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("degrades missing/malformed sidecar to [] (honestly no points)", async () => {
+    await expect(loadOhuseirePoints("/nonexistent-dir-xyz")).resolves.toEqual([]);
+    const bad = await mkdtemp(join(tmpdir(), "hf-snap-ohuseirebad-"));
+    await mkdir(join(bad, "ohuseire"), { recursive: true });
+    await writeFile(join(bad, "ohuseire", "ohuseire-points.json"), "{nope");
+    try {
+      await expect(loadOhuseirePoints(bad)).resolves.toEqual([]);
     } finally {
       await rm(bad, { recursive: true, force: true });
     }

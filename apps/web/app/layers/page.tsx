@@ -83,6 +83,9 @@ import { isEhisLayerId } from "../../lib/layers_p4_ehis";
 // MEDRE-HOOK (#609): dbands status names the medre extract for medre
 // layers (see isDbands branch below) — Step-1 honest-empty included.
 import { isMedreLayerId } from "../../lib/layers_p4_medre";
+// OHUSEIRE-HOOK (#610): dbands status names the station inventory
+// for the ohuseire layer (see isDbands branch below).
+import { isOhuseireLayerId } from "../../lib/layers_p4_ohuseire";
 
 /** Viewport bbox rounded for fetch stability (matches server key rounding). */
 function sameView(a: BBoxLike, b: BBoxLike): boolean {
@@ -454,7 +457,9 @@ export default function LayersPage() {
                   ? `EHISe väljavõte (koolihooned, seis 2026-09-16)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
                   : isMedreLayerId(layer)
                     ? `Medre väljavõte (perearstid, seis 2026-09-16)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
-                    : `Spordiregistri + ujulate väljavõte (seis 2026-09-16)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
+                    : isOhuseireLayerId(layer)
+                      ? `Õhuseire väljavõte (3 jaama, seis 2026-09-16)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
+                      : `Spordiregistri + ujulate väljavõte (seis 2026-09-16)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
               : `Kohalik hetktõmmis (2026-09-12) · ${pointCount} punkti`
           : "Kohalik hetktõmmis (2026-09-12) · rasterkiht"
         : provenance === "empty"

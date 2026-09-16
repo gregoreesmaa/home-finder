@@ -221,6 +221,10 @@ describe("layer registry", () => {
       // paramIds empty, parameters4 namespace, Step-1 honest-empty).
       "medre_gp",
       "medre_clinic",
+      // OHUSEIRE-HOOK (#610): official air-station id (P4-031 thin
+      // dots — paramIds empty, parameters4 namespace; DIY senscom
+      // leg untouched).
+      "ohuseire",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -319,6 +323,11 @@ describe("layer registry", () => {
       expect(LAYERS.find((l) => l.id === id)?.paramIds).toEqual([]);
       expect(LAYERS.find((l) => l.id === id)?.paramLabel).toBe("P4-011");
     }
+    // OHUSEIRE-HOOK (#610): station layer rides paramLabel,
+    // paramIds stays [] (parameters4 P4-031 slice shared with the DIY
+    // senscom leg by scorer design — distinct slices, no double-score).
+    expect(LAYERS.find((l) => l.id === "ohuseire")?.paramIds).toEqual([]);
+    expect(LAYERS.find((l) => l.id === "ohuseire")?.paramLabel).toBe("P4-031");
   });
 
   it("wires the B10C utility layers with locked calibration", () => {

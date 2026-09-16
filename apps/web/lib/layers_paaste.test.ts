@@ -135,7 +135,7 @@ describe("paaste registry wiring (#493)", () => {
     expect(ids).toContain("paaste");
     // PAASTE-HOOK (#493): +1 honest-empty komando overlay (107 + 1).
     // (Rebased onto main at #513: 107 shipped layers + paaste.)
-    expect(ids.length).toBe(116); // SPORT-HOOK (#607): +3 sport slices (108 + 3); EHIS-HOOK (#608): +3 school slices (111 + 3); MEDRE-HOOK (#609): +2 care slices (114 + 2)
+    expect(ids.length).toBe(117); // SPORT-HOOK (#607): +3 sport slices (108 + 3); EHIS-HOOK (#608): +3 school slices (111 + 3); MEDRE-HOOK (#609): +2 care slices (114 + 2); OHUSEIRE-HOOK (#610): +1 station dots (116 + 1)
   });
 
   it("tags the layer button (P4-012), leaving parameters3 tags untouched", () => {
