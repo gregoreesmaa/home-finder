@@ -1,0 +1,400 @@
+"""P4 typical traffic-delay dims (issue #557): rush-hour table, live out.
+
+Buyer question: "how bad is the jam on my commute at 8:15" -
+answered as TYPICAL delay, not live traffic. The map path is a
+frozen snapshot; a live-jam layer cannot exist here by
+construction (and a buyer needs the Tuesday pattern, not this
+Tuesday). Live-jam map: non-goal, stated up front. No live polling
+in the map/scorer path (harvested typical tables only); never
+present typical as live (legend + reasons carry "tavaline, mitte
+reaalajas").
+
+THREE-FEED PROBE (2026-09-16, docs + one polite capability check
+each, no key requests beyond published self-serve):
+1. Tark Tee DATEX II: GATED (reuses the inspected p4_trans
+   evidence, dims_p4_trans.py docstring, probed 2026-09-13:
+   tarktee.ee root is a 66 KB driver-app shell with zero
+   api/datex/avaandmed/download/wfs/rest links; legacy ArcGIS host
+   moved; DATEX II SRTI hazard feeds need a registered key per
+   public consumer notes). No keyless machine-readable feed, and no
+   typical-speed series exposed keyless - incident/restriction legs
+   stay NULL. Not re-probed: 3 days old, re-hammering is impolite.
+2. TomTom / HERE traffic APIs: KEY-GATED (docs half probed
+   2026-09-16: TomTom Traffic API docs confirm real-time traffic
+   products + historical/traffic-stats analytics behind an API key;
+   typical speeds live in the keyed products, not in a keyless
+   feed). Capability check needs a self-serve key - out of scope
+   ("no key requests"), so no endpoint was touched. Key from env
+   only (Mapillary/OpenCellID precedent) if ever pursued; quotas
+   enforced in code.
+3. Tallinn real-time bus positions vs GTFS schedule: KEYLESS ANGLE
+   PROVEN (fresh capability check 2026-09-16: catalogue
+   ``andmed.eesti.ee/api/datasets/slug/
+   uhistranspordivahendite-asukohad-reaalajas`` -> HTTP 200 JSON,
+   5994 B, access PUBLIC, accrual CONT, org Tallinna
+   Linnavalitsus). The file ``https://transport.tallinn.ee/gps.txt``
+   carries type/line/WGS84 position/speed/heading/vehicle every ~5
+   s (WGS84, keyless). Buses sit in the same jams; scheduled
+   headways (GTFS, owned by the p11/p17 commute dims) give the
+   baseline for free. What is NOT proven: a sampled typical-delay
+   table - building it needs a sampler cron (polite 60 s+ cadence
+   harvest -> corridor x hour aggregation), which is deferred work,
+   not this issue.
+
+OUTCOME: documented partial-open (keyless proxy source confirmed,
+table-building sampler deferred) + the delay-table schema below,
+fixture-proven, with the NULL-missing rule pinned. Static OSM road
+class + maxspeed legs stand as the fallback cousins (load, never
+delay). No incident feed (accidents owned by #522).
+
+DELAY-TABLE SCHEMA (reviewer calls, documented): corridor grain =
+named commute corridors (not per-segment: per-segment tables would
+re-identify bus runs and overfit); hour bands = hommikune tipp
+7-9 / keskpäev 10-15 / õhtune tipp 16-18 / muu (off-peak); NO
+school-holiday split yet (no calendar join - single table,
+documented limitation); factor = typical travel time / free-flow
+time (>= 1.0). Missing hour/corridor -> NULL (never a free-flow
+assumption).
+
+Ingestion (stdlib only, offline-first, mirrors dims_p4_trans.py):
+fetch Helsinki-style sampler hooks live ONLY in fetch_gps_snapshot
+(documented for the future cron; single GET, 60 s timeout,
+min-size guard, 429 = stop, transport errors never cached).
+parse_gps_txt reads a cached gps.txt snapshot; aggregate_snapshots
+folds snapshots into the corridor x hour table. Scorers and tests
+never touch the network.
+"""
+
+import math
+import os
+import time
+import urllib.request
+from typing import Dict, List, Optional, Tuple
+
+Score = Tuple[Optional[int], str]  # (score 0..100 | None, Estonian reason)
+
+#: Keyless bus-position snapshot (verified 2026-09-16 via the
+#: catalogue metadata: access PUBLIC, accrual CONT, ~5 s updates).
+GPS_SNAPSHOT_URL = "https://transport.tallinn.ee/gps.txt"
+
+#: Sampler cadence guard: the future cron harvests at most this
+#: often (polite 60 s+ cadence against a 5 s file).
+SAMPLER_MIN_INTERVAL_S = 60
+
+#: Identifying user agent for the polite sampler pull.
+DELAY_UA = "home-finder delay sampler (60s+ cadence, typical tables only)"
+
+#: Minimum plausible gps.txt body (a few dozen vehicle lines).
+GPS_MIN_BYTES = 512
+
+#: Hour bands (reviewer call): morning peak / midday / evening
+#: peak / off-peak. No school-holiday split (documented).
+HOUR_BANDS = (
+    ("hommikune tipp", 7, 9),
+    ("keskpäev", 10, 15),
+    ("õhtune tipp", 16, 18),
+    ("muu", -1, -1),  # off-peak catch-all
+)
+
+#: Typical-delay factor bands -> score (high = flows well).
+#: Labelled "tavaline, mitte reaalajas" in every reason.
+DELAY_BANDS = [(1.1, 75), (1.3, 60), (1.6, 45), (float("inf"), 30)]
+
+#: Corridor join window (listing -> corridor representative point).
+CORRIDOR_WINDOW_M = 500.0
+
+#: Minimum snapshots backing a table cell (thin cells stay NULL).
+TABLE_MIN_SAMPLES = 20
+
+
+def hour_band(hour: int) -> str:
+    """Hour (0-23) -> band label, per HOUR_BANDS. Pure."""
+    for label, start, end in HOUR_BANDS:
+        if start < 0:
+            continue  # off-peak catch-all handled below
+        if start <= hour <= end:
+            return label
+    return "muu"
+
+
+def fetch_gps_snapshot(cache_dir: str, filename: str,
+                       min_interval_s: int = SAMPLER_MIN_INTERVAL_S
+                       ) -> Optional[str]:
+    """Polite single snapshot pull for the future sampler cron.
+
+    Fresh cache within min_interval_s: NO request. Otherwise one
+    GET with DELAY_UA; stored only on HTTP 200 over GPS_MIN_BYTES.
+    429/errors -> None (stop signal, never cached). Scorers and
+    tests never call this.
+    """
+    os.makedirs(cache_dir, exist_ok=True)
+    dest = os.path.join(cache_dir, filename)
+    try:
+        if (os.path.exists(dest)
+                and time.time() - os.path.getmtime(dest) < min_interval_s):
+            return dest
+    except OSError:
+        return None
+    try:
+        req = urllib.request.Request(GPS_SNAPSHOT_URL,
+                                     headers={"User-Agent": DELAY_UA})
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            status = getattr(resp, "status", 200)
+            if status != 200:
+                return None
+            body = resp.read()
+        if len(body) < GPS_MIN_BYTES:
+            return None
+        with open(dest, "wb") as fh:
+            fh.write(body)
+        return dest
+    except Exception:
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Offline readers: gps.txt snapshot -> corridor x hour table. Pure.
+# ---------------------------------------------------------------------------
+
+def parse_gps_txt(path: str) -> List[dict]:
+    """Parse a cached gps.txt snapshot. Offline.
+
+    Live fields (catalogue 2026-09-16): vehicle type (1 trolley /
+    2 bus / 3 tram / 7 night bus), line number, latitude x1e6,
+    longitude x1e6, speed km/h (empty when unavailable), heading
+    degrees (999 = unavailable), vehicle number, vehicle type flag.
+    Returns [{vtype, line, lat, lon, speed, vehicle}]; garbage lines
+    are skipped, never faked. Trams (3) are kept with a flag - they
+    do not sit in road jams (documented, excluded at aggregation).
+    """
+    out = []
+    with open(path, encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            parts = line.strip().split(",")
+            if len(parts) < 7:
+                continue
+            try:
+                vtype = int(parts[0].strip())
+            except (ValueError, AttributeError):
+                continue
+            if vtype not in (1, 2, 3, 7):
+                continue
+            try:
+                lat = int(parts[2].strip()) / 1e6
+                lon = int(parts[3].strip()) / 1e6
+            except (ValueError, AttributeError):
+                continue
+            if not (math.isfinite(lat) and math.isfinite(lon)
+                    and 57.0 <= lat <= 61.0 and 20.0 <= lon <= 29.0):
+                continue
+            speed_raw = parts[4].strip() if len(parts) > 4 else ""
+            try:
+                speed = float(speed_raw) if speed_raw else None
+            except ValueError:
+                speed = None
+            if speed is not None and not (math.isfinite(speed)
+                                          and 0.0 <= speed <= 120.0):
+                speed = None
+            out.append({"vtype": vtype, "line": parts[1].strip(),
+                        "lat": lat, "lon": lon, "speed": speed,
+                        "vehicle": parts[6].strip() if len(parts) > 6
+                        else ""})
+    return out
+
+
+def aggregate_snapshots(samples: List[dict],
+                        corridor_of) -> Dict[Tuple[str, str], dict]:
+    """Bus samples -> {(corridor, hour_band): delay cell}. Pure.
+
+    ``corridor_of(lat, lon)`` maps a position to a corridor name (or
+    None when off-corridor). Road vehicles only (vtype 1/2/7 -
+    trams run on rails, not in jams). Speeds aggregate to a median
+    per cell with a sample count; the delay FACTOR itself is fixed
+    when the cell joins free-flow baselines (out of scope here -
+    cells carry ``median_speed`` + ``n``; factor joins separately).
+    Cells with n < TABLE_MIN_SAMPLES are dropped (thin cells stay
+    NULL downstream).
+    """
+    buckets: Dict[Tuple[str, str], list] = {}
+    for s in samples:
+        if not isinstance(s, dict) or s.get("vtype") not in (1, 2, 7):
+            continue
+        try:
+            lat = float(s["lat"])
+            lon = float(s["lon"])
+        except (TypeError, ValueError, KeyError):
+            continue
+        if isinstance(s.get("lat"), bool) or isinstance(s.get("lon"), bool):
+            continue
+        if not (math.isfinite(lat) and math.isfinite(lon)):
+            continue
+        speed = s.get("speed")
+        if not isinstance(speed, (int, float)) or isinstance(speed, bool):
+            continue
+        speed = float(speed)
+        if not (math.isfinite(speed) and speed > 0.0):
+            continue
+        hour = s.get("hour")
+        try:
+            hour = int(hour)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            continue
+        if not 0 <= hour <= 23:
+            continue
+        try:
+            corridor = corridor_of(lat, lon)
+        except Exception:
+            continue
+        if not corridor:
+            continue
+        buckets.setdefault((corridor, hour_band(hour)), []).append(speed)
+    table = {}
+    for key, speeds in buckets.items():
+        if len(speeds) < TABLE_MIN_SAMPLES:
+            continue
+        speeds = sorted(speeds)
+        mid = len(speeds) // 2
+        median = (speeds[mid] if len(speeds) % 2
+                  else (speeds[mid - 1] + speeds[mid]) / 2.0)
+        table[key] = {"median_speed": median, "n": len(speeds)}
+    return table
+
+
+# ---------------------------------------------------------------------------
+# Scorer legs over the harvested typical-delay table.
+# ---------------------------------------------------------------------------
+
+def _haversine_m(origin: Tuple[float, float], lat: float, lon: float) -> float:
+    """Great-circle distance in metres."""
+    r = 6371000.0
+    la1, lo1, la2, lo2 = map(math.radians, (origin[0], origin[1], lat, lon))
+    h = math.sin((la2 - la1) / 2) ** 2 + math.cos(la1) * math.cos(la2) * math.sin(
+        (lo2 - lo1) / 2
+    ) ** 2
+    return 2 * r * math.asin(math.sqrt(h))
+
+
+def _fmt_m(m: float) -> str:
+    return "%d m" % int(round(m)) if m < 1000 else "~%.1f km" % (m / 1000.0)
+
+
+def _band(value: Optional[float], bands: List[Tuple[float, int]]) -> Optional[int]:
+    """First score whose threshold covers the value; None stays None."""
+    if value is None:
+        return None
+    for limit, pts in bands:
+        if value <= limit:
+            return pts
+    return bands[-1][1]
+
+
+def _joined_cell(origin: Optional[Tuple[float, float]],
+                 pois: Optional[List[dict]],
+                 hour: Optional[int]) -> Tuple[Optional[dict], Optional[str]]:
+    """Nearest delay cell for the corridor+hour. Missing -> NULL.
+
+    Missing hour/corridor stays NULL - never a free-flow assumption.
+    """
+    if not origin or pois is None:
+        return None, ("Tavalise ummiku info puudub (EI OLE koridor-tunni "
+                      "viivitusliidestust hetktõmmes: Tark Tee võtmeta, "
+                      "TomTom/HERE võtmega, bussisampler käivitamata)")
+    if hour is None or isinstance(hour, bool):
+        return None, ("Kellaaeg puudub - tavaviivitust ei saa lugeda (EI OLE "
+                      "tunni liidestust, mitte vaba liiklus)")
+    try:
+        hour = int(hour)
+    except (TypeError, ValueError):
+        return None, ("Kellaaeg vigane - tavaviivitust ei saa lugeda (EI OLE "
+                      "tunni liidestust, mitte vaba liiklus)")
+    if not 0 <= hour <= 23:
+        return None, ("Kellaaeg vigane - tavaviivitust ei saa lugeda (EI OLE "
+                      "tunni liidestust, mitte vaba liiklus)")
+    band = hour_band(hour)
+    best = None
+    for p in pois:
+        if not isinstance(p, dict) or p.get("kind") != "delaycell_p4":
+            continue
+        if p.get("hour_band") != band:
+            continue
+        try:
+            lat = float(p["lat"])
+            lon = float(p["lon"])
+        except (TypeError, ValueError, KeyError):
+            continue
+        if isinstance(p.get("lat"), bool) or isinstance(p.get("lon"), bool):
+            continue
+        if not (math.isfinite(lat) and math.isfinite(lon)):
+            continue
+        d = _haversine_m(origin, lat, lon)
+        if best is None or d < best[0]:
+            best = (d, p)
+    if best is None or best[0] > CORRIDOR_WINDOW_M:
+        return None, ("Läheduses pole %s koridori tavaviivituse kirjet - "
+                      "hinnangut pole (EI OLE koridoriliidestust, mitte "
+                      "mõõdetud vaba tee)" % band)
+    _, poi = best
+    factor = poi.get("factor")
+    if isinstance(factor, bool):
+        return None, ("Viivituskirje vigane - hinnangut pole (EI OLE "
+                      "loetavat viivitusliidestust)")
+    try:
+        factor = float(factor)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None, ("Viivituskirje vigane - hinnangut pole (EI OLE "
+                      "loetavat viivitusliidestust)")
+    if not (math.isfinite(factor) and factor >= 1.0):
+        return None, ("Viivituskirje vigane - hinnangut pole (EI OLE "
+                      "loetavat viivitusliidestust)")
+    n = poi.get("n", TABLE_MIN_SAMPLES)
+    if isinstance(n, bool):
+        return None, ("Viivituskirje vigane - hinnangut pole (EI OLE "
+                      "loetavat viivitusliidestust)")
+    try:
+        n = int(n)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None, ("Viivituskirje vigane - hinnangut pole (EI OLE "
+                      "loetavat viivitusliidestust)")
+    if n < TABLE_MIN_SAMPLES:
+        return None, ("Viivituskirje liiga hõre (%d proovi) - hinnangut "
+                      "pole (EI OLE piisavat viivitusliidestust)" % n)
+    cell = dict(poi)
+    cell["factor"] = factor
+    cell["n"] = n
+    return cell, None
+
+
+def dim_commute_delay(origin: Optional[Tuple[float, float]],
+                      pois: Optional[List[dict]],
+                      hour: Optional[int] = None) -> Score:
+    """Typical-delay leg: corridor x hour factor band (high = flows).
+
+    Typical, NOT live: the factor is harvested from bus-position
+    samples (or a keyed typical-speed series once available), never
+    polled in the scorer path. Missing hour/corridor -> NULL (never
+    free-flow assumption).
+    """
+    cell, null = _joined_cell(origin, pois, hour)
+    if cell is None:
+        assert null is not None
+        return None, null
+    factor = cell["factor"]
+    s = _band(factor, DELAY_BANDS)
+    assert s is not None
+    return s, ("Tavalise ummiku hinnang (%s, koridor %s: tavategur x%.2f, "
+               "%d proovi) -> skoor %d (tavaline, mitte reaalajas)"
+               % (cell.get("hour_band"), cell.get("corridor"),
+                  factor, cell["n"], s))
+
+
+#: Registry for the central weight-rebalance follow-up: (dim key, param id).
+P4_DELAY_DIMS = (
+    ("commute_delay", "P4-delay", dim_commute_delay),
+)
+
+
+def score_p4_delay(origin: Optional[Tuple[float, float]],
+                   pois: Optional[List[dict]],
+                   hour: Optional[int] = None) -> Dict[str, Optional[int]]:
+    """P4 typical-delay leg for one listing (entry point for follow-up)."""
+    return {key: fn(origin, pois, hour)[0] for key, _, fn in P4_DELAY_DIMS}
