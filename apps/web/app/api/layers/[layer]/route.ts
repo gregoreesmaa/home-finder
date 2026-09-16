@@ -30,6 +30,7 @@ import {
   loadLayerRaster,
   loadMedrePoints,
   loadOhuseirePoints,
+  loadPoiPoints,
   loadSnapshotPoints,
   loadSportPoints,
   SNAPSHOT_AS_OF_MS,
@@ -70,6 +71,13 @@ import {
   kliimaPointsIn,
   kliimaSliceFor,
 } from "../../../../lib/layers_kliima";
+// POI-HOOK (#612): long-tail sidecar points (see below).
+import {
+  isPoiLayerId,
+  POI_VINTAGE,
+  poiPointsIn,
+  poiSliceFor,
+} from "../../../../lib/layers_p4_poi";
 import { loadSenscomSnapshot, senscomPointsIn } from "../../../../lib/server/senscom";
 import { loadOoklaSnapshot, ooklaPointsIn } from "../../../../lib/server/ookla";
 
@@ -314,6 +322,19 @@ export async function GET(
       points,
       provenance: points.length > 0 ? "snapshot" : "empty",
       ageMs: Date.now() - Date.parse(`${KLIIMA_VINTAGE}T00:00:00`),
+    });
+  }
+  // POI-HOOK (#612): long-tail points come from the snapshot sidecar
+  // (poi/poi-points.json, built offline by scripts/build/batch_poi.py
+  // — never the OSM snapshot, never live). A missing sidecar stays
+  // honestly-empty. Vintage rides POI_VINTAGE (monthly harvest).
+  if (isPoiLayerId(def.id)) {
+    const all = await loadPoiPoints(snapshotDir());
+    const points: LayerPoint[] = poiPointsIn(all, poiSliceFor(def.id), bbox);
+    return NextResponse.json({
+      points,
+      provenance: points.length > 0 ? "snapshot" : "empty",
+      ageMs: Date.now() - Date.parse(`${POI_VINTAGE}T00:00:00`),
     });
   }
   try {

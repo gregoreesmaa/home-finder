@@ -546,6 +546,17 @@ import {
   OHUSEIRE_TAGS,
   ohuseireBonusSpecFor,
 } from "./layers_p4_ohuseire";
+// POI-HOOK (#612): long-tail tables live in ./layers_p4_poi
+// (library/post/pharmacy slices, register sidecar). That module
+// imports layers only as types, so no runtime cycle.
+import type { PoiLayerId } from "./layers_p4_poi";
+import {
+  isPoiLayerId,
+  POI_DECAY,
+  POI_LAYERS,
+  POI_TAGS,
+  poiBonusSpecFor,
+} from "./layers_p4_poi";
 // MEDRE-HOOK (#609): primary-care tables live in ./layers_p4_medre
 // (P4-011 gp/clinic slices, Step-1 honest-empty sidecar). That module
 // imports layers only as types, so no runtime cycle.
@@ -704,7 +715,10 @@ export type LayerId =
   | OhuseireLayerId
   // KLIIMA-HOOK (#611): climate-normals slice ids (./layers_kliima,
   // frost/wet, no parameters3 id).
-  | KliimaLayerId;
+  | KliimaLayerId
+  // POI-HOOK (#612): long-tail slice ids (./layers_p4_poi,
+  // library/post/pharmacy, no parameters3 id).
+  | PoiLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -928,6 +942,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...OHUSEIRE_DECAY,
   // KLIIMA-HOOK (#611): climate-cell radii (see layers_kliima.ts KLIIMA_DECAY).
   ...KLIIMA_DECAY,
+  // POI-HOOK (#612): long-tail radii (see layers_p4_poi.ts POI_DECAY).
+  ...POI_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -1161,6 +1177,9 @@ export const LAYERS: LayerDef[] = [
   // KLIIMA-HOOK (#611): climate-normals slice defs (frost/wet, no
   // parameters3 id) from ./layers_kliima.
   ...KLIIMA_LAYERS,
+  // POI-HOOK (#612): long-tail slice defs (library/post/pharmacy, no
+  // parameters3 id) from ./layers_p4_poi.
+  ...POI_LAYERS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -1302,6 +1321,9 @@ const TAGS: Record<LayerId, string> = {
   // KLIIMA-HOOK (#611): climate-normals source notes (see
   // layers_kliima.ts KLIIMA_TAGS — prose, NOT an Overpass fragment).
   ...KLIIMA_TAGS,
+  // POI-HOOK (#612): long-tail source notes (see layers_p4_poi.ts
+  // POI_TAGS — prose, NOT an Overpass fragment).
+  ...POI_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -1539,6 +1561,10 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // layers_kliima.ts (same qbands kernel as tervise; bands ride the
   // harvested normals, not distance).
   if (isKliimaLayerId(layer)) return kliimaBonusSpecFor(layer);
+  // POI-HOOK (#612): long-tail distance-band specs live in
+  // layers_p4_poi.ts (same dbands kernel; bands ride the register
+  // harvest, not OSM).
+  if (isPoiLayerId(layer)) return poiBonusSpecFor(layer);
   // P4-031-HOOK (#484): senscom band spec lives in layers_p4_senscom.ts.
   if (isSenscomLayerId(layer)) return senscomBonusSpecFor(layer);
   // ACCBLACK-HOOK (#490): accblack avoid spec lives in layers_accblack.ts.

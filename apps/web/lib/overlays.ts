@@ -572,6 +572,18 @@ export function overlayColorFor(layer: LayerId): string {
     // from every other marker (distinct-color test).
     case "ohuseire":
       return "#94a3b8";
+    // POI-HOOK (#612): long-tail slice markers (point overlays,
+    // stride-sampled like grocery). #d8b4fe: purple-300 book spines;
+    // #fde68a: amber-200 mailbox yellow; #bbf7d0: green-200 pharmacy
+    // cross (NOT #e0f2fe/#fef3c7 — reserved by kliima #611 — and NOT
+    // #c4b5fd/#fbbf24/#4ade80 — taken). Distinct from every other
+    // marker (distinct-color test).
+    case "poi_library":
+      return "#d8b4fe";
+    case "poi_post":
+      return "#fde68a";
+    case "poi_pharmacy":
+      return "#bbf7d0";
     // ASUMEDIA-HOOK (#495): asumedia marker (empty-on-purpose layer —
     // the point overlay stays empty live, so this colors only the
     // toggle dot). #fda4af: rose-300 asking-price blush (NOT #fb7185
@@ -1011,6 +1023,17 @@ export function overlayLegendFor(layer: LayerId): string {
       return "Talvine leebus (Keskkonnaagentuur 1991-2020) · lähima jaamaraku külmapäevade järjestus 70 km raadiuses (Pakri 70 / Harku 55 / Kuusiku 40; 3 jämedat rakku, interpolatsiooni pole)";
     case "kliima_wet":
       return "Kuivus (Keskkonnaagentuur 1991-2020) · lähima jaamaraku aastasademete järjestus 70 km raadiuses (Harku 70 / Kuusiku 40; Pakri 22/30 täisaastat ehk normatiivita — teadmata, mitte niiske)";
+    // POI-HOOK (#612): long-tail slices — register points from the
+    // monthly huvipunktid vahekiht; the band field (not the dots) is
+    // the score: nearest sliced POI ≤300 m -> 85, ≤600 m -> 70,
+    // ≤1 km -> 55; beyond stays unknown (scorer NULL: hinnang; post
+    // includes parcel lockers — dominant access, stated).
+    case "poi_library":
+      return "Raamatukogud lähedal (Maa- ja Ruumiameti väljavõte: 124 Harjumaal) · lähim raamatukogu 1 km raadiuses (≤300 m -> 85, ≤600 m -> 70, ≤1 km -> 55; kauguse-hinnang linnulennult, kogu teadmata)";
+    case "poi_post":
+      return "Post lähedal (Maa- ja Ruumiameti väljavõte: 536 Harjumaal, sh 521 pakiautomaati) · lähim post/pakiautomaat 1 km raadiuses (≤300 m -> 85, ≤600 m -> 70, ≤1 km -> 55; kauguse-hinnang linnulennult)";
+    case "poi_pharmacy":
+      return "Apteegid lähedal (Ravimiameti väljavõte: 187 Harjumaal) · lähim apteek 1 km raadiuses (≤300 m -> 85, ≤600 m -> 70, ≤1 km -> 55; kauguse-hinnang linnulennult, nõuanne teadmata)";
     // ASUMEDIA-HOOK (#495): asumedia (own-snapshot asking medians) —
     // the dated negative rides along: 0/84 asums reach MIN_N=5, so
     // the field is unknown everywhere until the reopen lands real

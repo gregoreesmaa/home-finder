@@ -229,6 +229,11 @@ describe("layer registry", () => {
       // paramIds empty, parameters4 namespace, harvested normals).
       "kliima_frost",
       "kliima_wet",
+      // POI-HOOK (#612): long-tail slice ids (library/post/pharmacy —
+      // paramIds empty, parameters4 namespace, register sidecar).
+      "poi_library",
+      "poi_post",
+      "poi_pharmacy",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -339,6 +344,14 @@ describe("layer registry", () => {
     expect(LAYERS.find((l) => l.id === "kliima_frost")?.paramLabel).toBe("P4-kliima talv");
     expect(LAYERS.find((l) => l.id === "kliima_wet")?.paramIds).toEqual([]);
     expect(LAYERS.find((l) => l.id === "kliima_wet")?.paramLabel).toBe("P4-kliima sademed");
+    // POI-HOOK (#612): poi slices ride per-slice paramLabel, paramIds
+    // stays [] (parameters4 long-tail slices, no parameters3 number).
+    expect(LAYERS.find((l) => l.id === "poi_library")?.paramIds).toEqual([]);
+    expect(LAYERS.find((l) => l.id === "poi_library")?.paramLabel).toBe("P4-poi raamatukogu");
+    expect(LAYERS.find((l) => l.id === "poi_post")?.paramIds).toEqual([]);
+    expect(LAYERS.find((l) => l.id === "poi_post")?.paramLabel).toBe("P4-poi post");
+    expect(LAYERS.find((l) => l.id === "poi_pharmacy")?.paramIds).toEqual([]);
+    expect(LAYERS.find((l) => l.id === "poi_pharmacy")?.paramLabel).toBe("P4-poi apteek");
   });
 
   it("wires the B10C utility layers with locked calibration", () => {

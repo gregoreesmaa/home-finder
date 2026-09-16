@@ -127,7 +127,8 @@ describe("overlay legend + colors", () => {
     // MEDRE-HOOK (#609): medre_gp/clinic join the registry (114 + 2).
     // OHUSEIRE-HOOK (#610): ohuseire joins the registry (116 + 1).
     // KLIIMA-HOOK (#611): kliima_frost/wet join the registry (117 + 2).
-    expect(ids).toHaveLength(119);
+    // POI-HOOK (#612): poi_library/post/pharmacy join the registry (119 + 3).
+    expect(ids).toHaveLength(122);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -410,7 +411,8 @@ describe("overlay legend + colors", () => {
     // MEDRE-HOOK (#609): medre_gp/clinic join the registry (114 + 2).
     // OHUSEIRE-HOOK (#610): ohuseire joins the registry (116 + 1).
     // KLIIMA-HOOK (#611): kliima_frost/wet join the registry (117 + 2).
-    expect(seen.size).toBe(119);
+    // POI-HOOK (#612): poi_library/post/pharmacy join the registry (119 + 3).
+    expect(seen.size).toBe(122);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

@@ -72,17 +72,21 @@ def test_agreement_audit_verdicts():
     assert by_type["kino"]["verdict"] == "võrdlus puudub"
 
 
-# --- licence gate: counts yes, points no --------------------------------------------------
+# --- licence gate OPENED 2026-09-16 (issue #612) ----------------------------------------
 
-def test_licence_gate_blocks_point_dims():
-    assert LICENCE_OK is False
+def test_licence_gate_open_points_live():
+    # Dated evidence: WFS GetCapabilities ServiceIdentification Abstract
+    # applies the Maa- ja Ruumiamet open spatial-data licence (no
+    # per-layer override for the long-tail types).
+    assert LICENCE_OK is True
     for fn in (dim_poi_library, dim_poi_post, dim_poi_pharmacy):
         s, reason = fn(TALLINN, 150)
-        assert s is None and "litsents kinnitamata" in reason
+        assert s == 85
+        assert "avaandmete-litsents" in reason
         assert "vahekiht" in reason
 
 
-# --- pure walk bands (pinned now, live on licence-day) ---------------------------------------
+# --- pure walk bands ----------------------------------------------------------------------------
 
 def test_walk_bands_and_null_beyond():
     assert _score_dist(100) == 85
@@ -94,8 +98,7 @@ def test_walk_bands_and_null_beyond():
     assert _score_dist(-5) is None
 
 
-def test_live_shape_once_gate_lifts(monkeypatch):
-    monkeypatch.setattr(poi, "LICENCE_OK", True)
+def test_live_shape_with_gate_open():
     s, reason = dim_poi_library(TALLINN, 150)
     assert s == 85 and "raamatukogu" in reason and "vahekiht" in reason
     assert dim_poi_post(TALLINN, 5000)[0] is None  # NULL-beyond holds
