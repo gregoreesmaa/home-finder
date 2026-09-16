@@ -130,7 +130,8 @@ describe("overlay legend + colors", () => {
     // POI-HOOK (#612): poi_library/post/pharmacy join the registry (119 + 3).
     // FIXIT-HOOK (#623): fixit joins the registry (122 + 1).
     // SEVESO-HOOK (#613): seveso joins the registry (123 + 1).
-    expect(ids).toHaveLength(124);
+    // STATELAND-HOOK (#615): stateland joins the registry (124 + 1).
+    expect(ids).toHaveLength(125);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -416,7 +417,8 @@ describe("overlay legend + colors", () => {
     // POI-HOOK (#612): poi_library/post/pharmacy join the registry (119 + 3).
     // FIXIT-HOOK (#623): fixit joins the registry (122 + 1).
     // SEVESO-HOOK (#613): seveso joins the registry (123 + 1).
-    expect(seen.size).toBe(124);
+    // STATELAND-HOOK (#615): stateland joins the registry (124 + 1).
+    expect(seen.size).toBe(125);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

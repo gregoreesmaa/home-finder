@@ -100,6 +100,13 @@ import {
   isSevesoPolygonOnlyLayer,
   type SevesoArea,
 } from "../../lib/layers_p4_seveso";
+// STATELAND-HOOK (#615): stateland paints KATRI state + auction
+// polygons (polygons only, never a gradient) instead of points.
+import {
+  fetchStatelandAreas,
+  isStatelandPolygonOnlyLayer,
+  type StatelandArea,
+} from "../../lib/layers_p4_stateland";
 
 /** Viewport bbox rounded for fetch stability (matches server key rounding). */
 function sameView(a: BBoxLike, b: BBoxLike): boolean {
@@ -290,6 +297,26 @@ export default function LayersPage() {
     };
   }, [layer]);
 
+  // STATELAND-HOOK (#615): KATRI state + auction polygons (stateland
+  // layer only, fetched once per selection): the choropleth itself —
+  // inside a named state/auction parcel vs outside/unknown. No points
+  // and no score field are painted for this layer, by design (polygons
+  // only, never a gradient).
+  const [statelandAreas, setStatelandAreas] = useState<StatelandArea[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!isStatelandPolygonOnlyLayer(layer)) {
+      setStatelandAreas(null);
+      return;
+    }
+    fetchStatelandAreas().then((areas) => {
+      if (!cancelled) setStatelandAreas(areas);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [layer]);
+
   // Park boundaries (parks layer only): fetched once per selection, a
   // visual aid so scored-inside vs surroundings reads at a glance.
   const [outlines, setOutlines] = useState<ParkOutline[] | null>(null);
@@ -411,7 +438,7 @@ export default function LayersPage() {
     // MAAPARCEL-HOOK (#491): maaparcel paints polygons, never point markers.
     // EELIS-HOOK (#488): eelis layers paint polygons, never point markers.
     // SEVESO-HOOK (#613): seveso paints polygons, never point markers.
-    layer === "parks" || isPolygonOnlyLayer(layer) || isPolygonOnlyMaaLayer(layer) || isEelisPolygonOnlyLayer(layer) || isSevesoPolygonOnlyLayer(layer)
+    layer === "parks" || isPolygonOnlyLayer(layer) || isPolygonOnlyMaaLayer(layer) || isEelisPolygonOnlyLayer(layer) || isSevesoPolygonOnlyLayer(layer) || isStatelandPolygonOnlyLayer(layer)
       ? null
       : needsGraphOverlay(layer)
         ? graphPoints
@@ -425,6 +452,8 @@ export default function LayersPage() {
         ? (eelisOverlay?.length ?? 0)
         : isSevesoPolygonOnlyLayer(layer)
           ? (sevesoAreas?.length ?? 0)
+        : isStatelandPolygonOnlyLayer(layer)
+          ? (statelandAreas?.length ?? 0)
         : isPlanktprLayerId(layer)
           ? (usePolygons?.length ?? 0)
     : layer === "parks"
@@ -477,6 +506,13 @@ export default function LayersPage() {
     sevesoAreas === null
       ? "Laadin Seveso ohualasid…"
       : `Päästeameti Seveso ohualad · ${sevesoAreas.length} polügooni (väljaspool = teadmata, mitte ohutu)`;
+  // STATELAND-HOOK (#615): stateland status counts state/auction
+  // parcels, never points — the layer serves zero points by design
+  // (polygons only).
+  const statelandStatus =
+    statelandAreas === null
+      ? "Laadin riigimaid…"
+      : `KATRI riigimaa + oksjonid · ${statelandAreas.length} parselli (väljaspool = teadmata, mitte riigimaavaba)`;
   const base =
     isPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
       ? floodStatus
@@ -486,6 +522,8 @@ export default function LayersPage() {
         ? eelisStatus
       : isSevesoPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
         ? sevesoStatus
+      : isStatelandPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
+        ? statelandStatus
       : provenance === null
       ? "Laadin kihi andmeid…"
       : provenance === "snapshot"
@@ -590,6 +628,7 @@ export default function LayersPage() {
 
         eelisAreas={eelisOverlay}
         sevesoAreas={sevesoAreas}
+        statelandAreas={statelandAreas}
         overlayPoints={pointOverlay}
         usePolygons={usePolygons}
         overlayColor={overlayColorFor(layer)}
@@ -620,6 +659,9 @@ export default function LayersPage() {
             isPolygonOnlyLayer(layer) ||
             isPolygonOnlyMaaLayer(layer) ||
             isSevesoPolygonOnlyLayer(layer) ||
+            // STATELAND-HOOK (#615): stateland paints no field at all
+            // (zero points, null raster) -- same skip for state fills.
+            isStatelandPolygonOnlyLayer(layer) ||
             isPlanktprLayerId(layer)
             ? ""
             : distance === "euclidean" && provenance === "snapshot"

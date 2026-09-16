@@ -571,6 +571,14 @@ export function overlayColorFor(layer: LayerId): string {
     // other marker (distinct-color test).
     case "seveso":
       return "#3b0764";
+    // STATELAND-HOOK (#615): stateland marker (polygon layer — the
+    // point overlay stays empty live, so this colors only the toggle
+    // dot). #083344: cyan-950 registry deep (NOT #0c4a6e — taken by
+    // moorage — and NOT #155e75 — taken; darkest cyan of the three,
+    // and layers never co-render). Distinct from every other marker
+    // (distinct-color test).
+    case "stateland":
+      return "#083344";
     // MEDRE-HOOK (#609): medre slice markers (Step-1 honest-empty —
     // the point overlay stays empty live, so this colors only the
     // toggle dot). #ffedd5: orange-100 clinic paper; #ede9fe:
@@ -1061,6 +1069,13 @@ export function overlayLegendFor(layer: LayerId): string {
     // not a ruled-out one.
     case "seveso":
       return "Seveso ohualad (Päästeameti register: 235 ohuala, sh 95 Harjumaal) · tsoonis = ohuala (mürkpunane / kuumusoranž, hinnang — tutvu infovoldikuga; väljaspool = teadmata, mitte ohutu)";
+    // STATELAND-HOOK (#615): stateland state/auction fills (KATRI +
+    // maaoksjon) — inside a named state/auction parcel reads by class
+    // color with the auction date, outside every parcel is unknown
+    // (never state-free): an unregistered interest is not a ruled-out
+    // one. Assurance stays capped hinnang (state CAN sell).
+    case "stateland":
+      return "Riigimaa ja oksjonid (KATRI register: 11068 parselli + 15 aktiivset oksjonit) · tsoonis = riigimaa (roheline, piiratud kinnitus — riik VÕIB müüa) või oksjon (kollane, kuupäevaga hoiatuslipp); väljaspool = teadmata, mitte riigimaavaba";
     // ASUMEDIA-HOOK (#495): asumedia (own-snapshot asking medians) —
     // the dated negative rides along: 0/84 asums reach MIN_N=5, so
     // the field is unknown everywhere until the reopen lands real
