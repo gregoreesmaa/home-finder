@@ -16,10 +16,23 @@ RAW x/y, flags every record ``projected: False``, and counts (never
 hides) the rows without coordinates. Plotting raw L-EST97 as WGS84
 would be fake precision (AGENTS.md 7.2); the web overlay stays empty
 until the reopen PR projects (see the checklist in layers_accblack.ts).
+
+ADDENDUM 2026-09-16 (issue #522): the transform step is ported, not
+pending — lest97_to_wgs84 below is the batch_tervise.py (#511) inverse
+Lambert Conformal Conic, same constants, same ~1 m datum label, and
+projected_records() joins per-point WGS84 + vintage labels while
+pre-2019 blank-coordinate rows stay NULL (skipped, counted via
+split_coords). Dated probe, same day: ONE polite bytes 0-2500 range
+peek (UA home-finder-522-accblack-probe/1.0) -> HTTP 206 text/csv,
+byte-identical size 12342189 B, same ``;``-delimited header — no
+re-pull, no dumps committed, zero 429. Wiring the projected extract
+into the route/sidecar is the follow-up; measured_records() keeps its
+raw shape for back-compat.
 """
 
 import argparse
 import csv
+import math
 import os
 import sys
 
@@ -49,6 +62,77 @@ TALLINN_COMMUNE = "Tallinn"
 #: values (lat ~59, lon ~24) and garbage — it never validates truth.
 LEST97_X_MIN, LEST97_X_MAX = 6360000.0, 6655000.0
 LEST97_Y_MIN, LEST97_Y_MAX = 330000.0, 740000.0
+
+
+# ---------------------------------------------------------------------------
+# L-EST97 (EPSG:3301) -> WGS84, labelled approximate (~1 m). Ported
+# 2026-09-16 from scripts/build/batch_tervise.py::lest97_to_wgs84
+# (issue #511, verified <1 mm vs pyproj there) for issue #522 — same
+# register family (X = northing ~6.4-6.6M, Y = easting ~0.37-0.74M),
+# same math, same datum label. Copied, not imported: scripts/build
+# files ship per-issue and stay rebase-safe against unmerged siblings.
+# ---------------------------------------------------------------------------
+
+#: GRS80 ellipsoid (L-EST97 datum; ETRS89, drifts ~1 m from WGS84 Gxxx).
+_LEST_A = 6378137.0
+_LEST_F = 1 / 298.257222101
+_LEST_E2 = 2 * _LEST_F - _LEST_F * _LEST_F
+_LEST_E = math.sqrt(_LEST_E2)
+
+#: L-EST97 projection constants (Maa-amet / EPSG:3301 registry).
+_LEST_PHI0 = math.radians(57.5175539305556)
+_LEST_LAM0 = math.radians(24.0)
+_LEST_PHI1 = math.radians(59.3333333333333)
+_LEST_PHI2 = math.radians(58.0)
+_LEST_E0 = 500000.0
+_LEST_N0 = 6375000.0
+
+
+def _lest_m(phi: float) -> float:
+    return math.cos(phi) / math.sqrt(1 - _LEST_E2 * math.sin(phi) ** 2)
+
+
+def _lest_t(phi: float) -> float:
+    s = _LEST_E * math.sin(phi)
+    return math.tan(math.pi / 4 - phi / 2) / ((1 - s) / (1 + s)) ** (_LEST_E / 2)
+
+
+_LEST_M1, _LEST_M2 = _lest_m(_LEST_PHI1), _lest_m(_LEST_PHI2)
+_LEST_T1, _LEST_T2 = _lest_t(_LEST_PHI1), _lest_t(_LEST_PHI2)
+_LEST_T0 = _lest_t(_LEST_PHI0)
+_LEST_N = ((math.log(_LEST_M1) - math.log(_LEST_M2))
+           / (math.log(_LEST_T1) - math.log(_LEST_T2)))
+_LEST_FF = _LEST_M1 / (_LEST_N * _LEST_T1 ** _LEST_N)
+_LEST_RHO0 = _LEST_A * _LEST_FF * _LEST_T0 ** _LEST_N
+
+#: Accuracy label stamped on every projected point (reviewable, never
+#: hidden) — byte-identical wording to batch_tervise.py.
+LEST97_ACCURACY_LABEL = (
+    "L-EST97 (EPSG:3301) inverse-LCC poordumine, GRS80~WGS84 "
+    "daatumi vahe ~1 m — punktid on ausad ~1 m tapsusega"
+)
+
+
+def lest97_to_wgs84(northing: float, easting: float):
+    """Project L-EST97 metres to (lat, lon). Labelled ~1 m (see above).
+
+    CSV convention: ``X koordinaat`` is the northing (~6.4-6.6M),
+    ``Y koordinaat`` the easting (~0.37-0.74M). Raises ValueError on
+    non-finite input (callers drop such rows, never fake them).
+    """
+    if not (math.isfinite(northing) and math.isfinite(easting)):
+        raise ValueError("non-finite L-EST97 coordinate")
+    rho = math.copysign(
+        math.hypot(easting - _LEST_E0, _LEST_RHO0 - (northing - _LEST_N0)),
+        _LEST_N)
+    theta = math.atan2(easting - _LEST_E0, _LEST_RHO0 - (northing - _LEST_N0))
+    t = (rho / (_LEST_A * _LEST_FF)) ** (1 / _LEST_N)
+    lam = theta / _LEST_N + _LEST_LAM0
+    phi = math.pi / 2 - 2 * math.atan(t)
+    for _ in range(20):
+        s = _LEST_E * math.sin(phi)
+        phi = math.pi / 2 - 2 * math.atan(t * ((1 - s) / (1 + s)) ** (_LEST_E / 2))
+    return math.degrees(phi), math.degrees(lam)
 
 
 # ---------------------------------------------------------------------------
@@ -127,6 +211,40 @@ def measured_records(rows):
             "year": (r.get("Toimumisaeg") or "")[:4],
             "commune": r.get("Omavalitsus"),
             "projected": False,
+        })
+    return out
+
+
+def projected_records(rows):
+    """Coordinated rows -> projected WGS84 records (issue #522). Pure.
+
+    Each record carries the raw L-EST97 x/y, the projected ``lat``/``lon``
+    (labelled ~1 m via ``transform``), the severity weight, and the
+    per-point vintage (``year`` from ``Toimumisaeg``, ``vintage`` date
+    prefix). Rows without coordinates (pre-2019 blanks) are SKIPPED —
+    they stay NULL: callers count them via split_coords, never plot
+    them, never zero-fill them.
+    """
+    out = []
+    for r in rows:
+        if not has_lest97(r):
+            continue
+        x = float(str(r["X koordinaat"]).strip())
+        y = float(str(r["Y koordinaat"]).strip())
+        lat, lon = lest97_to_wgs84(x, y)
+        out.append({
+            "lat": lat,
+            "lon": lon,
+            "x_lest": x,
+            "y_lest": y,
+            "dead": r.get("Hukkunuid"),
+            "injured": r.get("Vigastatuid"),
+            "sev": severity(r),
+            "year": (r.get("Toimumisaeg") or "")[:4],
+            "vintage": (r.get("Toimumisaeg") or "")[:10],
+            "commune": r.get("Omavalitsus"),
+            "projected": True,
+            "transform": LEST97_ACCURACY_LABEL,
         })
     return out
 
