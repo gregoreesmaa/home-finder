@@ -62,3 +62,25 @@ plenty for buildings (TTL 90 d in-module).
   language column; re-probe the institutions bulk, then slice.
 - OSM school layers (group 15: p12, p123, p130, p314, p386) stay the
   fallback cousins; this register measures them once harvested.
+
+## Map graduation (#608, 2026-09-16)
+
+Three `/layers` overlays ship the slices: `ehis_school`,
+`ehis_kindergarten`, `ehis_hobby` (`apps/web/lib/layers_p4_ehis.ts`,
+paramIds [] + paramLabel P4-011). Harvester
+`scripts/build/batch_ehis.py` (quarterly TTL, polite, 429 = stop)
+joins hooned rows to institution slices via `<oppeasutusId>` and
+builds the snapshot sidecar `ehis/ehis-points.json`: 618 Harjumaa
+points (school 239 / kindergarten 369 / hobby 10 — the hobby slice is
+thin: huvikool institutions without their own coord-carrying Harju
+building place nowhere, stated on the legend); dropped 1179
+other-county + 355 closed/unsliced-institution + 28 coordless, all
+counted (zero closed-institution buildings in the Harju set; every
+`<oppeasutusId>` resolved). Harjumaa membership = `<aadress>` naming
+Harju maakond (the feed's own county label — 738 rows, matching the
+verdict's 739 within one row). Kernels are the exact scorer bands
+(≤500 m → 80, ≤1 km → 65, ≤2 km → 50, beyond NULL — straight-line
+`linnulennult` hinnang, no smoothing, no raster master by documented
+decision, sport #607 dbands kernel reused). The OSM `schools` layer
+keeps its own tuning (never re-tuned here); Spordiregister venues
+(#607) stay a separate signal (schools ≠ venues — no double-score).

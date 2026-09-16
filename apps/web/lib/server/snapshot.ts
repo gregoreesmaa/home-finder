@@ -136,6 +136,12 @@ import { PAASTE_RASTER_FILE } from "../layers_paaste";
 // to null; the sidecar is honestly empty when unharvested).
 import { SPORT_RASTER_FILE } from "../layers_p4_sport";
 import type { SportPoint } from "../layers_p4_sport";
+// EHIS-HOOK (#608): measured-school raster filenames + sidecar point
+// type live in layers_p4_ehis.ts (rasters intentionally never built —
+// EHIS_NO_RASTER; the names resolve to absent files so rasters degrade
+// to null; the sidecar is honestly empty when unharvested).
+import { EHIS_RASTER_FILE } from "../layers_p4_ehis";
+import type { EhisPoint } from "../layers_p4_ehis";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -450,6 +456,48 @@ export async function loadSportPoints(dir: string): Promise<SportPoint[]> {
     // Optional sidecar: honestly no points.
   }
   sportPointCache.set(dir, points);
+  return points;
+}
+
+// EHIS-HOOK (#608): measured-school sidecar cache (same discipline).
+const ehisPointCache = new Map<string, EhisPoint[]>();
+
+/** School slice tags the harvester writes (lat/lon/slice only). */
+const EHIS_SLICES = new Set(["school", "kindergarten", "hobby"]);
+
+function isEhisPoint(v: unknown): v is EhisPoint {
+  const p = v as Partial<EhisPoint>;
+  return (
+    typeof p?.lon === "number" && Number.isFinite(p.lon) &&
+    typeof p?.lat === "number" && Number.isFinite(p.lat) &&
+    typeof p?.slice === "string" && EHIS_SLICES.has(p.slice)
+  );
+}
+
+/**
+ * Measured-school sidecar (`ehis/ehis-points.json`): sliced Harjumaa
+ * school-building points for the ehis_school/kindergarten/hobby
+ * overlays (issue #608, built offline by scripts/build/batch_ehis.py —
+ * never live). Missing or malformed sidecar degrades to [] (honestly
+ * no points — the map renders "no data", never a faked zero), never
+ * an error.
+ */
+export async function loadEhisPoints(dir: string): Promise<EhisPoint[]> {
+  const hit = ehisPointCache.get(dir);
+  if (hit) return hit;
+  let points: EhisPoint[] = [];
+  try {
+    const raw = await fs.readFile(path.join(dir, "ehis", "ehis-points.json"), "utf8");
+    const parsed: unknown = JSON.parse(raw);
+    const list = typeof parsed === "object" && parsed !== null && Array.isArray((parsed as { points?: unknown }).points)
+      ? (parsed as { points: unknown[] }).points
+      : [];
+    points = list.filter(isEhisPoint);
+    if (!Array.isArray((parsed as { points?: unknown }).points)) console.warn(`snapshot: ignoring malformed ehis-points.json in ${dir}`);
+  } catch {
+    // Optional sidecar: honestly no points.
+  }
+  ehisPointCache.set(dir, points);
   return points;
 }
 
@@ -870,6 +918,9 @@ const RASTER_FILE: Record<LayerId, string> = {
   // by decision — SPORT_NO_RASTER; the points-splat distance kernel IS
   // the field; absent files degrade windows to null, honestly).
   ...SPORT_RASTER_FILE,
+  // EHIS-HOOK (#608): school raster names only (no masters built by
+  // decision — EHIS_NO_RASTER; same points-splat discipline).
+  ...EHIS_RASTER_FILE,
 };
 
 /**
@@ -1343,6 +1394,11 @@ const METRO_PREFIX: Record<LayerId, string> = {
   sport_hall: "sport-hall-metro",
   sport_field: "sport-field-metro",
   sport_pool: "sport-pool-metro",
+  // EHIS-HOOK (#608): no ehis metro masters (no county masters either
+  // — EHIS_NO_RASTER; same absent-file fallback to the splat kernel).
+  ehis_school: "ehis-school-metro",
+  ehis_kindergarten: "ehis-kindergarten-metro",
+  ehis_hobby: "ehis-hobby-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

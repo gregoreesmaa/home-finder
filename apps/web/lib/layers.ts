@@ -524,6 +524,17 @@ import {
   isSportLayerId,
   sportBonusSpecFor,
 } from "./layers_p4_sport";
+// EHIS-HOOK (#608): measured-school tables live in ./layers_p4_ehis
+// (P4-011 school/kindergarten/hobby slices, register sidecar). That
+// module imports layers only as types, so no runtime cycle.
+import type { EhisLayerId } from "./layers_p4_ehis";
+import {
+  EHIS_DECAY,
+  EHIS_LAYERS,
+  EHIS_TAGS,
+  ehisBonusSpecFor,
+  isEhisLayerId,
+} from "./layers_p4_ehis";
 import type { PaasteLayerId } from "./layers_paaste";
 import {
   PAASTE_DECAY,
@@ -648,7 +659,10 @@ export type LayerId =
   | PaasteLayerId
   // SPORT-HOOK (#607): sport-venue slice ids (./layers_p4_sport,
   // P4-048 pool/hall/field).
-  | SportLayerId;
+  | SportLayerId
+  // EHIS-HOOK (#608): measured-school slice ids (./layers_p4_ehis,
+  // P4-011 school/kindergarten/hobby).
+  | EhisLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -864,6 +878,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...PAASTE_DECAY,
   // SPORT-HOOK (#607): sport-venue radii (see layers_p4_sport.ts SPORT_DECAY).
   ...SPORT_DECAY,
+  // EHIS-HOOK (#608): school radii (see layers_p4_ehis.ts EHIS_DECAY).
+  ...EHIS_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -1081,6 +1097,11 @@ export const LAYERS: LayerDef[] = [
   // SPORT-HOOK (#607): sport-venue slice defs (P4-048 pool/hall/field,
   // no parameters3 id) from ./layers_p4_sport.
   ...SPORT_LAYERS,
+  // EHIS-HOOK (#608): measured-school slice defs (P4-011
+  // school/kindergarten/hobby, no parameters3 id) from
+  // ./layers_p4_ehis. The OSM `schools` layer keeps its own tuning
+  // (GTFS-vs-transit precedent — never re-tuned here).
+  ...EHIS_LAYERS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -1209,6 +1230,9 @@ const TAGS: Record<LayerId, string> = {
   // SPORT-HOOK (#607): sport-venue source notes (see layers_p4_sport.ts
   // SPORT_TAGS — prose, NOT an Overpass fragment).
   ...SPORT_TAGS,
+  // EHIS-HOOK (#608): school source notes (see layers_p4_ehis.ts
+  // EHIS_TAGS — prose, NOT an Overpass fragment).
+  ...EHIS_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -1433,6 +1457,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   if (isTerviseLayerId(layer)) return terviseBonusSpecFor(layer);
   // SPORT-HOOK (#607): sport distance-band specs live in layers_p4_sport.ts.
   if (isSportLayerId(layer)) return sportBonusSpecFor(layer);
+  // EHIS-HOOK (#608): school distance-band specs live in
+  // layers_p4_ehis.ts (same dbands kernel, same band table).
+  if (isEhisLayerId(layer)) return ehisBonusSpecFor(layer);
   // P4-031-HOOK (#484): senscom band spec lives in layers_p4_senscom.ts.
   if (isSenscomLayerId(layer)) return senscomBonusSpecFor(layer);
   // ACCBLACK-HOOK (#490): accblack avoid spec lives in layers_accblack.ts.

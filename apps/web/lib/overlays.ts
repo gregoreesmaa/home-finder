@@ -533,6 +533,19 @@ export function overlayColorFor(layer: LayerId): string {
       return "#86efac";
     case "sport_pool":
       return "#bae6fd";
+    // EHIS-HOOK (#608): ehis slice markers (point overlays,
+    // stride-sampled like grocery). #c7d2fe: indigo-200 schoolbook
+    // (NOT #c4b5fd — taken by sport_hall); #fbcfe8: pink-200
+    // kindergarten (NOT #fda4af — taken by asumedia); #a5f3fc:
+    // cyan-200 hobby (NOT #67e8f9 — taken — and NOT #bae6fd — taken
+    // by sport_pool). Distinct from every other marker
+    // (distinct-color test).
+    case "ehis_school":
+      return "#c7d2fe";
+    case "ehis_kindergarten":
+      return "#fbcfe8";
+    case "ehis_hobby":
+      return "#a5f3fc";
     // ASUMEDIA-HOOK (#495): asumedia marker (empty-on-purpose layer —
     // the point overlay stays empty live, so this colors only the
     // toggle dot). #fda4af: rose-300 asking-price blush (NOT #fb7185
@@ -932,6 +945,17 @@ export function overlayLegendFor(layer: LayerId): string {
       return "Staadionid ja väliväljakud (Spordiregistri väljavõte) · lähim väljak 2 km raadiuses (≤500 m -> 80, ≤1 km -> 65, ≤2 km -> 50; kauguse-hinnang linnulennult)";
     case "sport_pool":
       return "Ujulate ligidus (Spordiregister + Terviseameti ujulate loend) · lähim ujula 2 km raadiuses (≤500 m -> 80, ≤1 km -> 65, ≤2 km -> 50; kauguse-hinnang linnulennult, veekvaliteeti ei hinnata)";
+    // EHIS-HOOK (#608): ehis slices (P4-011) — measured register
+    // school buildings from the snapshot sidecar; the band field (not
+    // the dots) is the score: nearest sliced building <= 500 m -> 80,
+    // <= 1 km -> 65, <= 2 km -> 50; beyond stays unknown (scorer NULL:
+    // hinnang + EI OLE; linnulennult, kvaliteet/keel ostja kontroll).
+    case "ehis_school":
+      return "Koolid lähedal (EHISe väljavõte) · lähim kool 2 km raadiuses (≤500 m -> 80, ≤1 km -> 65, ≤2 km -> 50; kauguse-hinnang linnulennult, kvaliteet ja õppekeel teadmata)";
+    case "ehis_kindergarten":
+      return "Lasteaiad lähedal (EHISe väljavõte) · lähim lasteaed 2 km raadiuses (≤500 m -> 80, ≤1 km -> 65, ≤2 km -> 50; kauguse-hinnang linnulennult, kohtade arv teadmata)";
+    case "ehis_hobby":
+      return "Huvikoolid lähedal (EHISe väljavõte, õhuke valim: 10 hoonet Harjumaal) · lähim huvikool 2 km raadiuses (≤500 m -> 80, ≤1 km -> 65, ≤2 km -> 50; kauguse-hinnang linnulennult)";
     // ASUMEDIA-HOOK (#495): asumedia (own-snapshot asking medians) —
     // the dated negative rides along: 0/84 asums reach MIN_N=5, so
     // the field is unknown everywhere until the reopen lands real
