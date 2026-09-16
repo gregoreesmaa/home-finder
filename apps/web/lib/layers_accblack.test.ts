@@ -1,6 +1,6 @@
-// Transpordiamet accident-blackspot overlay tests (issue #490): P4-012
-// measured slice ships as an honestly-empty layer (L-EST97 verdict
-// 2026-09-13 — zero measured points plotted rather than misplotted).
+// Transpordiamet accident-blackspot overlay tests (issue #490, reopen
+// #522): P4-012 measured slice ships projected WGS84 points from the
+// snapshot sidecar (8197 Tallinn points, ~1 m label).
 // Hermetic: inline fixtures only, no network, no snapshot files.
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -62,7 +62,7 @@ describe("accblack registry (#490)", () => {
       expect(d.title.length).toBeGreaterThan(0);
       expect(d.goodLabel.length).toBeGreaterThan(0);
       expect(d.badLabel.length).toBeGreaterThan(0);
-      expect(d.source).toContain("2026-09-13");
+      expect(d.source).toContain("2026-09-16");
       expect(d.fallbackPoints.length).toBeGreaterThanOrEqual(2);
     }
   });
@@ -74,22 +74,23 @@ describe("accblack registry (#490)", () => {
   });
 });
 
-describe("accblack honesty (#490)", () => {
-  it("frames the layer as measured-but-waiting, never as safety truth", () => {
+describe("accblack honesty (#490, reopen #522)", () => {
+  it("frames the layer as measured, never as safety truth", () => {
     const def = ACCBLACK_DEFS[0];
-    expect(def.title).toMatch(/mõõdetud — ootel/);
+    expect(def.title).toMatch(/mõõdetud/);
+    expect(def.title).not.toMatch(/ootel/);
     expect(def.source).toMatch(/L-EST97/);
-    expect(def.source).toMatch(/ei joonistata ühtegi punkti/);
+    expect(def.source).toMatch(/projekteeritud/);
     expect(def.source).toMatch(/Transpordiamet/);
   });
 
-  it("says unknown-everywhere in the legend (never zero, never safe)", () => {
+  it("says unknown outside coverage in the legend (never zero, never safe)", () => {
     const def = ACCBLACK_DEFS[0];
     expect(def.goodLabel).toMatch(/teadmata/);
     expect(def.badLabel).toMatch(/teadmata/);
   });
 
-  it("ships an explicitly empty measured set (no points to misplot)", () => {
+  it("retired constant stays empty (sidecar is the single source)", () => {
     expect(ACCBLACK_MEASURED_POINTS).toEqual([]);
   });
 
@@ -125,20 +126,34 @@ describe("accblack scoring contract (#490)", () => {
     expect(isAccBlackLayerId("roadsafety")).toBe(false);
   });
 
-  it("scores null everywhere with the empty measured set (never a faked zero)", () => {
+  it("scores null everywhere with the empty retired set (never a faked zero)", () => {
     expect(goodnessAt(59.4374, 24.7454, ACCBLACK_MEASURED_POINTS, "accblack")).toBeNull();
     expect(layerHexes("accblack", ACCBLACK_MEASURED_POINTS, TALLINN_BBOX)).toEqual([]);
   });
 
-  it("serves the empty set through the generic server proxy as honestly-empty", async () => {
+  it("scores avoid-kind with sidecar points (0 on a blackspot, high far away)", () => {
+    const pts = [
+      { lat: 59.4374, lon: 24.7454 },
+      { lat: 59.43, lon: 24.7 },
+    ];
+    expect(goodnessAt(59.4374, 24.7454, pts, "accblack")).toBe(0);
+    expect(goodnessAt(59.6, 24.95, pts, "accblack")).toBeGreaterThan(90);
+  });
+
+  it("serves sidecar points through the generic server proxy as snapshot", async () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ points: [], provenance: "empty", ageMs: null }),
+      json: () =>
+        Promise.resolve({
+          points: [{ lat: 59.4374, lon: 24.7454 }],
+          provenance: "snapshot",
+          ageMs: null,
+        }),
     });
     const res = await fetchLayerPoints("accblack", TALLINN_BBOX, fetchImpl);
     expect(String(fetchImpl.mock.calls[0][0]).startsWith("/api/layers/accblack?")).toBe(true);
-    expect(res.provenance).toBe("empty");
-    expect(res.points).toEqual([]);
+    expect(res.provenance).toBe("snapshot");
+    expect(res.points).toEqual([{ lat: 59.4374, lon: 24.7454 }]);
     expect(res.live).toBe(true);
   });
 });

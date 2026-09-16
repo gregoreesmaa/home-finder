@@ -3,6 +3,7 @@ node_modules
 .turbo
 .git
 .worktrees
+.muse
 coverage
 test-results
 playwright-report

@@ -25,9 +25,11 @@ import { isEelisLayerId } from "../../../../lib/layers_eelis";
 
 import {
   intersectsCoverage,
+  loadAccblackPoints,
   loadLayerRaster,
   loadSnapshotPoints,
   SNAPSHOT_AS_OF_MS,
+  snapshotDir,
   SnapshotUnavailable,
 } from "../../../../lib/server/snapshot";
 import { loadSenscomSnapshot, senscomPointsIn } from "../../../../lib/server/senscom";
@@ -173,13 +175,25 @@ export async function GET(
       ageMs: null,
     });
   }
-  // ACCBLACK-HOOK (#490): the measured blackspot set is empty on
-  // purpose (L-EST97 verdict 2026-09-13 — zero projected points, see
-  // lib/layers_accblack.ts). Serve honestly-empty: the map renders
-  // "no data", never a faked zero and never labeled demo. A layer with
-  // neither points nor raster would otherwise be a 500 here.
+  // ACCBLACK-HOOK (#490, reopen #522): projected blackspot points come
+  // from the snapshot sidecar (accblack/accblack-points.json, built
+  // offline by projecting the Transpordiamet CSV with the ported
+  // L-EST97 transform — never live). A missing sidecar stays
+  // honestly-empty: the map renders "no data", never a faked zero.
   if (isAccBlackLayerId(def.id)) {
-    return NextResponse.json({ points: [], provenance: "empty", ageMs: null });
+    const all = await loadAccblackPoints(snapshotDir());
+    const points: LayerPoint[] = all
+      .filter(
+        (p) =>
+          p.lon >= bbox.minlon && p.lon <= bbox.maxlon &&
+          p.lat >= bbox.minlat && p.lat <= bbox.maxlat,
+      )
+      .map((p) => ({ lat: p.lat, lon: p.lon }));
+    return NextResponse.json({
+      points,
+      provenance: points.length > 0 ? "snapshot" : "empty",
+      ageMs: null,
+    });
   }
   // ASUMEDIA-HOOK (#495): the measured per-asum set is empty on purpose
   // (dated negative 2026-09-14 — 0/84 asums reach MIN_N=5, see

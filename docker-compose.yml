@@ -31,8 +31,17 @@ services:
       dockerfile: ./apps/web/Dockerfile
     environment:
       NEXT_PUBLIC_SCORING_URL: http://localhost:8000
+      # Map data path (docs/layers.md §1): local 2026-09-12 snapshot with
+      # raster masters + sidecars; container HOME is /root.
+      HF_SNAPSHOT_DIR: /root/hf-data/2026-09-12
+      # Ookla quarterly extract (2026-Q1: 971 fixed + 555 mobile tiles).
+      OOKLA_SNAPSHOT_PATH: /root/hf-data/2026-09-12/ookla/ookla-tallinn-2026Q1.json
+      # sensor.community daily extract (Tallinn bbox).
+      SENSCOM_SNAPSHOT_PATH: /root/hf-data/2026-09-12/senscom/sensor-community-tallinn.json
     ports:
       - "3000:3000"
+    volumes:
+      - ${HOME}/hf-data:/root/hf-data:ro
     depends_on:
       - scoring
 

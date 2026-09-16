@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   clearSnapshotCache,
   intersectsCoverage,
+  loadAccblackPoints,
   loadLayerRaster,
   loadParkAreas,
   loadPlanktprAreas,
@@ -1802,6 +1803,51 @@ describe("statkov cover rasters (#485)", () => {
       } finally {
         await rm(stale, { recursive: true, force: true });
       }
+    }
+  });
+});
+
+describe("accblack projected-points sidecar (#522 reopen)", () => {
+  async function accblackDir(payload: unknown): Promise<string> {
+    const dir = await mkdtemp(join(tmpdir(), "hf-snap-acc-"));
+    await mkdir(join(dir, "accblack"), { recursive: true });
+    await writeFile(join(dir, "accblack", "accblack-points.json"), JSON.stringify(payload));
+    return dir;
+  }
+
+  it("loads {points} sidecar, dropping malformed rows (never throws)", async () => {
+    const dir = await accblackDir({
+      points: [
+        { lon: 24.75, lat: 59.44, sev: 2, year: "2023" },
+        { lon: "x", lat: 59.44, sev: 1, year: "2023" },
+        { lon: 24.75 },
+      ],
+      excluded_outside_tallinn_bbox: 1,
+    });
+    try {
+      await expect(loadAccblackPoints(dir)).resolves.toEqual([
+        { lon: 24.75, lat: 59.44, sev: 2, year: "2023" },
+      ]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("degrades missing/malformed sidecar to [] (honestly no points)", async () => {
+    await expect(loadAccblackPoints("/nonexistent-dir-xyz")).resolves.toEqual([]);
+    const bad = await mkdtemp(join(tmpdir(), "hf-snap-accbad-"));
+    await mkdir(join(bad, "accblack"), { recursive: true });
+    await writeFile(join(bad, "accblack", "accblack-points.json"), "{nope");
+    try {
+      await expect(loadAccblackPoints(bad)).resolves.toEqual([]);
+    } finally {
+      await rm(bad, { recursive: true, force: true });
+    }
+    const bare = await accblackDir([{ lon: 24.75, lat: 59.44, sev: 1, year: "2023" }]);
+    try {
+      await expect(loadAccblackPoints(bare)).resolves.toEqual([]);
+    } finally {
+      await rm(bare, { recursive: true, force: true });
     }
   });
 });
