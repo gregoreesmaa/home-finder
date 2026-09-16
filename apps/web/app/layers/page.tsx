@@ -413,6 +413,10 @@ export default function LayersPage() {
   // ujulad sidecar, not the OSM snapshot — the status names the
   // register harvest vintage (+ its age) instead of the snapshot date.
   const isDbands = bonusSpecFor(layer).kind === "dbands";
+  // FIXIT-HOOK (#623): pins-layer markers ride the annateada sidecar,
+  // not the OSM snapshot — the status names the pull vintage (+ its
+  // age) plus the rolling window instead of the snapshot date.
+  const isPins = bonusSpecFor(layer).kind === "pins";
   // FLOOD-HOOK (#487): floodzone status counts polygons, never points —
   // the layer serves zero points by design (polygons only).
   const floodStatus =
@@ -471,7 +475,9 @@ export default function LayersPage() {
                       : isPoiLayerId(layer)
                         ? `Huvipunktide väljavõte (register, seis 2026-09-16)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
                         : `Spordiregistri + ujulate väljavõte (seis 2026-09-16)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
-              : `Kohalik hetktõmmis (2026-09-12) · ${pointCount} punkti`
+              : isPins
+                ? `annateada väljavõte (libisev 19 päeva aken, seis 2026-09-17)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} teadet`
+                : `Kohalik hetktõmmis (2026-09-12) · ${pointCount} punkti`
           : "Kohalik hetktõmmis (2026-09-12) · rasterkiht"
         : provenance === "empty"
           ? "Selle piirkonna kohta hetktõmmises andmed puuduvad"
@@ -592,6 +598,8 @@ export default function LayersPage() {
                     ? " · otsekaugus kõvas raadiuses (DIY-tunnistajad, mitte kõnnivõrk)"
                     : bonusSpecFor(layer).kind === "qbands"
                       ? " · otsekaugus kõvas raadiuses (lähim seirepunkt, mitte kõnnivõrk)"
+                    : bonusSpecFor(layer).kind === "pins"
+                      ? " · teated, mitte hinnang (kaebuste tihedus, mitte elukvaliteet)"
                     : " · euclidiline varu (kõndimisvõrk puudub)"
               : "")
         }

@@ -268,6 +268,16 @@ export function ValueHeatMap({
           layer.setField(null, 0, 0, [0, 0, 0, 0]);
           return;
         }
+        // FIXIT-HOOK (#623): pins layers render markers ONLY (the
+        // field stays unknown everywhere by decision — pins measure
+        // reporting activity, not place quality). Clearing the field
+        // keeps the map clean: an all-NaN grid would otherwise paint
+        // the viewport score-0 red. Markers still ride paintOverlay.
+        if (spec.kind === "pins") {
+          gridRef.current = null;
+          layer.setField(null, 0, 0, [0, 0, 0, 0]);
+          return;
+        }
         const res = fieldResolution(box, rKm);
         const grid = buildScoredField(valid, box, res.cols, res.rows, rKm, spec);
         gridRef.current = grid;

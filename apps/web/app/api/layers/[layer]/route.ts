@@ -28,6 +28,7 @@ import {
   loadAccblackPoints,
   loadEhisPoints,
   loadLayerRaster,
+  loadFixitPoints,
   loadMedrePoints,
   loadOhuseirePoints,
   loadPoiPoints,
@@ -78,6 +79,13 @@ import {
   poiPointsIn,
   poiSliceFor,
 } from "../../../../lib/layers_p4_poi";
+// FIXIT-HOOK (#623): report-pin sidecar points (see below).
+import {
+  FIXIT_VINTAGE,
+  FIXIT_WINDOW_DAYS,
+  fixitPointsIn,
+  isFixitLayerId,
+} from "../../../../lib/layers_p4_fixit";
 import { loadSenscomSnapshot, senscomPointsIn } from "../../../../lib/server/senscom";
 import { loadOoklaSnapshot, ooklaPointsIn } from "../../../../lib/server/ookla";
 
@@ -335,6 +343,23 @@ export async function GET(
       points,
       provenance: points.length > 0 ? "snapshot" : "empty",
       ageMs: Date.now() - Date.parse(`${POI_VINTAGE}T00:00:00`),
+    });
+  }
+  // FIXIT-HOOK (#623): report pins come from the snapshot sidecar
+  // (fixit/fixit-points.json, built offline by
+  // scripts/build/batch_fixit.py — never the OSM snapshot, never
+  // live). Expiry is enforced HERE at serve time: pins older than
+  // the rolling window never render as current, so a stale sidecar
+  // degrades to honestly-empty. Vintage rides FIXIT_VINTAGE (daily
+  // harvest).
+  if (isFixitLayerId(def.id)) {
+    const all = await loadFixitPoints(snapshotDir());
+    const points: LayerPoint[] = fixitPointsIn(all, bbox, Date.now(),
+                                               FIXIT_WINDOW_DAYS);
+    return NextResponse.json({
+      points,
+      provenance: points.length > 0 ? "snapshot" : "empty",
+      ageMs: Date.now() - Date.parse(`${FIXIT_VINTAGE}T00:00:00`),
     });
   }
   try {

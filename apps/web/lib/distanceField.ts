@@ -345,6 +345,15 @@ export function buildScoredField(
     }
     return { field, bonus, sigmaKm, direct };
   }
+  // FIXIT-HOOK (#623): report pins render markers ONLY — the field
+  // stays unknown everywhere BY DECISION (pins measure reporting
+  // activity, not place quality; there is no scorer table to mirror).
+  // All-NaN direct paints nothing (never zero, never a faked score);
+  // the markers ride selectOverlayPoints, not this grid.
+  if (spec.kind === "pins") {
+    const direct = new Float64Array(cols * rows).fill(NaN);
+    return { field, bonus, sigmaKm, direct };
+  }
   if (spec.kind === "trips") {
     // Total nearby weekday departures, saturating: score = 100·S/(S+half),
     // linear in service (two 500-trip stops equal one 1000-trip stop) with

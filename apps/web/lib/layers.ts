@@ -579,6 +579,17 @@ import {
   isKliimaLayerId,
   kliimaBonusSpecFor,
 } from "./layers_kliima";
+// FIXIT-HOOK (#623): report-pin tables live in ./layers_p4_fixit
+// (fixit markers, register sidecar). That module imports layers only
+// as types, so no runtime cycle.
+import type { FixitLayerId } from "./layers_p4_fixit";
+import {
+  FIXIT_DECAY,
+  FIXIT_LAYERS,
+  FIXIT_TAGS,
+  fixitBonusSpecFor,
+  isFixitLayerId,
+} from "./layers_p4_fixit";
 import type { PaasteLayerId } from "./layers_paaste";
 import {
   PAASTE_DECAY,
@@ -718,7 +729,10 @@ export type LayerId =
   | KliimaLayerId
   // POI-HOOK (#612): long-tail slice ids (./layers_p4_poi,
   // library/post/pharmacy, no parameters3 id).
-  | PoiLayerId;
+  | PoiLayerId
+  // FIXIT-HOOK (#623): report-pin id (./layers_p4_fixit, markers
+  // only, no parameters3 id).
+  | FixitLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -944,6 +958,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...KLIIMA_DECAY,
   // POI-HOOK (#612): long-tail radii (see layers_p4_poi.ts POI_DECAY).
   ...POI_DECAY,
+  // FIXIT-HOOK (#623): report-pin radius (see layers_p4_fixit.ts FIXIT_DECAY).
+  ...FIXIT_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -1180,6 +1196,9 @@ export const LAYERS: LayerDef[] = [
   // POI-HOOK (#612): long-tail slice defs (library/post/pharmacy, no
   // parameters3 id) from ./layers_p4_poi.
   ...POI_LAYERS,
+  // FIXIT-HOOK (#623): report-pin def (markers only, no parameters3
+  // id) from ./layers_p4_fixit.
+  ...FIXIT_LAYERS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -1324,6 +1343,9 @@ const TAGS: Record<LayerId, string> = {
   // POI-HOOK (#612): long-tail source notes (see layers_p4_poi.ts
   // POI_TAGS — prose, NOT an Overpass fragment).
   ...POI_TAGS,
+  // FIXIT-HOOK (#623): report-pin source note (see
+  // layers_p4_fixit.ts FIXIT_TAGS — prose, NOT an Overpass fragment).
+  ...FIXIT_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -1479,7 +1501,12 @@ export type BonusSpec =
   // within radiusM (hard cutoff, no smoothing) — byte parity with
   // PROX_BANDS in services/scoring/dims_p4_sportreg.py. No venue in
   // radius stays unknown (renders red, never zero).
-  | DbandsSpec;
+  | DbandsSpec
+  // FIXIT-HOOK (#623): report pins (annateada complaints) — markers
+  // ONLY, never a score. The field stays unknown everywhere BY
+  // DECISION (pins measure reporting activity, not place quality), so
+  // there is no scorer table to mirror and no radius/bands to tune.
+  | PinsSpec;
 
 /**
  * Hard-radius witness-count band spec (P4-031-HOOK #484 — senscom DIY
@@ -1543,6 +1570,15 @@ export interface DbandsSpec {
   edges: [number, number][];
 }
 
+/**
+ * Report-pin marker spec (FIXIT-HOOK #623 — annateada complaints,
+ * first use). No fields: the layer renders markers only. Values live
+ * in ./layers_p4_fixit (FIXIT_VINTAGE for the status label).
+ */
+export interface PinsSpec {
+  kind: "pins";
+}
+
 export function bonusSpecFor(layer: LayerId): BonusSpec {
   // TERVISE-HOOK (#494): tervise quality-band spec lives in layers_tervise.ts.
   if (isTerviseLayerId(layer)) return terviseBonusSpecFor(layer);
@@ -1565,6 +1601,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // layers_p4_poi.ts (same dbands kernel; bands ride the register
   // harvest, not OSM).
   if (isPoiLayerId(layer)) return poiBonusSpecFor(layer);
+  // FIXIT-HOOK (#623): report-pin marker spec lives in
+  // layers_p4_fixit.ts (markers only — no scorer table to mirror).
+  if (isFixitLayerId(layer)) return fixitBonusSpecFor(layer);
   // P4-031-HOOK (#484): senscom band spec lives in layers_p4_senscom.ts.
   if (isSenscomLayerId(layer)) return senscomBonusSpecFor(layer);
   // ACCBLACK-HOOK (#490): accblack avoid spec lives in layers_accblack.ts.
@@ -1931,6 +1970,11 @@ export async function fetchWindow(
   // SPORT-HOOK (#607): dbands layers have no raster master by decision
   // (SPORT_NO_RASTER) — same skip for the distance kernel.
   if (bonusSpecFor(layer).kind === "dbands") return null;
+  // FIXIT-HOOK (#623): pins layers have no raster master by decision
+  // (FIXIT_NO_RASTER — markers only, no field to stamp). Skip the
+  // window fetch so the map goes straight to the markers instead of
+  // a designed 500 (which only litters the console).
+  if (bonusSpecFor(layer).kind === "pins") return null;
   try {
     const spanM = (view.maxlon - view.minlon) * 57300;
     const latM = (view.maxlat - view.minlat) * 110570;

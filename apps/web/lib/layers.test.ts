@@ -234,6 +234,9 @@ describe("layer registry", () => {
       "poi_library",
       "poi_post",
       "poi_pharmacy",
+      // FIXIT-HOOK (#623): report-pin id (markers only — paramIds
+      // empty, parameters4 namespace, register sidecar).
+      "fixit",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -352,6 +355,10 @@ describe("layer registry", () => {
     expect(LAYERS.find((l) => l.id === "poi_post")?.paramLabel).toBe("P4-poi post");
     expect(LAYERS.find((l) => l.id === "poi_pharmacy")?.paramIds).toEqual([]);
     expect(LAYERS.find((l) => l.id === "poi_pharmacy")?.paramLabel).toBe("P4-poi apteek");
+    // FIXIT-HOOK (#623): fixit rides paramLabel, paramIds stays []
+    // (parameters4 report pins, no parameters3 number).
+    expect(LAYERS.find((l) => l.id === "fixit")?.paramIds).toEqual([]);
+    expect(LAYERS.find((l) => l.id === "fixit")?.paramLabel).toBe("P4-kaebused");
   });
 
   it("wires the B10C utility layers with locked calibration", () => {
