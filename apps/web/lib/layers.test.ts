@@ -26,6 +26,9 @@ import { isPolygonOnlyMaaLayer } from "./layers_maaparcel";
 // EELIS-HOOK (#488): polygons-only carve-out for the fallback assertion.
 import { isEelisPolygonOnlyLayer } from "./layers_eelis";
 
+// SEVESO-HOOK (#613): polygons-only carve-out for the fallback assertion.
+import { isSevesoPolygonOnlyLayer } from "./layers_p4_seveso";
+
 const TALLINN_BBOX: BBoxLike = { minlon: 24.5, minlat: 59.35, maxlon: 24.9, maxlat: 59.5 };
 
 describe("layer registry", () => {
@@ -237,6 +240,9 @@ describe("layer registry", () => {
       // FIXIT-HOOK (#623): report-pin id (markers only — paramIds
       // empty, parameters4 namespace, register sidecar).
       "fixit",
+      // SEVESO-HOOK (#613): danger-polygon id (Päästeamet ohualad —
+      // paramIds empty, parameters4 namespace, polygons only).
+      "seveso",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -359,6 +365,10 @@ describe("layer registry", () => {
     // (parameters4 report pins, no parameters3 number).
     expect(LAYERS.find((l) => l.id === "fixit")?.paramIds).toEqual([]);
     expect(LAYERS.find((l) => l.id === "fixit")?.paramLabel).toBe("P4-kaebused");
+    // SEVESO-HOOK (#613): seveso rides paramLabel, paramIds stays []
+    // (parameters4 danger polygons, no parameters3 number).
+    expect(LAYERS.find((l) => l.id === "seveso")?.paramIds).toEqual([]);
+    expect(LAYERS.find((l) => l.id === "seveso")?.paramLabel).toBe("P4-ohuala");
   });
 
   it("wires the B10C utility layers with locked calibration", () => {
@@ -723,7 +733,7 @@ describe("layer registry", () => {
       }
       if (isPolygonOnlyMaaLayer(l.id)) {
         expect(l.fallbackPoints).toEqual([]);
-      } else if (!isPolygonOnlyLayer(l.id) && !isEelisPolygonOnlyLayer(l.id)) {
+      } else if (!isPolygonOnlyLayer(l.id) && !isEelisPolygonOnlyLayer(l.id) && !isSevesoPolygonOnlyLayer(l.id)) {
         expect(l.fallbackPoints.length).toBeGreaterThan(0);
       }
     }

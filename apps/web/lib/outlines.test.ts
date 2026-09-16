@@ -6,6 +6,7 @@ import {
   applyEelisPolygons,
   applyOutlines,
   applyPointOverlay,
+  applySevesoPolygons,
   applyUsePolygons,
   clearVectorOverlays,
   type OutlineMap,
@@ -317,6 +318,18 @@ describe("clearVectorOverlays", () => {
     expect(map.layers.size).toBe(0);
     expect(map.sources.size).toBe(0);
   });
+
+  // SEVESO-HOOK (#613): the danger fill + casing + source join the
+  // cleared slot (one overlay slot paints any kind, never stacks).
+  it("removes the seveso danger slot too", () => {
+    const map = mockMap();
+    map.layers.add("seveso-danger-fill");
+    map.layers.add("seveso-danger-casing");
+    map.sources.add("seveso-danger-polys");
+    clearVectorOverlays(map);
+    expect(map.layers.size).toBe(0);
+    expect(map.sources.size).toBe(0);
+  });
 });
 
 describe("applyEelisPolygons (#488)", () => {
@@ -497,6 +510,74 @@ describe("applyMaaParcelPolygons (#491)", () => {
     const map = mockMap();
     applyMaaParcelPolygons(map, null, { casing: "#701a75" });
     applyMaaParcelPolygons(map, [], { casing: "#701a75" });
+    expect(map.sources.size).toBe(0);
+    expect(map.layers.size).toBe(0);
+  });
+});
+
+describe("applySevesoPolygons (#613)", () => {
+  const AREA = {
+    zone_id: "12.0",
+    nimi: "Muuga terminal",
+    danger: "toxic" as const,
+    danger_label: "Mürgised ained",
+    aadress: "Harju maakond, Muuga",
+    b: [24.95, 59.48, 24.99, 59.51] as [number, number, number, number],
+    r: [
+      [
+        [24.95, 59.48],
+        [24.99, 59.48],
+        [24.99, 59.51],
+        [24.95, 59.51],
+      ],
+    ],
+  };
+
+  it("paints danger fills + casing with closed rings", () => {
+    const map = mockMap();
+    applySevesoPolygons(map, [AREA]);
+    expect(map.sources.has("seveso-danger-polys")).toBe(true);
+    expect(map.layers.has("seveso-danger-fill")).toBe(true);
+    expect(map.layers.has("seveso-danger-casing")).toBe(true);
+    const src = map.added[0] as {
+      data: { features: { properties: { danger: string }; geometry: { coordinates: number[][][][] } }[] };
+    };
+    expect(src.data.features).toHaveLength(1);
+    expect(src.data.features[0].properties.danger).toBe("toxic");
+    const ring = src.data.features[0].geometry.coordinates[0][0];
+    expect(ring[0]).toEqual(ring[ring.length - 1]);
+  });
+
+  it("paints the danger match expression (facts, never scores)", () => {
+    const map = mockMap();
+    applySevesoPolygons(map, [AREA]);
+    const fill = map.added.find(
+      (l) => (l as { id?: string }).id === "seveso-danger-fill",
+    ) as { paint: { "fill-color": unknown[] } };
+    expect(fill.paint["fill-color"][0]).toBe("match");
+    expect(fill.paint["fill-color"]).toContain("toxic");
+    expect(fill.paint["fill-color"]).toContain("#dc2626");
+  });
+
+  it("folds unknown dangers to unknown and skips ringless areas (never faked)", () => {
+    const map = mockMap();
+    const weird = { ...AREA, danger: "radioactive" };
+    const ringless = { ...AREA, zone_id: "x:2", r: [] as number[][][] };
+    applySevesoPolygons(map, [
+      weird as unknown as typeof AREA,
+      ringless,
+    ]);
+    const src = map.added[0] as {
+      data: { features: { properties: { danger: string } }[] };
+    };
+    expect(src.data.features).toHaveLength(1);
+    expect(src.data.features[0].properties.danger).toBe("unknown");
+  });
+
+  it("is a no-op on nullish input (outside stays unpainted)", () => {
+    const map = mockMap();
+    applySevesoPolygons(map, null);
+    applySevesoPolygons(map, []);
     expect(map.sources.size).toBe(0);
     expect(map.layers.size).toBe(0);
   });

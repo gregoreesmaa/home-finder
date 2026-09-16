@@ -2,6 +2,7 @@ import type { ParkOutline } from "./layers";
 import type { FloodArea } from "./layers_flood";
 import type { EelisArea } from "./layers_eelis";
 import { MAAPARCEL_CLASS_FILL, type MaaParcelArea } from "./layers_maaparcel";
+import { SEVESO_CLASS_FILL, type SevesoArea } from "./layers_p4_seveso";
 import type { OverlayPoint } from "./overlays";
 
 /** Minimal map surface for vector overlays (sources + paint layers). */
@@ -41,6 +42,12 @@ const EELIS_CASING = "eelis-nature-casing";
 const USE_SRC = "planktpr-use-polys";
 const USE_FILL = "planktpr-use-fill";
 const USE_CASING = "planktpr-use-casing";
+// SEVESO-HOOK (#613): danger-polygon slot (danger-class fills, never a
+// gradient). Clearing covers these ids too — one overlay slot paints
+// either kind, never stacks (see clearVectorOverlays).
+const SEVESO_SRC = "seveso-danger-polys";
+const SEVESO_FILL = "seveso-danger-fill";
+const SEVESO_CASING = "seveso-danger-casing";
 const POINT_SRC = "layer-overlay-src";
 const POINT_CASING = "layer-overlay-casing";
 const POINT_CORE = "layer-overlay-core";
@@ -51,7 +58,8 @@ export function clearVectorOverlays(mapObj: OutlineMap): void {
   // MAAPARCEL-HOOK (#491): parcel fill + casing join the cleared slot.
   // EELIS-HOOK (#488): eelis fill + casing join the cleared slot.
   // PLANKTPR-HOOK (#492): use fill + casing join the cleared slot.
-  for (const id of [PARK_CASING, PARK_CORE, POINT_CASING, POINT_CORE, FLOOD_FILL, FLOOD_CASING, MAAPARCEL_FILL, MAAPARCEL_CASING, EELIS_FILL, EELIS_CASING, USE_FILL, USE_CASING]) {
+  // SEVESO-HOOK (#613): danger fill + casing join the cleared slot.
+  for (const id of [PARK_CASING, PARK_CORE, POINT_CASING, POINT_CORE, FLOOD_FILL, FLOOD_CASING, MAAPARCEL_FILL, MAAPARCEL_CASING, EELIS_FILL, EELIS_CASING, USE_FILL, USE_CASING, SEVESO_FILL, SEVESO_CASING]) {
     try {
       if (mapObj.getLayer(id)) mapObj.removeLayer(id);
     } catch {
@@ -62,7 +70,8 @@ export function clearVectorOverlays(mapObj: OutlineMap): void {
   // MAAPARCEL-HOOK (#491): parcel source joins the cleared slot.
   // EELIS-HOOK (#488): eelis source joins the cleared slot.
   // PLANKTPR-HOOK (#492): the use-fill source joins the same slot.
-  for (const id of [PARK_SRC, POINT_SRC, FLOOD_SRC, MAAPARCEL_SRC, EELIS_SRC, USE_SRC]) {
+  // SEVESO-HOOK (#613): the danger-fill source joins the same slot.
+  for (const id of [PARK_SRC, POINT_SRC, FLOOD_SRC, MAAPARCEL_SRC, EELIS_SRC, USE_SRC, SEVESO_SRC]) {
     try {
       if (mapObj.getSource(id)) mapObj.removeSource(id);
     } catch {
@@ -541,6 +550,95 @@ export function applyUsePolygons(
         "fill-color": ["get", "color"],
         "fill-opacity": 0.45,
       },
+    },
+    before,
+  );
+}
+
+// SEVESO-HOOK (#613): Päästeamet danger-class choropleth fills.
+
+/**
+ * Paint Seveso danger polygons (danger-class fills + white casing) so
+ * the inside-a-named-danger-area vs honestly-unknown-outside boundary
+ * reads at a glance. This is a CHOROPLETH of register facts, never a
+ * gradient: colors encode the danger class (see SEVESO_CLASS_FILL —
+ * toxic worst red, heat/overpressure orange family, unknown slate),
+ * and no score field is painted anywhere. Clears stale overlay layers
+ * first; no-op when the style is not loaded yet or areas is nullish.
+ * Malformed rings are skipped, never faked; unknown classes fall back
+ * to unknown (never dropped).
+ */
+export function applySevesoPolygons(
+  mapObj: OutlineMap,
+  areas: SevesoArea[] | null | undefined,
+): void {
+  if (!mapObj.getStyle()) return;
+  clearVectorOverlays(mapObj);
+  if (!areas || areas.length === 0) return;
+  const features = [];
+  for (const a of areas) {
+    if (!a || !Array.isArray(a.r)) continue;
+    const polys = [];
+    for (const ring of a.r) {
+      if (!Array.isArray(ring) || ring.length < 3) continue;
+      const pts = ring.filter(
+        (pt) =>
+          Array.isArray(pt) &&
+          pt.length === 2 &&
+          pt.every((n) => typeof n === "number" && Number.isFinite(n)),
+      );
+      if (pts.length < 3) continue;
+      const first = pts[0];
+      const last = pts[pts.length - 1];
+      const closed =
+        first[0] === last[0] && first[1] === last[1] ? pts : [...pts, [first[0], first[1]]];
+      polys.push([closed]);
+    }
+    if (polys.length === 0) continue;
+    const danger =
+      typeof a.danger === "string" && a.danger in SEVESO_CLASS_FILL ? a.danger : "unknown";
+    features.push({
+      type: "Feature",
+      properties: {
+        danger,
+        zone_id: typeof a.zone_id === "string" ? a.zone_id : "",
+        nimi: typeof a.nimi === "string" ? a.nimi : "",
+      },
+      geometry: { type: "MultiPolygon", coordinates: polys },
+    });
+  }
+  if (features.length === 0) return;
+  mapObj.addSource(SEVESO_SRC, {
+    type: "geojson",
+    data: { type: "FeatureCollection", features },
+  });
+  const before = abovePaint(mapObj);
+  mapObj.addLayer(
+    {
+      id: SEVESO_FILL,
+      type: "fill",
+      source: SEVESO_SRC,
+      paint: {
+        "fill-color": [
+          "match",
+          ["get", "danger"],
+          "toxic", SEVESO_CLASS_FILL.toxic,
+          "heat", SEVESO_CLASS_FILL.heat,
+          "overpressure", SEVESO_CLASS_FILL.overpressure,
+          "combustion", SEVESO_CLASS_FILL.combustion,
+          SEVESO_CLASS_FILL.unknown,
+        ],
+        "fill-opacity": 0.45,
+      },
+    },
+    before,
+  );
+  mapObj.addLayer(
+    {
+      id: SEVESO_CASING,
+      type: "line",
+      source: SEVESO_SRC,
+      paint: { "line-color": "#ffffff", "line-width": 2, "line-opacity": 0.9 },
     },
     before,
   );

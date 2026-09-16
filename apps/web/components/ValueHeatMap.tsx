@@ -13,12 +13,14 @@ import type { BBoxLike, BonusSpec, ParkOutline, WalkRasterDoc } from "../lib/lay
 import type { FloodArea } from "../lib/layers_flood";
 import type { MaaParcelArea } from "../lib/layers_maaparcel";
 import type { EelisArea } from "../lib/layers_eelis";
+import type { SevesoArea } from "../lib/layers_p4_seveso";
 import {
   applyFloodPolygons,
   applyMaaParcelPolygons,
   applyEelisPolygons,
   applyOutlines,
   applyPointOverlay,
+  applySevesoPolygons,
   applyUsePolygons,
   clearVectorOverlays,
   type OutlineMap,
@@ -41,12 +43,12 @@ const ESTONIA_CENTER: [number, number] = [25.0, 58.75];
 
 /**
  * One overlay slot, painted above the raster: flood polygons win when
- * present, then parcel fills, then eelis polygons, then point markers,
- * then use-fills (page guarantees flood-areas, maa-parcels,
- * eelis-areas, outlines and points never coincide — and fills and
- * points never coincide either), otherwise park outlines; hidden
- * clears the slot. All painters clear stale layers first, so switches
- * never stack.
+ * present, then parcel fills, then eelis polygons, then seveso danger
+ * fills, then point markers, then use-fills (page guarantees
+ * flood-areas, maa-parcels, eelis-areas, seveso-areas, outlines and
+ * points never coincide — and fills and points never coincide either),
+ * otherwise park outlines; hidden clears the slot. All painters clear
+ * stale layers first, so switches never stack.
  */
 function paintOverlay(
   mapObj: OutlineMap,
@@ -57,6 +59,7 @@ function paintOverlay(
     maaParcels?: MaaParcelArea[] | null;
 
     eelisAreas?: EelisArea[] | null;
+    sevesoAreas?: SevesoArea[] | null;
     overlayPoints?: OverlayPoint[] | null;
     usePolygons?: UseFillPolygon[] | null;
     overlayColor?: string;
@@ -85,6 +88,12 @@ function paintOverlay(
   // field is painted for these layers, by design).
   if (opts.eelisAreas && opts.eelisAreas.length > 0) {
     applyEelisPolygons(mapObj, opts.eelisAreas, { color: opts.overlayColor ?? "#1a2e05" });
+    return;
+  }
+  // SEVESO-HOOK (#613): seveso danger-class fills (polygons only — no
+  // score field is painted for this layer, by design).
+  if (opts.sevesoAreas && opts.sevesoAreas.length > 0) {
+    applySevesoPolygons(mapObj, opts.sevesoAreas);
     return;
   }
   if (opts.overlayPoints && opts.overlayPoints.length > 0) {
@@ -116,6 +125,7 @@ export function ValueHeatMap({
   maaParcels,
 
   eelisAreas,
+  sevesoAreas,
   overlayPoints,
   usePolygons,
   overlayColor,
@@ -144,6 +154,8 @@ export function ValueHeatMap({
 
   /** EELIS nature fills (eelis layers only); choropleth overlay. */
   eelisAreas?: EelisArea[] | null;
+  /** Seveso danger fills (seveso layer only); danger-class choropleth. */
+  sevesoAreas?: SevesoArea[] | null;
   /** Point markers drawn ABOVE the raster (all layers but parks). */
   overlayPoints?: OverlayPoint[] | null;
   /** Designated-use fills drawn ABOVE the field (planktpr only). */
@@ -182,6 +194,7 @@ export function ValueHeatMap({
     maaParcels,
 
     eelisAreas,
+    sevesoAreas,
     overlayPoints,
     usePolygons,
     overlayColor,
@@ -198,6 +211,7 @@ export function ValueHeatMap({
     maaParcels,
 
     eelisAreas,
+    sevesoAreas,
     overlayPoints,
     usePolygons,
     overlayColor,
@@ -372,9 +386,10 @@ export function ValueHeatMap({
       // MAAPARCEL-HOOK (#491): maaParcels join the painted slot.
       // EELIS-HOOK (#488): eelisAreas join the painted slot.
       // PLANKTPR-HOOK (#492): usePolygons join the painted slot.
-      paintOverlay(mapRef.current, { outlines, floodAreas, maaParcels, eelisAreas, overlayPoints, usePolygons, overlayColor, showOverlay });
+      // SEVESO-HOOK (#613): sevesoAreas join the painted slot.
+      paintOverlay(mapRef.current, { outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, overlayPoints, usePolygons, overlayColor, showOverlay });
     }
-  }, [outlines, floodAreas, maaParcels, eelisAreas, overlayPoints, usePolygons, overlayColor, showOverlay]);
+  }, [outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, overlayPoints, usePolygons, overlayColor, showOverlay]);
 
   return (
     <section aria-label={title}>

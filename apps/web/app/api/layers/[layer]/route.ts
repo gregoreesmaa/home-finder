@@ -22,6 +22,8 @@ import { isMaaParcelLayerId } from "../../../../lib/layers_maaparcel";
 
 // EELIS-HOOK (#488): polygons-only branch guard (see below).
 import { isEelisLayerId } from "../../../../lib/layers_eelis";
+// SEVESO-HOOK (#613): polygons-only branch guard (see below).
+import { isSevesoLayerId } from "../../../../lib/layers_p4_seveso";
 
 import {
   intersectsCoverage,
@@ -203,6 +205,21 @@ export async function GET(
   // fake gradient), and demo fallback points are refused by the layer
   // def (empty fallbackPoints, pinned by test).
   if (isMaaParcelLayerId(def.id)) {
+    const { distance } = await loadLayerRaster(def.id);
+    return NextResponse.json({
+      points: [],
+      provenance: "snapshot",
+      ageMs: Date.now() - SNAPSHOT_AS_OF_MS,
+      distance,
+    });
+  }
+  // SEVESO-HOOK (#613): seveso is polygons-only (zero points, zero
+  // raster — the /seveso/areas sidecar carries the data). Answer
+  // honestly-empty points on snapshot provenance: requiring points or
+  // a raster here would 500 a healthy layer into labeled demo points
+  // (a fake gradient), and demo fallback points are refused by the
+  // layer def (empty fallbackPoints, pinned by test).
+  if (isSevesoLayerId(def.id)) {
     const { distance } = await loadLayerRaster(def.id);
     return NextResponse.json({
       points: [],
