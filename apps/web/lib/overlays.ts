@@ -579,6 +579,13 @@ export function overlayColorFor(layer: LayerId): string {
     // (distinct-color test).
     case "stateland":
       return "#083344";
+    // QUARRY-HOOK (#614): quarry marker (polygon layer — the point
+    // overlay stays empty live, so this colors only the toggle dot).
+    // #431407: orange-950 quarry soil (darkest earth of the registry;
+    // layers never co-render). Distinct from every other marker
+    // (distinct-color test).
+    case "quarry":
+      return "#431407";
     // MEDRE-HOOK (#609): medre slice markers (Step-1 honest-empty —
     // the point overlay stays empty live, so this colors only the
     // toggle dot). #ffedd5: orange-100 clinic paper; #ede9fe:
@@ -1076,6 +1083,13 @@ export function overlayLegendFor(layer: LayerId): string {
     // one. Assurance stays capped hinnang (state CAN sell).
     case "stateland":
       return "Riigimaa ja oksjonid (KATRI register: 11068 parselli + 15 aktiivset oksjonit) · tsoonis = riigimaa (roheline, piiratud kinnitus — riik VÕIB müüa) või oksjon (kollane, kuupäevaga hoiatuslipp); väljaspool = teadmata, mitte riigimaavaba";
+    // QUARRY-HOOK (#614): quarry permit/watch fills (Maa-amet
+    // maardlad) — inside a named permit polygon reads by class color,
+    // outside every polygon is unknown (never quarry-free). The <= 2 km
+    // near-band is scorer-side only (no buffered fills — fake
+    // precision refused).
+    case "quarry":
+      return "Karjäärid ja uuringualad (Maa-ameti register: 154 kehtivat kaevandusluba + 28 uuringuala) · tsoonis = kaevandusluba (punane, väldi) või uuringuala (kollane, kuupäevaga valve-lipp); lähiümbrus (≤2 km) hindab skoorija, kaardil ringi EI OLE; väljaspool = teadmata, mitte kaevandusvaba";
     // ASUMEDIA-HOOK (#495): asumedia (own-snapshot asking medians) —
     // the dated negative rides along: 0/84 asums reach MIN_N=5, so
     // the field is unknown everywhere until the reopen lands real

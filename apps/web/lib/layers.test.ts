@@ -31,6 +31,8 @@ import { isSevesoPolygonOnlyLayer } from "./layers_p4_seveso";
 
 // STATELAND-HOOK (#615): polygons-only carve-out for the fallback assertion.
 import { isStatelandPolygonOnlyLayer } from "./layers_p4_stateland";
+// QUARRY-HOOK (#614): polygons-only carve-out for the fallback assertion.
+import { isQuarryPolygonOnlyLayer } from "./layers_p4_quarry";
 
 const TALLINN_BBOX: BBoxLike = { minlon: 24.5, minlat: 59.35, maxlon: 24.9, maxlat: 59.5 };
 
@@ -250,6 +252,9 @@ describe("layer registry", () => {
       // maaoksjon — paramIds empty, parameters4 namespace, polygons
       // only).
       "stateland",
+      // QUARRY-HOOK (#614): permit/watch polygon id (Maa-amet permits —
+      // paramIds empty, parameters4 namespace, polygons only).
+      "quarry",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -380,6 +385,10 @@ describe("layer registry", () => {
     // (parameters4 state/auction polygons, no parameters3 number).
     expect(LAYERS.find((l) => l.id === "stateland")?.paramIds).toEqual([]);
     expect(LAYERS.find((l) => l.id === "stateland")?.paramLabel).toBe("P4-riigimaa");
+    // QUARRY-HOOK (#614): quarry rides paramLabel, paramIds stays []
+    // (parameters4 permit polygons, no parameters3 number).
+    expect(LAYERS.find((l) => l.id === "quarry")?.paramIds).toEqual([]);
+    expect(LAYERS.find((l) => l.id === "quarry")?.paramLabel).toBe("P4-maavara");
   });
 
   it("wires the B10C utility layers with locked calibration", () => {
@@ -744,7 +753,7 @@ describe("layer registry", () => {
       }
       if (isPolygonOnlyMaaLayer(l.id)) {
         expect(l.fallbackPoints).toEqual([]);
-      } else if (!isPolygonOnlyLayer(l.id) && !isEelisPolygonOnlyLayer(l.id) && !isSevesoPolygonOnlyLayer(l.id) && !isStatelandPolygonOnlyLayer(l.id)) {
+      } else if (!isPolygonOnlyLayer(l.id) && !isEelisPolygonOnlyLayer(l.id) && !isSevesoPolygonOnlyLayer(l.id) && !isStatelandPolygonOnlyLayer(l.id) && !isQuarryPolygonOnlyLayer(l.id)) {
         expect(l.fallbackPoints.length).toBeGreaterThan(0);
       }
     }

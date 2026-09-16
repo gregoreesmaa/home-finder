@@ -601,6 +601,17 @@ import {
   bonusSpecForStateland,
   isStatelandPolygonOnlyLayer,
 } from "./layers_p4_stateland";
+// QUARRY-HOOK (#614): extraction/exploration polygon tables live in
+// ./layers_p4_quarry (Maa-amet permits, polygons only). That module
+// imports layers only as types, so no runtime cycle.
+import type { QuarryLayerId } from "./layers_p4_quarry";
+import {
+  QUARRY_DECAY,
+  QUARRY_DEFS,
+  QUARRY_TAGS,
+  bonusSpecForQuarry,
+  isQuarryPolygonOnlyLayer,
+} from "./layers_p4_quarry";
 // FIXIT-HOOK (#623): report-pin tables live in ./layers_p4_fixit
 // (fixit markers, register sidecar). That module imports layers only
 // as types, so no runtime cycle.
@@ -761,7 +772,11 @@ export type LayerId =
   | StatelandLayerId
   // SEVESO-HOOK (#613): danger-polygon id (./layers_p4_seveso,
   // Päästeamet ohualad, polygons only, no parameters3 id).
-  | SevesoLayerId;
+  | SevesoLayerId
+  // QUARRY-HOOK (#614): extraction/exploration polygon id
+  // (./layers_p4_quarry, Maa-amet permits, polygons only, no
+  // parameters3 id).
+  | QuarryLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -997,6 +1012,10 @@ const DECAY_KM: Record<LayerId, number> = {
   // SEVESO_DECAY — INERT placeholder, polygons only: zero points,
   // never evaluated).
   ...SEVESO_DECAY,
+  // QUARRY-HOOK (#614): permit-polygon radius (see
+  // layers_p4_quarry.ts QUARRY_DECAY — INERT placeholder, polygons
+  // only: zero points, never evaluated).
+  ...QUARRY_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -1243,6 +1262,9 @@ export const LAYERS: LayerDef[] = [
   // maaoksjon, polygons only, no parameters3 id) from
   // ./layers_p4_stateland.
   ...STATELAND_DEFS,
+  // QUARRY-HOOK (#614): permit/watch polygon def (Maa-amet permits,
+  // polygons only, no parameters3 id) from ./layers_p4_quarry.
+  ...QUARRY_DEFS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -1397,6 +1419,9 @@ const TAGS: Record<LayerId, string> = {
   // SEVESO-HOOK (#613): danger-polygon source note (see
   // layers_p4_seveso.ts SEVESO_TAGS — prose, NOT an Overpass fragment).
   ...SEVESO_TAGS,
+  // QUARRY-HOOK (#614): permit-polygon source note (see
+  // layers_p4_quarry.ts QUARRY_TAGS — prose, NOT an Overpass fragment).
+  ...QUARRY_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -1663,6 +1688,10 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // ./layers_p4_seveso (INERT — polygons only, never evaluated).
   const seveso = bonusSpecForSeveso(layer);
   if (seveso) return seveso;
+  // QUARRY-HOOK (#614): permit-polygon spec lives in
+  // ./layers_p4_quarry (INERT — polygons only, never evaluated).
+  const quarry = bonusSpecForQuarry(layer);
+  if (quarry) return quarry;
   // P4-031-HOOK (#484): senscom band spec lives in layers_p4_senscom.ts.
   if (isSenscomLayerId(layer)) return senscomBonusSpecFor(layer);
   // ACCBLACK-HOOK (#490): accblack avoid spec lives in layers_accblack.ts.
@@ -2030,6 +2059,10 @@ export async function fetchWindow(
   // (polygons only — the sidecar carries the data). Same skip, same
   // reason.
   if (isSevesoPolygonOnlyLayer(layer)) return null;
+  // QUARRY-HOOK (#614): quarry has no raster master by decision
+  // (polygons only — the sidecar carries the data). Same skip, same
+  // reason.
+  if (isQuarryPolygonOnlyLayer(layer)) return null;
 
   // TERVISE-HOOK (#494): qbands layers have no raster master by decision
   // (TERVISE_NO_RASTER) — same skip for the quality kernel.

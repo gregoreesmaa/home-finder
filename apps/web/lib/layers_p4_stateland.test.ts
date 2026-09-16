@@ -85,8 +85,9 @@ describe("stateland registry (#615)", () => {
   it("merges into LAYERS via the STATELAND-HOOK (page + routes serve it)", () => {
     const ids = LAYERS.map((l) => l.id);
     // 124 shipped layers on main (#613 seveso merged) +
-    // 1 state/auction overlay (STATELAND-HOOK #615, 124 + 1).
-    expect(ids.length).toBe(125);
+    // 1 state/auction overlay (STATELAND-HOOK #615, 124 + 1) +
+    // 1 quarry overlay (QUARRY-HOOK #614, 125 + 1 = 126).
+    expect(ids.length).toBe(126);
     expect(ids).toContain("stateland");
   });
 

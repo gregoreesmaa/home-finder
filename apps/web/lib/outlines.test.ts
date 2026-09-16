@@ -8,6 +8,7 @@ import {
   applyPointOverlay,
   applySevesoPolygons,
   applyStatelandPolygons,
+  applyQuarryPolygons,
   applyUsePolygons,
   clearVectorOverlays,
   type OutlineMap,
@@ -343,6 +344,18 @@ describe("clearVectorOverlays", () => {
     expect(map.layers.size).toBe(0);
     expect(map.sources.size).toBe(0);
   });
+
+  // QUARRY-HOOK (#614): the permit fill + casing + source join the
+  // cleared slot (one overlay slot paints any kind, never stacks).
+  it("removes the quarry permit slot too", () => {
+    const map = mockMap();
+    map.layers.add("quarry-permit-fill");
+    map.layers.add("quarry-permit-casing");
+    map.sources.add("quarry-permit-polys");
+    clearVectorOverlays(map);
+    expect(map.layers.size).toBe(0);
+    expect(map.sources.size).toBe(0);
+  });
 });
 
 describe("applyEelisPolygons (#488)", () => {
@@ -662,6 +675,75 @@ describe("applyStatelandPolygons (#615)", () => {
     const map = mockMap();
     applyStatelandPolygons(map, null);
     applyStatelandPolygons(map, []);
+    expect(map.sources.size).toBe(0);
+    expect(map.layers.size).toBe(0);
+  });
+});
+
+describe("applyQuarryPolygons (#614)", () => {
+  const AREA = {
+    zone_id: "13379",
+    nimi: "Huntaugu I liivakarjäär",
+    cls: "active" as const,
+    loa: "HARM-139",
+    loa_lopp: "20310301",
+    operaator: "AS TREV-2 Grupp",
+    b: [25.36, 59.42, 25.38, 59.44] as [number, number, number, number],
+    r: [
+      [
+        [25.36, 59.42],
+        [25.38, 59.42],
+        [25.38, 59.44],
+        [25.36, 59.44],
+      ],
+    ],
+  };
+
+  it("paints permit fills + casing with closed rings", () => {
+    const map = mockMap();
+    applyQuarryPolygons(map, [AREA]);
+    expect(map.sources.has("quarry-permit-polys")).toBe(true);
+    expect(map.layers.has("quarry-permit-fill")).toBe(true);
+    expect(map.layers.has("quarry-permit-casing")).toBe(true);
+    const src = map.added[0] as {
+      data: { features: { properties: { cls: string }; geometry: { coordinates: number[][][][] } }[] };
+    };
+    expect(src.data.features).toHaveLength(1);
+    expect(src.data.features[0].properties.cls).toBe("active");
+    const ring = src.data.features[0].geometry.coordinates[0][0];
+    expect(ring[0]).toEqual(ring[ring.length - 1]);
+  });
+
+  it("paints the class match expression (facts, never scores)", () => {
+    const map = mockMap();
+    applyQuarryPolygons(map, [AREA]);
+    const fill = map.added.find(
+      (l) => (l as { id?: string }).id === "quarry-permit-fill",
+    ) as { paint: { "fill-color": unknown[] } };
+    expect(fill.paint["fill-color"][0]).toBe("match");
+    expect(fill.paint["fill-color"]).toContain("active");
+    expect(fill.paint["fill-color"]).toContain("#c2410c");
+  });
+
+  it("folds unknown classes to exploration and skips ringless areas (never faked)", () => {
+    const map = mockMap();
+    const weird = { ...AREA, cls: "pending" };
+    const ringless = { ...AREA, zone_id: "x:2", r: [] as number[][][] };
+    applyQuarryPolygons(map, [
+      weird as unknown as typeof AREA,
+      ringless,
+    ]);
+    const src = map.added[0] as {
+      data: { features: { properties: { cls: string } }[] };
+    };
+    expect(src.data.features).toHaveLength(1);
+    expect(src.data.features[0].properties.cls).toBe("exploration");
+  });
+
+  it("is a no-op on nullish input (outside stays unpainted)", () => {
+    const map = mockMap();
+    applyQuarryPolygons(map, null);
+    applyQuarryPolygons(map, []);
     expect(map.sources.size).toBe(0);
     expect(map.layers.size).toBe(0);
   });

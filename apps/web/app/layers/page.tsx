@@ -107,6 +107,13 @@ import {
   isStatelandPolygonOnlyLayer,
   type StatelandArea,
 } from "../../lib/layers_p4_stateland";
+// QUARRY-HOOK (#614): quarry paints Maa-amet permit/watch polygons
+// (polygons only, never a gradient) instead of points.
+import {
+  fetchQuarryAreas,
+  isQuarryPolygonOnlyLayer,
+  type QuarryArea,
+} from "../../lib/layers_p4_quarry";
 
 /** Viewport bbox rounded for fetch stability (matches server key rounding). */
 function sameView(a: BBoxLike, b: BBoxLike): boolean {
@@ -317,6 +324,26 @@ export default function LayersPage() {
     };
   }, [layer]);
 
+  // QUARRY-HOOK (#614): Maa-amet permit/watch polygons (quarry
+  // layer only, fetched once per selection): the choropleth itself —
+  // inside a named permit polygon vs outside/unknown. No points and no
+  // score field are painted for this layer, by design (polygons only,
+  // never a gradient).
+  const [quarryAreas, setQuarryAreas] = useState<QuarryArea[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!isQuarryPolygonOnlyLayer(layer)) {
+      setQuarryAreas(null);
+      return;
+    }
+    fetchQuarryAreas().then((areas) => {
+      if (!cancelled) setQuarryAreas(areas);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [layer]);
+
   // Park boundaries (parks layer only): fetched once per selection, a
   // visual aid so scored-inside vs surroundings reads at a glance.
   const [outlines, setOutlines] = useState<ParkOutline[] | null>(null);
@@ -438,7 +465,8 @@ export default function LayersPage() {
     // MAAPARCEL-HOOK (#491): maaparcel paints polygons, never point markers.
     // EELIS-HOOK (#488): eelis layers paint polygons, never point markers.
     // SEVESO-HOOK (#613): seveso paints polygons, never point markers.
-    layer === "parks" || isPolygonOnlyLayer(layer) || isPolygonOnlyMaaLayer(layer) || isEelisPolygonOnlyLayer(layer) || isSevesoPolygonOnlyLayer(layer) || isStatelandPolygonOnlyLayer(layer)
+    // QUARRY-HOOK (#614): quarry paints polygons, never point markers.
+    layer === "parks" || isPolygonOnlyLayer(layer) || isPolygonOnlyMaaLayer(layer) || isEelisPolygonOnlyLayer(layer) || isSevesoPolygonOnlyLayer(layer) || isStatelandPolygonOnlyLayer(layer) || isQuarryPolygonOnlyLayer(layer)
       ? null
       : needsGraphOverlay(layer)
         ? graphPoints
@@ -454,6 +482,8 @@ export default function LayersPage() {
           ? (sevesoAreas?.length ?? 0)
         : isStatelandPolygonOnlyLayer(layer)
           ? (statelandAreas?.length ?? 0)
+        : isQuarryPolygonOnlyLayer(layer)
+          ? (quarryAreas?.length ?? 0)
         : isPlanktprLayerId(layer)
           ? (usePolygons?.length ?? 0)
     : layer === "parks"
@@ -513,6 +543,13 @@ export default function LayersPage() {
     statelandAreas === null
       ? "Laadin riigimaid…"
       : `KATRI riigimaa + oksjonid · ${statelandAreas.length} parselli (väljaspool = teadmata, mitte riigimaavaba)`;
+  // QUARRY-HOOK (#614): quarry status counts permit/watch polygons,
+  // never points — the layer serves zero points by design (polygons
+  // only).
+  const quarryStatus =
+    quarryAreas === null
+      ? "Laadin karjääripiirkondi…"
+      : `Maa-ameti karjäärid ja uuringualad · ${quarryAreas.length} polügooni (väljaspool = teadmata, mitte kaevandusvaba)`;
   const base =
     isPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
       ? floodStatus
@@ -524,6 +561,8 @@ export default function LayersPage() {
         ? sevesoStatus
       : isStatelandPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
         ? statelandStatus
+      : isQuarryPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
+        ? quarryStatus
       : provenance === null
       ? "Laadin kihi andmeid…"
       : provenance === "snapshot"
@@ -629,6 +668,7 @@ export default function LayersPage() {
         eelisAreas={eelisOverlay}
         sevesoAreas={sevesoAreas}
         statelandAreas={statelandAreas}
+        quarryAreas={quarryAreas}
         overlayPoints={pointOverlay}
         usePolygons={usePolygons}
         overlayColor={overlayColorFor(layer)}
@@ -654,6 +694,8 @@ export default function LayersPage() {
           // PLANKTPR-HOOK (#492): use-fills are exact parcel joins too.
           // SEVESO-HOOK (#613): seveso paints no field at all (zero
           // points, null raster) -- same skip for the danger fills.
+          // QUARRY-HOOK (#614): quarry paints no field at all (zero
+          // points, null raster) -- same skip for the permit fills.
           (isStatKovLayerId(layer) || isEelisPolygonOnlyLayer(layer) ||
             isMaruKovLayerId(layer) ||
             isPolygonOnlyLayer(layer) ||
@@ -662,6 +704,7 @@ export default function LayersPage() {
             // STATELAND-HOOK (#615): stateland paints no field at all
             // (zero points, null raster) -- same skip for state fills.
             isStatelandPolygonOnlyLayer(layer) ||
+            isQuarryPolygonOnlyLayer(layer) ||
             isPlanktprLayerId(layer)
             ? ""
             : distance === "euclidean" && provenance === "snapshot"

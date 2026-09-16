@@ -173,6 +173,12 @@ import { SEVESO_RASTER_FILE, isSevesoArea } from "../layers_p4_seveso";
 // unharvested).
 import type { StatelandArea } from "../layers_p4_stateland";
 import { STATELAND_RASTER_FILE, isStatelandArea } from "../layers_p4_stateland";
+// QUARRY-HOOK (#614): permit-polygon raster filename + sidecar area
+// type live in layers_p4_quarry.ts (raster intentionally never built —
+// QUARRY_NO_RASTER; the name resolves to an absent file so windows
+// degrade to null; the sidecar is honestly empty when unharvested).
+import type { QuarryArea } from "../layers_p4_quarry";
+import { QUARRY_RASTER_FILE, isQuarryArea } from "../layers_p4_quarry";
 // OHUSEIRE-HOOK (#610): station raster filename + sidecar point type
 // live in layers_p4_ohuseire.ts (raster intentionally never built —
 // OHUSEIRE_NO_RASTER; the name resolves to an absent file so rasters
@@ -879,7 +885,29 @@ export async function loadStatelandAreas(dir: string): Promise<StatelandArea[]> 
     // Optional sidecar: honestly empty below.
   }
   statelandAreaCache.set(dir, areas);
+  return areas;
+}
+// QUARRY-HOOK (#614): permit-polygon sidecar cache (same discipline).
+const quarryAreaCache = new Map<string, QuarryArea[]>();
 
+// QUARRY-HOOK (#614): Maa-amet permit-polygon sidecar
+// (`quarry/quarry-areas.json`, written by scripts/build/batch_quarry.py
+// off the cached WFS GML): zone_id + class + dated permit + outer
+// rings. A missing sidecar is honestly empty (register unharvested),
+// never an error; malformed rows are skipped, never faked.
+export async function loadQuarryAreas(dir: string): Promise<QuarryArea[]> {
+  const hit = quarryAreaCache.get(dir);
+  if (hit) return hit;
+  let areas: QuarryArea[] = [];
+  try {
+    const raw = await fs.readFile(path.join(dir, "quarry", "quarry-areas.json"), "utf8");
+    const parsed: unknown = JSON.parse(raw);
+    if (Array.isArray(parsed)) areas = parsed.filter(isQuarryArea);
+    else console.warn(`snapshot: ignoring malformed quarry/quarry-areas.json in ${dir}`);
+  } catch {
+    // Optional sidecar: honestly empty below.
+  }
+  quarryAreaCache.set(dir, areas);
   return areas;
 }
 
@@ -1031,6 +1059,7 @@ export function clearSnapshotCache(): void {
   planktprAreaCache.clear(); // PLANKTPR-HOOK (#492)
   sevesoAreaCache.clear(); // SEVESO-HOOK (#613)
   statelandAreaCache.clear(); // STATELAND-HOOK (#615)
+  quarryAreaCache.clear(); // QUARRY-HOOK (#614)
   freqCache.clear();
   rasterCache.clear();
   countyBytes.clear();
@@ -1206,6 +1235,10 @@ const RASTER_FILE: Record<LayerId, string> = {
   // built — STATELAND_NO_RASTER; polygons ARE the field; absent file
   // degrades to null, honestly).
   ...STATELAND_RASTER_FILE,
+  // QUARRY-HOOK (#614): permit-polygon raster name only (no master
+  // built — QUARRY_NO_RASTER; polygons ARE the field; absent file
+  // degrades to null, honestly).
+  ...QUARRY_RASTER_FILE,
 };
 
 /**
@@ -1717,6 +1750,10 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // name resolves to an absent file so windows fall back to county
   // cleanly.
   stateland: "stateland-metro",
+  // QUARRY-HOOK (#614): no quarry metro master by documented decision
+  // (see layers_p4_quarry.ts QUARRY_NO_METRO) — the name resolves to
+  // an absent file so windows fall back to county cleanly.
+  quarry: "quarry-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

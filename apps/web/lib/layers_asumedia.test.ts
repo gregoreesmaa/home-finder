@@ -39,7 +39,7 @@ describe("asumedia registry (#495)", () => {
     // 106 shipped layers on main (#511 tervise) + 1 asumedia layer (106 + 1).
     // ASUMEDIA-HOOK (#495): asumedia joins the registry (106 + 1).
     // PAASTE-HOOK (#493): +1 komando overlay (107 + 1).
-    expect(ids.length).toBe(125); // SPORT-HOOK (#607): +3 sport slices (108 + 3); EHIS-HOOK (#608): +3 school slices (111 + 3); MEDRE-HOOK (#609): +2 care slices (114 + 2); OHUSEIRE-HOOK (#610): +1 station dots (116 + 1); KLIIMA-HOOK (#611): +2 climate slices (117 + 2); POI-HOOK (#612): +3 long-tail slices (119 + 3); FIXIT-HOOK (#623): +1 pins layer (122 + 1); SEVESO-HOOK (#613): +1 danger-polygon layer (123 + 1); STATELAND-HOOK (#615): +1 state/auction-polygon layer (124 + 1)
+    expect(ids.length).toBe(126); // MERGE (#613+#614+#615): 123 shipped + seveso + stateland + quarry = 126 (both branch counts superseded).
     expect(ids).toContain("asumedia");
   });
 
