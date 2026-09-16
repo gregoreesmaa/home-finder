@@ -86,6 +86,10 @@ import { isMedreLayerId } from "../../lib/layers_p4_medre";
 // OHUSEIRE-HOOK (#610): dbands status names the station inventory
 // for the ohuseire layer (see isDbands branch below).
 import { isOhuseireLayerId } from "../../lib/layers_p4_ohuseire";
+// KLIIMA-HOOK (#611): qbands status names the Keskkonnaagentuur
+// extract for kliima layers (see isQbands branch below) — tervise
+// keeps its own label.
+import { isKliimaLayerId } from "../../lib/layers_kliima";
 
 /** Viewport bbox rounded for fetch stability (matches server key rounding). */
 function sameView(a: BBoxLike, b: BBoxLike): boolean {
@@ -451,7 +455,9 @@ export default function LayersPage() {
             : isBands && isSenscomLayerId(layer)
               ? `sensor.community väljavõte${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
               : isQbands
-                ? `Terviseameti väljavõte (suplusvesi, seis 2026-09-14)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
+                ? isKliimaLayerId(layer)
+                  ? `Keskkonnaagentuuri väljavõte (kliimanormatiiv 1991-2020, seis 2026-09-16)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
+                  : `Terviseameti väljavõte (suplusvesi, seis 2026-09-14)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
               : isDbands
                 ? isEhisLayerId(layer)
                   ? `EHISe väljavõte (koolihooned, seis 2026-09-16)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`

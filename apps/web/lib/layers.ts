@@ -557,6 +557,17 @@ import {
   isMedreLayerId,
   medreBonusSpecFor,
 } from "./layers_p4_medre";
+// KLIIMA-HOOK (#611): climate-normals cell tables live in
+// ./layers_kliima (frost/wet slices, harvested normals). That module
+// imports layers only as types, so no runtime cycle.
+import type { KliimaLayerId } from "./layers_kliima";
+import {
+  KLIIMA_DECAY,
+  KLIIMA_LAYERS,
+  KLIIMA_TAGS,
+  isKliimaLayerId,
+  kliimaBonusSpecFor,
+} from "./layers_kliima";
 import type { PaasteLayerId } from "./layers_paaste";
 import {
   PAASTE_DECAY,
@@ -690,7 +701,10 @@ export type LayerId =
   | MedreLayerId
   // OHUSEIRE-HOOK (#610): official air-station id
   // (./layers_p4_ohuseire, P4-031 thin dots).
-  | OhuseireLayerId;
+  | OhuseireLayerId
+  // KLIIMA-HOOK (#611): climate-normals slice ids (./layers_kliima,
+  // frost/wet, no parameters3 id).
+  | KliimaLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -912,6 +926,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...MEDRE_DECAY,
   // OHUSEIRE-HOOK (#610): station radius (see layers_p4_ohuseire.ts OHUSEIRE_DECAY).
   ...OHUSEIRE_DECAY,
+  // KLIIMA-HOOK (#611): climate-cell radii (see layers_kliima.ts KLIIMA_DECAY).
+  ...KLIIMA_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -1142,6 +1158,9 @@ export const LAYERS: LayerDef[] = [
   // scorer design) from ./layers_p4_ohuseire. dims_p4_senscom.py is
   // never re-tuned here.
   ...OHUSEIRE_LAYERS,
+  // KLIIMA-HOOK (#611): climate-normals slice defs (frost/wet, no
+  // parameters3 id) from ./layers_kliima.
+  ...KLIIMA_LAYERS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -1280,6 +1299,9 @@ const TAGS: Record<LayerId, string> = {
   // layers_p4_ohuseire.ts OHUSEIRE_TAGS — prose, NOT an Overpass
   // fragment).
   ...OHUSEIRE_TAGS,
+  // KLIIMA-HOOK (#611): climate-normals source notes (see
+  // layers_kliima.ts KLIIMA_TAGS — prose, NOT an Overpass fragment).
+  ...KLIIMA_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -1513,6 +1535,10 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // OHUSEIRE-HOOK (#610): flat district-band spec lives in
   // layers_p4_ohuseire.ts (same dbands kernel, 1-station leg).
   if (isOhuseireLayerId(layer)) return ohuseireBonusSpecFor(layer);
+  // KLIIMA-HOOK (#611): climate-normals quality-band specs live in
+  // layers_kliima.ts (same qbands kernel as tervise; bands ride the
+  // harvested normals, not distance).
+  if (isKliimaLayerId(layer)) return kliimaBonusSpecFor(layer);
   // P4-031-HOOK (#484): senscom band spec lives in layers_p4_senscom.ts.
   if (isSenscomLayerId(layer)) return senscomBonusSpecFor(layer);
   // ACCBLACK-HOOK (#490): accblack avoid spec lives in layers_accblack.ts.

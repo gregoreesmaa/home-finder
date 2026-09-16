@@ -62,6 +62,14 @@ import {
   ohuseirePointsIn,
   OHUSEIRE_VINTAGE,
 } from "../../../../lib/layers_p4_ohuseire";
+// KLIIMA-HOOK (#611): harvested climate-normals cells (see below).
+import {
+  KLIIMA_CELLS,
+  KLIIMA_VINTAGE,
+  isKliimaLayerId,
+  kliimaPointsIn,
+  kliimaSliceFor,
+} from "../../../../lib/layers_kliima";
 import { loadSenscomSnapshot, senscomPointsIn } from "../../../../lib/server/senscom";
 import { loadOoklaSnapshot, ooklaPointsIn } from "../../../../lib/server/ookla";
 
@@ -290,6 +298,22 @@ export async function GET(
       points,
       provenance: points.length > 0 ? "snapshot" : "empty",
       ageMs: Date.now() - Date.parse(`${OHUSEIRE_VINTAGE}T00:00:00`),
+    });
+  }
+  // KLIIMA-HOOK (#611): climate-normals cells come from the committed
+  // harvest (KLIIMA_CELLS in lib/layers_kliima.ts, built offline by
+  // scripts/build/batch_kliima.py — never the OSM snapshot, never
+  // live). Per-slice band stamps ride q; unranked cells ride WITHOUT
+  // q (plotted for location, never scored — the qbands kernel renders
+  // nearest-q-absent as unknown, byte parity with the scorer's EI OLE
+  // on the same gap). Vintage rides KLIIMA_VINTAGE (annual harvest).
+  if (isKliimaLayerId(def.id)) {
+    const points: LayerPoint[] = kliimaPointsIn(
+      KLIIMA_CELLS, kliimaSliceFor(def.id), bbox);
+    return NextResponse.json({
+      points,
+      provenance: points.length > 0 ? "snapshot" : "empty",
+      ageMs: Date.now() - Date.parse(`${KLIIMA_VINTAGE}T00:00:00`),
     });
   }
   try {

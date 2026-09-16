@@ -225,6 +225,10 @@ describe("layer registry", () => {
       // dots — paramIds empty, parameters4 namespace; DIY senscom
       // leg untouched).
       "ohuseire",
+      // KLIIMA-HOOK (#611): climate-normals slice ids (frost/wet —
+      // paramIds empty, parameters4 namespace, harvested normals).
+      "kliima_frost",
+      "kliima_wet",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -328,6 +332,13 @@ describe("layer registry", () => {
     // senscom leg by scorer design — distinct slices, no double-score).
     expect(LAYERS.find((l) => l.id === "ohuseire")?.paramIds).toEqual([]);
     expect(LAYERS.find((l) => l.id === "ohuseire")?.paramLabel).toBe("P4-031");
+    // KLIIMA-HOOK (#611): kliima slices ride per-slice paramLabel,
+    // paramIds stays [] (parameters4 station legs, no parameters3
+    // number — distinct labels per slice, unlike the shared P4-011).
+    expect(LAYERS.find((l) => l.id === "kliima_frost")?.paramIds).toEqual([]);
+    expect(LAYERS.find((l) => l.id === "kliima_frost")?.paramLabel).toBe("P4-kliima talv");
+    expect(LAYERS.find((l) => l.id === "kliima_wet")?.paramIds).toEqual([]);
+    expect(LAYERS.find((l) => l.id === "kliima_wet")?.paramLabel).toBe("P4-kliima sademed");
   });
 
   it("wires the B10C utility layers with locked calibration", () => {

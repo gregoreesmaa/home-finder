@@ -126,7 +126,8 @@ describe("overlay legend + colors", () => {
     // EHIS-HOOK (#608): ehis_school/kindergarten/hobby join the registry (111 + 3).
     // MEDRE-HOOK (#609): medre_gp/clinic join the registry (114 + 2).
     // OHUSEIRE-HOOK (#610): ohuseire joins the registry (116 + 1).
-    expect(ids).toHaveLength(117);
+    // KLIIMA-HOOK (#611): kliima_frost/wet join the registry (117 + 2).
+    expect(ids).toHaveLength(119);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -408,7 +409,8 @@ describe("overlay legend + colors", () => {
     // EHIS-HOOK (#608): ehis_school/kindergarten/hobby join the registry (111 + 3).
     // MEDRE-HOOK (#609): medre_gp/clinic join the registry (114 + 2).
     // OHUSEIRE-HOOK (#610): ohuseire joins the registry (116 + 1).
-    expect(seen.size).toBe(117);
+    // KLIIMA-HOOK (#611): kliima_frost/wet join the registry (117 + 2).
+    expect(seen.size).toBe(119);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });
