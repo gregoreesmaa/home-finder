@@ -10,6 +10,7 @@ import {
   loadParkAreas,
   loadPlanktprAreas,
   loadSnapshotPoints,
+  loadSportPoints,
   loadWindowRaster,
   nominalArea,
   type ParkArea,
@@ -1848,6 +1849,47 @@ describe("accblack projected-points sidecar (#522 reopen)", () => {
       await expect(loadAccblackPoints(bare)).resolves.toEqual([]);
     } finally {
       await rm(bare, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("sport venue sidecar (#607)", () => {
+  async function sportDir(payload: unknown): Promise<string> {
+    const dir = await mkdtemp(join(tmpdir(), "hf-snap-sport-"));
+    await mkdir(join(dir, "sport"), { recursive: true });
+    await writeFile(join(dir, "sport", "sport-points.json"), JSON.stringify(payload));
+    return dir;
+  }
+
+  it("loads {points} sidecar, dropping bad slices and malformed rows", async () => {
+    const dir = await sportDir({
+      points: [
+        { lon: 24.75, lat: 59.44, slice: "hall" },
+        { lon: 24.73, lat: 59.43, slice: "pool" },
+        { lon: 24.73, lat: 59.43, slice: "arena" },
+        { lon: "x", lat: 59.44, slice: "field" },
+        { lon: 24.75 },
+      ],
+    });
+    try {
+      await expect(loadSportPoints(dir)).resolves.toEqual([
+        { lon: 24.75, lat: 59.44, slice: "hall" },
+        { lon: 24.73, lat: 59.43, slice: "pool" },
+      ]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("degrades missing/malformed sidecar to [] (honestly no points)", async () => {
+    await expect(loadSportPoints("/nonexistent-dir-xyz")).resolves.toEqual([]);
+    const bad = await mkdtemp(join(tmpdir(), "hf-snap-sportbad-"));
+    await mkdir(join(bad, "sport"), { recursive: true });
+    await writeFile(join(bad, "sport", "sport-points.json"), "{nope");
+    try {
+      await expect(loadSportPoints(bad)).resolves.toEqual([]);
+    } finally {
+      await rm(bad, { recursive: true, force: true });
     }
   });
 });

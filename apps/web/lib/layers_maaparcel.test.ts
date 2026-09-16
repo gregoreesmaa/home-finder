@@ -67,7 +67,7 @@ describe("maaparcel registry (#491)", () => {
     // 1 asumedia (ASUMEDIA-HOOK #495, 106 + 1).
     // 1 tervise (TERVISE-HOOK #494, 105 + 1).
     // PAASTE-HOOK (#493): +1 komando overlay (107 + 1).
-    expect(ids.length).toBe(108);
+    expect(ids.length).toBe(111); // SPORT-HOOK (#607): +3 sport slices (108 + 3)
     expect(ids).toContain("maaparcel");
   });
 

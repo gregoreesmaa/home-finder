@@ -68,7 +68,7 @@ describe("batch G06 registry (#138)", () => {
     // P4OSM-HOOK: +2 layers (95 + 2).
 
     // TERVISE-HOOK (#494): +1 tervise bathing-water layer (105 + 1).
-    expect(ids.length).toBe(108); // OSMDAILY-HOOK (#482): +6 daily-life layers (77 + 6) + GTFS-HOOK (#483): +1 stop overlay; RSAFE-HOOK (#481): +1 road-safety layer (84 + 1); P4-031-HOOK (#484): +senscom (85 + 1); STATKOV-HOOK (#485): +3 choropleth layers (86 + 3); PLANKTPR-HOOK (#492): +1 designated-use polygon layer (104 + 1); ASUMEDIA-HOOK (#495): +1 per-asum median layer (106 + 1); PAASTE-HOOK (#493): +1 komando overlay (107 + 1)
+    expect(ids.length).toBe(111); // OSMDAILY-HOOK (#482): +6 daily-life layers (77 + 6) + GTFS-HOOK (#483): +1 stop overlay; RSAFE-HOOK (#481): +1 road-safety layer (84 + 1); P4-031-HOOK (#484): +senscom (85 + 1); STATKOV-HOOK (#485): +3 choropleth layers (86 + 3); PLANKTPR-HOOK (#492): +1 designated-use polygon layer (104 + 1); ASUMEDIA-HOOK (#495): +1 per-asum median layer (106 + 1); PAASTE-HOOK (#493): +1 komando overlay (107 + 1); SPORT-HOOK (#607): +3 sport slices (108 + 3)
     for (const id of GROUP06_LAYER_IDS) expect(ids).toContain(id);
   });
 

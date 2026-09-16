@@ -520,6 +520,19 @@ export function overlayColorFor(layer: LayerId): string {
     // every other marker (distinct-color test).
     case "tervise":
       return "#34d399";
+    // SPORT-HOOK (#607): sport slice markers (point overlays,
+    // stride-sampled like grocery). #c4b5fd: violet-300 hall lights
+    // (NOT #a78bfa/#8b5cf6 — taken by nearby violets — and NOT
+    // #ddd6fe); #86efac: green-300 turf (NOT #4ade80/#22c55e/#16a34a
+    // — taken — and NOT #bef264 — taken); #bae6fd: sky-200 pool water
+    // (NOT #7dd3fc/#38bdf8/#0ea5e9 — taken — and NOT #e0f2fe).
+    // Distinct from every other marker (distinct-color test).
+    case "sport_hall":
+      return "#c4b5fd";
+    case "sport_field":
+      return "#86efac";
+    case "sport_pool":
+      return "#bae6fd";
     // ASUMEDIA-HOOK (#495): asumedia marker (empty-on-purpose layer —
     // the point overlay stays empty live, so this colors only the
     // toggle dot). #fda4af: rose-300 asking-price blush (NOT #fb7185
@@ -908,6 +921,17 @@ export function overlayLegendFor(layer: LayerId): string {
     // = hinnangut pole, mitte keskmine).
     case "tervise":
       return "Suplusvee seirepunktid (Terviseameti väljavõte) · lähima punkti kvaliteet 1 km raadiuses (80 väga hea, 70 hea, 60 piisav/teadmata, 45 kesine, 30 halb; lagi 80, joogivee seire puudub)";
+    // SPORT-HOOK (#607): sport slices (P4-048) — sliced register venues
+    // from the snapshot sidecar; the band field (not the dots) is the
+    // score: nearest sliced venue <= 500 m -> 80, <= 1 km -> 65,
+    // <= 2 km -> 50; beyond stays unknown (scorer NULL: hinnang +
+    // EI OLE; linnulennult, ajad/hinnad ostja kontroll).
+    case "sport_hall":
+      return "Spordisaalid ja võimlad (Spordiregistri väljavõte) · lähim saal 2 km raadiuses (≤500 m -> 80, ≤1 km -> 65, ≤2 km -> 50; kauguse-hinnang linnulennult, lahtiolekuajad/hinnad teadmata)";
+    case "sport_field":
+      return "Staadionid ja väliväljakud (Spordiregistri väljavõte) · lähim väljak 2 km raadiuses (≤500 m -> 80, ≤1 km -> 65, ≤2 km -> 50; kauguse-hinnang linnulennult)";
+    case "sport_pool":
+      return "Ujulate ligidus (Spordiregister + Terviseameti ujulate loend) · lähim ujula 2 km raadiuses (≤500 m -> 80, ≤1 km -> 65, ≤2 km -> 50; kauguse-hinnang linnulennult, veekvaliteeti ei hinnata)";
     // ASUMEDIA-HOOK (#495): asumedia (own-snapshot asking medians) —
     // the dated negative rides along: 0/84 asums reach MIN_N=5, so
     // the field is unknown everywhere until the reopen lands real

@@ -393,6 +393,10 @@ export default function LayersPage() {
   // Terviseamet extract, not the OSM snapshot — the status names the
   // extract vintage (+ its age) instead of the snapshot date.
   const isQbands = bonusSpecFor(layer).kind === "qbands";
+  // SPORT-HOOK (#607): dbands-layer points ride the Spordiregister +
+  // ujulad sidecar, not the OSM snapshot — the status names the
+  // register harvest vintage (+ its age) instead of the snapshot date.
+  const isDbands = bonusSpecFor(layer).kind === "dbands";
   // FLOOD-HOOK (#487): floodzone status counts polygons, never points —
   // the layer serves zero points by design (polygons only).
   const floodStatus =
@@ -439,6 +443,8 @@ export default function LayersPage() {
               ? `sensor.community väljavõte${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
               : isQbands
                 ? `Terviseameti väljavõte (suplusvesi, seis 2026-09-14)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
+              : isDbands
+                ? `Spordiregistri + ujulate väljavõte (seis 2026-09-16)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
               : `Kohalik hetktõmmis (2026-09-12) · ${pointCount} punkti`
           : "Kohalik hetktõmmis (2026-09-12) · rasterkiht"
         : provenance === "empty"

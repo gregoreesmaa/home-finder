@@ -206,6 +206,11 @@ describe("layer registry", () => {
       // PAASTE-HOOK (#493): paaste komando id (P4-012 slice, no
       // parameters3 id — parameters3 p12 stays schools).
       "paaste",
+      // SPORT-HOOK (#607): sport-venue slice ids (P4-048 pool/hall/
+      // field — paramIds empty, parameters4 namespace).
+      "sport_hall",
+      "sport_field",
+      "sport_pool",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -284,6 +289,12 @@ describe("layer registry", () => {
     // PAASTE-HOOK (#493): paaste binds NO parameters3 number
     // (namespace lock — 12 is schools).
     expect(LAYERS.find((l) => l.id === "paaste")?.paramIds).toEqual([]);
+    // SPORT-HOOK (#607): sport slices ride paramLabel, paramIds stays
+    // [] (parameters4 P4-048 slices, no parameters3 number).
+    for (const id of ["sport_hall", "sport_field", "sport_pool"]) {
+      expect(LAYERS.find((l) => l.id === id)?.paramIds).toEqual([]);
+      expect(LAYERS.find((l) => l.id === id)?.paramLabel).toBe("P4-048");
+    }
   });
 
   it("wires the B10C utility layers with locked calibration", () => {

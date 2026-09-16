@@ -48,3 +48,21 @@ for venues (TTL 365 d in-module).
 - Indoor pool WATER quality — not scored (outdoor bathing water is #494).
 - Hobby-education quality claims (haridussilm HTML) — explicitly out.
 - OSM `dim_rec_special` (group 11) stays the fallback cousin.
+
+## Map graduation (#607, 2026-09-16)
+
+Three `/layers` overlays ship the slices: `sport_hall`, `sport_field`,
+`sport_pool` (`apps/web/lib/layers_p4_sport.ts`, paramIds [] +
+paramLabel P4-048). Harvester `scripts/build/batch_sport.py` (yearly
+TTL, polite, 429 = stop) builds the snapshot sidecar
+`sport/sport-points.json`: 1110 Harjumaa points (hall 335 / field 630 /
+pool 145 — register Siseujula rows + 101 ujulad in the county window);
+dropped 239 unsliced kinds + 118 ujulad outside the approximate county
+window + 7 coordless + 2941 other-county register rows, all counted.
+Ujulad rows place regardless of `<tyyp>` (dims precedent); ujulad
+Harjumaa membership is the documented approximate bbox in the builder
+(no county column exists). Kernels are the exact scorer bands
+(≤500 m → 80, ≤1 km → 65, ≤2 km → 50, beyond NULL — straight-line
+`linnulennult` hinnang, no smoothing, no raster master by documented
+decision). EHIS school rows (#608) stay a separate signal (venues ≠
+schools — no double-score).

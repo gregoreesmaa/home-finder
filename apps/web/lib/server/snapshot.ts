@@ -130,6 +130,12 @@ import { ASUMEDIA_RASTER_FILE } from "../layers_asumedia";
 // (named but NOT built — honest-empty decision, resolves absent so the
 // layer degrades to the designed 500 → demo-empty path, honestly labeled).
 import { PAASTE_RASTER_FILE } from "../layers_paaste";
+// SPORT-HOOK (#607): sport-venue raster filenames + sidecar point type
+// live in layers_p4_sport.ts (rasters intentionally never built —
+// SPORT_NO_RASTER; the names resolve to absent files so rasters degrade
+// to null; the sidecar is honestly empty when unharvested).
+import { SPORT_RASTER_FILE } from "../layers_p4_sport";
+import type { SportPoint } from "../layers_p4_sport";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -403,6 +409,47 @@ export async function loadAccblackPoints(dir: string): Promise<AccblackPoint[]> 
     // Optional sidecar: honestly no points.
   }
   accblackPointCache.set(dir, points);
+  return points;
+}
+
+// SPORT-HOOK (#607): sport-venue sidecar cache (same discipline).
+const sportPointCache = new Map<string, SportPoint[]>();
+
+/** Sport slice tags the harvester writes (lat/lon/slice only). */
+const SPORT_SLICES = new Set(["hall", "field", "pool"]);
+
+function isSportPoint(v: unknown): v is SportPoint {
+  const p = v as Partial<SportPoint>;
+  return (
+    typeof p?.lon === "number" && Number.isFinite(p.lon) &&
+    typeof p?.lat === "number" && Number.isFinite(p.lat) &&
+    typeof p?.slice === "string" && SPORT_SLICES.has(p.slice)
+  );
+}
+
+/**
+ * Sport-venue sidecar (`sport/sport-points.json`): sliced Harjumaa
+ * venue points for the sport_hall/field/pool overlays (issue #607,
+ * built offline by scripts/build/batch_sport.py — never live).
+ * Missing or malformed sidecar degrades to [] (honestly no points —
+ * the map renders "no data", never a faked zero), never an error.
+ */
+export async function loadSportPoints(dir: string): Promise<SportPoint[]> {
+  const hit = sportPointCache.get(dir);
+  if (hit) return hit;
+  let points: SportPoint[] = [];
+  try {
+    const raw = await fs.readFile(path.join(dir, "sport", "sport-points.json"), "utf8");
+    const parsed: unknown = JSON.parse(raw);
+    const list = typeof parsed === "object" && parsed !== null && Array.isArray((parsed as { points?: unknown }).points)
+      ? (parsed as { points: unknown[] }).points
+      : [];
+    points = list.filter(isSportPoint);
+    if (!Array.isArray((parsed as { points?: unknown }).points)) console.warn(`snapshot: ignoring malformed sport-points.json in ${dir}`);
+  } catch {
+    // Optional sidecar: honestly no points.
+  }
+  sportPointCache.set(dir, points);
   return points;
 }
 
@@ -819,6 +866,10 @@ const RASTER_FILE: Record<LayerId, string> = {
   // PAASTE-HOOK (#493): paaste raster name only (no master built —
   // honest-empty; absent file degrades to the designed 500 path).
   ...PAASTE_RASTER_FILE,
+  // SPORT-HOOK (#607): sport-venue raster names only (no masters built
+  // by decision — SPORT_NO_RASTER; the points-splat distance kernel IS
+  // the field; absent files degrade windows to null, honestly).
+  ...SPORT_RASTER_FILE,
 };
 
 /**
@@ -892,6 +943,10 @@ export function matchesContract(
   // documented decision (TERVISE_NO_RASTER) — same stale-by-definition
   // guard under the quality legend.
   if (spec.kind === "qbands") return false;
+  // SPORT-HOOK (#607): "dbands" (sport) has no raster master by
+  // documented decision (SPORT_NO_RASTER) — same stale-by-definition
+  // guard under the distance legend.
+  if (spec.kind === "dbands") return false;
   return false;
 }
 
@@ -1282,6 +1337,12 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // PAASTE-HOOK (#493): no paaste metro master (honest-empty — the file
   // is absent, so windows serve county everywhere, like G02B/G03/B10C).
   paaste: "paaste-metro",
+  // SPORT-HOOK (#607): no sport metro masters (no county masters either
+  // — SPORT_NO_RASTER; the names resolve to absent files so windows
+  // fall back to the client points-splat distance kernel).
+  sport_hall: "sport-hall-metro",
+  sport_field: "sport-field-metro",
+  sport_pool: "sport-pool-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */
