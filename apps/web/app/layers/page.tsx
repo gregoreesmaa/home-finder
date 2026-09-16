@@ -90,6 +90,9 @@ import { isOhuseireLayerId } from "../../lib/layers_p4_ohuseire";
 // extract for kliima layers (see isQbands branch below) — tervise
 // keeps its own label.
 import { isKliimaLayerId } from "../../lib/layers_kliima";
+// POI-HOOK (#612): dbands status names the register extract for poi
+// layers (see isDbands branch below).
+import { isPoiLayerId } from "../../lib/layers_p4_poi";
 
 /** Viewport bbox rounded for fetch stability (matches server key rounding). */
 function sameView(a: BBoxLike, b: BBoxLike): boolean {
@@ -465,7 +468,9 @@ export default function LayersPage() {
                     ? `Medre väljavõte (perearstid, seis 2026-09-16)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
                     : isOhuseireLayerId(layer)
                       ? `Õhuseire väljavõte (3 jaama, seis 2026-09-16)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
-                      : `Spordiregistri + ujulate väljavõte (seis 2026-09-16)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
+                      : isPoiLayerId(layer)
+                        ? `Huvipunktide väljavõte (register, seis 2026-09-16)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
+                        : `Spordiregistri + ujulate väljavõte (seis 2026-09-16)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
               : `Kohalik hetktõmmis (2026-09-12) · ${pointCount} punkti`
           : "Kohalik hetktõmmis (2026-09-12) · rasterkiht"
         : provenance === "empty"

@@ -59,3 +59,48 @@ python3 -m pytest services/scoring/tests/test_dims_p4_poi.py -q
 python3 -m pytest services/scoring/tests -q
 # → full suite green, no regressions (see PR checks)
 ```
+
+## 6. Licence-day addendum #612 (2026-09-16, UA `home-finder-research`)
+
+Licence gate OPENED: the GetCapabilities Abstract applies the Maa-
+ja Ruumiamet open spatial-data licence
+(`https://geoportaal.maaamet.ee/avaandmete-litsents`, Fees/
+AccessConstraints "puudub", no per-layer override) — scorer
+`LICENCE_OK` flipped True, reasons stamp the licence (§5 tests
+updated). The portal catalogue page is a JS shell (no readable
+licence field), so the capabilities Abstract is the dated evidence.
+
+Bulk pulls (type-bounded GetFeature + `mk='Harju maakond'` CQL, 2 s
+pacing, raw XML in `/tmp/hf-612-poi/` only): raamatukogu 124,
+post 536, tervisekaubad 187 — all plotted, zero coordless, zero
+dropped. Builder `scripts/build/batch_poi.py` (monthly TTL) emits
+`poi/poi-points.json` (lat/lon/slice only — names/addresses never
+leave the builder). Map slices `poi_library` / `poi_post` /
+`poi_pharmacy` reuse the dbands kernel with the exact scorer table
+(≤300 m → 85, ≤600 m → 70, ≤1 km → 55, NULL-beyond).
+
+Agreement audit (Harjumaa: OSM 2026-09-12 snapshot vs register
+2026-09-16 — snapshot bbox runs slightly wider, so OSM counts are
+upper bounds):
+
+| type | OSM n | register n | ratio | verdict |
+|---|---|---|---|---|
+| raamatukogu | 86 (`derived-libraries`) | 124 | 1.44 | sarnane |
+| post | 418 (`derived-postal`, boxes + offices + lockers mixed) | 536 (521 pakiautomaat + 12 kontor + 3 punkt) | 1.28 | sarnane |
+| tervisekaubad | 180 (`derived-lastshop` amenity=pharmacy) | 187 | 1.04 | sarnane |
+
+All three agree within the similar band — the OSM legs stay
+trustworthy; the register adds coverage (libraries +44%). No layer
+follows for dedicated-split types (split table enforced by test).
+
+Staleness table (per-feature `andmeseis`, feed-level):
+
+| type | stamps | source registers |
+|---|---|---|
+| raamatukogu | 03.11.2025 ×85, 17.11.2025 ×37, 21.11.2024 ×2 | Eesti Rahvusraamatukogu ×124 |
+| post | 06.04.2026 ×159, 05.02.2024 ×126, 01.02.2024 ×120, 11.01.2024 ×75, 16.01.2024 ×49, older ×7 | Omniva ×159, DPD ×129, Maa-amet Internet ×128, SmartPOST ×120 |
+| tervisekaubad | 04.09.2026 ×187 | Ravimiamet Apteegid ×187 |
+
+Post-flip judgment (#612 title): post INCLUDES pakiautomaat —
+lockers are the dominant postal access (521/536); offices-only
+would fake scarcity. Stated in the legend + source note.

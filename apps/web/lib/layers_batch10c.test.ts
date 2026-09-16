@@ -59,7 +59,7 @@ describe("batch B10C registry (#121)", () => {
     // TERVISE-HOOK (#494): +1 tervise bathing-water layer (105 + 1).
     // ASUMEDIA-HOOK (#495): +1 per-asum median layer (106 + 1).
     // PAASTE-HOOK (#493): +1 komando overlay (107 + 1).
-    expect(ids.length).toBe(119); // SPORT-HOOK (#607): +3 sport slices (108 + 3); EHIS-HOOK (#608): +3 school slices (111 + 3); MEDRE-HOOK (#609): +2 care slices (114 + 2); OHUSEIRE-HOOK (#610): +1 station dots (116 + 1); KLIIMA-HOOK (#611): +2 climate slices (117 + 2)
+    expect(ids.length).toBe(122); // SPORT-HOOK (#607): +3 sport slices (108 + 3); EHIS-HOOK (#608): +3 school slices (111 + 3); MEDRE-HOOK (#609): +2 care slices (114 + 2); OHUSEIRE-HOOK (#610): +1 station dots (116 + 1); KLIIMA-HOOK (#611): +2 climate slices (117 + 2); POI-HOOK (#612): +3 long-tail slices (119 + 3)
     for (const id of BATCH10C_LAYER_IDS) expect(ids).toContain(id);
     for (const gone of ["internet", "redundancy", "ota"]) expect(ids).not.toContain(gone);
   });

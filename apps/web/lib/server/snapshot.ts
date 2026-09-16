@@ -159,6 +159,12 @@ import type { MedrePoint } from "../layers_p4_medre";
 // degrade to null; the sidecar is honestly empty when unharvested).
 import { OHUSEIRE_RASTER_FILE } from "../layers_p4_ohuseire";
 import type { OhuseirePoint } from "../layers_p4_ohuseire";
+// POI-HOOK (#612): long-tail raster filename + sidecar point type live
+// in layers_p4_poi.ts (raster intentionally never built —
+// POI_NO_RASTER; the name resolves to an absent file so rasters
+// degrade to null; the sidecar is honestly empty when unharvested).
+import { POI_RASTER_FILE } from "../layers_p4_poi";
+import type { PoiPoint } from "../layers_p4_poi";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -599,6 +605,47 @@ export async function loadOhuseirePoints(dir: string): Promise<OhuseirePoint[]> 
   return points;
 }
 
+// POI-HOOK (#612): long-tail sidecar cache (same discipline).
+const poiPointCache = new Map<string, PoiPoint[]>();
+
+/** POI slice tags the harvester writes (lat/lon/slice only). */
+const POI_SLICES = new Set(["library", "post", "pharmacy"]);
+
+function isPoiPoint(v: unknown): v is PoiPoint {
+  const p = v as Partial<PoiPoint>;
+  return (
+    typeof p?.lon === "number" && Number.isFinite(p.lon) &&
+    typeof p?.lat === "number" && Number.isFinite(p.lat) &&
+    typeof p?.slice === "string" && POI_SLICES.has(p.slice)
+  );
+}
+
+/**
+ * Long-tail POI sidecar (`poi/poi-points.json`): sliced Harjumaa
+ * library/post/pharmacy points for the poi_* overlays (issue #612,
+ * built offline by scripts/build/batch_poi.py — never live). Missing
+ * or malformed sidecar degrades to [] (honestly no points — the map
+ * renders "no data", never a faked zero), never an error.
+ */
+export async function loadPoiPoints(dir: string): Promise<PoiPoint[]> {
+  const hit = poiPointCache.get(dir);
+  if (hit) return hit;
+  let points: PoiPoint[] = [];
+  try {
+    const raw = await fs.readFile(path.join(dir, "poi", "poi-points.json"), "utf8");
+    const parsed: unknown = JSON.parse(raw);
+    const list = typeof parsed === "object" && parsed !== null && Array.isArray((parsed as { points?: unknown }).points)
+      ? (parsed as { points: unknown[] }).points
+      : [];
+    points = list.filter(isPoiPoint);
+    if (!Array.isArray((parsed as { points?: unknown }).points)) console.warn(`snapshot: ignoring malformed poi-points.json in ${dir}`);
+  } catch {
+    // Optional sidecar: honestly no points.
+  }
+  poiPointCache.set(dir, points);
+  return points;
+}
+
 const areaCache = new Map<string, ParkArea[]>();
 // PLANKTPR-HOOK (#492): harvested-polygon sidecar cache (same discipline).
 const planktprAreaCache = new Map<string, PlanktprArea[]>();
@@ -1031,6 +1078,9 @@ const RASTER_FILE: Record<LayerId, string> = {
   // built by decision — KLIIMA_NO_RASTER; same points-splat quality
   // discipline as tervise).
   ...KLIIMA_RASTER_FILE,
+  // POI-HOOK (#612): long-tail raster names only (no masters built
+  // by decision — POI_NO_RASTER; same points-splat discipline).
+  ...POI_RASTER_FILE,
 };
 
 /**
@@ -1523,6 +1573,12 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // windows fall back to the client points-splat quality kernel).
   kliima_frost: "kliima-frost-metro",
   kliima_wet: "kliima-wet-metro",
+  // POI-HOOK (#612): no poi metro masters (no county masters either
+  // — POI_NO_RASTER; the names resolve to absent files so windows
+  // fall back to the client points-splat distance kernel).
+  poi_library: "poi-library-metro",
+  poi_post: "poi-post-metro",
+  poi_pharmacy: "poi-pharmacy-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

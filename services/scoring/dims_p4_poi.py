@@ -17,11 +17,19 @@ vendored below as observed capability inventory — type NAMES only, no
 points), CRS EPSG:3301, updateSequence 1980. No licence statement in
 the capabilities and NONE in the catalogue → hard gate holds.
 
-Licence gate (LOAD-BEARING, issue constraint): LICENCE_OK = False
-until a dated re-probe confirms an open licence. While False the
-long-tail proximity dims return None with a gate reason (audit from
-counts only, no vendored points); the agreement audit is pure maths
-and always runs.
+Licence gate OPENED 2026-09-16 (issue #612, re-probe with UA
+home-finder-research): the SAME GetCapabilities body carries the
+licence in ServiceIdentification/Abstract — "Kui konkreetse kihi
+juures ei ole märgitud teisiti, siis teenuse kaudu saadud andmetele
+kohaldub Maa- ja Ruumiameti avatud ruumiandmete litsents
+(https://geoportaal.maaamet.ee/avaandmete-litsents). Andmeid võib
+kasutada mistahes kõlbelisel eesmärgil." Fees/AccessConstraints read
+"puudub"; no per-layer override is stated for the three long-tail
+types. The portal catalogue page itself is a JS shell (no readable
+licence field), so the capabilities Abstract is the dated evidence.
+LICENCE_OK = True from this re-probe on; the long-tail proximity
+dims score live, stamping the open licence in every reason. The
+agreement audit stays pure maths and always runs.
 
 Dedicated-source split (LOAD-BEARING, enforced by test — never
 double-score): where a dedicated register issue exists, it wins and
@@ -54,10 +62,13 @@ from typing import Dict, List, Optional, Tuple
 
 Score = Tuple[Optional[int], str]  # (score 0..100 | None, Estonian reason)
 
-#: Licence hard gate: catalogue states NONE, capabilities carry no
-#: licence statement — re-probe before ingesting points.
-LICENCE_OK = False
-LICENCE_NOTE = "litsents kinnitamata – arvestus loendite põhjal, punkte sisse lugemata"
+#: Licence gate (OPENED 2026-09-16, issue #612): the WFS
+#: GetCapabilities Abstract applies the Maa- ja Ruumiamet open
+#: spatial-data licence unless a layer says otherwise (no override
+#: for the long-tail types). Reasons stamp it, never bare trust.
+LICENCE_OK = True
+LICENCE_NOTE = ("Maa- ja Ruumiamet avatud ruumiandmete litsents "
+                "(geoportaal.maaamet.ee/avaandmete-litsents)")
 #: Freshness marker in every reason (monthly intermediate layer).
 VAHEKIHT = "vahekiht (lähteregistrite koondkiht)"
 
@@ -183,8 +194,9 @@ def _poi_dim(poi_type: str, origin: Optional[Tuple[float, float]],
     if s is None:
         return None, ("%s 1000 m raadiuses registris puudub – "
                       "kaardistus võib olla lünklik (%s)" % (poi_type, VAHEKIHT))
-    return s, ("%s %d m (%s, %s)"
-               % (poi_type, int(round(dist_m)), VAHEKIHT, "register"))
+    return s, ("%s %d m (%s, %s, %s)"
+               % (poi_type, int(round(dist_m)), VAHEKIHT, "register",
+                  LICENCE_NOTE))
 
 
 def dim_poi_library(origin: Optional[Tuple[float, float]],
