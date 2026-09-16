@@ -148,6 +148,12 @@ import type { EhisPoint } from "../layers_p4_ehis";
 // to null; the sidecar is honestly empty until the Step-2 ADS join).
 import { MEDRE_RASTER_FILE } from "../layers_p4_medre";
 import type { MedrePoint } from "../layers_p4_medre";
+// OHUSEIRE-HOOK (#610): station raster filename + sidecar point type
+// live in layers_p4_ohuseire.ts (raster intentionally never built —
+// OHUSEIRE_NO_RASTER; the name resolves to an absent file so rasters
+// degrade to null; the sidecar is honestly empty when unharvested).
+import { OHUSEIRE_RASTER_FILE } from "../layers_p4_ohuseire";
+import type { OhuseirePoint } from "../layers_p4_ohuseire";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -547,6 +553,44 @@ export async function loadMedrePoints(dir: string): Promise<MedrePoint[]> {
     // Optional sidecar: honestly no points.
   }
   medrePointCache.set(dir, points);
+  return points;
+}
+
+// OHUSEIRE-HOOK (#610): station sidecar cache (same discipline).
+const ohuseirePointCache = new Map<string, OhuseirePoint[]>();
+
+function isOhuseirePoint(v: unknown): v is OhuseirePoint {
+  const p = v as Partial<OhuseirePoint>;
+  return (
+    typeof p?.lon === "number" && Number.isFinite(p.lon) &&
+    typeof p?.lat === "number" && Number.isFinite(p.lat) &&
+    typeof p?.name === "string"
+  );
+}
+
+/**
+ * Official air-station sidecar (`ohuseire/ohuseire-points.json`):
+ * Tallinn station points for the ohuseire overlay (issue #610, built
+ * offline by scripts/build/batch_ohuseire.py — never live). Missing or
+ * malformed sidecar degrades to [] (honestly no points — the map
+ * renders "no data", never a faked zero), never an error.
+ */
+export async function loadOhuseirePoints(dir: string): Promise<OhuseirePoint[]> {
+  const hit = ohuseirePointCache.get(dir);
+  if (hit) return hit;
+  let points: OhuseirePoint[] = [];
+  try {
+    const raw = await fs.readFile(path.join(dir, "ohuseire", "ohuseire-points.json"), "utf8");
+    const parsed: unknown = JSON.parse(raw);
+    const list = typeof parsed === "object" && parsed !== null && Array.isArray((parsed as { points?: unknown }).points)
+      ? (parsed as { points: unknown[] }).points
+      : [];
+    points = list.filter(isOhuseirePoint);
+    if (!Array.isArray((parsed as { points?: unknown }).points)) console.warn(`snapshot: ignoring malformed ohuseire-points.json in ${dir}`);
+  } catch {
+    // Optional sidecar: honestly no points.
+  }
+  ohuseirePointCache.set(dir, points);
   return points;
 }
 
@@ -974,6 +1018,10 @@ const RASTER_FILE: Record<LayerId, string> = {
   // built by decision — MEDRE_NO_RASTER; same points-splat
   // discipline, dormant until Step 2).
   ...MEDRE_RASTER_FILE,
+  // OHUSEIRE-HOOK (#610): station raster name only (no master built
+  // by decision — OHUSEIRE_NO_RASTER; the points-splat distance
+  // kernel IS the field; absent file degrades windows to null).
+  ...OHUSEIRE_RASTER_FILE,
 };
 
 /**
@@ -1457,6 +1505,10 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // kernel, dormant until Step 2).
   medre_gp: "medre-gp-metro",
   medre_clinic: "medre-clinic-metro",
+  // OHUSEIRE-HOOK (#610): no ohuseire metro master (no county master
+  // either — OHUSEIRE_NO_RASTER; the name resolves to an absent file
+  // so windows fall back to the client points-splat distance kernel).
+  ohuseire: "ohuseire-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

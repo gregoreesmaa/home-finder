@@ -535,6 +535,17 @@ import {
   ehisBonusSpecFor,
   isEhisLayerId,
 } from "./layers_p4_ehis";
+// OHUSEIRE-HOOK (#610): official air-station tables live in
+// ./layers_p4_ohuseire (P4-031 thin station dots, register sidecar).
+// That module imports layers only as types, so no runtime cycle.
+import type { OhuseireLayerId } from "./layers_p4_ohuseire";
+import {
+  isOhuseireLayerId,
+  OHUSEIRE_DECAY,
+  OHUSEIRE_LAYERS,
+  OHUSEIRE_TAGS,
+  ohuseireBonusSpecFor,
+} from "./layers_p4_ohuseire";
 // MEDRE-HOOK (#609): primary-care tables live in ./layers_p4_medre
 // (P4-011 gp/clinic slices, Step-1 honest-empty sidecar). That module
 // imports layers only as types, so no runtime cycle.
@@ -676,7 +687,10 @@ export type LayerId =
   | EhisLayerId
   // MEDRE-HOOK (#609): primary-care slice ids (./layers_p4_medre,
   // P4-011 gp/clinic, Step-1 honest-empty).
-  | MedreLayerId;
+  | MedreLayerId
+  // OHUSEIRE-HOOK (#610): official air-station id
+  // (./layers_p4_ohuseire, P4-031 thin dots).
+  | OhuseireLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -896,6 +910,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...EHIS_DECAY,
   // MEDRE-HOOK (#609): primary-care radii (see layers_p4_medre.ts MEDRE_DECAY).
   ...MEDRE_DECAY,
+  // OHUSEIRE-HOOK (#610): station radius (see layers_p4_ohuseire.ts OHUSEIRE_DECAY).
+  ...OHUSEIRE_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -1121,6 +1137,11 @@ export const LAYERS: LayerDef[] = [
   // MEDRE-HOOK (#609): primary-care slice defs (P4-011 gp/clinic, no
   // parameters3 id, Step-1 honest-empty) from ./layers_p4_medre.
   ...MEDRE_LAYERS,
+  // OHUSEIRE-HOOK (#610): official air-station def (P4-031 thin dots,
+  // no parameters3 id — P4-031 shared with the DIY senscom leg by
+  // scorer design) from ./layers_p4_ohuseire. dims_p4_senscom.py is
+  // never re-tuned here.
+  ...OHUSEIRE_LAYERS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -1255,6 +1276,10 @@ const TAGS: Record<LayerId, string> = {
   // MEDRE-HOOK (#609): primary-care source notes (see
   // layers_p4_medre.ts MEDRE_TAGS — prose, NOT an Overpass fragment).
   ...MEDRE_TAGS,
+  // OHUSEIRE-HOOK (#610): station source note (see
+  // layers_p4_ohuseire.ts OHUSEIRE_TAGS — prose, NOT an Overpass
+  // fragment).
+  ...OHUSEIRE_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -1485,6 +1510,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // MEDRE-HOOK (#609): primary-care distance-band specs live in
   // layers_p4_medre.ts (same dbands kernel; dormant until Step 2).
   if (isMedreLayerId(layer)) return medreBonusSpecFor(layer);
+  // OHUSEIRE-HOOK (#610): flat district-band spec lives in
+  // layers_p4_ohuseire.ts (same dbands kernel, 1-station leg).
+  if (isOhuseireLayerId(layer)) return ohuseireBonusSpecFor(layer);
   // P4-031-HOOK (#484): senscom band spec lives in layers_p4_senscom.ts.
   if (isSenscomLayerId(layer)) return senscomBonusSpecFor(layer);
   // ACCBLACK-HOOK (#490): accblack avoid spec lives in layers_accblack.ts.

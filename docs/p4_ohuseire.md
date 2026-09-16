@@ -101,3 +101,22 @@ Hermetic: zero network calls in tests. Full-suite output in the PR body.
   series); this register stays the station-inventory leg.
 * Station moves/closes → weekly pull absorbs it; reasons carry the
   snapshot date so staleness is reviewable.
+
+## 7. Map graduation (#610, 2026-09-16)
+
+One `/layers` overlay ships the thin station inventory: `ohuseire`
+(`apps/web/lib/layers_p4_ohuseire.ts`, paramIds [] + paramLabel
+P4-031, shared with the DIY senscom leg by scorer design — distinct
+slices, no double-score). Harvester `scripts/build/batch_ohuseire.py`
+(weekly TTL, polite, 429 = stop) pulls the keyless PostgREST slice
+(sr_programm_nimi ilike *õhu* — the õ is load-bearing: plain *ohu*
+also matches "ohustatud" plant communities, caught live) and builds
+the snapshot sidecar `ohuseire/ohuseire-points.json`: 90 fetched rows
+→ 42 with coords → 3 Tallinn stations (Rahu / Liivalaia / Õismäe;
+39 skipped + 48 coordless, all counted). Kernel is the flat district
+band (nearest station within 2 km → 60, beyond NULL — straight-line
+hinnang, NO interpolation, no raster/metro masters by documented
+decision). DIVERGENCE: the scorer's 2+ → 70 lives scorer-side only
+(stated on the legend). DIY sensor.community stations stay untouched.
+The 7 d inventory TTL absorbs station moves; legend states the
+thinness (station count + names).

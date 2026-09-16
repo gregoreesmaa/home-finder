@@ -555,6 +555,12 @@ export function overlayColorFor(layer: LayerId): string {
       return "#ffedd5";
     case "medre_clinic":
       return "#ede9fe";
+    // OHUSEIRE-HOOK (#610): station marker (thin point overlay,
+    // stride-sampled like grocery). #94a3b8: slate-400 inlet steel
+    // (verified free 2026-09-16 — no other marker uses it). Distinct
+    // from every other marker (distinct-color test).
+    case "ohuseire":
+      return "#94a3b8";
     // ASUMEDIA-HOOK (#495): asumedia marker (empty-on-purpose layer —
     // the point overlay stays empty live, so this colors only the
     // toggle dot). #fda4af: rose-300 asking-price blush (NOT #fb7185
@@ -975,6 +981,14 @@ export function overlayLegendFor(layer: LayerId): string {
       return "Perearstid (TEHIK medre väljavõte, EI OLE liitmist) · vastuvõtukoht 2 km raadiuses (≤500 m -> 80, ≤1 km -> 65, ≤2 km -> 50, uinuv — punkte pole; lähedus, mitte kvaliteet; avatud-olek teadmata)";
     case "medre_clinic":
       return "Perearstikeskused (TEHIK medre väljavõte, EI OLE liitmist) · üldarstiabi tegevuskoht 2 km raadiuses (≤500 m -> 80, ≤1 km -> 65, ≤2 km -> 50, uinuv — punkte pole; eriarstiabi väljas)";
+    // OHUSEIRE-HOOK (#610): thin station layer (P4-031) — 3 Tallinna
+    // jaama (Rahu / Liivalaia / Õismäe, seis 2026-09-16); the band
+    // field (not the dots) is the score: jaam 2 km raadiuses -> 60,
+    // beyond stays unknown (scorer NULL). The scorer's 2+ -> 70 lives
+    // scorer-side only (stated); reference inlets interpolate across
+    // districts — never a doorstep measurement, never heating truth.
+    case "ohuseire":
+      return "Õhuseire jaamad (Keskkonnaagentuuri väljavõte: Rahu / Liivalaia / Õismäe) · jaam 2 km raadiuses -> 60 (lameda linnaosa-hinnang; 2+ jaama 70 ainult skooris; mõõtmine ega küte-tõde teadmata)";
     // ASUMEDIA-HOOK (#495): asumedia (own-snapshot asking medians) —
     // the dated negative rides along: 0/84 asums reach MIN_N=5, so
     // the field is unknown everywhere until the reopen lands real

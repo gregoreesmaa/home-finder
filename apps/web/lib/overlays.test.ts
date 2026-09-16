@@ -125,7 +125,8 @@ describe("overlay legend + colors", () => {
     // SPORT-HOOK (#607): sport_hall/field/pool join the registry (108 + 3).
     // EHIS-HOOK (#608): ehis_school/kindergarten/hobby join the registry (111 + 3).
     // MEDRE-HOOK (#609): medre_gp/clinic join the registry (114 + 2).
-    expect(ids).toHaveLength(116);
+    // OHUSEIRE-HOOK (#610): ohuseire joins the registry (116 + 1).
+    expect(ids).toHaveLength(117);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -361,6 +362,10 @@ describe("overlay legend + colors", () => {
     expect(overlayLegendFor("medre_gp")).toContain("EI OLE liitmist");
     expect(overlayLegendFor("medre_gp")).toContain("avatud-olek teadmata");
     expect(overlayLegendFor("medre_clinic")).toContain("eriarstiabi väljas");
+    // OHUSEIRE-HOOK (#610): station legend names the 3 stations + the
+    // flat-60 thinness (see OHUSEIRE_EDGES_M).
+    expect(overlayLegendFor("ohuseire")).toContain("Rahu / Liivalaia / Õismäe");
+    expect(overlayLegendFor("ohuseire")).toContain("2+ jaama 70 ainult skooris");
   });
 
   it("gives every layer a distinct marker color", () => {
@@ -402,7 +407,8 @@ describe("overlay legend + colors", () => {
     // SPORT-HOOK (#607): sport_hall/field/pool join the registry (108 + 3).
     // EHIS-HOOK (#608): ehis_school/kindergarten/hobby join the registry (111 + 3).
     // MEDRE-HOOK (#609): medre_gp/clinic join the registry (114 + 2).
-    expect(seen.size).toBe(116);
+    // OHUSEIRE-HOOK (#610): ohuseire joins the registry (116 + 1).
+    expect(seen.size).toBe(117);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

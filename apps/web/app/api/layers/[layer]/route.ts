@@ -29,6 +29,7 @@ import {
   loadEhisPoints,
   loadLayerRaster,
   loadMedrePoints,
+  loadOhuseirePoints,
   loadSnapshotPoints,
   loadSportPoints,
   SNAPSHOT_AS_OF_MS,
@@ -55,6 +56,12 @@ import {
   medrePointsIn,
   medreSliceFor,
 } from "../../../../lib/layers_p4_medre";
+// OHUSEIRE-HOOK (#610): official air-station sidecar points (see below).
+import {
+  isOhuseireLayerId,
+  ohuseirePointsIn,
+  OHUSEIRE_VINTAGE,
+} from "../../../../lib/layers_p4_ohuseire";
 import { loadSenscomSnapshot, senscomPointsIn } from "../../../../lib/server/senscom";
 import { loadOoklaSnapshot, ooklaPointsIn } from "../../../../lib/server/ookla";
 
@@ -269,6 +276,20 @@ export async function GET(
       points,
       provenance: points.length > 0 ? "snapshot" : "empty",
       ageMs: Date.now() - Date.parse(`${MEDRE_VINTAGE}T00:00:00`),
+    });
+  }
+  // OHUSEIRE-HOOK (#610): official air-station points come from the
+  // snapshot sidecar (ohuseire/ohuseire-points.json, built offline by
+  // scripts/build/batch_ohuseire.py — never the OSM snapshot, never
+  // live). A missing sidecar stays honestly-empty. Vintage rides
+  // OHUSEIRE_VINTAGE. DIY senscom stations stay untouched.
+  if (isOhuseireLayerId(def.id)) {
+    const all = await loadOhuseirePoints(snapshotDir());
+    const points: LayerPoint[] = ohuseirePointsIn(all, bbox);
+    return NextResponse.json({
+      points,
+      provenance: points.length > 0 ? "snapshot" : "empty",
+      ageMs: Date.now() - Date.parse(`${OHUSEIRE_VINTAGE}T00:00:00`),
     });
   }
   try {
