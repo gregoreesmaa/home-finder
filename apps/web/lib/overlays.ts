@@ -546,6 +546,17 @@ export function overlayColorFor(layer: LayerId): string {
       return "#fbcfe8";
     case "ehis_hobby":
       return "#a5f3fc";
+    // KLIIMA-HOOK (#611): kliima slice markers (point overlays,
+    // stride-sampled like grocery). #e0f2fe: sky-100 station ice
+    // (NOT #bae6fd — taken by sport_pool — and NOT #f0f9ff — near
+    // white, invisible dot); #fef3c7: amber-100 dry hay for the
+    // dryness slice (NOT #ffedd5 — taken by medre_gp — and NOT
+    // #fde047/#fbbf24 — taken). Distinct from every other marker
+    // (distinct-color test).
+    case "kliima_frost":
+      return "#e0f2fe";
+    case "kliima_wet":
+      return "#fef3c7";
     // MEDRE-HOOK (#609): medre slice markers (Step-1 honest-empty —
     // the point overlay stays empty live, so this colors only the
     // toggle dot). #ffedd5: orange-100 clinic paper; #ede9fe:
@@ -989,6 +1000,17 @@ export function overlayLegendFor(layer: LayerId): string {
     // districts — never a doorstep measurement, never heating truth.
     case "ohuseire":
       return "Õhuseire jaamad (Keskkonnaagentuuri väljavõte: Rahu / Liivalaia / Õismäe) · jaam 2 km raadiuses -> 60 (lameda linnaosa-hinnang; 2+ jaama 70 ainult skooris; mõõtmine ega küte-tõde teadmata)";
+    // KLIIMA-HOOK (#611): kliima slices (P4 winter-mildness + wetness
+    // station legs) — harvested 1991-2020 normals from
+    // Keskkonnaagentuur; the band field (not the dots) is the score:
+    // nearest ranked cell within 70 km takes its rank band (frost
+    // 70/55/40 across 3 cells, wet 70/40 across 2 — Pakri
+    // sademenormatiivita); beyond stays unknown (scorer NULL: hinnang
+    // + EI OLE; interpolatsiooni pole, tänavataseme gradiente pole).
+    case "kliima_frost":
+      return "Talvine leebus (Keskkonnaagentuur 1991-2020) · lähima jaamaraku külmapäevade järjestus 70 km raadiuses (Pakri 70 / Harku 55 / Kuusiku 40; 3 jämedat rakku, interpolatsiooni pole)";
+    case "kliima_wet":
+      return "Kuivus (Keskkonnaagentuur 1991-2020) · lähima jaamaraku aastasademete järjestus 70 km raadiuses (Harku 70 / Kuusiku 40; Pakri 22/30 täisaastat ehk normatiivita — teadmata, mitte niiske)";
     // ASUMEDIA-HOOK (#495): asumedia (own-snapshot asking medians) —
     // the dated negative rides along: 0/84 asums reach MIN_N=5, so
     // the field is unknown everywhere until the reopen lands real

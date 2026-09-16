@@ -147,6 +147,11 @@ import type { EhisPoint } from "../layers_p4_ehis";
 // MEDRE_NO_RASTER; the names resolve to absent files so rasters degrade
 // to null; the sidecar is honestly empty until the Step-2 ADS join).
 import { MEDRE_RASTER_FILE } from "../layers_p4_medre";
+// KLIIMA-HOOK (#611): climate-normals raster filenames live in
+// layers_kliima.ts (intentionally never built — KLIIMA_NO_RASTER; the
+// names resolve to absent files so windows fall back to the client
+// points-splat quality kernel).
+import { KLIIMA_RASTER_FILE } from "../layers_kliima";
 import type { MedrePoint } from "../layers_p4_medre";
 // OHUSEIRE-HOOK (#610): station raster filename + sidecar point type
 // live in layers_p4_ohuseire.ts (raster intentionally never built —
@@ -1022,6 +1027,10 @@ const RASTER_FILE: Record<LayerId, string> = {
   // by decision — OHUSEIRE_NO_RASTER; the points-splat distance
   // kernel IS the field; absent file degrades windows to null).
   ...OHUSEIRE_RASTER_FILE,
+  // KLIIMA-HOOK (#611): climate-normals raster names only (no masters
+  // built by decision — KLIIMA_NO_RASTER; same points-splat quality
+  // discipline as tervise).
+  ...KLIIMA_RASTER_FILE,
 };
 
 /**
@@ -1509,6 +1518,11 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // either — OHUSEIRE_NO_RASTER; the name resolves to an absent file
   // so windows fall back to the client points-splat distance kernel).
   ohuseire: "ohuseire-metro",
+  // KLIIMA-HOOK (#611): no kliima metro masters (no county masters
+  // either — KLIIMA_NO_RASTER; the names resolve to absent files so
+  // windows fall back to the client points-splat quality kernel).
+  kliima_frost: "kliima-frost-metro",
+  kliima_wet: "kliima-wet-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */
