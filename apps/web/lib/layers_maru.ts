@@ -137,6 +137,19 @@ const MARU =
   "MARU kvartali KOV-väljavõte (haldaja paigaldatud eksport, " +
   "haldusüksuse täpsus; vormipõhine päringukeskkond, hulgi-lepingut EI OLE)";
 
+/**
+ * Intra-city grain expectation (#521): Tallinn is ONE KOV polygon, so
+ * every KOV layer is flat inside the city BY CONSTRUCTION — one band
+ * per municipality, never restretched for contrast. Finer turnover
+ * grain (linnaosa/asum) is not in the MARU contract; grid
+ * disaggregation would manufacture variation (refused, see
+ * docs/kov-intra-city-grain.md). Appended to every MARU source.
+ */
+export const MARUKOV_GRAIN =
+  " KOV-täpsus: Tallinn on üks KOV-polügoon, seega on iga KOV-kiht " +
+  "linna piires ühetooniline (oodatud — ribasid EI VENITATA " +
+  "kontrastiks); linnaosa/asumi-käivet selles tabelis EI OLE";
+
 export const MARUKOV_DEFS: LayerDef[] = [
   {
     id: "kovkasv",
@@ -149,7 +162,7 @@ export const MARUKOV_DEFS: LayerDef[] = [
       `KOV-polügoonid OSM admin_level=7 (${SNAP}). ` +
       `Kõrvutikvartalite annualiseerimist EI OLE (hooajaline ` +
       `uusehitus võltsiks trendi) — paaritu KOV on EI OLE, ` +
-      `iga lahter oma KOV väärtus, silumist EI OLE`,
+      `iga lahter oma KOV väärtus, silumist EI OLE` + MARUKOV_GRAIN,
     fallbackPoints: [
       { lat: 59.4364, lon: 24.7536 }, // Tallinn-kesk (tihe tehinguturg)
       { lat: 59.2, lon: 24.5 }, // Hõre Harjumaa (aastapaar sageli puudu)
@@ -166,7 +179,7 @@ export const MARUKOV_DEFS: LayerDef[] = [
       `esmalõike Harju-ribad); KOV-polügoonid OSM admin_level=7 ` +
       `(${SNAP}). Tehingu-KIIRUSE (QoQ) jalga EI OLE siin (see on ` +
       `kovkiirus), maakleri võrdlustehingute jalga EI OLE — ` +
-      `iga lahter oma KOV väärtus, silumist EI OLE`,
+      `iga lahter oma KOV väärtus, silumist EI OLE` + MARUKOV_GRAIN,
     fallbackPoints: [
       { lat: 59.4364, lon: 24.7536 }, // Tallinn-kesk (tuhanded tehingut/kv)
       { lat: 59.2, lon: 24.5 }, // Hõre Harjumaa (tehinguid kümnetes)
@@ -183,7 +196,7 @@ export const MARUKOV_DEFS: LayerDef[] = [
       `p41 jalg) samast tabelist; KOV-polügoonid OSM admin_level=7 ` +
       `(${SNAP}). Puuduva jalaga hinnangut EI FEIGITA (poolik ` +
       `komposiit on EI OLE), maakleri võrdlustehingute jalga EI OLE — ` +
-      `iga lahter oma KOV väärtus, silumist EI OLE`,
+      `iga lahter oma KOV väärtus, silumist EI OLE` + MARUKOV_GRAIN,
     fallbackPoints: [
       { lat: 59.4364, lon: 24.7536 }, // Tallinn-kesk (sügav turg)
       { lat: 59.2, lon: 24.5 }, // Hõre Harjumaa (suuna-jalga sageli pole)
@@ -199,7 +212,7 @@ export const MARUKOV_DEFS: LayerDef[] = [
       `${MARU}: tehingute arvu QoQ-muutus (jooksev vs eelmine ` +
       `kvartal, KÄIBE-kiirus üksi); KOV-polügoonid OSM admin_level=7 ` +
       `(${SNAP}). Pakkumiste laoseisu KV-adapteri jalga EI OLE — ` +
-      `täis-imemist EI FEIGITA, lagi 70`,
+      `täis-imemist EI FEIGITA, lagi 70` + MARUKOV_GRAIN,
     fallbackPoints: [
       { lat: 59.4364, lon: 24.7536 }, // Tallinn-kesk
       { lat: 59.2, lon: 24.5 }, // Hõre Harjumaa (paaritu kvartal = EI OLE)
