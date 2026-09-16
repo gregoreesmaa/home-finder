@@ -513,6 +513,17 @@ import {
 // PAASTE-HOOK (#493): Päästeamet komando tables live in ./layers_paaste
 // (P4-012 station half, honest-empty — no machine feed). That module
 // imports layers only as types, so no runtime cycle.
+// SPORT-HOOK (#607): sport-venue tables live in ./layers_p4_sport
+// (P4-048 pool/hall/field slices, register sidecar). That module
+// imports layers only as types, so no runtime cycle.
+import type { SportLayerId } from "./layers_p4_sport";
+import {
+  SPORT_DECAY,
+  SPORT_LAYERS,
+  SPORT_TAGS,
+  isSportLayerId,
+  sportBonusSpecFor,
+} from "./layers_p4_sport";
 import type { PaasteLayerId } from "./layers_paaste";
 import {
   PAASTE_DECAY,
@@ -634,7 +645,10 @@ export type LayerId =
   | AsumediaLayerId
   // PAASTE-HOOK (#493): komando overlay id (./layers_paaste, P4-012
   // station half, honest-empty).
-  | PaasteLayerId;
+  | PaasteLayerId
+  // SPORT-HOOK (#607): sport-venue slice ids (./layers_p4_sport,
+  // P4-048 pool/hall/field).
+  | SportLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -848,6 +862,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...ASUMEDIA_DECAY,
   // PAASTE-HOOK (#493): paaste radius (see layers_paaste.ts PAASTE_DECAY).
   ...PAASTE_DECAY,
+  // SPORT-HOOK (#607): sport-venue radii (see layers_p4_sport.ts SPORT_DECAY).
+  ...SPORT_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -1062,6 +1078,9 @@ export const LAYERS: LayerDef[] = [
   // PAASTE-HOOK (#493): paaste def (P4-012 slice, no parameters3 id —
   // parameters3 p12 is schools) from ./layers_paaste.
   ...PAASTE_LAYERS,
+  // SPORT-HOOK (#607): sport-venue slice defs (P4-048 pool/hall/field,
+  // no parameters3 id) from ./layers_p4_sport.
+  ...SPORT_LAYERS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -1187,6 +1206,9 @@ const TAGS: Record<LayerId, string> = {
   // PAASTE-HOOK (#493): paaste source note (see layers_paaste.ts
   // PAASTE_TAGS — prose, NOT an Overpass fragment).
   ...PAASTE_TAGS,
+  // SPORT-HOOK (#607): sport-venue source notes (see layers_p4_sport.ts
+  // SPORT_TAGS — prose, NOT an Overpass fragment).
+  ...SPORT_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -1336,7 +1358,13 @@ export type BonusSpec =
   // radiusM (hard cutoff, no smoothing) — byte parity with
   // batch_tervise.py quality_band. No point in radius, or nearest q
   // absent, stays unknown (renders red, never zero).
-  | QbandsSpec;
+  | QbandsSpec
+  // SPORT-HOOK (#607): nearest-venue distance bands (sport pool/hall/
+  // field): each cell takes the NEAREST sliced venue's distance band
+  // within radiusM (hard cutoff, no smoothing) — byte parity with
+  // PROX_BANDS in services/scoring/dims_p4_sportreg.py. No venue in
+  // radius stays unknown (renders red, never zero).
+  | DbandsSpec;
 
 /**
  * Hard-radius witness-count band spec (P4-031-HOOK #484 — senscom DIY
@@ -1386,9 +1414,25 @@ export interface QbandsSpec {
   radiusM: number;
 }
 
+/**
+ * Nearest-venue distance-band spec (SPORT-HOOK #607 — sport pool/hall/
+ * field, first use). Values live in ./layers_p4_sport (SPORT_RADIUS_M
+ * + SPORT_EDGES_M — byte parity with PROX_BANDS in
+ * services/scoring/dims_p4_sportreg.py).
+ */
+export interface DbandsSpec {
+  kind: "dbands";
+  /** Hard join radius in metres (sport: 2000, the outer band edge). */
+  radiusM: number;
+  /** [edgeM, band] pairs, nearest first (sport: 500->80/1000->65/2000->50). */
+  edges: [number, number][];
+}
+
 export function bonusSpecFor(layer: LayerId): BonusSpec {
   // TERVISE-HOOK (#494): tervise quality-band spec lives in layers_tervise.ts.
   if (isTerviseLayerId(layer)) return terviseBonusSpecFor(layer);
+  // SPORT-HOOK (#607): sport distance-band specs live in layers_p4_sport.ts.
+  if (isSportLayerId(layer)) return sportBonusSpecFor(layer);
   // P4-031-HOOK (#484): senscom band spec lives in layers_p4_senscom.ts.
   if (isSenscomLayerId(layer)) return senscomBonusSpecFor(layer);
   // ACCBLACK-HOOK (#490): accblack avoid spec lives in layers_accblack.ts.
@@ -1752,6 +1796,9 @@ export async function fetchWindow(
   // TERVISE-HOOK (#494): qbands layers have no raster master by decision
   // (TERVISE_NO_RASTER) — same skip for the quality kernel.
   if (bonusSpecFor(layer).kind === "qbands") return null;
+  // SPORT-HOOK (#607): dbands layers have no raster master by decision
+  // (SPORT_NO_RASTER) — same skip for the distance kernel.
+  if (bonusSpecFor(layer).kind === "dbands") return null;
   try {
     const spanM = (view.maxlon - view.minlon) * 57300;
     const latM = (view.maxlat - view.minlat) * 110570;

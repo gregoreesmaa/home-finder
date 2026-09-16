@@ -142,7 +142,7 @@ export interface ScoredField {
   /** Bonus per node (same geometry as field). */
   bonus: Float64Array;
   sigmaKm: number;
-  /** Direct per-node score (NaN = unknown) for direct kinds (area/sparse/trips/avoid/quiet/cover/bands/qbands); else null. */
+  /** Direct per-node score (NaN = unknown) for direct kinds (area/sparse/trips/avoid/quiet/cover/bands/qbands/dbands); else null. */
   direct: Float64Array | null;
 }
 
@@ -299,6 +299,46 @@ export function buildScoredField(
           best = d;
           const q = (p as ScoredPoint).q;
           band = typeof q === "number" && Number.isFinite(q) ? q : NaN;
+        }
+      }
+      direct[k] = band;
+    }
+    return { field, bonus, sigmaKm, direct };
+  }
+  // SPORT-HOOK (#607): nearest-venue distance bands (sport pool/hall/
+  // field) — the map twin of sportBandAt in ./layers_p4_sport. Each
+  // cell takes the NEAREST point's distance band within radiusM (hard
+  // cutoff, same equirect geometry as the "qbands" branch above) via
+  // the spec edges (byte parity with PROX_BANDS in
+  // services/scoring/dims_p4_sportreg.py). Deliberately NOT a Gaussian
+  // splat: a hall 3 km away says nothing about the backyard, so
+  // smoothing would fake a gradient between venues. No point in radius
+  // stays NaN (unknown, never zero — the scorer reads the same gap as
+  // NULL).
+  if (spec.kind === "dbands") {
+    const direct = new Float64Array(cols * rows);
+    const spanLon = bbox.maxlon - bbox.minlon;
+    const spanLat = bbox.maxlat - bbox.minlat;
+    const kx = 111.32 * Math.cos((((bbox.minlat + bbox.maxlat) / 2) * Math.PI) / 180);
+    const radiusKm = spec.radiusM / 1000;
+    for (let k = 0; k < direct.length; k++) {
+      const iy = Math.floor(k / cols);
+      const ix = k % cols;
+      const clon = bbox.minlon + (cols > 1 ? (ix / (cols - 1)) * spanLon : 0);
+      const clat = bbox.minlat + (rows > 1 ? (iy / (rows - 1)) * spanLat : 0);
+      let best = Infinity;
+      for (const p of points) {
+        const d = Math.hypot((clon - p.lon) * kx, (clat - p.lat) * 110.57);
+        if (d <= radiusKm && d < best) best = d;
+      }
+      let band = NaN;
+      if (best !== Infinity) {
+        const distM = best * 1000;
+        for (const [edgeM, edgeBand] of spec.edges) {
+          if (distM <= edgeM) {
+            band = edgeBand;
+            break;
+          }
         }
       }
       direct[k] = band;

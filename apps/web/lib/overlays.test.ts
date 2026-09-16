@@ -122,7 +122,8 @@ describe("overlay legend + colors", () => {
     // TERVISE-HOOK (#494): tervise joins the registry. (105 + 1).
     // ASUMEDIA-HOOK (#495): asumedia joins the registry (106 + 1).
     // PAASTE-HOOK (#493): paaste joins the registry (107 + 1).
-    expect(ids).toHaveLength(108);
+    // SPORT-HOOK (#607): sport_hall/field/pool join the registry (108 + 3).
+    expect(ids).toHaveLength(111);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -341,6 +342,12 @@ describe("overlay legend + colors", () => {
     expect(overlayLegendFor("paaste")).toContain("5 km");
     expect(overlayLegendFor("paaste")).toContain("60");
     expect(overlayLegendFor("paaste")).toContain("EI OLE");
+    // SPORT-HOOK (#607): sport legends carry the bands + the
+    // linnulennult honesty (see SPORT_EDGES_M).
+    expect(overlayLegendFor("sport_hall")).toContain("≤500 m -> 80");
+    expect(overlayLegendFor("sport_hall")).toContain("linnulennult");
+    expect(overlayLegendFor("sport_field")).toContain("≤2 km -> 50");
+    expect(overlayLegendFor("sport_pool")).toContain("veekvaliteeti ei hinnata");
   });
 
   it("gives every layer a distinct marker color", () => {
@@ -379,7 +386,8 @@ describe("overlay legend + colors", () => {
     // TERVISE-HOOK (#494): tervise joins the registry. (105 + 1).
     // ASUMEDIA-HOOK (#495): asumedia joins the registry (106 + 1).
     // PAASTE-HOOK (#493): paaste joins the registry (107 + 1).
-    expect(seen.size).toBe(108);
+    // SPORT-HOOK (#607): sport_hall/field/pool join the registry (108 + 3).
+    expect(seen.size).toBe(111);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

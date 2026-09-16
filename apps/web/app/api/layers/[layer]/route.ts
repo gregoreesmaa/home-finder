@@ -28,10 +28,17 @@ import {
   loadAccblackPoints,
   loadLayerRaster,
   loadSnapshotPoints,
+  loadSportPoints,
   SNAPSHOT_AS_OF_MS,
   snapshotDir,
   SnapshotUnavailable,
 } from "../../../../lib/server/snapshot";
+import {
+  isSportLayerId,
+  SPORT_VINTAGE,
+  sportPointsIn,
+  sportSliceFor,
+} from "../../../../lib/layers_p4_sport";
 import { loadSenscomSnapshot, senscomPointsIn } from "../../../../lib/server/senscom";
 import { loadOoklaSnapshot, ooklaPointsIn } from "../../../../lib/server/ookla";
 
@@ -202,6 +209,21 @@ export async function GET(
   // with neither points nor raster would otherwise be a 500 here.
   if (isAsumediaLayerId(def.id)) {
     return NextResponse.json({ points: [], provenance: "empty", ageMs: null });
+  }
+  // SPORT-HOOK (#607): sport-slice points come from the snapshot
+  // sidecar (sport/sport-points.json, built offline by
+  // scripts/build/batch_sport.py — never the OSM snapshot, never
+  // live). A missing sidecar stays honestly-empty: the map renders
+  // "no data", never a faked zero. Vintage rides SPORT_VINTAGE (the
+  // register harvest date), not the OSM snapshot date.
+  if (isSportLayerId(def.id)) {
+    const all = await loadSportPoints(snapshotDir());
+    const points: LayerPoint[] = sportPointsIn(all, sportSliceFor(def.id), bbox);
+    return NextResponse.json({
+      points,
+      provenance: points.length > 0 ? "snapshot" : "empty",
+      ageMs: Date.now() - Date.parse(`${SPORT_VINTAGE}T00:00:00`),
+    });
   }
   try {
     // Density layers (walkability/pedinfra/cycling) have no points file:

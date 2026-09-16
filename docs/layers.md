@@ -152,6 +152,7 @@ id, no raster master (the points-splat kernel IS the field):
 | `eelisniit` (P4-024, #488) | EELIS niidud (coarse tick-habitat proxy) | polygons only (same sidecar, kind `niit`) | none — zone-membership choropleth (inside vs teadmata) | same as above |
 | `eelisraie` (P4-030, #488) | EELIS kaadamisalad (coarse change flag) | polygons only (same sidecar, kind `raie`) | none — zone-membership choropleth (inside vs teadmata) | same as above |
 | `paaste` (P4-012, #493) | Päästeamet komando coverage (dated-negative feed → honest-empty) | NO point feed (kontaktipuu addresses w/o coords, 2026-09-13; zero fallback points, never invented) | hard ≤5 km flat-60 cover (== scorer station leg; dormant: all-NaN) | `lib/layers_paaste.ts` |
+| `sport_hall` + `sport_field` + `sport_pool` (P4-048, #607) | Spordiregister venues + Terviseamet ujulad (family-buyer slices) | yearly bulks (spordiehitised.json 4157 rows + ujulad.xml 226 rows, pulled 2026-09-16): **1110 Harjumaa points** in the snapshot sidecar (`sport/sport-points.json`: hall 335 / field 630 / pool 145); 239 unsliced + 118 outside-county + 7 coordless dropped, all counted | nearest sliced venue ≤500 m → 80, ≤1 km → 65, ≤2 km → 50 (== scorer PROX_BANDS) | `lib/layers_p4_sport.ts` + `scripts/build/batch_sport.py` |
 
 Overlay layers carry `paramIds: []` + `paramLabel` (e.g. `P4-031`):
 parameters3 p31 is Structural integrity (inspection no-map) and must

@@ -50,7 +50,7 @@ describe("statkov registry (#485)", () => {
     // TERVISE-HOOK (#494): +1 tervise bathing-water layer (105 + 1).
     // ASUMEDIA-HOOK (#495): +1 per-asum median layer (106 + 1).
     // PAASTE-HOOK (#493): +1 komando overlay (107 + 1).
-    expect(ids.length).toBe(108);
+    expect(ids.length).toBe(111); // SPORT-HOOK (#607): +3 sport slices (108 + 3)
     for (const id of STATKOV_LAYER_IDS) expect(ids).toContain(id);
   });
 
