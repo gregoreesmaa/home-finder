@@ -124,7 +124,8 @@ describe("overlay legend + colors", () => {
     // PAASTE-HOOK (#493): paaste joins the registry (107 + 1).
     // SPORT-HOOK (#607): sport_hall/field/pool join the registry (108 + 3).
     // EHIS-HOOK (#608): ehis_school/kindergarten/hobby join the registry (111 + 3).
-    expect(ids).toHaveLength(114);
+    // MEDRE-HOOK (#609): medre_gp/clinic join the registry (114 + 2).
+    expect(ids).toHaveLength(116);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -355,6 +356,11 @@ describe("overlay legend + colors", () => {
     expect(overlayLegendFor("ehis_school")).toContain("õppekeel teadmata");
     expect(overlayLegendFor("ehis_kindergarten")).toContain("kohtade arv teadmata");
     expect(overlayLegendFor("ehis_hobby")).toContain("õhuke valim");
+    // MEDRE-HOOK (#609): medre legends say EI OLE + uinuv (Step-1
+    // honest-empty — linkage_rate 0, stated, never faked).
+    expect(overlayLegendFor("medre_gp")).toContain("EI OLE liitmist");
+    expect(overlayLegendFor("medre_gp")).toContain("avatud-olek teadmata");
+    expect(overlayLegendFor("medre_clinic")).toContain("eriarstiabi väljas");
   });
 
   it("gives every layer a distinct marker color", () => {
@@ -395,7 +401,8 @@ describe("overlay legend + colors", () => {
     // PAASTE-HOOK (#493): paaste joins the registry (107 + 1).
     // SPORT-HOOK (#607): sport_hall/field/pool join the registry (108 + 3).
     // EHIS-HOOK (#608): ehis_school/kindergarten/hobby join the registry (111 + 3).
-    expect(seen.size).toBe(114);
+    // MEDRE-HOOK (#609): medre_gp/clinic join the registry (114 + 2).
+    expect(seen.size).toBe(116);
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

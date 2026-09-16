@@ -28,6 +28,7 @@ import {
   loadAccblackPoints,
   loadEhisPoints,
   loadLayerRaster,
+  loadMedrePoints,
   loadSnapshotPoints,
   loadSportPoints,
   SNAPSHOT_AS_OF_MS,
@@ -47,6 +48,13 @@ import {
   ehisSliceFor,
   isEhisLayerId,
 } from "../../../../lib/layers_p4_ehis";
+// MEDRE-HOOK (#609): primary-care sidecar points (see below).
+import {
+  isMedreLayerId,
+  MEDRE_VINTAGE,
+  medrePointsIn,
+  medreSliceFor,
+} from "../../../../lib/layers_p4_medre";
 import { loadSenscomSnapshot, senscomPointsIn } from "../../../../lib/server/senscom";
 import { loadOoklaSnapshot, ooklaPointsIn } from "../../../../lib/server/ookla";
 
@@ -246,6 +254,21 @@ export async function GET(
       points,
       provenance: points.length > 0 ? "snapshot" : "empty",
       ageMs: Date.now() - Date.parse(`${EHIS_VINTAGE}T00:00:00`),
+    });
+  }
+  // MEDRE-HOOK (#609): primary-care points come from the snapshot
+  // sidecar (medre/medre-points.json, built offline by
+  // scripts/build/batch_medre.py — never the OSM snapshot, never
+  // live). Step 1 ships register tallies with points [] (no ADS join
+  // owned) so this stays honestly-empty: the map renders "no data",
+  // never a faked clinic. Vintage rides MEDRE_VINTAGE.
+  if (isMedreLayerId(def.id)) {
+    const all = await loadMedrePoints(snapshotDir());
+    const points: LayerPoint[] = medrePointsIn(all, medreSliceFor(def.id), bbox);
+    return NextResponse.json({
+      points,
+      provenance: points.length > 0 ? "snapshot" : "empty",
+      ageMs: Date.now() - Date.parse(`${MEDRE_VINTAGE}T00:00:00`),
     });
   }
   try {

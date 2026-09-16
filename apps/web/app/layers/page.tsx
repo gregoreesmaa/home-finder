@@ -80,6 +80,9 @@ import { isPaasteLayerId } from "../../lib/layers_paaste";
 // EHIS-HOOK (#608): dbands status names the EHIS extract for ehis
 // layers (see isDbands branch below) — sport keeps its own label.
 import { isEhisLayerId } from "../../lib/layers_p4_ehis";
+// MEDRE-HOOK (#609): dbands status names the medre extract for medre
+// layers (see isDbands branch below) — Step-1 honest-empty included.
+import { isMedreLayerId } from "../../lib/layers_p4_medre";
 
 /** Viewport bbox rounded for fetch stability (matches server key rounding). */
 function sameView(a: BBoxLike, b: BBoxLike): boolean {
@@ -449,7 +452,9 @@ export default function LayersPage() {
               : isDbands
                 ? isEhisLayerId(layer)
                   ? `EHISe väljavõte (koolihooned, seis 2026-09-16)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
-                  : `Spordiregistri + ujulate väljavõte (seis 2026-09-16)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
+                  : isMedreLayerId(layer)
+                    ? `Medre väljavõte (perearstid, seis 2026-09-16)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
+                    : `Spordiregistri + ujulate väljavõte (seis 2026-09-16)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
               : `Kohalik hetktõmmis (2026-09-12) · ${pointCount} punkti`
           : "Kohalik hetktõmmis (2026-09-12) · rasterkiht"
         : provenance === "empty"

@@ -546,6 +546,15 @@ export function overlayColorFor(layer: LayerId): string {
       return "#fbcfe8";
     case "ehis_hobby":
       return "#a5f3fc";
+    // MEDRE-HOOK (#609): medre slice markers (Step-1 honest-empty —
+    // the point overlay stays empty live, so this colors only the
+    // toggle dot). #ffedd5: orange-100 clinic paper; #ede9fe:
+    // violet-100 care card (NOT #c4b5fd — taken by sport_hall).
+    // Distinct from every other marker (distinct-color test).
+    case "medre_gp":
+      return "#ffedd5";
+    case "medre_clinic":
+      return "#ede9fe";
     // ASUMEDIA-HOOK (#495): asumedia marker (empty-on-purpose layer —
     // the point overlay stays empty live, so this colors only the
     // toggle dot). #fda4af: rose-300 asking-price blush (NOT #fb7185
@@ -956,6 +965,16 @@ export function overlayLegendFor(layer: LayerId): string {
       return "Lasteaiad lähedal (EHISe väljavõte) · lähim lasteaed 2 km raadiuses (≤500 m -> 80, ≤1 km -> 65, ≤2 km -> 50; kauguse-hinnang linnulennult, kohtade arv teadmata)";
     case "ehis_hobby":
       return "Huvikoolid lähedal (EHISe väljavõte, õhuke valim: 10 hoonet Harjumaal) · lähim huvikool 2 km raadiuses (≤500 m -> 80, ≤1 km -> 65, ≤2 km -> 50; kauguse-hinnang linnulennult)";
+    // MEDRE-HOOK (#609): medre slices (P4-011 GP half) — Step-1
+    // honest-empty: no ADS join owned, so the field is unknown
+    // everywhere until Step 2 lands joined points (linkage_rate 0,
+    // stated). Bands below are the dormant kernel (same table as the
+    // scorer); proximity is coverage, never care quality (status leg
+    // NULL — avatud-olek teadmata).
+    case "medre_gp":
+      return "Perearstid (TEHIK medre väljavõte, EI OLE liitmist) · vastuvõtukoht 2 km raadiuses (≤500 m -> 80, ≤1 km -> 65, ≤2 km -> 50, uinuv — punkte pole; lähedus, mitte kvaliteet; avatud-olek teadmata)";
+    case "medre_clinic":
+      return "Perearstikeskused (TEHIK medre väljavõte, EI OLE liitmist) · üldarstiabi tegevuskoht 2 km raadiuses (≤500 m -> 80, ≤1 km -> 65, ≤2 km -> 50, uinuv — punkte pole; eriarstiabi väljas)";
     // ASUMEDIA-HOOK (#495): asumedia (own-snapshot asking medians) —
     // the dated negative rides along: 0/84 asums reach MIN_N=5, so
     // the field is unknown everywhere until the reopen lands real

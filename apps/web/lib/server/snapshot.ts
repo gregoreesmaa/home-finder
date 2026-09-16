@@ -142,6 +142,12 @@ import type { SportPoint } from "../layers_p4_sport";
 // to null; the sidecar is honestly empty when unharvested).
 import { EHIS_RASTER_FILE } from "../layers_p4_ehis";
 import type { EhisPoint } from "../layers_p4_ehis";
+// MEDRE-HOOK (#609): primary-care raster filenames + sidecar point
+// type live in layers_p4_medre.ts (rasters intentionally never built —
+// MEDRE_NO_RASTER; the names resolve to absent files so rasters degrade
+// to null; the sidecar is honestly empty until the Step-2 ADS join).
+import { MEDRE_RASTER_FILE } from "../layers_p4_medre";
+import type { MedrePoint } from "../layers_p4_medre";
 
 /** Permanent as-of date of the local snapshot (all layers frozen together). */
 export const SNAPSHOT_AS_OF = "2026-09-12";
@@ -498,6 +504,49 @@ export async function loadEhisPoints(dir: string): Promise<EhisPoint[]> {
     // Optional sidecar: honestly no points.
   }
   ehisPointCache.set(dir, points);
+  return points;
+}
+
+// MEDRE-HOOK (#609): primary-care sidecar cache (same discipline).
+const medrePointCache = new Map<string, MedrePoint[]>();
+
+/** Care slice tags the harvester writes (lat/lon/slice only). */
+const MEDRE_SLICES = new Set(["gp", "clinic"]);
+
+function isMedrePoint(v: unknown): v is MedrePoint {
+  const p = v as Partial<MedrePoint>;
+  return (
+    typeof p?.lon === "number" && Number.isFinite(p.lon) &&
+    typeof p?.lat === "number" && Number.isFinite(p.lat) &&
+    typeof p?.slice === "string" && MEDRE_SLICES.has(p.slice)
+  );
+}
+
+/**
+ * Primary-care sidecar (`medre/medre-points.json`): caller-joined GP /
+ * clinic points for the medre_gp/medre_clinic overlays (issue #609,
+ * built offline by scripts/build/batch_medre.py — never live). Step 1
+ * ships the register tallies with points [] (no ADS join owned —
+ * honestly no points, never faked); Step 2 fills joined points and
+ * the loader serves them unchanged. Missing or malformed sidecar
+ * degrades to [], never an error.
+ */
+export async function loadMedrePoints(dir: string): Promise<MedrePoint[]> {
+  const hit = medrePointCache.get(dir);
+  if (hit) return hit;
+  let points: MedrePoint[] = [];
+  try {
+    const raw = await fs.readFile(path.join(dir, "medre", "medre-points.json"), "utf8");
+    const parsed: unknown = JSON.parse(raw);
+    const list = typeof parsed === "object" && parsed !== null && Array.isArray((parsed as { points?: unknown }).points)
+      ? (parsed as { points: unknown[] }).points
+      : [];
+    points = list.filter(isMedrePoint);
+    if (!Array.isArray((parsed as { points?: unknown }).points)) console.warn(`snapshot: ignoring malformed medre-points.json in ${dir}`);
+  } catch {
+    // Optional sidecar: honestly no points.
+  }
+  medrePointCache.set(dir, points);
   return points;
 }
 
@@ -921,6 +970,10 @@ const RASTER_FILE: Record<LayerId, string> = {
   // EHIS-HOOK (#608): school raster names only (no masters built by
   // decision — EHIS_NO_RASTER; same points-splat discipline).
   ...EHIS_RASTER_FILE,
+  // MEDRE-HOOK (#609): primary-care raster names only (no masters
+  // built by decision — MEDRE_NO_RASTER; same points-splat
+  // discipline, dormant until Step 2).
+  ...MEDRE_RASTER_FILE,
 };
 
 /**
@@ -1399,6 +1452,11 @@ const METRO_PREFIX: Record<LayerId, string> = {
   ehis_school: "ehis-school-metro",
   ehis_kindergarten: "ehis-kindergarten-metro",
   ehis_hobby: "ehis-hobby-metro",
+  // MEDRE-HOOK (#609): no medre metro masters (no county masters
+  // either — MEDRE_NO_RASTER; same absent-file fallback to the splat
+  // kernel, dormant until Step 2).
+  medre_gp: "medre-gp-metro",
+  medre_clinic: "medre-clinic-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */
