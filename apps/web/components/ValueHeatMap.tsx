@@ -242,47 +242,7 @@ function paintOverlay(
     applyDensityPolygons(mapObj, opts.densityAreas);
     return;
   }
-  // FOREST-HOOK (#624): metsamuutused 2024 detected-change fills
-  // (warning bands — outside stays NULL, never safe forest).
-  if (opts.forestAreas && opts.forestAreas.length > 0) {
-    applyForestPolygons(mapObj, opts.forestAreas);
-    return;
-  }
-  // NOISE-HOOK (#625): myrakaart Lden/Lnight band fills (modelled,
-  // never measured — outside stays NULL, never quiet).
-  if (opts.noiseAreas && opts.noiseAreas.length > 0) {
-    applyNoisePolygons(mapObj, opts.noiseAreas);
-    return;
-  }
-  // KPO-HOOK (#626): restriction-zone ban/conditioned fills
-  // (measured bands, never clean title — outside stays NULL).
-  if (opts.kpoAreas && opts.kpoAreas.length > 0) {
-    applyKpoPolygons(mapObj, opts.kpoAreas);
-    return;
-  }
-  // DELAY-HOOK (#629): typical-delay corridor band fills (typical,
-  // never live — outside stays NULL, thin stays slate).
-  if (opts.delayAreas && opts.delayAreas.length > 0) {
-    applyDelayCorridors(
-      mapObj,
-      opts.delayAreas,
-      opts.delayBand ?? "worst",
-    );
-    return;
-  }
-  // HARBOUR-HOOK (#627): AIS pleasure-cell fills (grid as-is) UNDER
-  // joined-port dots in ONE slot pass (peers clear first, so cells +
-  // dots cannot stack as two passes); outside stays NULL.
-  if (
-    (opts.harbourCells && opts.harbourCells.length > 0) ||
-    (opts.harbourPorts && opts.harbourPorts.length > 0)
-  ) {
-    applyHarbourOverlays(mapObj, opts.harbourCells, opts.harbourPorts, {
-      color: opts.overlayColor ?? "#115e59",
-    });
-    return;
-  }
-  if (opts.overlayPoints && opts.overlayPoints.length > 0) {
+    if (opts.overlayPoints && opts.overlayPoints.length > 0) {
     applyPointOverlay(mapObj, opts.overlayPoints, { color: opts.overlayColor ?? "#1d4ed8" });
     return;
   }
@@ -713,9 +673,11 @@ export function ValueHeatMap({
       // BUILDINGS-HOOK (#621): buildingsTint joins the painted slot.
       // DENSITY-HOOK (#622): densityAreas join the painted slot.
       // FOREST-HOOK (#624): forestAreas join the painted slot.
-      paintOverlay(mapRef.current, { outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, reliefTint, canopyTint, buildingsTint, densityAreas, forestAreas, noiseAreas, kpoAreas, harbourCells, harbourPorts, overlayPoints, usePolygons, overlayColor, showOverlay });
+      // DELAY-HOOK (#629): delayAreas + delayBand join the painted slot
+      // (without both, fetched corridors never repaint — #664).
+      paintOverlay(mapRef.current, { outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, reliefTint, canopyTint, buildingsTint, densityAreas, forestAreas, noiseAreas, kpoAreas, delayAreas, delayBand, harbourCells, harbourPorts, overlayPoints, usePolygons, overlayColor, showOverlay });
     }
-  }, [outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, reliefTint, canopyTint, buildingsTint, densityAreas, forestAreas, noiseAreas, kpoAreas, harbourCells, harbourPorts, overlayPoints, usePolygons, overlayColor, showOverlay]);
+  }, [outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, reliefTint, canopyTint, buildingsTint, densityAreas, forestAreas, noiseAreas, kpoAreas, delayAreas, delayBand, harbourCells, harbourPorts, overlayPoints, usePolygons, overlayColor, showOverlay]);
 
   return (
     <section aria-label={title}>
