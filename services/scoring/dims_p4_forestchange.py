@@ -44,10 +44,11 @@ Judgment calls (reviewable):
   trajectory); anything older/farther with a change on record -> 70;
   empty window -> None. 0.25 ha / 5 m thresholds are the publisher's,
   not ours — we only band age x distance.
-* False-positive sanity (20 Harjumaa spots: new developments vs real
-  cuts) belongs to the licence-day bulk job — the SHPs were never
-  pulled, so a precision note today would be invented. Stated here so
-  the job cannot skip it.
+* False-positive sanity: 20-spot Harjumaa note run 2026-09-17 on the
+  real vintage (see docs/p4_forestchange.md §2) — 20/20 clean forest
+  context, zero buildings inside any sampled polygon. OSM buildings
+  can miss the newest construction, so the detected-change caveat
+  still rides in every reason.
 * No WEIGHTS / livability / layers / registry edits (joint precedent).
 """
 

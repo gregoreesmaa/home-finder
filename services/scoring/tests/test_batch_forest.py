@@ -18,6 +18,7 @@ from batch_canopy import (  # noqa: E402
     lonlat_to_lest97_lcc,
 )
 from batch_forest import (  # noqa: E402
+    CLASS_NAMES,
     build_sidecar,
     change_record,
     detection_class,
@@ -156,6 +157,9 @@ def test_sidecar_and_main(tmp_path):
     assert doc["vintage"] == "2024"
     assert doc["stats"]["seasons"] == {"kevad": 1}
     assert len(doc["areas"]) == 1
+    # CLASS_NAMES is the single source of truth for the sidecar
+    # classes list (== web FOREST_CLASSES, issue #624 review).
+    assert doc["classes"] == list(CLASS_NAMES) == ["", ">10a", "3-10a", "2024 värske"]
 
 
 def test_missing_input_writes_nothing(tmp_path, capsys):

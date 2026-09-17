@@ -63,7 +63,9 @@ DP_TOL_M = 5.0
 
 #: Overlay classes by detection age at build (mirror the scorer's age
 #: brackets; distance bands are per-listing, never per-polygon).
-CLASS_NAMES = ["", ">10a", "3-10a", "värske ≤3a"]
+#: Single source of truth for the sidecar "classes" list — kept
+#: identical to web FOREST_CLASSES (pinned by test).
+CLASS_NAMES = ["", ">10a", "3-10a", "2024 värske"]
 
 
 def _plus_years(day: date, years: int) -> date:
@@ -224,7 +226,7 @@ def build_sidecar(rows: List[Dict], stats: Dict) -> Dict:
         "vintage": VINTAGE,
         "source": ATTRIBUTION,
         "unit": "detected canopy-change polygon (second_date 2024)",
-        "classes": ["", ">10a", "3-10a", "2024 värske"],
+        "classes": list(CLASS_NAMES),
         "simplify_m": DP_TOL_M,
         "stats": stats,
         "areas": rows,
