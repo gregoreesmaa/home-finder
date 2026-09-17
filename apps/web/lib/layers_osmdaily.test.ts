@@ -86,7 +86,7 @@ describe("osmdaily registry (#482)", () => {
     // TERVISE-HOOK (#494): +1 tervise bathing-water layer (105 + 1).
     // ASUMEDIA-HOOK (#495): +1 per-asum median layer (106 + 1).
     // PAASTE-HOOK (#493): +1 komando overlay (107 + 1).
-    expect(ids.length).toBe(128); // MERGE (#613+#614+#615+#616+#617): 123 shipped + seveso + stateland + quarry + maaparandus + soil = 128 (both branch counts superseded).
+    expect(ids.length).toBe(129); // MERGE (#613+#614+#615+#616+#617+#618): 123 shipped + seveso + stateland + quarry + maaparandus + soil + etak = 129 (both branch counts superseded).
     for (const id of OSMDAILY_LAYER_IDS) expect(ids).toContain(id);
   });
 

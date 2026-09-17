@@ -129,6 +129,14 @@ import {
   isSoilPolygonOnlyLayer,
   type SoilArea,
 } from "../../lib/layers_p4_soil";
+// ETAK-HOOK (#618): etak paints ETAK wetland/water/yard contours
+// (polygons only, never a gradient) instead of points — viewport-driven
+// (the WFS harvest is 114 MB, so the page refetches per settled view).
+import {
+  fetchEtakAreas,
+  isEtakPolygonOnlyLayer,
+  type EtakArea,
+} from "../../lib/layers_p4_etak";
 
 /** Viewport bbox rounded for fetch stability (matches server key rounding). */
 function sameView(a: BBoxLike, b: BBoxLike): boolean {
@@ -403,6 +411,32 @@ export default function LayersPage() {
     };
   }, [layer]);
 
+  // ETAK-HOOK (#618): ETAK wetland/water/yard contours (etak layer
+  // only, refetched per settled view): the choropleth itself — inside a
+  // named contour vs outside/unknown. No points and no score field are
+  // painted for this layer, by design (polygons only, never a
+  // gradient). Viewport-driven (not once-per-selection like the other
+  // polygon layers): the WFS harvest is 114 MB, so the server answers
+  // per-bbox and the page refetches on pan/zoom like the points path.
+  const [etakAreas, setEtakAreas] = useState<EtakArea[] | null>(null);
+  const [etakNote, setEtakNote] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!isEtakPolygonOnlyLayer(layer)) {
+      setEtakAreas(null);
+      setEtakNote(null);
+      return;
+    }
+    fetchEtakAreas(view).then((res) => {
+      if (cancelled) return;
+      setEtakAreas(res ? res.areas : null);
+      setEtakNote(res ? res.note : null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [layer, view]);
+
   // Park boundaries (parks layer only): fetched once per selection, a
   // visual aid so scored-inside vs surroundings reads at a glance.
   const [outlines, setOutlines] = useState<ParkOutline[] | null>(null);
@@ -526,7 +560,8 @@ export default function LayersPage() {
     // SEVESO-HOOK (#613): seveso paints polygons, never point markers.
     // QUARRY-HOOK (#614): quarry paints polygons, never point markers.
     // SOIL-HOOK (#617): soil paints polygons, never point markers.
-    layer === "parks" || isPolygonOnlyLayer(layer) || isPolygonOnlyMaaLayer(layer) || isEelisPolygonOnlyLayer(layer) || isSevesoPolygonOnlyLayer(layer) || isStatelandPolygonOnlyLayer(layer) || isQuarryPolygonOnlyLayer(layer) || isMaaparandusPolygonOnlyLayer(layer) || isSoilPolygonOnlyLayer(layer)
+    // ETAK-HOOK (#618): etak paints polygons, never point markers.
+    layer === "parks" || isPolygonOnlyLayer(layer) || isPolygonOnlyMaaLayer(layer) || isEelisPolygonOnlyLayer(layer) || isSevesoPolygonOnlyLayer(layer) || isStatelandPolygonOnlyLayer(layer) || isQuarryPolygonOnlyLayer(layer) || isMaaparandusPolygonOnlyLayer(layer) || isSoilPolygonOnlyLayer(layer) || isEtakPolygonOnlyLayer(layer)
       ? null
       : needsGraphOverlay(layer)
         ? graphPoints
@@ -541,7 +576,6 @@ export default function LayersPage() {
         : isSevesoPolygonOnlyLayer(layer)
           ? (sevesoAreas?.length ?? 0)
         : isStatelandPolygonOnlyLayer(layer)
-          ? (statelandAreas?.length ?? 0)        : isStatelandPolygonOnlyLayer(layer)
           ? (statelandAreas?.length ?? 0)
         : isQuarryPolygonOnlyLayer(layer)
           ? (quarryAreas?.length ?? 0)
@@ -549,6 +583,8 @@ export default function LayersPage() {
           ? (maaparandusAreas?.length ?? 0)
         : isSoilPolygonOnlyLayer(layer)
           ? (soilAreas?.length ?? 0)
+        : isEtakPolygonOnlyLayer(layer)
+          ? (etakAreas?.length ?? 0)
         : isPlanktprLayerId(layer)
           ? (usePolygons?.length ?? 0)
     : layer === "parks"
@@ -631,6 +667,13 @@ export default function LayersPage() {
       : soilNote !== null
         ? `Mullastikukaart · ${soilNote}`
         : `Mullastikukaart · ${soilAreas.length} kontuuri vaates (väljaspool = teadmata, mitte hea pinnas; linn/vesi/määramata EI MAALI)`;
+  // ETAK-HOOK (#618): etak status counts viewport contours (+ the
+  // server honesty note: too-wide zoom guidance or WFS outage), never
+  // points — the layer serves zero points by design (polygons only).
+  const etakStatus =
+    etakAreas === null
+      ? "Laadin ETAK kontuure…"
+      : `ETAK märgala/vesi/õu · ${etakAreas.length} kontuuri vaates (väljaspool = teadmata, mitte kuiv maa)${etakNote ? ` · ${etakNote}` : ""}`;
   const base =
     isPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
       ? floodStatus
@@ -649,6 +692,8 @@ export default function LayersPage() {
         ? maaparandusStatus
       : isSoilPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
         ? soilStatus
+      : isEtakPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
+        ? etakStatus
       : provenance === null
       ? "Laadin kihi andmeid…"
       : provenance === "snapshot"
@@ -757,6 +802,7 @@ export default function LayersPage() {
         quarryAreas={quarryAreas}
         maaparandusAreas={maaparandusAreas}
         soilAreas={soilAreas}
+        etakAreas={etakAreas}
         overlayPoints={pointOverlay}
         usePolygons={usePolygons}
         overlayColor={overlayColorFor(layer)}
@@ -799,6 +845,9 @@ export default function LayersPage() {
             // SOIL-HOOK (#617): soil paints no field at all (zero
             // points, null raster) -- same skip for the contour fills.
             isSoilPolygonOnlyLayer(layer) ||
+            // ETAK-HOOK (#618): etak paints no field at all (zero
+            // points, null raster) -- same skip for contour fills.
+            isEtakPolygonOnlyLayer(layer) ||
             isPlanktprLayerId(layer)
             ? ""
             : distance === "euclidean" && provenance === "snapshot"

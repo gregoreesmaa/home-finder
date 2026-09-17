@@ -600,6 +600,13 @@ export function overlayColorFor(layer: LayerId): string {
     // Distinct from every other marker (distinct-color test).
     case "soil":
       return "#451a03";
+    // ETAK-HOOK (#618): etak marker (polygon layer — the point overlay
+    // stays empty live, so this colors only the toggle dot). #1e1b4b:
+    // indigo-950 deep water-night (NOT #172554 blue-950 or #1e3a8a
+    // blue-900 — taken; layers never co-render). Distinct from every
+    // other marker (distinct-color test).
+    case "etak":
+      return "#1e1b4b";
     // MEDRE-HOOK (#609): medre slice markers (Step-1 honest-empty —
     // the point overlay stays empty live, so this colors only the
     // toggle dot). #ffedd5: orange-100 clinic paper; #ede9fe:
@@ -1119,6 +1126,13 @@ export function overlayLegendFor(layer: LayerId): string {
     // dry). Duty is refused everywhere (no duty attributes exist).
     case "maaparandus":
       return "Kuivendusvõrk ja eesvoolud (maaparanduse register: 1916 võrguala + 785 kehtetut + 1595 eesvoolu) · tsoonis = võrk (sinine, seisukord teadmata — kontrolli MSR-registrist) või eesvool (joon, lähedus ≤100 m hindab skoorija); kehtetu = pruun lagunemisrisk; väljaspool = teadmata, mitte kuiv";
+    // ETAK-HOOK (#618): etak measured fills (maakate/hüdro) — inside a
+    // named contour reads by leg color (märgala niiskus, vesi äravool,
+    // õu katvus — hinnang), outside every contour is unknown (never dry
+    // land): unmapped ground is not dry ground. Relief (pinnamood) EI
+    // MAALI (litsentsita); ETAK võidab OSMi vastuolu korral.
+    case "etak":
+      return "ETAK märgala/vesi/õu (mõõdetud, vaatepõhine WFS) · tsoonis = märgala (raba/madalsoo 25 niiskeim, soovik 35) / vesi 30 (nimega, kaugusvööndid hindab skoorija) / õu (era/tootmis 45 läbiv, haljas 70 roheline); väljaspool = teadmata, mitte kuiv maa; reljeef EI MAALI";
     // ASUMEDIA-HOOK (#495): asumedia (own-snapshot asking medians) —
     // the dated negative rides along: 0/84 asums reach MIN_N=5, so
     // the field is unknown everywhere until the reopen lands real

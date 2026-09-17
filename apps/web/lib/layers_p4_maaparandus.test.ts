@@ -78,8 +78,9 @@ describe("drainage registry (#616)", () => {
     const ids = LAYERS.map((l) => l.id);
     // 124 shipped layers on main (#613 seveso merged) + stateland
     // (#615) + quarry (#614) + soil (#617) + 1 drainage overlay
-    // (DRAINAGE-HOOK #616, 127 + 1 = 128).
-    expect(ids.length).toBe(128);
+    // (DRAINAGE-HOOK #616, 127 + 1) + 1 etak overlay
+    // (ETAK-HOOK #618, 128 + 1 = 129).
+    expect(ids.length).toBe(129);
     expect(ids).toContain("maaparandus");
   });
 

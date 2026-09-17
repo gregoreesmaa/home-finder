@@ -133,8 +133,10 @@ describe("overlay legend + colors", () => {
     // STATELAND-HOOK (#615): stateland joins the registry (124 + 1).
     // QUARRY-HOOK (#614): quarry joins the registry (125 + 1).
     // DRAINAGE-HOOK (#616): drainage joins the registry (126 + 1).
-    // MERGE (#613+#614+#615+#616): 123 shipped + seveso + stateland + quarry + maaparandus = 127.
-    expect(ids).toHaveLength(128); // MERGE (#613+#614+#615+#616+#617): 123 shipped + seveso + stateland + quarry + maaparandus + soil = 128 (both branch counts superseded).
+    // SOIL-HOOK (#617): soil joins the registry (127 + 1).
+    // ETAK-HOOK (#618): etak joins the registry (128 + 1).
+    // MERGE (#613+#614+#615+#616+#617+#618): 123 shipped + seveso + stateland + quarry + maaparandus + soil + etak = 129.
+    expect(ids).toHaveLength(129);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -422,8 +424,11 @@ describe("overlay legend + colors", () => {
     // SEVESO-HOOK (#613): seveso joins the registry (123 + 1).
     // STATELAND-HOOK (#615): stateland joins the registry (124 + 1).
     // QUARRY-HOOK (#614): quarry joins the registry (125 + 1).
+    // DRAINAGE-HOOK (#616): drainage joins the registry (126 + 1).
+    // SOIL-HOOK (#617): soil joins the registry (127 + 1).
+    // ETAK-HOOK (#618): etak joins the registry (128 + 1).
     // MERGE (#613+#614+#615): 123 shipped + seveso + stateland + quarry = 126.
-    expect(seen.size).toBe(128); // MERGE (#613+#614+#615+#616+#617): 123 shipped + seveso + stateland + quarry + maaparandus + soil = 128 (both branch counts superseded).
+    expect(seen.size).toBe(129); // MERGE (#613+#614+#615+#616+#617+#618): 123 shipped + seveso + stateland + quarry + maaparandus + soil + etak = 129 (both branch counts superseded).
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

@@ -634,6 +634,17 @@ import {
   bonusSpecForSoil,
   isSoilPolygonOnlyLayer,
 } from "./layers_p4_soil";
+// ETAK-HOOK (#618): etak contour tables live in ./layers_p4_etak
+// (ETAK maakate/hüdro, polygons only, viewport proxy). That module
+// imports layers only as types, so no runtime cycle.
+import type { EtakLayerId } from "./layers_p4_etak";
+import {
+  ETAK_DECAY,
+  ETAK_DEFS,
+  ETAK_TAGS,
+  bonusSpecForEtak,
+  isEtakPolygonOnlyLayer,
+} from "./layers_p4_etak";
 // FIXIT-HOOK (#623): report-pin tables live in ./layers_p4_fixit
 // (fixit markers, register sidecar). That module imports layers only
 // as types, so no runtime cycle.
@@ -796,6 +807,9 @@ export type LayerId =
   // (./layers_p4_maaparandus, maaparandus GIS, polygons only, no
   // parameters3 id).
   | MaaparandusLayerId
+  // ETAK-HOOK (#618): etak contour id (./layers_p4_etak, ETAK
+  // maakate/hüdro, polygons only, no parameters3 id).
+  | EtakLayerId
   // SEVESO-HOOK (#613): danger-polygon id (./layers_p4_seveso,
   // Päästeamet ohualad, polygons only, no parameters3 id).
   | SevesoLayerId
@@ -1046,6 +1060,10 @@ const DECAY_KM: Record<LayerId, number> = {
   // SOIL_DECAY — INERT placeholder, polygons only: zero points, never
   // evaluated).
   ...SOIL_DECAY,
+  // ETAK-HOOK (#618): etak contour radius (see layers_p4_etak.ts
+  // ETAK_DECAY — INERT placeholder, polygons only: zero points, never
+  // evaluated).
+  ...ETAK_DECAY,
   // SEVESO-HOOK (#613): danger-polygon radius (see layers_p4_seveso.ts
   // SEVESO_DECAY — INERT placeholder, polygons only: zero points,
   // never evaluated).
@@ -1309,6 +1327,9 @@ export const LAYERS: LayerDef[] = [
   // SOIL-HOOK (#617): soil contour def (Maa-amet mullastiku kaart,
   // polygons only, no parameters3 id) from ./layers_p4_soil.
   ...SOIL_DEFS,
+  // ETAK-HOOK (#618): etak contour def (ETAK maakate/hüdro, polygons
+  // only, no parameters3 id) from ./layers_p4_etak.
+  ...ETAK_DEFS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -1468,6 +1489,9 @@ const TAGS: Record<LayerId, string> = {
   // SOIL-HOOK (#617): soil contour source note (see
   // layers_p4_soil.ts SOIL_TAGS — prose, NOT an Overpass fragment).
   ...SOIL_TAGS,
+  // ETAK-HOOK (#618): etak contour source note (see
+  // layers_p4_etak.ts ETAK_TAGS — prose, NOT an Overpass fragment).
+  ...ETAK_TAGS,
   // SEVESO-HOOK (#613): danger-polygon source note (see
   // layers_p4_seveso.ts SEVESO_TAGS — prose, NOT an Overpass fragment).
   ...SEVESO_TAGS,
@@ -1744,6 +1768,10 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // (INERT — polygons only, never evaluated).
   const soil = bonusSpecForSoil(layer);
   if (soil) return soil;
+  // ETAK-HOOK (#618): etak contour spec lives in ./layers_p4_etak
+  // (INERT — polygons only, never evaluated).
+  const etak = bonusSpecForEtak(layer);
+  if (etak) return etak;
   // SEVESO-HOOK (#613): danger-polygon spec lives in
   // ./layers_p4_seveso (INERT — polygons only, never evaluated).
   const seveso = bonusSpecForSeveso(layer);
@@ -2124,6 +2152,10 @@ export async function fetchWindow(
   // (polygons only — the viewport proxy carries the data). Same skip,
   // same reason.
   if (isSoilPolygonOnlyLayer(layer)) return null;
+  // ETAK-HOOK (#618): etak has no raster master by decision
+  // (polygons only — the viewport proxy carries the data). Same skip,
+  // same reason.
+  if (isEtakPolygonOnlyLayer(layer)) return null;
   // SEVESO-HOOK (#613): seveso has no raster master by licence decision
   // (polygons only — the sidecar carries the data). Same skip, same
   // reason.

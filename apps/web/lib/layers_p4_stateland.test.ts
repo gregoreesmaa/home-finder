@@ -87,8 +87,9 @@ describe("stateland registry (#615)", () => {
     // 124 shipped layers on main (#613 seveso merged) +
     // 1 state/auction overlay (STATELAND-HOOK #615, 124 + 1) +
     // 1 quarry overlay (QUARRY-HOOK #614, 125 + 1) +
-    // 1 drainage overlay (DRAINAGE-HOOK #616, 126 + 1 = 127).
-    expect(ids.length).toBe(128); // MERGE (#613+#614+#615+#616+#617): 123 shipped + seveso + stateland + quarry + maaparandus + soil = 128 (both branch counts superseded).
+    // 1 drainage overlay (DRAINAGE-HOOK #616, 126 + 1) + soil (#617,
+    // 127 + 1) + 1 etak overlay (ETAK-HOOK #618, 128 + 1 = 129).
+    expect(ids.length).toBe(129);
     expect(ids).toContain("stateland");
   });
 

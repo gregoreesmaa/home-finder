@@ -32,3 +32,24 @@ review (rule), never mixed silently (vintage in every scored reason).
 Survey vintages vary by tile — vintage rides in reasons. No ETAK
 transport/buildings legs here (#536/G18 own them); no new buyer
 questions (upgrade only).
+
+## Map wiring (#618)
+
+NO polygon sidecar by decision (deviation from the #618 "polygon
+sidecar" criterion, soil #617 precedent): the four Harjumaa themes
+total ~52k polygons (~114 MB raw GeoJSON) — uncommittable and
+unshippable to the browser. Instead `/api/layers/etak/areas?bbox=…`
+(viewport WFS proxy, `lib/server/etak.ts`): grid-snapped 0.05° annual
+disk cache under `<snapshot>/etak`, else one polite lon-lat WFS
+GetFeature per theme (verified 2026-09-16: e_306 8824 / e_202 15474 /
+e_203 1332 / e_302 26024), cap 5000 polygons per viewport. Over-wide
+views answer honestly-empty with a zoom-in note (never truncated);
+WFS outages answer honestly-empty with an outage note (transport
+errors never cached); malformed bboxes 400. Layer id `etak`
+(parameters4, `paramIds: []`, `P4-etak`), polygons only: zero points,
+no raster master (`ETAK_NO_RASTER`/`ETAK_NO_METRO`), outside every
+contour stays unknown (never dry land). Relief (pinnamood) is never
+queried (licence unstated). Proof: vitest 104/1268 + pytest green,
+typecheck/lint clean, live curl (points empty-snapshot / areas live /
+wide note / bad 400), screenshot `docs/screenshots/etak-saku-overlay.png`
+(378 Saku contours, zero page errors).

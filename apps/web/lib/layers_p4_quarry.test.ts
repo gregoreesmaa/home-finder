@@ -63,8 +63,9 @@ describe("quarry registry (#614)", () => {
     const ids = LAYERS.map((l) => l.id);
     // 123 shipped layers on main (#623 fixit) + seveso (#613) +
     // stateland (#615) + maaparandus (#616) + soil (#617) + 1 quarry
-    // extraction/exploration overlay (QUARRY-HOOK #614, 127 + 1 = 128).
-    expect(ids.length).toBe(128);
+    // extraction/exploration overlay (QUARRY-HOOK #614, 127 + 1) + 1
+    // etak overlay (ETAK-HOOK #618, 128 + 1 = 129).
+    expect(ids.length).toBe(129);
     expect(ids).toContain("quarry");
   });
 
