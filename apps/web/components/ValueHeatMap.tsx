@@ -23,6 +23,7 @@ import type { ReliefTintGrid } from "../lib/layers_p4_relief";
 import type { CanopyTintGrid } from "../lib/layers_p4_canopy";
 import type { BuildingsTintGrid } from "../lib/layers_p4_buildings";
 import type { DensityArea } from "../lib/layers_p4_density";
+import type { ForestArea } from "../lib/layers_p4_forest";
 import {
   applyFloodPolygons,
   applyMaaParcelPolygons,
@@ -39,6 +40,7 @@ import {
   applyCanopyTint,
   applyBuildingsTint,
   applyDensityPolygons,
+  applyForestPolygons,
   applyUsePolygons,
   clearVectorOverlays,
   type OutlineMap,
@@ -68,7 +70,7 @@ const ESTONIA_CENTER: [number, number] = [25.0, 58.75];
  * class tint, then point markers, then use-fills (page guarantees
  * flood-areas, maa-parcels, eelis-areas, seveso-areas, stateland-areas,
  * quarry-areas, drainage-areas, soil-areas, etak-areas, relief-tint,
- * canopy-tint, buildings-tint, density-squares, outlines and points never coincide — and fills and
+ * canopy-tint, buildings-tint, density-squares, forest-changes, outlines and points never coincide — and fills and
  * points never coincide either), otherwise park outlines; hidden
  * clears the slot. All painters clear stale layers first, so switches
  * never stack.
@@ -92,6 +94,7 @@ function paintOverlay(
     canopyTint?: CanopyTintGrid | null;
     buildingsTint?: BuildingsTintGrid | null;
     densityAreas?: DensityArea[] | null;
+    forestAreas?: ForestArea[] | null;
     overlayPoints?: OverlayPoint[] | null;
     usePolygons?: UseFillPolygon[] | null;
     overlayColor?: string;
@@ -126,6 +129,12 @@ function paintOverlay(
   // score field is painted for this layer, by design).
   if (opts.sevesoAreas && opts.sevesoAreas.length > 0) {
     applySevesoPolygons(mapObj, opts.sevesoAreas);
+    return;
+  }
+  // FOREST-HOOK (#624): metsamuutused 2024 detected-change fills
+  // (warning bands, never "safe forest" — outside stays NULL).
+  if (opts.forestAreas && opts.forestAreas.length > 0) {
+    applyForestPolygons(mapObj, opts.forestAreas);
     return;
   }
   // STATELAND-HOOK (#615): stateland state/auction fills (polygons
@@ -183,6 +192,12 @@ function paintOverlay(
     applyDensityPolygons(mapObj, opts.densityAreas);
     return;
   }
+  // FOREST-HOOK (#624): metsamuutused 2024 detected-change fills
+  // (warning bands — outside stays NULL, never safe forest).
+  if (opts.forestAreas && opts.forestAreas.length > 0) {
+    applyForestPolygons(mapObj, opts.forestAreas);
+    return;
+  }
   if (opts.overlayPoints && opts.overlayPoints.length > 0) {
     applyPointOverlay(mapObj, opts.overlayPoints, { color: opts.overlayColor ?? "#1d4ed8" });
     return;
@@ -222,6 +237,7 @@ export function ValueHeatMap({
   canopyTint,
   buildingsTint,
   densityAreas,
+  forestAreas,
   overlayPoints,
   usePolygons,
   overlayColor,
@@ -270,6 +286,8 @@ export function ValueHeatMap({
   buildingsTint?: BuildingsTintGrid | null;
   /** INSPIRE PD 1 km squares (density layer only); taste-only fills. */
   densityAreas?: DensityArea[] | null;
+  /** Metsamuutused 2024 changes (forest layer only); warning fills. */
+  forestAreas?: ForestArea[] | null;
   /** Point markers drawn ABOVE the raster (all layers but parks). */
   overlayPoints?: OverlayPoint[] | null;
   /** Designated-use fills drawn ABOVE the field (planktpr only). */
@@ -325,6 +343,9 @@ export function ValueHeatMap({
     // DENSITY-HOOK (#622): densityAreas ride the refresh slot so pans
     // keep the fills (same slot as the painted effect below).
     densityAreas,
+    // FOREST-HOOK (#624): forestAreas ride the refresh slot so pans
+    // keep the fills (same slot as the painted effect below).
+    forestAreas,
     overlayPoints,
     usePolygons,
     overlayColor,
@@ -358,6 +379,9 @@ export function ValueHeatMap({
     // DENSITY-HOOK (#622): densityAreas ride the refresh slot so pans
     // keep the fills (same slot as the painted effect below).
     densityAreas,
+    // FOREST-HOOK (#624): forestAreas ride the refresh slot so pans
+    // keep the fills (same slot as the painted effect below).
+    forestAreas,
     overlayPoints,
     usePolygons,
     overlayColor,
@@ -556,9 +580,10 @@ export function ValueHeatMap({
       // CANOPY-HOOK (#620): canopyTint joins the painted slot.
       // BUILDINGS-HOOK (#621): buildingsTint joins the painted slot.
       // DENSITY-HOOK (#622): densityAreas join the painted slot.
-      paintOverlay(mapRef.current, { outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, reliefTint, canopyTint, buildingsTint, densityAreas, overlayPoints, usePolygons, overlayColor, showOverlay });
+      // FOREST-HOOK (#624): forestAreas join the painted slot.
+      paintOverlay(mapRef.current, { outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, reliefTint, canopyTint, buildingsTint, densityAreas, forestAreas, overlayPoints, usePolygons, overlayColor, showOverlay });
     }
-  }, [outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, reliefTint, canopyTint, buildingsTint, densityAreas, overlayPoints, usePolygons, overlayColor, showOverlay]);
+  }, [outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, reliefTint, canopyTint, buildingsTint, densityAreas, forestAreas, overlayPoints, usePolygons, overlayColor, showOverlay]);
 
   return (
     <section aria-label={title}>

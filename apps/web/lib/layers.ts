@@ -690,6 +690,18 @@ import {
   bonusSpecForDensity,
   isDensityTasteOnlyLayer,
 } from "./layers_p4_density";
+// FOREST-HOOK (#624): forest polygon tables live in
+// ./layers_p4_forest (metsamuutused detected-change bands,
+// polygons-only, areas sidecar). That module imports layers only as
+// types, so no runtime cycle.
+import type { ForestLayerId } from "./layers_p4_forest";
+import {
+  FOREST_DECAY,
+  FOREST_DEFS,
+  FOREST_TAGS,
+  bonusSpecForForest,
+  isForestPolygonOnlyLayer,
+} from "./layers_p4_forest";
 // FIXIT-HOOK (#623): report-pin tables live in ./layers_p4_fixit
 // (fixit markers, register sidecar). That module imports layers only
 // as types, so no runtime cycle.
@@ -876,7 +888,11 @@ export type LayerId =
   | BuildingsLayerId
   // DENSITY-HOOK (#622): density square id (./layers_p4_density,
   // INSPIRE PD 1 km choropleth, taste-only, no parameters3 id).
-  | DensityLayerId;
+  | DensityLayerId
+  // FOREST-HOOK (#624): forest polygon id (./layers_p4_forest,
+  // metsamuutused detected-change bands, polygons-only, no
+  // parameters3 id).
+  | ForestLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -1137,6 +1153,10 @@ const DECAY_KM: Record<LayerId, number> = {
   // layers_p4_density.ts DENSITY_DECAY — INERT placeholder, squares
   // only: zero points, never evaluated).
   ...DENSITY_DECAY,
+  // FOREST-HOOK (#624): forest polygon radius (see
+  // layers_p4_forest.ts FOREST_DECAY — INERT placeholder, polygons
+  // only: zero points, never evaluated).
+  ...FOREST_DECAY,
   // SEVESO-HOOK (#613): danger-polygon radius (see layers_p4_seveso.ts
   // SEVESO_DECAY — INERT placeholder, polygons only: zero points,
   // never evaluated).
@@ -1415,6 +1435,9 @@ export const LAYERS: LayerDef[] = [
   // DENSITY-HOOK (#622): density square def (INSPIRE PD 1 km taste
   // choropleth, no parameters3 id) from ./layers_p4_density.
   ...DENSITY_DEFS,
+  // FOREST-HOOK (#624): forest polygon def (metsamuutused bands,
+  // polygons-only, no parameters3 id) from ./layers_p4_forest.
+  ...FOREST_DEFS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -1589,6 +1612,9 @@ const TAGS: Record<LayerId, string> = {
   // DENSITY-HOOK (#622): density square source note (see
   // layers_p4_density.ts DENSITY_TAGS — prose, NOT an Overpass fragment).
   ...DENSITY_TAGS,
+  // FOREST-HOOK (#624): forest polygon source note (see
+  // layers_p4_forest.ts FOREST_TAGS — prose, NOT an Overpass fragment).
+  ...FOREST_TAGS,
   // SEVESO-HOOK (#613): danger-polygon source note (see
   // layers_p4_seveso.ts SEVESO_TAGS — prose, NOT an Overpass fragment).
   ...SEVESO_TAGS,
@@ -1885,6 +1911,11 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // ./layers_p4_density (INERT — squares only, never evaluated).
   const density = bonusSpecForDensity(layer);
   if (density) return density;
+  // FOREST-HOOK (#624): forest polygon spec lives in
+  // ./layers_p4_forest (INERT — polygons only, never evaluated; the
+  // live scorer leg is dims_p4_forestchange.py).
+  const forest = bonusSpecForForest(layer);
+  if (forest) return forest;
   // SEVESO-HOOK (#613): danger-polygon spec lives in
   // ./layers_p4_seveso (INERT — polygons only, never evaluated).
   const seveso = bonusSpecForSeveso(layer);
@@ -2289,6 +2320,10 @@ export async function fetchWindow(
   // (polygons only — the sidecar carries the data). Same skip, same
   // reason.
   if (isSevesoPolygonOnlyLayer(layer)) return null;
+  // FOREST-HOOK (#624): forest has no raster master by decision
+  // (polygons only — the areas sidecar carries the data). Same skip,
+  // same reason.
+  if (isForestPolygonOnlyLayer(layer)) return null;
   // QUARRY-HOOK (#614): quarry has no raster master by decision
   // (polygons only — the sidecar carries the data). Same skip, same
   // reason.

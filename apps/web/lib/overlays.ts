@@ -636,6 +636,13 @@ export function overlayColorFor(layer: LayerId): string {
     // test).
     case "density":
       return "#5b21b6";
+    // FOREST-HOOK (#624): forest marker (polygon layer — the point
+    // overlay stays empty live, so this colors only the toggle dot).
+    // #5c4033: bark (NOT #451a03 amber-950, #78350f amber-900 or
+    // #92400e amber-800 — taken; layers never co-render). Distinct
+    // from every other marker (distinct-color test).
+    case "forest":
+      return "#5c4033";
     // MEDRE-HOOK (#609): medre slice markers (Step-1 honest-empty —
     // the point overlay stays empty live, so this colors only the
     // toggle dot). #ffedd5: orange-100 clinic paper; #ede9fe:
@@ -1189,6 +1196,12 @@ export function overlayLegendFor(layer: LayerId): string {
     // Class 0 is empty OR privacy-masked (<4) — honestly one class.
     case "density":
       return "Asustuse toon (INSPIRE rahvastikutihedus 1 km, maitsekaart, 2024, Harju 8210 ruutu) · toon = asustuse iseloom (0 tühi/varjatud / 1–9 / 10–99 / 100–999 / 1000–4999 / 5000+ MEIE klassid — toon ERISTAB, ei hinda); maitse, mitte hinne (tihedus = melu-iseloom, hõredus = vaikuse-iseloom — kummki pole hinne); ruudud TÄPSELT (1 km on väli), väljaspool = teadmata; skoorijal jalgu EI OLE";
+    // FOREST-HOOK (#624): metsamuutused detected-change bands (scored
+    // warning, never "safe forest") — the fills warn, the scorer
+    // bands per listing (<=3y<=500m->30 etc.); outside every polygon
+    // is NULL. Vintage + licence + caveat ride along, always.
+    case "forest":
+      return "Tuvastatud võramuutis (metsamuutused 2024 lend, Harju+2 km 5288 polügooni) · pruun = 2024 tuvastatud muutus (värske tume, vanem hele — hoiatus, mitte hinne ruudule); skoor: värske+lähedal (≤3a≤500m→30), värske+kaugemal (≤3a≤1500m→55), vanem+lähedal (≤10a≤500m→60), muu→70; muutisaknas muutust pole = NULL (MITTE turvaline mets); tuvastatud muutus, mitte ametlik raiestatistika (automaat-töötlus, vead võimalikud); ETAK avaandmete litsents";
     // ASUMEDIA-HOOK (#495): asumedia (own-snapshot asking medians) —
     // the dated negative rides along: 0/84 asums reach MIN_N=5, so
     // the field is unknown everywhere until the reopen lands real
