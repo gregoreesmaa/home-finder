@@ -186,6 +186,14 @@ import {
   isNoisePolygonOnlyLayer,
   type NoiseArea,
 } from "../../lib/layers_p4_noise";
+// HARBOUR-HOOK (#627): harbour paints AIS pleasure-cell fills (grid
+// as-is) over live port dots — fetched once per selection (the Harju
+// keep set covers every view).
+import {
+  fetchHarbourAreas,
+  isHarbourLayerId,
+  type HarbourAreas,
+} from "../../lib/layers_p4_harbour";
 
 /** Viewport bbox rounded for fetch stability (matches server key rounding). */
 function sameView(a: BBoxLike, b: BBoxLike): boolean {
@@ -594,6 +602,26 @@ export default function LayersPage() {
   // design (polygons only); the per-listing binding leg is the
   // scorer's job.
   const [noiseAreas, setNoiseAreas] = useState<NoiseArea[] | null>(null);
+  // HARBOUR-HOOK (#627): harbour sidecar (harbour layer only,
+  // fetched once per selection): AIS pleasure-cell fills plus the
+  // port count. Port dots ride the standard point overlay (real
+  // data, snapshot provenance); the per-listing legs are the
+  // scorer's job.
+  const [harbourAreas, setHarbourAreas] = useState<HarbourAreas | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (layer !== "harbour") {
+      setHarbourAreas(null);
+      return;
+    }
+    fetchHarbourAreas().then((areas) => {
+      if (!cancelled) setHarbourAreas(areas);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [layer]);
+  const harbourCells = harbourAreas?.cells ?? null;
   useEffect(() => {
     let cancelled = false;
     if (!isNoisePolygonOnlyLayer(layer)) {
@@ -899,6 +927,12 @@ export default function LayersPage() {
     noiseAreas === null
       ? "Laadin müravööndeid…"
       : `Strateegiline müra · ${noiseAreas.length} vööndit, 2022 mudel (väljaspool = teadmata, MITTE vaikne)`;
+  // HARBOUR-HOOK (#627): harbour status counts ports + cells — dots
+  // and fills are both real data; outside is NULL, never calm.
+  const harbourStatus =
+    harbourAreas === null
+      ? "Laadin sadamaid…"
+      : `Sadamad + väikelaevaliiklus · ${harbourAreas.ports.length} sadamat, ${harbourAreas.cells.length} ruutu, 2024 (väljaspool = teadmata, MITTE rahulik)`;
   const base =
     isPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
       ? floodStatus
@@ -931,6 +965,8 @@ export default function LayersPage() {
         ? forestStatus
       : isNoisePolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
         ? noiseStatus
+      : layer === "harbour" && provenance !== null && provenance !== "demo"
+        ? harbourStatus
       : provenance === null
       ? "Laadin kihi andmeid…"
       : provenance === "snapshot"
@@ -1023,7 +1059,12 @@ export default function LayersPage() {
         Näita alusandmeid ({overlayCount})
       </label>
       <ValueHeatMap
-        points={featurePoints ?? []}
+        // HARBOUR-HOOK (#627): harbour paints NO value field — the port
+        // points would wash the whole viewport red under the area bonus
+        // (outside is NULL, never calm); dots ride overlayPoints, fills
+        // ride harbourCells. Empty points = honest unpainted, like the
+        // polygons-only layers' empty fetch.
+        points={isHarbourLayerId(layer) ? [] : (featurePoints ?? [])}
         radiusKm={radiusKmFor(layer)}
         bonus={bonusSpecFor(layer)}
         raster={raster}
@@ -1046,6 +1087,8 @@ export default function LayersPage() {
         densityAreas={densityAreas}
         forestAreas={forestAreas}
         noiseAreas={noiseAreas}
+        harbourCells={harbourCells}
+        harbourPorts={harbourAreas?.ports ?? null}
         overlayPoints={pointOverlay}
         usePolygons={usePolygons}
         overlayColor={overlayColorFor(layer)}

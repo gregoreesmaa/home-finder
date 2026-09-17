@@ -1,10 +1,11 @@
-"""P4 harbour demo dims (issue #542): hermetic tests.
+"""P4 harbour live dims (issues #542, #627): hermetic tests.
 
-No network: both scorers are licence/data-gated NULLs (2026-09-16 verdict,
-see dims_p4_harbour docstring), so the tests pin the None contract, the
-Estonian honesty markers (hinnang + EI OLE + buyer-side check pointer),
-the per-leg missing-input naming, and the registry/aggregator coverage.
-The module itself makes no network calls (pinned by source inspection).
+No network: joined rows are passed in (the harvester + WFS/API pulls
+live in scripts/build/batch_harbour.py). Pins the function bands, the
+pleasure bands, worst-wins, the NULL-outside contract (never calm or
+quiet), the no-season caveat in every reason, and the registry/
+aggregator coverage. The module itself makes no network calls (pinned
+by source inspection).
 """
 
 import inspect
@@ -18,36 +19,84 @@ from dims_p4_harbour import (
 )
 
 TALLINN = (59.4372, 24.7536)
-POIS = [{"kind": "port", "lat": 59.4449, "lon": 24.7636}]
 
-ALL_FNS = [dim_harbour_function_zone, dim_ais_pleasure_density]
+PIRITA = {"name": "PIRITA SADAM", "function": 2,
+          "function_label": "väikesadam (tasulised, <24 m)",
+          "dist_m": 494.0}
+VANASADAM = {"name": "VANASADAM", "function": 1,
+             "function_label": "täisteenus (kõik veesõidukid)",
+             "dist_m": 300.0}
+CELL_BUSY = {"pleasure": 53, "dist_m": 494.0}
+CELL_MILD = {"pleasure": 12, "dist_m": 900.0}
 
 EXPECTED_KEYS = ["harbour_function_zone", "ais_pleasure_density"]
-
 EXPECTED_PNUMS = ["P4-023", "P4-033"]
 
 
-def test_both_dims_always_none_for_every_input():
-    for fn in ALL_FNS:
-        for origin, pois in [(TALLINN, POIS), (TALLINN, []), (None, None),
-                             (None, POIS), (TALLINN, None)]:
-            v, _ = fn(origin, pois)
-            assert v is None, fn.__name__
+def test_function_bands_by_function_and_distance():
+    s, _ = dim_harbour_function_zone(TALLINN, [VANASADAM])
+    assert s == 45  # fn1 within 500 m
+    s, _ = dim_harbour_function_zone(
+        TALLINN, [{**VANASADAM, "dist_m": 1200.0}])
+    assert s == 65  # fn1 within 1500 m
+    s, _ = dim_harbour_function_zone(TALLINN, [PIRITA])
+    assert s == 70  # fn2 marina within 500 m
 
 
-def test_all_reasons_carry_honesty_markers_and_buyer_side_pointer():
-    for fn in ALL_FNS:
-        _, reason = fn(TALLINN, POIS)
-        assert "hinnang" in reason, fn.__name__
-        assert "EI OLE" in reason, fn.__name__
-        assert "pole" in reason, fn.__name__
-        assert any(marker in reason for marker in (
-            "sadamaregister", "AIS", "ts.ee", "kohapeal", "dims_p4_",
-            "INSPIRE")), fn.__name__
-        assert "ära feigi" in reason, fn.__name__
-        assert "mõõdetud skoor" not in reason
-        assert "mõõdetud väärtus" not in reason
-        assert "garanteeritud" not in reason
+def test_function_worst_wins_and_names_port():
+    s, reason = dim_harbour_function_zone(TALLINN, [PIRITA, VANASADAM])
+    assert s == 45  # working port dominates the marina
+    assert "VANASADAM" in reason
+    assert "hooajajaotust pole" in reason
+
+
+def test_function_outside_is_unknown_not_calm():
+    s, reason = dim_harbour_function_zone(TALLINN, [])
+    assert s is None
+    assert "MITTE rahulik" in reason
+    s, reason = dim_harbour_function_zone(TALLINN, None)
+    assert s is None
+    assert "puudub" in reason
+
+
+def test_pleasure_bands():
+    s, _ = dim_ais_pleasure_density(TALLINN, [CELL_BUSY])
+    assert s == 70
+    s, _ = dim_ais_pleasure_density(TALLINN, [CELL_MILD])
+    assert s == 80
+    s, _ = dim_ais_pleasure_density(TALLINN, [{"pleasure": 3,
+                                              "dist_m": 100.0}])
+    assert s == 85
+
+
+def test_pleasure_outside_is_unknown_not_quiet():
+    s, reason = dim_ais_pleasure_density(TALLINN, [])
+    assert s is None
+    assert "MITTE vaikne" in reason
+    assert "rahulik" not in reason  # never claims calm water either
+
+
+def test_pleasure_far_cell_is_null_despite_busy_count():
+    # AIS influence window (1500 m, mirror of the function gate): a busy
+    # cell kilometres away must NOT score -- outside is NULL.
+    s, reason = dim_ais_pleasure_density(
+        TALLINN, [{**CELL_BUSY, "dist_m": 5000.0}])
+    assert s is None
+    assert "1500" in reason
+    assert "MITTE vaikne" in reason
+
+
+def test_bool_inputs_are_not_distances_or_counts():
+    # True == 1 would fake fn1 proximity / a pleasure count of 1.
+    s, _ = dim_harbour_function_zone(
+        TALLINN, [{**VANASADAM, "dist_m": True}])
+    assert s is None
+    s, _ = dim_ais_pleasure_density(
+        TALLINN, [{"pleasure": True, "dist_m": 100.0}])
+    assert s is None
+    s, _ = dim_harbour_function_zone(
+        TALLINN, [{**VANASADAM, "function": True, "dist_m": 100.0}])
+    assert s is None
 
 
 def test_module_adds_no_network_calls():
@@ -58,40 +107,16 @@ def test_module_adds_no_network_calls():
     assert "urllib" not in src
 
 
-def test_function_leg_names_licence_gate_and_fixture_mapping():
-    _, reason = dim_harbour_function_zone(TALLINN, POIS)
-    assert "litsentsi" in reason
-    assert "funktsiooni-taksonoomiat" in reason
-    assert "dims_p4_trans" in reason
-    assert "2026-09-16" in reason
-
-
-def test_function_leg_pins_outside_is_unknown_not_quiet():
-    _, reason = dim_harbour_function_zone(TALLINN, [])
-    assert reason.startswith("Sadama funktsiooni-tsooni hinnangut pole")
-
-
-def test_ais_leg_names_grid_as_is_shape_and_gap_note():
-    _, reason = dim_ais_pleasure_density(TALLINN, POIS)
-    assert "500 m" in reason
-    assert "interpolatsiooni EI OLE" in reason
-    assert "AIS-lüngad" in reason
-
-
-def test_ais_leg_never_claims_calm_outside():
-    _, reason = dim_ais_pleasure_density(TALLINN, [])
-    assert "pole" in reason
-    assert "vaik" not in reason.replace("Väikelaevade", "")
-
-
 def test_registry_keys_and_param_numbers():
     assert [k for k, _, _ in P4_HARBOUR_DIMS] == EXPECTED_KEYS
     assert [p for _, p, _ in P4_HARBOUR_DIMS] == EXPECTED_PNUMS
     assert len({k for k, _, _ in P4_HARBOUR_DIMS}) == 2
 
 
-def test_aggregator_returns_all_none_by_design():
-    assert score_p4_harbour(TALLINN, POIS) == {
+def test_aggregator_scores_joined_rows():
+    assert score_p4_harbour(TALLINN, [PIRITA], [CELL_BUSY]) == {
+        "harbour_function_zone": 70, "ais_pleasure_density": 70}
+    assert score_p4_harbour(TALLINN, None, None) == {
         "harbour_function_zone": None, "ais_pleasure_density": None}
-    assert score_p4_harbour(None, None) == {
+    assert score_p4_harbour(None, [PIRITA], [CELL_BUSY]) == {
         "harbour_function_zone": None, "ais_pleasure_density": None}

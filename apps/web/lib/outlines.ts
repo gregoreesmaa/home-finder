@@ -16,6 +16,11 @@ import { renderBuildingsTint, type BuildingsTintGrid } from "./layers_p4_buildin
 import { DENSITY_CLASS_FILL, type DensityArea } from "./layers_p4_density";
 import { FOREST_CLASS_FILL, type ForestArea } from "./layers_p4_forest";
 import { NOISE_BAND_FILL, type NoiseArea } from "./layers_p4_noise";
+import {
+  HARBOUR_CELL_FILL,
+  type HarbourCell,
+  type HarbourPort,
+} from "./layers_p4_harbour";
 import type { OverlayPoint } from "./overlays";
 
 /** Minimal map surface for vector overlays (sources + paint layers). */
@@ -125,6 +130,9 @@ const FOREST_CASING = "forest-change-casing";
 const NOISE_SRC = "noise-band-polys";
 const NOISE_FILL = "noise-band-fill";
 const NOISE_CASING = "noise-band-casing";
+const HARBOUR_SRC = "harbour-cell-polys";
+const HARBOUR_FILL = "harbour-cell-fill";
+const HARBOUR_CASING = "harbour-cell-casing";
 const POINT_SRC = "layer-overlay-src";
 const POINT_CASING = "layer-overlay-casing";
 const POINT_CORE = "layer-overlay-core";
@@ -143,7 +151,7 @@ export function clearVectorOverlays(mapObj: OutlineMap): void {
   // SOIL-HOOK (#617): contour fill + casing join the cleared slot.
   // ETAK-HOOK (#618): etak contour fill + casing join the cleared
   // slot.
-  for (const id of [PARK_CASING, PARK_CORE, POINT_CASING, POINT_CORE, FLOOD_FILL, FLOOD_CASING, MAAPARCEL_FILL, MAAPARCEL_CASING, EELIS_FILL, EELIS_CASING, USE_FILL, USE_CASING, SEVESO_FILL, SEVESO_CASING, STATELAND_FILL, STATELAND_CASING, QUARRY_FILL, QUARRY_CASING, MAAPARANDUS_FILL, MAAPARANDUS_CASING, MAAPARANDUS_LINES, SOIL_FILL, SOIL_CASING, ETAK_FILL, ETAK_CASING, RELIEF_LYR, CANOPY_LYR, BUILDINGS_LYR, DENSITY_FILL, DENSITY_CASING, FOREST_FILL, FOREST_CASING, NOISE_FILL, NOISE_CASING]) {
+  for (const id of [PARK_CASING, PARK_CORE, POINT_CASING, POINT_CORE, FLOOD_FILL, FLOOD_CASING, MAAPARCEL_FILL, MAAPARCEL_CASING, EELIS_FILL, EELIS_CASING, USE_FILL, USE_CASING, SEVESO_FILL, SEVESO_CASING, STATELAND_FILL, STATELAND_CASING, QUARRY_FILL, QUARRY_CASING, MAAPARANDUS_FILL, MAAPARANDUS_CASING, MAAPARANDUS_LINES, SOIL_FILL, SOIL_CASING, ETAK_FILL, ETAK_CASING, RELIEF_LYR, CANOPY_LYR, BUILDINGS_LYR, DENSITY_FILL, DENSITY_CASING, FOREST_FILL, FOREST_CASING, NOISE_FILL, NOISE_CASING, HARBOUR_FILL, HARBOUR_CASING]) {
     try {
       if (mapObj.getLayer(id)) mapObj.removeLayer(id);
     } catch {
@@ -160,7 +168,7 @@ export function clearVectorOverlays(mapObj: OutlineMap): void {
   // DRAINAGE-HOOK (#616): the network-fill source joins the same slot.
   // SOIL-HOOK (#617): the contour-fill source joins the same slot.
   // ETAK-HOOK (#618): the etak-contour source joins the same slot.
-  for (const id of [PARK_SRC, POINT_SRC, FLOOD_SRC, MAAPARCEL_SRC, EELIS_SRC, USE_SRC, SEVESO_SRC, STATELAND_SRC, QUARRY_SRC, MAAPARANDUS_SRC, MAAPARANDUS_OUTFLOW_SRC, SOIL_SRC, ETAK_SRC, RELIEF_SRC, CANOPY_SRC, BUILDINGS_SRC, DENSITY_SRC, FOREST_SRC, NOISE_SRC]) {
+  for (const id of [PARK_SRC, POINT_SRC, FLOOD_SRC, MAAPARCEL_SRC, EELIS_SRC, USE_SRC, SEVESO_SRC, STATELAND_SRC, QUARRY_SRC, MAAPARANDUS_SRC, MAAPARANDUS_OUTFLOW_SRC, SOIL_SRC, ETAK_SRC, RELIEF_SRC, CANOPY_SRC, BUILDINGS_SRC, DENSITY_SRC, FOREST_SRC, NOISE_SRC, HARBOUR_SRC]) {
     try {
       if (mapObj.getSource(id)) mapObj.removeSource(id);
     } catch {
@@ -1710,4 +1718,171 @@ export function applyNoisePolygons(
     },
     before,
   );
+}
+
+// HARBOUR-HOOK (#627): AIS pleasure-cell fills.
+
+/**
+ * Paint AIS pleasure-craft cells as 500 m squares (pale → deep green
+ * by annual count) so sailing pressure reads at a glance. This is a
+ * CHOROPLETH of grid facts, never a score: the grid is used as-is
+ * (no interpolation), and the per-listing legs are the scorer's job.
+ * Clears stale overlay layers first; no-op when the style is not
+ * loaded yet or cells is nullish. Malformed cells are skipped, never
+ * faked.
+ */
+/** 500 m AIS cell squares as GeoJSON features (grid as-is, junk skipped). */
+function harbourCellFeatures(cells: HarbourCell[]): object[] {
+  // 500 m grid: half-side in degrees (~250 m lat, lon scaled).
+  const HALF_LAT = 250 / 111320;
+  const features = [];
+  for (const c of cells) {
+    if (
+      !c ||
+      typeof c.lon !== "number" ||
+      typeof c.lat !== "number" ||
+      !Number.isFinite(c.lon) ||
+      !Number.isFinite(c.lat)
+    )
+      continue;
+    const halfLon = HALF_LAT / Math.max(0.2, Math.cos((c.lat * Math.PI) / 180));
+    const key =
+      !Number.isFinite(c.pleasure) || c.pleasure < 1
+        ? "unknown"
+        : c.pleasure >= 50
+          ? "high"
+          : c.pleasure >= 10
+            ? "mid"
+            : "low";
+    const ring = [
+      [c.lon - halfLon, c.lat - HALF_LAT],
+      [c.lon + halfLon, c.lat - HALF_LAT],
+      [c.lon + halfLon, c.lat + HALF_LAT],
+      [c.lon - halfLon, c.lat + HALF_LAT],
+      [c.lon - halfLon, c.lat - HALF_LAT],
+    ];
+    features.push({
+      type: "Feature",
+      properties: { band: key },
+      geometry: { type: "MultiPolygon", coordinates: [[ring]] },
+    });
+  }
+  return features;
+}
+
+/** Joined ports as point features (finite coords only, junk skipped). */
+function harbourPortFeatures(ports: HarbourPort[]): object[] {
+  const features = [];
+  for (const p of ports) {
+    if (
+      !p ||
+      typeof p.lon !== "number" ||
+      typeof p.lat !== "number" ||
+      !Number.isFinite(p.lon) ||
+      !Number.isFinite(p.lat)
+    )
+      continue;
+    features.push({
+      type: "Feature",
+      properties: { name: typeof p.name === "string" ? p.name : "" },
+      geometry: { type: "Point", coordinates: [p.lon, p.lat] },
+    });
+  }
+  return features;
+}
+
+/**
+ * Paint the full harbour picture in ONE overlay-slot pass: AIS
+ * pleasure-cell fills (grid as-is) UNDER joined-port dots. One
+ * clearVectorOverlays only — the peers clear first, so stacking a
+ * separate point pass after applyHarbourPolygons would wipe the
+ * cells (and vice versa). No-op when the style is not loaded yet;
+ * paints whichever half has data (cells without ports, or ports
+ * without cells, still read). Malformed records are skipped, never
+ * faked.
+ */
+export function applyHarbourOverlays(
+  mapObj: OutlineMap,
+  cells: HarbourCell[] | null | undefined,
+  ports: HarbourPort[] | null | undefined,
+  opts: { color: string },
+): void {
+  if (!mapObj.getStyle()) return;
+  clearVectorOverlays(mapObj);
+  const before = abovePaint(mapObj);
+  const cellFeatures = cells && cells.length > 0 ? harbourCellFeatures(cells) : [];
+  if (cellFeatures.length > 0) {
+    mapObj.addSource(HARBOUR_SRC, {
+      type: "geojson",
+      data: { type: "FeatureCollection", features: cellFeatures },
+    });
+    mapObj.addLayer(
+      {
+        id: HARBOUR_FILL,
+        type: "fill",
+        source: HARBOUR_SRC,
+        paint: {
+          "fill-color": [
+            "match",
+            ["get", "band"],
+            "low",
+            HARBOUR_CELL_FILL.low,
+            "mid",
+            HARBOUR_CELL_FILL.mid,
+            "high",
+            HARBOUR_CELL_FILL.high,
+            HARBOUR_CELL_FILL.unknown,
+          ],
+          "fill-opacity": 0.5,
+        },
+      },
+      before,
+    );
+    mapObj.addLayer(
+      {
+        id: HARBOUR_CASING,
+        type: "line",
+        source: HARBOUR_SRC,
+        paint: {
+          "line-color": "#ffffff",
+          "line-width": 1,
+          "line-opacity": 0.5,
+        },
+      },
+      before,
+    );
+  }
+  const portFeatures = ports && ports.length > 0 ? harbourPortFeatures(ports) : [];
+  if (portFeatures.length > 0) {
+    mapObj.addSource(POINT_SRC, {
+      type: "geojson",
+      data: { type: "FeatureCollection", features: portFeatures },
+    });
+    mapObj.addLayer(
+      {
+        id: POINT_CASING,
+        type: "circle",
+        source: POINT_SRC,
+        paint: {
+          "circle-radius": 6.5,
+          "circle-color": "#ffffff",
+          "circle-opacity": 0.9,
+        },
+      },
+      before,
+    );
+    mapObj.addLayer(
+      {
+        id: POINT_CORE,
+        type: "circle",
+        source: POINT_SRC,
+        paint: {
+          "circle-radius": 5,
+          "circle-color": opts.color,
+          "circle-opacity": 0.9,
+        },
+      },
+      before,
+    );
+  }
 }

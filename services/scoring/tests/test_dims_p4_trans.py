@@ -277,6 +277,25 @@ def test_noise_zone_bands_from_label_only(zone, expected):
     assert "hinnang" in r and "kaugusgradient" in r
 
 
+def test_noise_sadam_measured_function_replaces_fixture():
+    # Row-for-row (#627): a sadam row WITH a joined register function
+    # scores from the function bands, not the flat fixture 60.
+    v, r = dim_noise_zone_trans(TALLINN, [mkpoi("noisezone_p4", zone="sadam",
+                                                function=1)])
+    assert v == 45, r
+    assert "M\u00d5\u00d5DETUD" in r
+    v, r = dim_noise_zone_trans(TALLINN, [mkpoi("noisezone_p4", zone="sadam",
+                                                function=2)])
+    assert v == 70, r
+
+
+def test_noise_sadam_without_function_keeps_fixture():
+    v, r = dim_noise_zone_trans(TALLINN, [mkpoi("noisezone_p4",
+                                                zone="sadam")])
+    assert v == 60, r
+    assert "M\u00d5\u00d5DETUD" not in r
+
+
 def test_noise_score_ignores_distance_inside_window():
     near = [mkpoi("noisezone_p4", zone="õppus")]
     far = [mkpoi("noisezone_p4", lat=TALLINN[0] + 0.008,  # ~890 m
