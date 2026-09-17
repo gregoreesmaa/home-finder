@@ -72,7 +72,8 @@ describe("eelis registry (#488)", () => {
     // 1 asumedia (ASUMEDIA-HOOK #495, 106 + 1).
     // 1 tervise (TERVISE-HOOK #494, 105 + 1).
     // PAASTE-HOOK (#493): +1 komando overlay (107 + 1).
-    expect(ids.length).toBe(137); // KPO (#626): 136 shipped + kpo = 137. // HARBOUR (#627): 135 shipped + harbour = 136.
+    expect(ids.length).toBe(142); // KPO (#626): 136 shipped + kpo = 137. // HARBOUR (#627): 135 shipped + harbour = 136.
+    // DELAY-HOOK (#629): + 5 delay band overlays (137 + 5 = 142).
     for (const id of EELIS_LAYER_IDS) expect(ids).toContain(id);
   });
 

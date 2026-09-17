@@ -26,6 +26,7 @@ import type { DensityArea } from "../lib/layers_p4_density";
 import type { ForestArea } from "../lib/layers_p4_forest";
 import type { NoiseArea } from "../lib/layers_p4_noise";
 import type { KpoArea } from "../lib/layers_p4_kpo";
+import type { DelayArea } from "../lib/layers_p4_delay";
 import type { HarbourCell, HarbourPort } from "../lib/layers_p4_harbour";
 import {
   applyFloodPolygons,
@@ -46,6 +47,7 @@ import {
   applyForestPolygons,
   applyHarbourOverlays,
   applyKpoPolygons,
+  applyDelayCorridors,
   applyNoisePolygons,
   applyUsePolygons,
   clearVectorOverlays,
@@ -103,6 +105,10 @@ function paintOverlay(
     forestAreas?: ForestArea[] | null;
     noiseAreas?: NoiseArea[] | null;
     kpoAreas?: KpoArea[] | null;
+    /** Harvested delay corridor bands (delay-* layers only). */
+    delayAreas?: DelayArea[] | null;
+    /** Hour band painted for the selected delay layer. */
+    delayBand?: string;
     harbourCells?: HarbourCell[] | null;
     harbourPorts?: HarbourPort[] | null;
     overlayPoints?: OverlayPoint[] | null;
@@ -157,6 +163,16 @@ function paintOverlay(
   // (measured bands, never clean title — outside stays NULL).
   if (opts.kpoAreas && opts.kpoAreas.length > 0) {
     applyKpoPolygons(mapObj, opts.kpoAreas);
+    return;
+  }
+  // DELAY-HOOK (#629): typical-delay corridor band fills (typical,
+  // never live — outside stays NULL, thin stays slate).
+  if (opts.delayAreas && opts.delayAreas.length > 0) {
+    applyDelayCorridors(
+      mapObj,
+      opts.delayAreas,
+      opts.delayBand ?? "worst",
+    );
     return;
   }
   // HARBOUR-HOOK (#627): AIS pleasure-cell fills (grid as-is) UNDER
@@ -244,6 +260,16 @@ function paintOverlay(
     applyKpoPolygons(mapObj, opts.kpoAreas);
     return;
   }
+  // DELAY-HOOK (#629): typical-delay corridor band fills (typical,
+  // never live — outside stays NULL, thin stays slate).
+  if (opts.delayAreas && opts.delayAreas.length > 0) {
+    applyDelayCorridors(
+      mapObj,
+      opts.delayAreas,
+      opts.delayBand ?? "worst",
+    );
+    return;
+  }
   // HARBOUR-HOOK (#627): AIS pleasure-cell fills (grid as-is) UNDER
   // joined-port dots in ONE slot pass (peers clear first, so cells +
   // dots cannot stack as two passes); outside stays NULL.
@@ -298,6 +324,8 @@ export function ValueHeatMap({
   forestAreas,
   noiseAreas,
   kpoAreas,
+  delayAreas,
+  delayBand,
   harbourCells,
   harbourPorts,
   overlayPoints,
@@ -354,6 +382,10 @@ export function ValueHeatMap({
   noiseAreas?: NoiseArea[] | null;
   /** KMA restriction zones (kpo layer only); ban/conditioned fills. */
   kpoAreas?: KpoArea[] | null;
+  /** Harvested delay corridor bands (delay-* layers only). */
+  delayAreas?: DelayArea[] | null;
+  /** Hour band painted for the selected delay layer. */
+  delayBand?: string;
   /** AIS pleasure cells (harbour layer only); recreation fills. */
   harbourCells?: HarbourCell[] | null;
   /** Joined ports (harbour layer only); dots over the cell fills. */
@@ -422,6 +454,10 @@ export function ValueHeatMap({
     // KPO-HOOK (#626): kpoAreas ride the refresh slot so pans
     // keep the fills (same slot as the painted effect below).
     kpoAreas,
+    // DELAY-HOOK (#629): delayAreas ride the refresh slot so pans
+    // keep the fills (same slot as the painted effect below).
+    delayAreas,
+    delayBand,
     // HARBOUR-HOOK (#627): harbourCells + harbourPorts ride the
     // refresh slot so pans keep the fills + dots (same slot as the
     // painted effect below).
@@ -469,6 +505,10 @@ export function ValueHeatMap({
     // KPO-HOOK (#626): kpoAreas ride the refresh slot so pans
     // keep the fills (same slot as the painted effect below).
     kpoAreas,
+    // DELAY-HOOK (#629): delayAreas ride the refresh slot so pans
+    // keep the fills (same slot as the painted effect below).
+    delayAreas,
+    delayBand,
     // HARBOUR-HOOK (#627): harbourCells + harbourPorts ride the
     // refresh slot so pans keep the fills + dots (same slot as the
     // painted effect below).

@@ -16,16 +16,25 @@ import urllib.error
 import dims_p4_typical_delay as p4y
 import pytest
 from dims_p4_typical_delay import (
+    CORRIDORS,
     CORRIDOR_WINDOW_M,
+    MAP_BANDS,
+    WORST_BAND,
     GPS_SNAPSHOT_URL,
     SAMPLER_MIN_INTERVAL_S,
     TABLE_MIN_SAMPLES,
     aggregate_snapshots,
+    build_delay_table,
+    corridor_midpoint,
+    corridor_of,
     dim_commute_delay,
     fetch_gps_snapshot,
     hour_band,
+    muu_baselines,
     parse_gps_txt,
     score_p4_delay,
+    table_to_pois,
+    track_segments,
 )
 
 # Tallinn centre: hand-built delay cells sit ~57 m east unless stated.
@@ -39,18 +48,21 @@ def mkcell(factor=1.2, hour_band="hommikune tipp", n=40,
             "corridor": corridor}
 
 
-# Fixture gps.txt in the live field shape (catalogue 2026-09-16:
-# vtype,line,latE6,lonE6,speed,heading,vehicle).
-GPS_FIXTURE = """2,15,59437200,24754600,18.5,90,1234,
-2,15,59437300,24754700,,90,1235,
-3,2,59437000,24754000,22.0,180,501,
-7,5,59438000,24755000,15.0,999,77,
-1,3,59437100,24754500,12.0,270,310,Z
-9,15,59437200,24754600,18.5,90,9999,
-2,15,xxx,24754600,18.5,90,1236,
-2,15,59437200,24754600,999.0,90,1237,
+# Fixture gps.txt in the live field shape (CORRECTED 2026-09-17
+# against the real feed: vtype,line,LONx1e6,LATx1e6,speed,heading,
+# vehicle -- the catalogue had lat/lon swapped and the old parser
+# read zero live rows; last line mirrors a real 10-field row).
+GPS_FIXTURE = """2,15,24754600,59437200,18.5,90,1234,
+2,15,24754700,59437300,,90,1235,
+3,2,24754000,59437000,22.0,180,501,
+7,5,24755000,59438000,15.0,999,77,
+1,3,24754500,59437100,12.0,270,310,Z
+9,15,24754600,59437200,18.5,90,9999,
+2,15,xxx,59437200,18.5,90,1236,
+2,15,24754600,59437200,999.0,90,1237,
 garbage line
-2,15,59437200,24754600,0.0,90,1238,
+2,15,24754600,59437200,0.0,90,1238,
+2,1,24841420,59519450,,240,1009,Z,33,Viimsi
 """
 
 
@@ -143,6 +155,10 @@ def test_parse_reads_positions_and_speeds(tmp_path):
     assert "9999" not in by_veh and "1236" not in by_veh
     assert by_veh["1237"]["speed"] is None
     assert by_veh["1238"]["speed"] == pytest.approx(0.0)
+    # Live 10-field row: lon/lat order, destination ignored, kept.
+    assert by_veh["1009"]["lat"] == pytest.approx(59.51945)
+    assert by_veh["1009"]["lon"] == pytest.approx(24.84142)
+    assert by_veh["1009"]["speed"] is None  # feed carries no speeds
 
 
 def test_aggregate_keeps_road_vehicles_and_drops_thin_cells():
@@ -240,3 +256,85 @@ def test_registry_and_aggregator():
     assert score_p4_delay(None, None, None) == {"commute_delay": None}
     assert score_p4_delay(TALLINN, [mkcell()], None) == {"commute_delay": None}
     assert p4y.P4_DELAY_DIMS is p4y.P4_DELAY_DIMS
+
+
+# ---------------------------------------------------------------------------
+# Issue #629: corridors + vehicle-tracked segments + delay table.
+# ---------------------------------------------------------------------------
+
+def test_corridor_table_shape():
+    names = [c[0] for c in CORRIDORS]
+    assert len(names) == 8 and len(set(names)) == 8
+    for name, a, b, label in CORRIDORS:
+        assert label and isinstance(a, tuple) and isinstance(b, tuple)
+        assert corridor_midpoint(name) is not None
+    assert corridor_midpoint("olematu") is None
+
+
+def test_corridor_of_joins_window():
+    # Laagna tee midpoint joins; far Tallinn bay does not.
+    assert corridor_of(59.435, 24.830) == "Laagna tee"
+    assert corridor_of(59.50, 24.60) is None
+    assert corridor_of(None, 24.8) is None
+    assert corridor_of(True, 24.8) is None
+
+
+def _fix(vehicle, t, lat, lon):
+    return {"vehicle": vehicle, "t": t, "lat": lat, "lon": lon}
+
+
+def test_track_segments_filters_and_labels():
+    # Two fixes 60 s apart on Laagna tee (~1.1 km at 59.4N per 0.02
+    # lon... here 300 m in 60 s = 18 km/h, plausible urban bus).
+    base = 1_700_000_000
+    fixes = [_fix("101", base, 59.435, 24.820),
+             _fix("101", base + 60, 59.435, 24.825),
+             _fix("102", base, 59.435, 24.820),
+             _fix("102", base + 5, 59.435, 24.900),  # teleport: dropped
+             _fix("103", base, 59.50, 24.60),
+             _fix("103", base + 60, 59.50, 24.61)]  # off-corridor: dropped
+    segs = track_segments(fixes)
+    assert len(segs) == 1
+    s = segs[0]
+    assert s["corridor"] == "Laagna tee"
+    assert s["speed_kmh"] == pytest.approx(16.8, abs=1.5)
+    assert s["hour"] == (base + 60) // 3600 % 24
+
+
+def test_build_delay_table_free_flow_and_thin():
+    slow = [{"corridor": "Laagna tee", "speed_kmh": 15.0, "hour": 8}] * 25
+    free = [{"corridor": "Laagna tee", "speed_kmh": 30.0, "hour": 23}] * 25
+    thin = [{"corridor": "Laagna tee", "speed_kmh": 10.0, "hour": 12}] * 3
+    nofree = [{"corridor": "Tartu mnt", "speed_kmh": 12.0, "hour": 8}] * 25
+    table = build_delay_table(slow + free + thin + nofree)
+    assert table[("Laagna tee", "hommikune tipp")]["factor"] == \
+        pytest.approx(2.0)
+    assert ("Laagna tee", "keskpäev") not in table  # thin: NULL downstream
+    assert ("Tartu mnt", "hommikune tipp") not in table  # no free-flow
+    assert ("Laagna tee", "muu") not in table  # baseline, not a cell
+
+
+def test_table_to_pois_shape_feeds_scorer():
+    table = {("Laagna tee", "hommikune tipp"):
+             {"factor": 1.5, "n": 40, "median_speed": 20.0,
+              "free_speed": 30.0}}
+    pois = table_to_pois(table)
+    assert len(pois) == 1
+    p = pois[0]
+    assert p["kind"] == "delaycell_p4"
+    assert p["corridor"] == "Laagna tee"
+    v, _r = dim_commute_delay((p["lat"], p["lon"]), pois, 8)
+    assert v == 45  # factor 1.5 -> 45, end to end
+
+
+def test_muu_baselines_anchor_free_flow():
+    segs = ([{"corridor": "Laagna tee", "speed_kmh": 30.0, "hour": 23}] * 25
+            + [{"corridor": "Laagna tee", "speed_kmh": 28.0, "hour": 12}] * 10
+            + [{"corridor": "Tartu mnt", "speed_kmh": 25.0, "hour": 8}] * 25)
+    base = muu_baselines(segs)
+    assert set(base) == {"Laagna tee"}  # non-muu + peak-only dropped
+    assert base["Laagna tee"]["median"] == pytest.approx(30.0)
+    assert base["Laagna tee"]["n"] == 25
+    assert set(MAP_BANDS) == {"hommikune tipp", "keskpäev",
+                              "õhtune tipp", "muu"}
+    assert WORST_BAND == "worst"

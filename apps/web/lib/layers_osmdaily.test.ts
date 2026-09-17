@@ -86,7 +86,8 @@ describe("osmdaily registry (#482)", () => {
     // TERVISE-HOOK (#494): +1 tervise bathing-water layer (105 + 1).
     // ASUMEDIA-HOOK (#495): +1 per-asum median layer (106 + 1).
     // PAASTE-HOOK (#493): +1 komando overlay (107 + 1).
-    expect(ids.length).toBe(137); // KPO (#626): 136 shipped + kpo = 137. // HARBOUR (#627): 135 shipped + harbour = 136.
+    expect(ids.length).toBe(142); // KPO (#626): 136 shipped + kpo = 137. // HARBOUR (#627): 135 shipped + harbour = 136.
+    // DELAY-HOOK (#629): + 5 delay band overlays (137 + 5 = 142).
     for (const id of OSMDAILY_LAYER_IDS) expect(ids).toContain(id);
   });
 

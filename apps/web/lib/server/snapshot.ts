@@ -235,6 +235,11 @@ import { NOISE_RASTER_FILE, isNoiseArea, type NoiseArea } from "../layers_p4_noi
 // degrade to null; the sidecar is honestly empty when unharvested).
 import { HARBOUR_RASTER_FILE, isHarbourCell, isHarbourPort, type HarbourCell, type HarbourPort } from "../layers_p4_harbour";
 import { KPO_RASTER_FILE, isKpoArea, type KpoArea } from "../layers_p4_kpo";
+// DELAY-HOOK (#629): delay corridor sidecar types live in
+// layers_p4_delay.ts (typical-delay bands, polygons only —
+// DELAY_NO_RASTER; the name resolves to an absent file so windows
+// degrade to null; the sidecar is honestly empty when unsampled).
+import { DELAY_RASTER_FILE, isDelayArea, type DelayArea } from "../layers_p4_delay";
 // OHUSEIRE-HOOK (#610): station raster filename + sidecar point type
 // live in layers_p4_ohuseire.ts (raster intentionally never built —
 // OHUSEIRE_NO_RASTER; the name resolves to an absent file so rasters
@@ -1186,6 +1191,35 @@ export async function loadKpoAreas(dir: string): Promise<KpoArea[]> {
   return areas;
 }
 
+// DELAY-HOOK (#629): delay corridor sidecar
+// (`delay/delay-corridors.json`, written by
+// scripts/build/batch_delay_sampler.py off keyless gps.txt pulls):
+// corridor + per-band factors/ns + rep + display strips. A missing
+// sidecar is honestly empty (sampler unrun), never an
+// error; malformed rows are skipped, never faked.
+const delayAreaCache = new Map<string, DelayArea[]>();
+
+export async function loadDelayAreas(dir: string): Promise<DelayArea[]> {
+  const hit = delayAreaCache.get(dir);
+  if (hit) return hit;
+  let areas: DelayArea[] = [];
+  try {
+    const raw = await fs.readFile(path.join(dir, "delay", "delay-corridors.json"), "utf8");
+    const parsed: unknown = JSON.parse(raw);
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      Array.isArray((parsed as { areas: unknown }).areas)
+    )
+      areas = (parsed as { areas: unknown[] }).areas.filter(isDelayArea);
+    else console.warn(`snapshot: ignoring malformed delay/delay-corridors.json in ${dir}`);
+  } catch {
+    // Optional sidecar: honestly empty below.
+  }
+  delayAreaCache.set(dir, areas);
+  return areas;
+}
+
 // DRAINAGE-HOOK (#616): maaparandus network/outflow sidecar
 // (`maaparandus/maaparandus-areas.json`, written by
 // scripts/build/batch_maaparandus.py off the cached WFS GeoJSON):
@@ -1581,6 +1615,10 @@ const RASTER_FILE: Record<LayerId, string> = {
   // built — KPO_NO_RASTER; the polygons ARE the field; absent file
   // degrades to null, honestly).
   ...KPO_RASTER_FILE,
+  // DELAY-HOOK (#629): delay band raster name only (no master
+  // built — DELAY_NO_RASTER; the polygons ARE the field; absent file
+  // degrades to null, honestly).
+  ...DELAY_RASTER_FILE,
 };
 
 /**
@@ -2142,6 +2180,14 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // (see layers_p4_kpo.ts KPO_NO_METRO) — the name resolves to
   // an absent file so windows fall back to county cleanly.
   kpo: "kpo-metro",
+  // DELAY-HOOK (#629): no delay metro master by documented decision
+  // (see layers_p4_delay.ts DELAY_NO_METRO) — the names resolve to
+  // absent files so windows fall back to county cleanly.
+  "delay-morning": "delay-morning-metro",
+  "delay-midday": "delay-midday-metro",
+  "delay-evening": "delay-evening-metro",
+  "delay-offpeak": "delay-offpeak-metro",
+  "delay-worst": "delay-worst-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

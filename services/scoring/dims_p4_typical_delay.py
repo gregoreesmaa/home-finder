@@ -159,13 +159,19 @@ def fetch_gps_snapshot(cache_dir: str, filename: str,
 def parse_gps_txt(path: str) -> List[dict]:
     """Parse a cached gps.txt snapshot. Offline.
 
-    Live fields (catalogue 2026-09-16): vehicle type (1 trolley /
-    2 bus / 3 tram / 7 night bus), line number, latitude x1e6,
-    longitude x1e6, speed km/h (empty when unavailable), heading
-    degrees (999 = unavailable), vehicle number, vehicle type flag.
-    Returns [{vtype, line, lat, lon, speed, vehicle}]; garbage lines
-    are skipped, never faked. Trams (3) are kept with a flag - they
-    do not sit in road jams (documented, excluded at aggregation).
+    Live fields (CORRECTED 2026-09-17 against the real feed -- the
+    catalogue description had lat/lon swapped and the #557 fixture
+    copied it, so the old parser read ZERO live rows):
+    vehicle type (1 trolley / 2 bus / 3 tram / 7 night bus),
+    line number, LONGITUDE x1e6, LATITUDE x1e6, speed km/h (EMPTY on
+    every row observed 2026-09-17 -- speeds are NOT in this feed),
+    heading degrees, vehicle number, "Z" flag, route variant,
+    destination. Example live row:
+    ``2,1,24841420,59519450,,240,1009,Z,33,Viimsi`` = bus 1 to Viimsi
+    at (24.841420, 59.519450). Returns [{vtype, line, lat, lon,
+    speed, vehicle}]; garbage lines are skipped, never faked. Trams
+    (3) are kept with a flag - they do not sit in road jams
+    (documented, excluded at aggregation).
     """
     out = []
     with open(path, encoding="utf-8", errors="replace") as fh:
@@ -179,9 +185,12 @@ def parse_gps_txt(path: str) -> List[dict]:
                 continue
             if vtype not in (1, 2, 3, 7):
                 continue
+    # X-GIS-style axis trap: parts[2] is LONGITUDE (x), parts[3]
+    # is LATITUDE (y) -- verified on live rows (bus 1 to Viimsi at
+    # 24.84/59.51, bus 23 to Kadaka at 24.75/59.43).
             try:
-                lat = int(parts[2].strip()) / 1e6
-                lon = int(parts[3].strip()) / 1e6
+                lon = int(parts[2].strip()) / 1e6
+                lat = int(parts[3].strip()) / 1e6
             except (ValueError, AttributeError):
                 continue
             if not (math.isfinite(lat) and math.isfinite(lon)
@@ -385,6 +394,259 @@ def dim_commute_delay(origin: Optional[Tuple[float, float]],
                "%d proovi) -> skoor %d (tavaline, mitte reaalajas)"
                % (cell.get("hour_band"), cell.get("corridor"),
                   factor, cell["n"], s))
+
+
+#: Named commute corridors as representative SEGMENTS (lon/lat
+#: endpoints, 3 decimals ~ 100 m). Endpoints are public geography
+#: (squares, stations, district centres); segments are JOIN geometry,
+#: not a road survey -- corridor_of() matches within
+#: CORRIDOR_WINDOW_M. GTFS validation counts (weekday stops near each
+#: segment) ride the sidecar stats, not these coordinates.
+CORRIDORS = (
+    # (name, (lon0, lat0), (lon1, lat1), endpoint labels)
+    ("Pärnu mnt", (24.742, 59.434), (24.685, 59.389),
+     "Vabaduse väljak-Nõmme keskus"),
+    ("Tartu mnt", (24.753, 59.436), (24.798, 59.424),
+     "Viru-Ülemiste"),
+    ("Narva mnt", (24.754, 59.438), (24.817, 59.466),
+     "Viru-Pirita"),
+    ("Paldiski mnt", (24.737, 59.441), (24.671, 59.412),
+     "Balti jaam-Õismäe"),
+    ("Ehitajate tee", (24.732, 59.427), (24.710, 59.406),
+     "Mustamäe-Kadaka"),
+    ("Laagna tee", (24.800, 59.425), (24.860, 59.445),
+     "Ülemiste-Laagna"),
+    ("Peterburi tee", (24.805, 59.423), (24.884, 59.433),
+     "Ülemiste-Väo"),
+    ("Sõpruse pst", (24.715, 59.428), (24.700, 59.410),
+     "Kristiine-Mustamäe"),
+)
+
+#: Consecutive-fix window for vehicle-tracked segments (the cron
+#: pulls at 60 s+ cadence; wider gaps are not one segment).
+TRACK_MIN_DT_S = 30.0
+TRACK_MAX_DT_S = 900.0
+
+#: Plausible urban-bus segment speeds (stops + traffic); outside is
+#: GPS jitter or a layover, never a jam measurement.
+TRACK_MIN_KMH = 3.0
+TRACK_MAX_KMH = 80.0
+
+
+def _seg_dist_m(lat, lon, a, b):
+    """Point to segment AB in metres (equirectangular, fine <1 km)."""
+    r = 6371000.0
+    lam, phi = math.radians(lon), math.radians(lat)
+    ax, ay = math.radians(a[0]), math.radians(a[1])
+    bx, by = math.radians(b[0]), math.radians(b[1])
+    mx = math.cos((ay + by) / 2)
+    px, py = (lam - ax) * mx, phi - ay
+    dx, dy = (bx - ax) * mx, by - ay
+    seg2 = dx * dx + dy * dy
+    t = (px * dx + py * dy) / seg2 if seg2 > 0 else 0.0
+    t = max(0.0, min(1.0, t))
+    return r * math.hypot(px - dx * t, py - dy * t)
+
+
+def corridor_of(lat, lon):
+    """Nearest corridor within CORRIDOR_WINDOW_M (None when off). Pure."""
+    try:
+        lat = float(lat)
+        lon = float(lon)
+    except (TypeError, ValueError):
+        return None
+    if isinstance(lat, bool) or isinstance(lon, bool):
+        return None
+    if not (math.isfinite(lat) and math.isfinite(lon)):
+        return None
+    best = None
+    for name, a, b, _label in CORRIDORS:
+        d = _seg_dist_m(lat, lon, a, b)
+        if best is None or d < best[0]:
+            best = (d, name)
+    if best is None or best[0] > CORRIDOR_WINDOW_M:
+        return None
+    return best[1]
+
+
+def corridor_midpoint(name):
+    """Representative map point of a corridor (segment midpoint)."""
+    for cname, a, b, _label in CORRIDORS:
+        if cname == name:
+            return ((a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0)
+    return None
+
+
+def _utc_hour(t):
+    """Epoch -> UTC hour (deterministic fallback, TZ-independent)."""
+    return int(t // 3600 % 24)
+
+
+def tallinn_hour(t):
+    """Epoch -> Europe/Tallinn host-local hour (cron hosts run
+    TZ=Europe/Tallinn -- host requirement, documented in the sampler
+    and .github/workflows notes; DST-correct via the host libc)."""
+    return time.localtime(t).tm_hour
+
+
+def track_segments(fixes, hour_of=None):
+    """Timestamped fixes -> vehicle segment speeds. Pure.
+
+    ``fixes``: [{vehicle, t (epoch s), lat, lon}] for road vehicles
+    (vtype 1/2/7 -- filter BEFORE calling). ``hour_of`` maps the
+    segment-midpoint epoch to a 0-23 hour -- pass tallinn_hour on
+    Europe/Tallinn cron hosts, _utc_hour (default) in tests and
+    UTC-stamped pipelines. Consecutive same-vehicle fixes with dt in
+    [TRACK_MIN_DT_S, TRACK_MAX_DT_S] and speed in
+    [TRACK_MIN_KMH, TRACK_MAX_KMH] yield {vehicle, t (midpoint),
+    hour, lat, lon (midpoint), speed_kmh, corridor}. Jitter, layovers
+    and teleporting fixes are dropped, never smoothed.
+    """
+    by_vehicle = {}
+    for f in fixes:
+        if not isinstance(f, dict):
+            continue
+        v = f.get("vehicle")
+        if not v or not isinstance(v, str):
+            continue
+        try:
+            t = float(f["t"])
+            lat = float(f["lat"])
+            lon = float(f["lon"])
+        except (TypeError, ValueError, KeyError):
+            continue
+        if isinstance(f.get("t"), bool):
+            continue
+        if not (math.isfinite(t) and math.isfinite(lat)
+                and math.isfinite(lon)):
+            continue
+        by_vehicle.setdefault(v, []).append((t, lat, lon))
+    if hour_of is None:
+        hour_of = _utc_hour
+    out = []
+    for v, pts in by_vehicle.items():
+        pts.sort()
+        for (t0, la0, lo0), (t1, la1, lo1) in zip(pts, pts[1:]):
+            dt = t1 - t0
+            if not (TRACK_MIN_DT_S <= dt <= TRACK_MAX_DT_S):
+                continue
+            dist = _haversine_m((la0, lo0), la1, lo1)
+            kmh = dist / dt * 3.6
+            if not (TRACK_MIN_KMH <= kmh <= TRACK_MAX_KMH):
+                continue
+            mlat, mlon = (la0 + la1) / 2.0, (lo0 + lo1) / 2.0
+            corridor = corridor_of(mlat, mlon)
+            if not corridor:
+                continue
+            hour = hour_of((t0 + t1) / 2.0)
+            out.append({"vehicle": v, "t": (t0 + t1) / 2.0,
+                        "hour": hour, "lat": mlat, "lon": mlon,
+                        "speed_kmh": kmh, "corridor": corridor})
+    return out
+
+
+def _median(sorted_vals):
+    mid = len(sorted_vals) // 2
+    return (sorted_vals[mid] if len(sorted_vals) % 2
+            else (sorted_vals[mid - 1] + sorted_vals[mid]) / 2.0)
+
+
+def build_delay_table(segments):
+    """Segments -> {(corridor, hour_band): delay cell}. Pure.
+
+    Free-flow baseline per corridor = its off-peak ("muu") median;
+    corridors without one stay factor-NULL (never a free-flow
+    assumption). factor = free / typical, clamped >= 1.0. Cells with
+    n < TABLE_MIN_SAMPLES are dropped (thin cells stay NULL
+    downstream). No school-holiday split (documented limitation).
+    """
+    buckets = {}
+    for s in segments:
+        if not isinstance(s, dict):
+            continue
+        corridor = s.get("corridor")
+        speed = s.get("speed_kmh")
+        hour = s.get("hour")
+        if not corridor or not isinstance(corridor, str):
+            continue
+        try:
+            speed = float(speed)  # type: ignore[arg-type]
+            hour = int(hour)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            continue
+        if isinstance(s.get("speed_kmh"), bool):
+            continue
+        if not (math.isfinite(speed) and speed > 0.0):
+            continue
+        if not 0 <= hour <= 23:
+            continue
+        buckets.setdefault((corridor, hour_band(hour)), []).append(speed)
+    medians = {k: _median(sorted(v)) for k, v in buckets.items()
+               if len(v) >= TABLE_MIN_SAMPLES}
+    free = {}
+    for (corridor, band), med in medians.items():
+        if band == "muu":
+            free[corridor] = med
+    table = {}
+    for (corridor, band), med in medians.items():
+        if band == "muu" or corridor not in free or med <= 0:
+            continue
+        factor = max(1.0, free[corridor] / med)
+        n = len(buckets[(corridor, band)])
+        table[(corridor, band)] = {"median_speed": med,
+                                   "free_speed": free[corridor],
+                                   "factor": factor, "n": n}
+    return table
+
+
+#: Hour bands painted as map layers (plus the worst-of-peaks rollup).
+MAP_BANDS = ("hommikune tipp", "keskpäev", "õhtune tipp", "muu")
+WORST_BAND = "worst"
+
+
+def muu_baselines(segments):
+    """Off-peak baseline medians per corridor (the free-flow anchor).
+
+    Returns {corridor: {"median": x, "n": n}} for "muu" buckets with
+    n >= TABLE_MIN_SAMPLES; thinner baselines are dropped (their
+    corridors stay factor-NULL everywhere). Pure.
+    """
+    buckets = {}
+    for s in segments:
+        if not isinstance(s, dict):
+            continue
+        corridor = s.get("corridor")
+        speed = s.get("speed_kmh")
+        hour = s.get("hour")
+        if not corridor or not isinstance(corridor, str):
+            continue
+        try:
+            speed = float(speed)  # type: ignore[arg-type]
+            hour = int(hour)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            continue
+        if isinstance(s.get("speed_kmh"), bool):
+            continue
+        if not (math.isfinite(speed) and speed > 0.0):
+            continue
+        if not 0 <= hour <= 23 or hour_band(hour) != "muu":
+            continue
+        buckets.setdefault(corridor, []).append(speed)
+    return {c: {"median": _median(sorted(v)), "n": len(v)}
+            for c, v in buckets.items() if len(v) >= TABLE_MIN_SAMPLES}
+
+
+def table_to_pois(table):
+    """Delay table -> delaycell_p4 POIs for the scorer join. Pure."""
+    pois = []
+    for (corridor, band), cell in table.items():
+        mid = corridor_midpoint(corridor)
+        if mid is None:
+            continue
+        pois.append({"kind": "delaycell_p4", "corridor": corridor,
+                     "hour_band": band, "lat": mid[1], "lon": mid[0],
+                     "factor": cell["factor"], "n": cell["n"]})
+    return pois
 
 
 #: Registry for the central weight-rebalance follow-up: (dim key, param id).

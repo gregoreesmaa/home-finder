@@ -194,6 +194,15 @@ import {
   isKpoPolygonOnlyLayer,
   type KpoArea,
 } from "../../lib/layers_p4_kpo";
+// DELAY-HOOK (#629): delay paints harvested typical-delay corridor
+// band fills (5 layers, one band each) — fetched once per selection.
+import {
+  DELAY_LAYER_BAND,
+  fetchDelayAreas,
+  isDelayPolygonOnlyLayer,
+  type DelayArea,
+  type DelayLayerId,
+} from "../../lib/layers_p4_delay";
 // HARBOUR-HOOK (#627): harbour paints AIS pleasure-cell fills (grid
 // as-is) over live port dots — fetched once per selection (the Harju
 // keep set covers every view).
@@ -617,6 +626,12 @@ export default function LayersPage() {
   // design (polygons only); the per-listing binding legs are the
   // scorer's job.
   const [kpoAreas, setKpoAreas] = useState<KpoArea[] | null>(null);
+  // DELAY-HOOK (#629): delay corridor bands (delay-* layers only,
+  // fetched once per selection): the factor fills themselves — one
+  // band per layer, thin/missing cells slate (missing sidecar).
+  // No points are painted for these layers, by design (polygons
+  // only); the per-listing binding legs are the scorer's job.
+  const [delayAreas, setDelayAreas] = useState<DelayArea[] | null>(null);
   // HARBOUR-HOOK (#627): harbour sidecar (harbour layer only,
   // fetched once per selection): AIS pleasure-cell fills plus the
   // port count. Port dots ride the standard point overlay (real
@@ -659,6 +674,21 @@ export default function LayersPage() {
     }
     fetchKpoAreas().then((areas) => {
       if (!cancelled) setKpoAreas(areas);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [layer]);
+
+  useEffect(() => {
+    let cancelled = false;
+    // DELAY-HOOK (#629): same once-per-selection fetch shape as kpo.
+    if (!isDelayPolygonOnlyLayer(layer)) {
+      setDelayAreas(null);
+      return;
+    }
+    fetchDelayAreas().then((areas) => {
+      if (!cancelled) setDelayAreas(areas);
     });
     return () => {
       cancelled = true;
@@ -827,6 +857,8 @@ export default function LayersPage() {
           ? (noiseAreas?.length ?? 0)
           : isKpoPolygonOnlyLayer(layer)
             ? (kpoAreas?.length ?? 0)
+          : isDelayPolygonOnlyLayer(layer)
+            ? (delayAreas?.length ?? 0)
         : isPlanktprLayerId(layer)
           ? (usePolygons?.length ?? 0)
     : layer === "parks"
@@ -960,6 +992,12 @@ export default function LayersPage() {
     kpoAreas === null
       ? "KPO piiranguvööndid · laadimine…"
       : `KPO piiranguvööndid · ${kpoAreas.length} vööndit, 2026-09, krundiaknad (väljaspool = teadmata, MITTE puhas omand)`;
+  // DELAY-HOOK (#629): delay status counts corridors, never points —
+  // polygons-only (same shape as kpo above).
+  const delayStatus =
+    delayAreas === null
+      ? "Tavaviivitus · laadimine…"
+      : `Tavaviivitus · ${delayAreas.length} koridori, busside GPS-jäljed (väljaspool = teadmata, hall = mõõtmata, tavaline MITTE reaalajas)`;
   const noiseStatus =
     noiseAreas === null
       ? "Laadin müravööndeid…"
@@ -1004,6 +1042,8 @@ export default function LayersPage() {
         ? noiseStatus
         : isKpoPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
           ? kpoStatus
+        : isDelayPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
+          ? delayStatus
       : layer === "harbour" && provenance !== null && provenance !== "demo"
         ? harbourStatus
       : provenance === null
@@ -1127,6 +1167,12 @@ export default function LayersPage() {
         forestAreas={forestAreas}
         noiseAreas={noiseAreas}
         kpoAreas={kpoAreas}
+        delayAreas={delayAreas}
+        delayBand={
+          isDelayPolygonOnlyLayer(layer)
+            ? DELAY_LAYER_BAND[layer as DelayLayerId]
+            : undefined
+        }
         harbourCells={harbourCells}
         harbourPorts={harbourAreas?.ports ?? null}
         overlayPoints={pointOverlay}

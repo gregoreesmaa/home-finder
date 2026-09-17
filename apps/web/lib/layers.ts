@@ -738,6 +738,18 @@ import {
   bonusSpecForKpo,
   isKpoPolygonOnlyLayer,
 } from "./layers_p4_kpo";
+// DELAY-HOOK (#629): delay band tables live in
+// ./layers_p4_delay (harvested typical-delay corridor bands,
+// polygons-only, areas sidecar). That module imports layers only as
+// types, so no runtime cycle.
+import type { DelayLayerId } from "./layers_p4_delay";
+import {
+  DELAY_DECAY,
+  DELAY_DEFS,
+  DELAY_TAGS,
+  bonusSpecForDelay,
+  isDelayPolygonOnlyLayer,
+} from "./layers_p4_delay";
 // FIXIT-HOOK (#623): report-pin tables live in ./layers_p4_fixit
 // (fixit markers, register sidecar). That module imports layers only
 // as types, so no runtime cycle.
@@ -940,7 +952,11 @@ export type LayerId =
   // KPO-HOOK (#626): kpo zone id (./layers_p4_kpo,
   // WFS restriction zones, polygons-only, no
   // parameters3 id).
-  | KpoLayerId;
+  | KpoLayerId
+  // DELAY-HOOK (#629): delay band ids (./layers_p4_delay,
+  // harvested typical-delay corridors, polygons-only, no
+  // parameters3 id).
+  | DelayLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -1217,6 +1233,10 @@ const DECAY_KM: Record<LayerId, number> = {
   // layers_p4_kpo.ts KPO_DECAY — INERT placeholder, polygons
   // only: zero points, never evaluated).
   ...KPO_DECAY,
+  // DELAY-HOOK (#629): delay band radius (see
+  // layers_p4_delay.ts DELAY_DECAY — INERT placeholder, polygons
+  // only: zero points, never evaluated).
+  ...DELAY_DECAY,
   // SEVESO-HOOK (#613): danger-polygon radius (see layers_p4_seveso.ts
   // SEVESO_DECAY — INERT placeholder, polygons only: zero points,
   // never evaluated).
@@ -1507,6 +1527,10 @@ export const LAYERS: LayerDef[] = [
   // KPO-HOOK (#626): kpo zone def (WFS restriction zones,
   // polygons-only, no parameters3 id) from ./layers_p4_kpo.
   ...KPO_DEFS,
+  // DELAY-HOOK (#629): delay band def (harvested typical-delay
+  // corridors, polygons-only, no parameters3 id) from
+  // ./layers_p4_delay.
+  ...DELAY_DEFS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -1693,6 +1717,9 @@ const TAGS: Record<LayerId, string> = {
   // KPO-HOOK (#626): kpo zone source note (see
   // layers_p4_kpo.ts KPO_TAGS — prose, NOT an Overpass fragment).
   ...KPO_TAGS,
+  // DELAY-HOOK (#629): delay band source note (see
+  // layers_p4_delay.ts DELAY_TAGS — prose, NOT an Overpass fragment).
+  ...DELAY_TAGS,
   // SEVESO-HOOK (#613): danger-polygon source note (see
   // layers_p4_seveso.ts SEVESO_TAGS — prose, NOT an Overpass fragment).
   ...SEVESO_TAGS,
@@ -2009,6 +2036,11 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // live scorer legs are dims_p4_kitsendus.py).
   const kpo = bonusSpecForKpo(layer);
   if (kpo) return kpo;
+  // DELAY-HOOK (#629): delay band spec lives in
+  // ./layers_p4_delay (INERT — polygons only, never evaluated; the
+  // live scorer legs are dims_p4_typical_delay.py).
+  const delay = bonusSpecForDelay(layer);
+  if (delay) return delay;
   // SEVESO-HOOK (#613): danger-polygon spec lives in
   // ./layers_p4_seveso (INERT — polygons only, never evaluated).
   const seveso = bonusSpecForSeveso(layer);
@@ -2429,6 +2461,10 @@ export async function fetchWindow(
   // (polygons only — the areas sidecar carries the data). Same skip,
   // same reason.
   if (isKpoPolygonOnlyLayer(layer)) return null;
+  // DELAY-HOOK (#629): delay has no raster master by decision
+  // (polygons only — the areas sidecar carries the data). Same skip,
+  // same reason.
+  if (isDelayPolygonOnlyLayer(layer)) return null;
   // QUARRY-HOOK (#614): quarry has no raster master by decision
   // (polygons only — the sidecar carries the data). Same skip, same
   // reason.
