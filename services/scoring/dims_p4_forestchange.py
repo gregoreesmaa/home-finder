@@ -122,9 +122,9 @@ def dim_forest_recent(origin: Optional[Tuple[float, float]],
         if scored:
             scored.sort()
             s, d, age = scored[0]
-            return s, ("Lähim tuvastatud võramuutis %.0f m, ~%.0f a tagasi "
+            return s, ("Lähim tuvastatud võra muutus %.0f m, ~%.0f a tagasi "
                        "(%s)" % (d, age, CAVEAT))
-        return None, ("Muutisaknas tuvastatud muutust pole – "
+        return None, ("Muutusaknas tuvastatud muutust pole – "
                       "turvalist metsa see ei tõenda (%s)" % CAVEAT)
     if not origin or changes is None:
         return None, "Metsamuutuse info puudub"
@@ -150,8 +150,8 @@ def score_forestchange(origin: Optional[Tuple[float, float]],
 LAYER_META = {
     "forest_recent": {
         "param": "p4-forestchange",
-        "title": "Tuvastatud võramuutis (2024 lend)",
-        "good": "roheline = muutisaknas muutust pole (mitte 'turvaline mets')",
+        "title": "Tuvastatud võra muutus (2024 lend)",
+        "good": "roheline = muutusaknas muutust pole (mitte 'turvaline mets')",
         "bad": "pruun = 2024 tuvastatud muutus lähedal",
         "source": ("Maa- ja Ruumiamet metsamuutused 2024 "
                     "(ETAK avaandmete litsents; %s)" % CAVEAT),

@@ -1234,7 +1234,7 @@ export function overlayLegendFor(layer: LayerId): string {
     // bands per listing (<=3y<=500m->30 etc.); outside every polygon
     // is NULL. Vintage + licence + caveat ride along, always.
     case "forest":
-      return "Tuvastatud võramuutis (metsamuutused 2024 lend, Harju+2 km 5288 polügooni) · pruun = 2024 tuvastatud muutus (värske tume, vanem hele — hoiatus, mitte hinne ruudule); skoor: värske+lähedal (≤3a≤500m→30), värske+kaugemal (≤3a≤1500m→55), vanem+lähedal (≤10a≤500m→60), muu→70; muutisaknas muutust pole = NULL (MITTE turvaline mets); tuvastatud muutus, mitte ametlik raiestatistika (automaat-töötlus, vead võimalikud); ETAK avaandmete litsents";
+      return "Tuvastatud võra muutus (metsamuutused 2024 lend, Harju+2 km 5288 polügooni) · pruun = 2024 tuvastatud muutus (värske tume, vanem hele — hoiatus, mitte hinne ruudule); skoor: värske+lähedal (≤3a≤500m→30), värske+kaugemal (≤3a≤1500m→55), vanem+lähedal (≤10a≤500m→60), muu→70; muutusaknas muutust pole = NULL (MITTE turvaline mets); tuvastatud muutus, mitte ametlik raiestatistika (automaat-töötlus, vead võimalikud); ETAK avaandmete litsents";
     // NOISE-HOOK (#625): myrakaart Lden/Lnight bands (modelled,
     // never measured) — the fills grade audibility, the scorer binds
     // per listing (min wins); outside every polygon is NULL (never

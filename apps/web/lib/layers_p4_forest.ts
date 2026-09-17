@@ -35,9 +35,9 @@ export const FOREST_DEFS: LayerDef[] = [
     id: "forest",
     paramIds: [],
     paramLabel: "P4-mets",
-    title: "Tuvastatud võramuutis (2024 lend)",
+    title: "Tuvastatud võra muutus (2024 lend)",
     goodLabel:
-      "muutisaknas muutust pole (mitte 'turvaline mets' — tuvastamata jätmine ei kaitse)",
+      "muutusaknas muutust pole (mitte 'turvaline mets' — tuvastamata jätmine ei kaitse)",
     badLabel:
       "pruun = 2024 tuvastatud muutus lähedal (värske + lähedal loeb kõige rohkem)",
     source:
