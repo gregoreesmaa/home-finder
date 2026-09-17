@@ -529,3 +529,140 @@ def score_p4_ata(ata: Optional[dict],
                  listing: Optional[dict] = None) -> Dict[str, Optional[int]]:
     """All three P4 ATA dims for one listing (keys match P4_ATA_DIMS)."""
     return {key: fn(ata, listing)[0] for key, _, fn in P4_ATA_DIMS}
+
+
+# ---------------------------------------------------------------------------
+# Issue #628: parcel-linked land-notice dims (linkage before flags).
+# Quarry 35 / zoning 55 / cadastre 60 on an ACTIVE family notice whose
+# mined tunnus matches the listing parcel; clean caps at 70 (never
+# 100); felling stays NULL (metsateatis lives in the Forest Register).
+# Separate registry -- the #254/#335 demo registry above is untouched.
+# ---------------------------------------------------------------------------
+
+#: Land-family keyword stems (liik_nimi inflects; stems like _classify).
+_QUARRY = ("kaevandamis", "kaevandus", "maardla", "karjäär", "kaeve")
+_ZONING = ("planeering",)
+_CADASTRE = ("kinnistus", "kataster", "katastritunnus", "piirimenetlus")
+_FELLING = ("metsateatis", "raieluba", "metsaregister")
+
+
+def land_family(notice: dict) -> Optional[str]:
+    """Land family of a notice (None = not a #628 land notice)."""
+    liik = _liik(notice)
+    if any(k in liik for k in _QUARRY):
+        return "quarry"
+    if any(k in liik for k in _ZONING):
+        return "zoning"
+    if any(k in liik for k in _CADASTRE):
+        return "cadastre"
+    if any(k in liik for k in _FELLING):
+        return "felling"
+    return None
+
+
+def _linked(notice: dict) -> List[str]:
+    """Mined tunnus signatures on a joined notice (possibly empty)."""
+    raw = notice.get("tunnused")
+    if not isinstance(raw, list):
+        return []
+    return [str(t) for t in raw if isinstance(t, (str, int))]
+
+
+def _listing_tunnus(listing: Optional[dict]) -> Optional[str]:
+    if not isinstance(listing, dict):
+        return None
+    tun = listing.get("tunnus")
+    return str(tun).strip() if tun and str(tun).strip() else None
+
+
+def _land_gate(ata: Optional[dict], listing: Optional[dict],
+               family: str) -> Tuple[Optional[List[dict]],
+                                     Optional[str], Optional[Score]]:
+    """Shared #628 gates: join gates, then active family notices + tunnus.
+
+    Returns (active_family_notices, listing_tunnus, gated_score).
+    gated_score is not None when the dim must return early.
+    """
+    rec, gated = _gate(ata)
+    if gated is not None or rec is None:
+        return None, None, gated
+    notices = _notices(rec)
+    assert notices is not None
+    active = [n for n in notices
+              if _is_active(n) is True and land_family(n) == family]
+    tunnus = _listing_tunnus(listing)
+    if tunnus is None:
+        return None, None, (None, (
+            "Kinnistu tunnus liidestuses puudub (EI OLE hinnangut): "
+            "lipud eeldavad tõestatud seost (%s-teated %d, seostamata)"
+            % (family, len(active))))
+    return active, tunnus, None
+
+
+def _land_flag(family: str, band: int, active: List[dict],
+               tunnus: str) -> Score:
+    """Flag on a tunnus match, else capped-70 clean (never 100)."""
+    for notice in active:
+        if tunnus in _linked(notice):
+            return (band, "Kehtiv %s-teade kinnistul %s: %s (Ametlike "
+                          "Teadaannete andmed, mitte hinnang) — seos "
+                          "tõestatud tunnusega" % (family, tunnus,
+                                                   _describe(notice)))
+    return (70, "Kinnistule %s ei leitud kehtivat %s-seost (%d %s-teadet "
+                "aknas, seostamata — nõrk hea, mitte hinnang), "
+                "ülempiir 70" % (tunnus, family, len(active), family))
+
+
+def dim_quarry(ata: Optional[dict],
+               listing: Optional[dict] = None) -> Score:
+    """#628: active parcel-linked quarry notice is 35; clean caps 70."""
+    active, tunnus, gated = _land_gate(ata, listing, "quarry")
+    if gated is not None or active is None or tunnus is None:
+        return gated  # type: ignore[return-value]
+    return _land_flag("quarry", 35, active, tunnus)
+
+
+def dim_zoning(ata: Optional[dict],
+               listing: Optional[dict] = None) -> Score:
+    """#628: active parcel-linked zoning notice is 55; clean caps 70."""
+    active, tunnus, gated = _land_gate(ata, listing, "zoning")
+    if gated is not None or active is None or tunnus is None:
+        return gated  # type: ignore[return-value]
+    return _land_flag("zoning", 55, active, tunnus)
+
+
+def dim_cadastre(ata: Optional[dict],
+                 listing: Optional[dict] = None) -> Score:
+    """#628: active parcel-linked cadastre notice is 60; clean caps 70."""
+    active, tunnus, gated = _land_gate(ata, listing, "cadastre")
+    if gated is not None or active is None or tunnus is None:
+        return gated  # type: ignore[return-value]
+    return _land_flag("cadastre", 60, active, tunnus)
+
+
+def dim_felling(ata: Optional[dict],
+                listing: Optional[dict] = None) -> Score:
+    """#628: felling stays NULL -- metsateatis lives in the Forest
+    Register, AT carries no authoritative felling record."""
+    rec, gated = _gate(ata)
+    if gated is not None or rec is None:
+        return gated  # type: ignore[return-value]
+    return (None, "Raieteated (metsateatis) EI OLE Ametlikes Teadaannetes "
+                  "hinnatavad: allikas on Metsaregister — EI OLE hinnangut")
+
+
+#: #628 parcel-linked land dims (pnums pending param assignment -- the
+#: issue scores bands, not params; "AT-628" marks the slice honestly).
+P4_ATA_LINK_DIMS = (
+    ("quarry", "AT-628", dim_quarry),
+    ("zoning", "AT-628", dim_zoning),
+    ("cadastre", "AT-628", dim_cadastre),
+    ("felling", "AT-628", dim_felling),
+)
+
+
+def score_p4_ata_link(ata: Optional[dict],
+                      listing: Optional[dict] = None
+                      ) -> Dict[str, Optional[int]]:
+    """All four #628 link dims for one listing (keys match registry)."""
+    return {key: fn(ata, listing)[0] for key, _, fn in P4_ATA_LINK_DIMS}

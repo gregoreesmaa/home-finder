@@ -62,3 +62,46 @@ stay NULL with the type named.
   superseded — strong-bad, never "worthless".
 - The `tallinn: False` → NULL gate keeps the Tallinn demo scope
   explicit; a missing flag defaults to relevant (absence ≠ evidence).
+
+## #628 land linkage (linkage before flags)
+
+AT records carry no coordinates, so flags need a proven parcel join:
+`scripts/build/batch_at_notices.py` pulls type-sliced URI lists
+(`/ee/-/{pealiik}`, one polite GET per slice, TTL cache, 429 stops),
+mines free text for kataster tunnus signatures
+(`\d{2,5}:\d{1,4}:\d{1,4}`), and measures `linkage_rate`
+(linked notices / parsed). List rows carry title + Avaldamise
+algus/lõpp + body + provider inline — no per-notice fetch needed.
+Bodies may name persons (incl. isikukood): records keep tunnus
+signatures ONLY, never notice text or person fields.
+
+| slice | pealiik slug | dim band |
+|---|---|---|
+| quarry | `kaevandamisluba` (UNVERIFIED) | 35 |
+| zoning | `planeering` (UNVERIFIED) | 55 |
+| cadastre | `kinnistus` (UNVERIFIED) | 60 |
+| felling | `metsateatis` (UNVERIFIED) | NULL (Metsaregister) |
+
+Slug verdicts 2026-09-17 (polite probes, TTL cache):
+- `/ee/-/advokatuur` (docs example) serves 1001 rows — the ONLY
+  verified list enumeration. End-to-end proof: 1001 listed, 50 in
+  2022-04, linkage_rate 0.000 (advokatuur carries no parcels, as
+  expected), sidecar `at/at-notices.json` written, no person text
+  persisted (leak-checked).
+- Date segments (`/ee/-/{pealiik}/-/{y}/{m}`) serve empty shells
+  anonymously even for the verified slug — the month window runs
+  client-side on Avaldamise algus. The wide-open month list
+  (`/ee/-/-/-/{y}/{m}`) times out server-side and is never requested.
+- Family slugs above are provisional (lowercased display stems);
+  each serves the empty shell today. `--pealiik` overrides any slice
+  for proof runs; a zero-row pull on an unverified slug warns loud.
+  Quarry subtypes show retired 2019 markers in the type table
+  ("Avaldamine lõpetatud 30.10.2019") — the quarry slice may be
+  historically thin; the miner reports honestly either way.
+
+Dims (`P4_ATA_LINK_DIMS`, separate registry — the demo registry is
+untouched): quarry 35 / zoning 55 / cadastre 60 on an ACTIVE family
+notice whose mined tunnus matches the listing parcel; clean caps at
+70 (never 100); missing listing tunnus → NULL (linkage unproven);
+felling always NULL. Fixture-measured linkage_rate 0.5 (synthetic
+2-row window); live land rate pending verified family slugs.

@@ -19,16 +19,23 @@ import dims_p4_ata as ata
 from dims_p4_ata import (
     ATA_TTL_DAYS,
     P4_ATA_DIMS,
+    P4_ATA_LINK_DIMS,
     build_notice_url,
     cache_is_fresh,
+    dim_cadastre,
     dim_developer_track,
     dim_enforcement,
+    dim_felling,
     dim_kinnistus_checkpoint,
+    dim_quarry,
+    dim_zoning,
     is_archived,
+    land_family,
     mentions_tallinn,
     parse_kpv,
     parse_notice_xml,
     score_p4_ata,
+    score_p4_ata_link,
 )
 
 TODAY = date(2026, 9, 13)
@@ -370,3 +377,107 @@ def test_registry_and_aggregator_cover_all_3():
     assert out["developer_track"] == 20
     assert score_p4_ata(None) == {k: None for k in EXPECTED_KEYS}
     assert ata.P4_ATA_DIMS is P4_ATA_DIMS
+
+
+# ---------------------------------------------------------------------------
+# Issue #628: parcel-linked land dims (linkage before flags).
+# ---------------------------------------------------------------------------
+
+def _land_notice(liik, tunnused=(), archived=False, notice_id="9900444"):
+    return _notice(liik=liik, archived=archived, notice_id=notice_id,
+                   tunnused=list(tunnused))
+
+
+LINK_KEYS = ["quarry", "zoning", "cadastre", "felling"]
+
+
+def test_land_family_stems():
+    assert land_family({"liik_nimi": "Kaevandamisloa andmise teade"}) == "quarry"
+    assert land_family({"liik_nimi": "Detailplaneeringu algatamine"}) == "zoning"
+    assert land_family({"liik_nimi": "Kinnistusraamatu kanne"}) == "cadastre"
+    assert land_family({"liik_nimi": "Metsateatis raieks"}) == "felling"
+    assert land_family({"liik_nimi": "Pankroti väljakuulutamine"}) is None
+    assert land_family({}) is None
+
+
+def test_link_dims_flag_on_tunnus_match():
+    listing = {"tunnus": "78401:107:0760"}
+    ata_q = {"tallinn": True, "notices": [
+        _land_notice("Kaevandamisloa andmise teade",
+                     ["78401:107:0760"])]}
+    v, reason = dim_quarry(ata_q, listing)
+    assert v == 35
+    assert "78401:107:0760" in reason and "seos" in reason
+    ata_z = {"tallinn": True, "notices": [
+        _land_notice("Detailplaneeringu kehtestamine",
+                     ["78401:107:0760"])]}
+    assert dim_zoning(ata_z, listing)[0] == 55
+    ata_c = {"tallinn": True, "notices": [
+        _land_notice("Kinnistusraamatu kanne", ["78401:107:0760"])]}
+    assert dim_cadastre(ata_c, listing)[0] == 60
+
+
+def test_link_dims_clean_caps_at_70():
+    listing = {"tunnus": "78401:107:0760"}
+    # Family notice present but linked to ANOTHER parcel: weak-good.
+    ata_o = {"tallinn": True, "notices": [
+        _land_notice("Kaevandamisloa andmise teade",
+                     ["78401:107:0799"])]}
+    v, reason = dim_quarry(ata_o, listing)
+    assert v == 70
+    assert "ülempiir 70" in reason
+    # Empty window: also capped 70, never 100.
+    ata_e = {"tallinn": True, "notices": []}
+    assert dim_zoning(ata_e, listing)[0] == 70
+    assert dim_cadastre(ata_e, listing)[0] == 70
+
+
+def test_link_dims_null_without_tunnus():
+    # Linkage before flags: no parcel tunnus on the listing -> NULL,
+    # even with an active family notice in the window.
+    ata_q = {"tallinn": True, "notices": [
+        _land_notice("Kaevandamisloa andmise teade",
+                     ["78401:107:0760"])]}
+    v, reason = dim_quarry(ata_q, {})
+    assert v is None and "EI OLE hinnangut" in reason
+    assert dim_zoning(ata_q, None)[0] is None
+
+
+def test_archived_family_notice_does_not_flag():
+    listing = {"tunnus": "78401:107:0760"}
+    ata_q = {"tallinn": True, "notices": [
+        _land_notice("Kaevandamisloa andmise teade",
+                     ["78401:107:0760"], archived=True)]}
+    assert dim_quarry(ata_q, listing)[0] == 70
+
+
+def test_felling_always_null():
+    listing = {"tunnus": "78401:107:0760"}
+    ata_f = {"tallinn": True, "notices": [
+        _land_notice("Metsateatis raieks", ["78401:107:0760"])]}
+    v, reason = dim_felling(ata_f, listing)
+    assert v is None and "Metsaregister" in reason
+    v, _reason = dim_felling({"tallinn": True, "notices": []}, listing)
+    assert v is None
+    assert dim_felling(None, listing)[0] is None
+
+
+def test_link_registry_and_aggregator_cover_all_4():
+    assert [k for k, _, _ in P4_ATA_LINK_DIMS] == LINK_KEYS
+    assert len({fn for _, _, fn in P4_ATA_LINK_DIMS}) == 4
+    listing = {"tunnus": "78401:107:0760"}
+    ata_all = {"tallinn": True, "notices": [
+        _land_notice("Kaevandamisloa andmise teade",
+                     ["78401:107:0760"], notice_id="1"),
+        _land_notice("Detailplaneeringu kehtestamine",
+                     ["78401:107:0760"], notice_id="2"),
+        _land_notice("Kinnistusraamatu kanne", ["78401:107:0760"],
+                     notice_id="3"),
+        _land_notice("Metsateatis raieks", ["78401:107:0760"],
+                     notice_id="4"),
+    ]}
+    out = score_p4_ata_link(ata_all, listing)
+    assert out == {"quarry": 35, "zoning": 55, "cadastre": 60,
+                   "felling": None}
+    assert score_p4_ata_link(None, listing) == {k: None for k in LINK_KEYS}
+    assert ata.P4_ATA_LINK_DIMS is P4_ATA_LINK_DIMS
