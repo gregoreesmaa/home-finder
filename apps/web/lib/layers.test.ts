@@ -49,6 +49,8 @@ import { isBuildingsTasteOnlyLayer } from "./layers_p4_buildings";
 import { isDensityTasteOnlyLayer } from "./layers_p4_density";
 // FOREST-HOOK (#624): polygons-only carve-out for the fallback assertion.
 import { isForestPolygonOnlyLayer } from "./layers_p4_forest";
+// NOISE-HOOK (#625): polygons-only carve-out for the fallback assertion.
+import { isNoisePolygonOnlyLayer } from "./layers_p4_noise";
 
 const TALLINN_BBOX: BBoxLike = { minlon: 24.5, minlat: 59.35, maxlon: 24.9, maxlat: 59.5 };
 
@@ -296,6 +298,9 @@ describe("layer registry", () => {
       // FOREST-HOOK (#624): forest polygon id (metsamuutused bands —
       // paramIds empty, parameters4 namespace, polygons-only).
       "forest",
+      // NOISE-HOOK (#625): noise band id (myrakaart Lden/Lnight —
+      // paramIds empty, parameters4 namespace, polygons-only).
+      "noise",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -463,6 +468,10 @@ describe("layer registry", () => {
     // (parameters4 polygons, no parameters3 number).
     expect(LAYERS.find((l) => l.id === "forest")?.paramIds).toEqual([]);
     expect(LAYERS.find((l) => l.id === "forest")?.paramLabel).toBe("P4-mets");
+    // NOISE-HOOK (#625): noise rides paramLabel, paramIds stays []
+    // (parameters4 polygons, no parameters3 number).
+    expect(LAYERS.find((l) => l.id === "noise")?.paramIds).toEqual([]);
+    expect(LAYERS.find((l) => l.id === "noise")?.paramLabel).toBe("P4-müra");
   });
 
   it("wires the B10C utility layers with locked calibration", () => {
@@ -827,7 +836,7 @@ describe("layer registry", () => {
       }
       if (isPolygonOnlyMaaLayer(l.id)) {
         expect(l.fallbackPoints).toEqual([]);
-      } else if (!isPolygonOnlyLayer(l.id) && !isEelisPolygonOnlyLayer(l.id) && !isSevesoPolygonOnlyLayer(l.id) && !isStatelandPolygonOnlyLayer(l.id) && !isQuarryPolygonOnlyLayer(l.id) && !isMaaparandusPolygonOnlyLayer(l.id) && !isSoilPolygonOnlyLayer(l.id) && !isEtakPolygonOnlyLayer(l.id) && !isReliefTasteOnlyLayer(l.id) && !isCanopyTasteOnlyLayer(l.id) && !isBuildingsTasteOnlyLayer(l.id) && !isDensityTasteOnlyLayer(l.id) && !isForestPolygonOnlyLayer(l.id)) {
+      } else if (!isPolygonOnlyLayer(l.id) && !isEelisPolygonOnlyLayer(l.id) && !isSevesoPolygonOnlyLayer(l.id) && !isStatelandPolygonOnlyLayer(l.id) && !isQuarryPolygonOnlyLayer(l.id) && !isMaaparandusPolygonOnlyLayer(l.id) && !isSoilPolygonOnlyLayer(l.id) && !isEtakPolygonOnlyLayer(l.id) && !isReliefTasteOnlyLayer(l.id) && !isCanopyTasteOnlyLayer(l.id) && !isBuildingsTasteOnlyLayer(l.id) && !isDensityTasteOnlyLayer(l.id) && !isForestPolygonOnlyLayer(l.id) && !isNoisePolygonOnlyLayer(l.id)) {
         expect(l.fallbackPoints.length).toBeGreaterThan(0);
       }
     }

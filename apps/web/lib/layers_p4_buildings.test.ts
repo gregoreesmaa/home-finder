@@ -98,7 +98,7 @@ describe("buildings registry (#621)", () => {
     // (BUILDINGS-HOOK #621, 131 + 1) + 1 density overlay
     // (DENSITY-HOOK #622, 132 + 1) + 1 forest overlay
     // (FOREST-HOOK #624, 133 + 1 = 134)..
-    expect(ids.length).toBe(134);
+    expect(ids.length).toBe(135);
     expect(ids).toContain("buildings");
   });
   it("rides paramLabel with empty paramIds (tint only, no parameters3 number)", () => {

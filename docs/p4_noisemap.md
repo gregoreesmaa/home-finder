@@ -70,3 +70,46 @@ Hermetic: suite makes zero network calls (live pull env-gated behind
   otherwise (state it in the harvest PR).
 * Existing Group 9 proxies stay until the measured layer proves itself
   (no re-tuning in the harvest PR either).
+
+## 6. Harvest addendum (2026-09-17, issue #625 — owner: usable without a licence)
+
+Owner decision (issue #625): the WFS self-declares Fees none +
+AccessConstraints NONE and GetMetadata carries no use constraints —
+harvest proceeds with attribution in every sidecar. `parse_myaklass`
+domain CONFIRMED against real features: plain 5 dB lower bounds
+("45","50","55",… on nested contours; the old "55-59" guess was
+wrong) — upper edge reads L + 4.9 (buyer-conservative, pinned).
+
+Bulk job (`scripts/build/batch_noisemap.py`, UA `home-finder-dev/0.1`,
+paced 3 s, resume-aware per-cell cache, 429 stops the run): tiled
+Harju+2 km pull of `myra22_strat_sum_oopaev` (Lden) +
+`myra22_strat_sum_oo` (Lnight), 126 cells × 2 legs = 252 pulls, no
+429. Findings that shaped the build: EPSG:3301 serves N,E axis order
+(BBOX + posList); members carry NO per-polygon id (gml:id repeats per
+category, ms:ID IS the category 63–69) → edge overlaps dedupe on
+geometry hash (7113 members → 6627 rows + 486 dupes, exact); a
+degenerate DP seed segment collapsed closed rings to 2 points (fixed +
+pinned — seed at the farthest vertex).
+
+Sidecar `noise/noise-areas.json` (2.2 MB): **6627 rows**
+(Lden 4552 + Lnight 2075), 0 dropped, 0 unparseable, DP-5 m
+2 165 360 → 744 752 verts, all rows pass the `isNoiseArea` guard.
+
+Tallinn histogram (bbox-centre box) — band justification: counts fall
+with loudness on both legs (Lden 45:1715 / 50:864 / 55:444 / 60:396 /
+65:326, then airport/highway cores 70:602 / 75:205; Lnight 45:638 /
+50:426 / 55:334 / 60:349 / 65:259 / 70:69). The median sits in the
+45–50 dB bands — mid-ramp of the issue's table (≤45→85, ≤55→65,
+≤65→40, >65→20; Lnight −5 dB) — so the bands stand unchanged.
+Binding (minimum) leg still wins in the scorer.
+
+Map: `layers_p4_noise.ts` + `/api/layers/noise/areas` + band fills
+(quiet-green → loud-red, Lnight same ramp at lower opacity) + legend
+(MUDEL, never quiet) + toggle dot. Group 9 proxies untouched.
+
+DoD evidence: `pytest services/scoring/tests/test_batch_noisemap.py
+services/scoring/tests/test_dims_p4_noisemap.py` → 27 passed,
+1 skipped; full `pytest` + `npm test` green; `typecheck` + `lint`
+clean; live GET /api/layers/noise/areas → 200, 6627 areas;
+screenshot (/layers?c=24.75,59.43,11, P4-müra): Tallinn green fills
++ red loud cores, zero page errors.

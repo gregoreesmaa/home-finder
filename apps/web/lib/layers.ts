@@ -702,6 +702,18 @@ import {
   bonusSpecForForest,
   isForestPolygonOnlyLayer,
 } from "./layers_p4_forest";
+// NOISE-HOOK (#625): noise band tables live in
+// ./layers_p4_noise (myrakaart Lden/Lnight bands,
+// polygons-only, areas sidecar). That module imports layers only as
+// types, so no runtime cycle.
+import type { NoiseLayerId } from "./layers_p4_noise";
+import {
+  NOISE_DECAY,
+  NOISE_DEFS,
+  NOISE_TAGS,
+  bonusSpecForNoise,
+  isNoisePolygonOnlyLayer,
+} from "./layers_p4_noise";
 // FIXIT-HOOK (#623): report-pin tables live in ./layers_p4_fixit
 // (fixit markers, register sidecar). That module imports layers only
 // as types, so no runtime cycle.
@@ -892,7 +904,11 @@ export type LayerId =
   // FOREST-HOOK (#624): forest polygon id (./layers_p4_forest,
   // metsamuutused detected-change bands, polygons-only, no
   // parameters3 id).
-  | ForestLayerId;
+  | ForestLayerId
+  // NOISE-HOOK (#625): noise band id (./layers_p4_noise,
+  // myrakaart Lden/Lnight bands, polygons-only, no
+  // parameters3 id).
+  | NoiseLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -1157,6 +1173,10 @@ const DECAY_KM: Record<LayerId, number> = {
   // layers_p4_forest.ts FOREST_DECAY — INERT placeholder, polygons
   // only: zero points, never evaluated).
   ...FOREST_DECAY,
+  // NOISE-HOOK (#625): noise band radius (see
+  // layers_p4_noise.ts NOISE_DECAY — INERT placeholder, polygons
+  // only: zero points, never evaluated).
+  ...NOISE_DECAY,
   // SEVESO-HOOK (#613): danger-polygon radius (see layers_p4_seveso.ts
   // SEVESO_DECAY — INERT placeholder, polygons only: zero points,
   // never evaluated).
@@ -1438,6 +1458,9 @@ export const LAYERS: LayerDef[] = [
   // FOREST-HOOK (#624): forest polygon def (metsamuutused bands,
   // polygons-only, no parameters3 id) from ./layers_p4_forest.
   ...FOREST_DEFS,
+  // NOISE-HOOK (#625): noise band def (myrakaart Lden/Lnight bands,
+  // polygons-only, no parameters3 id) from ./layers_p4_noise.
+  ...NOISE_DEFS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -1615,6 +1638,9 @@ const TAGS: Record<LayerId, string> = {
   // FOREST-HOOK (#624): forest polygon source note (see
   // layers_p4_forest.ts FOREST_TAGS — prose, NOT an Overpass fragment).
   ...FOREST_TAGS,
+  // NOISE-HOOK (#625): noise band source note (see
+  // layers_p4_noise.ts NOISE_TAGS — prose, NOT an Overpass fragment).
+  ...NOISE_TAGS,
   // SEVESO-HOOK (#613): danger-polygon source note (see
   // layers_p4_seveso.ts SEVESO_TAGS — prose, NOT an Overpass fragment).
   ...SEVESO_TAGS,
@@ -1916,6 +1942,11 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // live scorer leg is dims_p4_forestchange.py).
   const forest = bonusSpecForForest(layer);
   if (forest) return forest;
+  // NOISE-HOOK (#625): noise band spec lives in
+  // ./layers_p4_noise (INERT — polygons only, never evaluated; the
+  // live scorer leg is dims_p4_noisemap.py).
+  const noise = bonusSpecForNoise(layer);
+  if (noise) return noise;
   // SEVESO-HOOK (#613): danger-polygon spec lives in
   // ./layers_p4_seveso (INERT — polygons only, never evaluated).
   const seveso = bonusSpecForSeveso(layer);
@@ -2324,6 +2355,10 @@ export async function fetchWindow(
   // (polygons only — the areas sidecar carries the data). Same skip,
   // same reason.
   if (isForestPolygonOnlyLayer(layer)) return null;
+  // NOISE-HOOK (#625): noise has no raster master by decision
+  // (polygons only — the areas sidecar carries the data). Same skip,
+  // same reason.
+  if (isNoisePolygonOnlyLayer(layer)) return null;
   // QUARRY-HOOK (#614): quarry has no raster master by decision
   // (polygons only — the sidecar carries the data). Same skip, same
   // reason.

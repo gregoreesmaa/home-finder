@@ -178,6 +178,14 @@ import {
   isForestPolygonOnlyLayer,
   type ForestArea,
 } from "../../lib/layers_p4_forest";
+// NOISE-HOOK (#625): noise paints myrakaart Lden/Lnight band fills
+// (modelled, never measured) instead of points — fetched once per
+// selection (the county keep set covers every view).
+import {
+  fetchNoiseAreas,
+  isNoisePolygonOnlyLayer,
+  type NoiseArea,
+} from "../../lib/layers_p4_noise";
 
 /** Viewport bbox rounded for fetch stability (matches server key rounding). */
 function sameView(a: BBoxLike, b: BBoxLike): boolean {
@@ -579,6 +587,27 @@ export default function LayersPage() {
     };
   }, [layer]);
 
+  // NOISE-HOOK (#625): myrakaart Lden/Lnight band polygons
+  // (noise layer only, fetched once per selection): the bands
+  // themselves — modelled loud vs quiet vs honestly-unknown
+  // (missing sidecar). No points are painted for this layer, by
+  // design (polygons only); the per-listing binding leg is the
+  // scorer's job.
+  const [noiseAreas, setNoiseAreas] = useState<NoiseArea[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!isNoisePolygonOnlyLayer(layer)) {
+      setNoiseAreas(null);
+      return;
+    }
+    fetchNoiseAreas().then((areas) => {
+      if (!cancelled) setNoiseAreas(areas);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [layer]);
+
   // Park boundaries (parks layer only): fetched once per selection, a
   // visual aid so scored-inside vs surroundings reads at a glance.
   const [outlines, setOutlines] = useState<ParkOutline[] | null>(null);
@@ -703,7 +732,7 @@ export default function LayersPage() {
     // QUARRY-HOOK (#614): quarry paints polygons, never point markers.
     // SOIL-HOOK (#617): soil paints polygons, never point markers.
     // ETAK-HOOK (#618): etak paints polygons, never point markers.
-    layer === "parks" || isPolygonOnlyLayer(layer) || isPolygonOnlyMaaLayer(layer) || isEelisPolygonOnlyLayer(layer) || isSevesoPolygonOnlyLayer(layer) || isStatelandPolygonOnlyLayer(layer) || isQuarryPolygonOnlyLayer(layer) || isMaaparandusPolygonOnlyLayer(layer) || isSoilPolygonOnlyLayer(layer) || isEtakPolygonOnlyLayer(layer) || isReliefTasteOnlyLayer(layer) || isCanopyTasteOnlyLayer(layer) || isBuildingsTasteOnlyLayer(layer) || isDensityTasteOnlyLayer(layer) || isForestPolygonOnlyLayer(layer)
+    layer === "parks" || isPolygonOnlyLayer(layer) || isPolygonOnlyMaaLayer(layer) || isEelisPolygonOnlyLayer(layer) || isSevesoPolygonOnlyLayer(layer) || isStatelandPolygonOnlyLayer(layer) || isQuarryPolygonOnlyLayer(layer) || isMaaparandusPolygonOnlyLayer(layer) || isSoilPolygonOnlyLayer(layer) || isEtakPolygonOnlyLayer(layer) || isReliefTasteOnlyLayer(layer) || isCanopyTasteOnlyLayer(layer) || isBuildingsTasteOnlyLayer(layer) || isDensityTasteOnlyLayer(layer) || isForestPolygonOnlyLayer(layer) || isNoisePolygonOnlyLayer(layer)
       ? null
       : needsGraphOverlay(layer)
         ? graphPoints
@@ -737,6 +766,8 @@ export default function LayersPage() {
           ? (densityAreas?.length ?? 0)
         : isForestPolygonOnlyLayer(layer)
           ? (forestAreas?.length ?? 0)
+        : isNoisePolygonOnlyLayer(layer)
+          ? (noiseAreas?.length ?? 0)
         : isPlanktprLayerId(layer)
           ? (usePolygons?.length ?? 0)
     : layer === "parks"
@@ -861,6 +892,13 @@ export default function LayersPage() {
     forestAreas === null
       ? "Laadin võramuutisi…"
       : `Tuvastatud võramuutis · ${forestAreas.length} polügooni, 2024 lend (väljaspool = teadmata, MITTE turvaline mets)`;
+  // NOISE-HOOK (#625): noise status counts bands, never points —
+  // the layer serves zero points by design (polygons only); outside
+  // every polygon is NULL, never quiet.
+  const noiseStatus =
+    noiseAreas === null
+      ? "Laadin müravööndeid…"
+      : `Strateegiline müra · ${noiseAreas.length} vööndit, 2022 mudel (väljaspool = teadmata, MITTE vaikne)`;
   const base =
     isPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
       ? floodStatus
@@ -891,6 +929,8 @@ export default function LayersPage() {
         ? densityStatus
       : isForestPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
         ? forestStatus
+      : isNoisePolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
+        ? noiseStatus
       : provenance === null
       ? "Laadin kihi andmeid…"
       : provenance === "snapshot"
@@ -1005,6 +1045,7 @@ export default function LayersPage() {
         buildingsTint={buildingsTint}
         densityAreas={densityAreas}
         forestAreas={forestAreas}
+        noiseAreas={noiseAreas}
         overlayPoints={pointOverlay}
         usePolygons={usePolygons}
         overlayColor={overlayColorFor(layer)}
@@ -1068,6 +1109,10 @@ export default function LayersPage() {
             // (zero points, null raster) -- same skip for the change
             // fills.
             isForestPolygonOnlyLayer(layer) ||
+            // NOISE-HOOK (#625): noise paints no field at all
+            // (zero points, null raster) -- same skip for the band
+            // fills.
+            isNoisePolygonOnlyLayer(layer) ||
             isPlanktprLayerId(layer)
             ? ""
             : distance === "euclidean" && provenance === "snapshot"
