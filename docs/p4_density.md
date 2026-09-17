@@ -1,67 +1,59 @@
-# P4 density/urbanity grid — openness verdict + taste-leg note (issue #554)
+# P4 density 1 km character choropleth (issue #622, graduation of #554)
 
-> Verdict date: 2026-09-16 (4 polite GETs, custom UA
-> `home-finder density-probe/0.1 (issue 554)`, /tmp only, no 429).
-> Code: `services/scoring/dims_p4_density.py` (3 taste legs);
-> tests: `services/scoring/tests/test_dims_p4_density.py`
-> (hermetic, fixture GML in the live schema shape, no network).
+Population density ships as a character/taste choropleth, NOT a
+scored gradient — urban buzz vs quiet is a buyer tradeoff, not
+good/bad. Fills first; capped taste legs second (legs need the
+buyer-taste selection they hang on and land separately, never
+unlabeled).
 
-## Source
+## Source (probed + harvested 2026-09-17, polite)
 
-- Catalogue: `sources/inspire-pd-eesti-rahvastiku-tihedus-1x1km-wfs-8bcebb4b.md`
-  (+ WMS twin; NUTS3 sibling explicitly out).
-- Portal: https://andmed.eesti.ee/datasets/inspire-(pd)-eesti-rahvastikutihedus-1x1km-(wfs)
-- Publisher: Land and Spatial Administration (source: Statistikaamet).
-  Licence CC0_1.0 — Statamet/Maa-amet attributed in every reason.
+- Maa- ja Ruumiamet INSPIRE PD 1x1 km WFS (CC0, Statistikaamet),
+  layer `PD.StatisticalDistribution_` (EPSG:3301 twin, pulled in
+  EPSG:4326).
+- Harvest: 1 GetCapabilities + 1 DescribeFeatureType + ONE Harjumaa
+  bbox GetFeature (custom UA, ~17 MB over the wire, no 429; 429 stops
+  the run by policy).
+- CONFRONTATION verdict (parent #554 demanded it): MAINTAINED series,
+  NOT the dated census-2021 bulk — reference period 1.1.2024–
+  31.12.2024, status definitive, last update 2025-05-07, measure
+  populationAtResidencePlace (person, count). Proceed: confirmed.
+- Privacy masking, load-bearing: squares with <4 inhabitants read 0
+  (masked, never "empty"); class 0 is empty OR masked, honestly one
+  class. Un-geocodable addresses were pinned to village/census
+  centres by the publisher (stated, not ours to fix).
 
-## Probe (one GetCapabilities + one DescribeFeatureType + one bbox pull)
+## Calibration (Harju squares, 8210 total, 0 dropped)
 
-| Probe | Result |
-|---|---|
-| GetCapabilities | **OPEN, keyless**: HTTP 200 XML, 111218 B. One feature type `PD_rahvastikutihedus:PD.StatisticalDistribution`, title "INSPIRE (PD) - Eesti rahvastiku tihedus 1x1km (WFS)" |
-| DescribeFeatureType | **OPEN**: HTTP 200, 4742 B. Per-square schema: `inspireid_identifier_localid` (e.g. S-10040), `value_statisticalvalue_value` (unit "person", method "count", domain "demography"), masked squares read 0 **with** `value_statisticalvalue_specialvalue_*` = INSPIRE `notApplicable`, reference period `periodofreference_xlink_title` |
-| Harjumaa bbox pull (24.5,59.35,25.0,59.55, count=10; first attempt 400 on `typeName`, retried once with WFS-2.0 `typeNames`) | **OPEN**: HTTP 200 GML, 20 features. Live values 11 / 64 / 25 / 7 / 8 / 9 / 244 plus masked 0-squares carrying the `notApplicable` flag. **Reference period on every row: 1.1.2024 – 31.12.2024** |
-| CRS | Default EPSG:3035 (ETRS89-LAEA); EPSG:3301 + EPSG:4326 offered |
+| Class (OUR bins) | Squares | Reads as |
+|---|---|---|
+| 0 (tühi/varjatud) | 5 166 | quiet/forest (masked or empty) |
+| 1–9 | 1 136 | scattered farmsteads |
+| 10–99 | 1 397 | villages |
+| 100–999 | 378 | small towns |
+| 1000–4999 | 96 | dormitory ring |
+| 5000+ | 37 | city core (max 16 231) |
 
-## Same-or-different verdict vs. the §4 dated-negative bulk
+The bands discriminate (city core vs dormitory ring vs masked
+rural); the fills ERISTAVAD (distinguish), never hindavad (score).
 
-**DIFFERENT — proceed.** `docs/layers.md` §4 + `docs/p4_rel2021.md` date
-the *census-2021-vintage* 1 km bulk (the REL2021 open tree has no grid
-level at all). This WFS serves a **maintained annual series with a 2024
-reference year** — not the same bulk in a new dress. What carries over:
-the masked-zero rule (0 + `notApplicable` flag → scorer None, never
-0/100) and the vintage warning (now "2024 people ≠ 2026 people —
-Lasnamäe infill, Rae growth", riding in every reason).
+## Overlay-vs-leg split
 
-## Honest shapes (taste axis, never goodness)
+- Overlay (this issue): exact-square class fills (bone → plum,
+  deliberately NOT green/red), taste-only legend ("maitse, mitte
+  hinne", bins stated as OURS, 1 km grain + 2024 vintage named), zero
+  points, no raster master, no scorer legs. Missing sidecar renders
+  honestly-empty (toggle 0). Outside every square is NULL (never
+  rural — unmapped is not uninhabited).
+- Legs (later, #554 graduations): urbanist delight leg, quiet-seeker
+  cost leg, services-viability floor — each capped, each labelled
+  with its named taste. Masked-zero squares score None in the scorer,
+  never 0/100.
 
-| Leg | Dim key | Window | Scored shape | NULL when |
-|---|---|---|---|---|
-| Urbanist delight | `urbanist_delight` | nearest cell ≤ 750 m | density = delight, capped 75: ≤50→30, ≤500→45, ≤2000→60, ≤6000→70, else 75 | no cell join; masked square (privaatsusmaskeeritud, never 0/100) |
-| Quiet-seeker delight | `quiet_delight` | nearest cell ≤ 750 m | density = cost, capped 80: ≤50→80, ≤500→65, ≤2000→50, ≤6000→35, else 25 | same |
-| Services viability | `services_viability` | nearest cell ≤ 750 m | density floor, capped 70: ≤50→30, ≤500→45, ≤2000→60, else 70 (viability, not quality) | same |
+## Rebuild
 
-Character overlay first: `cell_character` (rahulik hajaasustus /
-äärelinn / eeslinn / linnaline / tihe süda, masked → "maskeeritud
-hajaasustus") carries no score field. Bands justified on the Harjumaa
-distribution (bbox-fringe live samples 7–244, dormitory ring in the low
-hundreds, Lasnamäe/Õismäe core in the several thousands, masked rural
-0+flag) — recalibrate on the first full pull if the histogram
-disagrees. Never interpolate between squares.
-
-Pull contract: annual TTL (`DENSITY_TTL_S = 365 d`); cache hit within
-TTL makes NO request; single GET, no retries — HTTP 429/errors are a
-stop signal. Transport errors and short bodies are never cached as
-data. Scorers are network-free (proven by tests with urlopen stubbed
-to raise).
-
-## Judgment calls (for the reviewer)
-
-1. DIFFERENT verdict rests on the reference period read off live rows
-   (1.1.2024–31.12.2024), not on catalogue cadence claims.
-2. The 400 on the first pull was a client param error (`typeName` vs
-   WFS-2.0 `typeNames`), not a feed refusal — one corrected retry,
-   then stop.
-3. No livability.WEIGHTS splice and no `/layers` overlay here: one
-   joint change across batches later (existing tests pin
-   set(WEIGHTS) exactly). 3 new files only, zero shared-file edits.
+`python3 scripts/build/batch_density.py --json <cached GeoJSON> --snap <snapshot>`
+writes `<snap>/density/density-areas.json` (zone_id + inhabitants +
+class + quad ring). Served verbatim by `/api/layers/density/areas`;
+the client filters + paints (see `applyDensityPolygons` — pure color
+map `densityFillColor`, unit-tested).

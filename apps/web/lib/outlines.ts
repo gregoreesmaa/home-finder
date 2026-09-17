@@ -13,6 +13,7 @@ import { renderCanopyTint, type CanopyTintGrid } from "./layers_p4_canopy";
 // BUILDINGS-HOOK (#621): LoD1 height-tint image slot (character tint,
 // never a gradient/score). Same discipline as the canopy slot.
 import { renderBuildingsTint, type BuildingsTintGrid } from "./layers_p4_buildings";
+import { DENSITY_CLASS_FILL, type DensityArea } from "./layers_p4_density";
 import type { OverlayPoint } from "./overlays";
 
 /** Minimal map surface for vector overlays (sources + paint layers). */
@@ -107,6 +108,12 @@ const CANOPY_LYR = "canopy-tint-lyr";
 // clearVectorOverlays).
 const BUILDINGS_SRC = "buildings-tint-src";
 const BUILDINGS_LYR = "buildings-tint-lyr";
+// DENSITY-HOOK (#622): density-square slot (class fills, never a
+// gradient/score). Clearing covers these ids too — one overlay slot
+// paints either kind, never stacks (see clearVectorOverlays).
+const DENSITY_SRC = "density-square-polys";
+const DENSITY_FILL = "density-square-fill";
+const DENSITY_CASING = "density-square-casing";
 const POINT_SRC = "layer-overlay-src";
 const POINT_CASING = "layer-overlay-casing";
 const POINT_CORE = "layer-overlay-core";
@@ -125,7 +132,7 @@ export function clearVectorOverlays(mapObj: OutlineMap): void {
   // SOIL-HOOK (#617): contour fill + casing join the cleared slot.
   // ETAK-HOOK (#618): etak contour fill + casing join the cleared
   // slot.
-  for (const id of [PARK_CASING, PARK_CORE, POINT_CASING, POINT_CORE, FLOOD_FILL, FLOOD_CASING, MAAPARCEL_FILL, MAAPARCEL_CASING, EELIS_FILL, EELIS_CASING, USE_FILL, USE_CASING, SEVESO_FILL, SEVESO_CASING, STATELAND_FILL, STATELAND_CASING, QUARRY_FILL, QUARRY_CASING, MAAPARANDUS_FILL, MAAPARANDUS_CASING, MAAPARANDUS_LINES, SOIL_FILL, SOIL_CASING, ETAK_FILL, ETAK_CASING, RELIEF_LYR, CANOPY_LYR, BUILDINGS_LYR]) {
+  for (const id of [PARK_CASING, PARK_CORE, POINT_CASING, POINT_CORE, FLOOD_FILL, FLOOD_CASING, MAAPARCEL_FILL, MAAPARCEL_CASING, EELIS_FILL, EELIS_CASING, USE_FILL, USE_CASING, SEVESO_FILL, SEVESO_CASING, STATELAND_FILL, STATELAND_CASING, QUARRY_FILL, QUARRY_CASING, MAAPARANDUS_FILL, MAAPARANDUS_CASING, MAAPARANDUS_LINES, SOIL_FILL, SOIL_CASING, ETAK_FILL, ETAK_CASING, RELIEF_LYR, CANOPY_LYR, BUILDINGS_LYR, DENSITY_FILL, DENSITY_CASING]) {
     try {
       if (mapObj.getLayer(id)) mapObj.removeLayer(id);
     } catch {
@@ -142,7 +149,7 @@ export function clearVectorOverlays(mapObj: OutlineMap): void {
   // DRAINAGE-HOOK (#616): the network-fill source joins the same slot.
   // SOIL-HOOK (#617): the contour-fill source joins the same slot.
   // ETAK-HOOK (#618): the etak-contour source joins the same slot.
-  for (const id of [PARK_SRC, POINT_SRC, FLOOD_SRC, MAAPARCEL_SRC, EELIS_SRC, USE_SRC, SEVESO_SRC, STATELAND_SRC, QUARRY_SRC, MAAPARANDUS_SRC, MAAPARANDUS_OUTFLOW_SRC, SOIL_SRC, ETAK_SRC, RELIEF_SRC, CANOPY_SRC, BUILDINGS_SRC]) {
+  for (const id of [PARK_SRC, POINT_SRC, FLOOD_SRC, MAAPARCEL_SRC, EELIS_SRC, USE_SRC, SEVESO_SRC, STATELAND_SRC, QUARRY_SRC, MAAPARANDUS_SRC, MAAPARANDUS_OUTFLOW_SRC, SOIL_SRC, ETAK_SRC, RELIEF_SRC, CANOPY_SRC, BUILDINGS_SRC, DENSITY_SRC]) {
     try {
       if (mapObj.getSource(id)) mapObj.removeSource(id);
     } catch {
@@ -1391,6 +1398,105 @@ export function applyBuildingsTint(
       type: "raster",
       source: BUILDINGS_SRC,
       paint: { "raster-opacity": 0.85 },
+    },
+    before,
+  );
+}
+
+// DENSITY-HOOK (#622): INSPIRE PD 1 km square class choropleth fills.
+
+/**
+ * Paint density squares (class fills + white casing) so the
+ * tranquil<->urban character reads at a glance. This is a CHOROPLETH
+ * of census facts, never a gradient/score: colors encode OUR
+ * inhabitants bins (see DENSITY_CLASS_FILL — bone to plum), and no
+ * score field is painted anywhere. Squares paint EXACTLY (1 km cells
+ * are the field, edges included — never interpolated). Clears stale
+ * overlay layers first; no-op when the style is not loaded yet or
+ * areas is nullish. Malformed rings are skipped, never faked; unknown
+ * classes fall back to class 0 (never dropped).
+ */
+export function applyDensityPolygons(
+  mapObj: OutlineMap,
+  areas: DensityArea[] | null | undefined,
+): void {
+  if (!mapObj.getStyle()) return;
+  clearVectorOverlays(mapObj);
+  if (!areas || areas.length === 0) return;
+  const features = [];
+  for (const a of areas) {
+    if (!a || !Array.isArray(a.r)) continue;
+    const polys = [];
+    for (const ring of a.r) {
+      if (!Array.isArray(ring) || ring.length < 3) continue;
+      const pts = ring.filter(
+        (pt) =>
+          Array.isArray(pt) &&
+          pt.length === 2 &&
+          pt.every((n) => typeof n === "number" && Number.isFinite(n)),
+      );
+      if (pts.length < 3) continue;
+      const first = pts[0];
+      const last = pts[pts.length - 1];
+      const closed =
+        first[0] === last[0] && first[1] === last[1] ? pts : [...pts, [first[0], first[1]]];
+      polys.push([closed]);
+    }
+    if (polys.length === 0) continue;
+    const cls =
+      typeof a.cls === "number" && Number.isInteger(a.cls) && a.cls >= 0 && a.cls <= 5
+        ? String(a.cls)
+        : "unknown";
+    features.push({
+      type: "Feature",
+      properties: {
+        cls,
+        zone_id: typeof a.zone_id === "string" ? a.zone_id : "",
+        value: typeof a.value === "number" ? a.value : 0,
+      },
+      geometry: { type: "MultiPolygon", coordinates: polys },
+    });
+  }
+  if (features.length === 0) return;
+  mapObj.addSource(DENSITY_SRC, {
+    type: "geojson",
+    data: { type: "FeatureCollection", features },
+  });
+  const before = abovePaint(mapObj);
+  mapObj.addLayer(
+    {
+      id: DENSITY_FILL,
+      type: "fill",
+      source: DENSITY_SRC,
+      paint: {
+        "fill-color": [
+          "match",
+          ["get", "cls"],
+          "0",
+          DENSITY_CLASS_FILL["0"],
+          "1",
+          DENSITY_CLASS_FILL["1"],
+          "2",
+          DENSITY_CLASS_FILL["2"],
+          "3",
+          DENSITY_CLASS_FILL["3"],
+          "4",
+          DENSITY_CLASS_FILL["4"],
+          "5",
+          DENSITY_CLASS_FILL["5"],
+          DENSITY_CLASS_FILL.unknown,
+        ],
+        "fill-opacity": 0.45,
+      },
+    },
+    before,
+  );
+  mapObj.addLayer(
+    {
+      id: DENSITY_CASING,
+      type: "line",
+      source: DENSITY_SRC,
+      paint: { "line-color": "#ffffff", "line-width": 1, "line-opacity": 0.5 },
     },
     before,
   );

@@ -40,6 +40,8 @@ import { isReliefLayerId } from "../../../../lib/layers_p4_relief";
 import { isCanopyLayerId } from "../../../../lib/layers_p4_canopy";
 // BUILDINGS-HOOK (#621): taste-only branch guard (see below).
 import { isBuildingsLayerId } from "../../../../lib/layers_p4_buildings";
+// DENSITY-HOOK (#622): taste-only branch guard (see below).
+import { isDensityLayerId } from "../../../../lib/layers_p4_density";
 
 import {
   intersectsCoverage,
@@ -364,6 +366,21 @@ export async function GET(
   // (a fake gradient), and demo fallback points are refused by the
   // layer def (empty fallbackPoints, pinned by test).
   if (isBuildingsLayerId(def.id)) {
+    const { distance } = await loadLayerRaster(def.id);
+    return NextResponse.json({
+      points: [],
+      provenance: "snapshot",
+      ageMs: Date.now() - SNAPSHOT_AS_OF_MS,
+      distance,
+    });
+  }
+  // DENSITY-HOOK (#622): density is taste-only (zero points, zero
+  // raster — the /density/areas squares carry the data). Answer
+  // honestly-empty points on snapshot provenance: requiring points or
+  // a raster here would 500 a healthy layer into labeled demo points
+  // (a fake gradient), and demo fallback points are refused by the
+  // layer def (empty fallbackPoints, pinned by test).
+  if (isDensityLayerId(def.id)) {
     const { distance } = await loadLayerRaster(def.id);
     return NextResponse.json({
       points: [],

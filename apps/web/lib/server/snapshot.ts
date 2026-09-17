@@ -211,6 +211,12 @@ import { CANOPY_RASTER_FILE } from "../layers_p4_canopy";
 // degrade to null; the grid sidecar is honestly null when
 // unharvested).
 import { BUILDINGS_RASTER_FILE } from "../layers_p4_buildings";
+// DENSITY-HOOK (#622): square sidecar type lives in
+// layers_p4_density.ts (areas intentionally never rasterised —
+// DENSITY_NO_RASTER; the name resolves to an absent file so windows
+// degrade to null; the square sidecar is honestly empty when
+// unharvested).
+import { DENSITY_RASTER_FILE, isDensityArea, type DensityArea } from "../layers_p4_density";
 // OHUSEIRE-HOOK (#610): station raster filename + sidecar point type
 // live in layers_p4_ohuseire.ts (raster intentionally never built —
 // OHUSEIRE_NO_RASTER; the name resolves to an absent file so rasters
@@ -1011,6 +1017,35 @@ export async function loadBuildingsTint(dir: string): Promise<unknown | null> {
   return grid;
 }
 
+// DENSITY-HOOK (#622): density square sidecar
+// (`density/density-areas.json`, written by
+// scripts/build/batch_density.py off the cached INSPIRE PD GeoJSON):
+// zone_id + inhabitants + class + quad ring. A missing sidecar is
+// honestly empty (PD unharvested), never an error; malformed rows are
+// skipped, never faked.
+const densityAreaCache = new Map<string, DensityArea[]>();
+
+export async function loadDensityAreas(dir: string): Promise<DensityArea[]> {
+  const hit = densityAreaCache.get(dir);
+  if (hit) return hit;
+  let areas: DensityArea[] = [];
+  try {
+    const raw = await fs.readFile(path.join(dir, "density", "density-areas.json"), "utf8");
+    const parsed: unknown = JSON.parse(raw);
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      Array.isArray((parsed as { areas: unknown }).areas)
+    )
+      areas = (parsed as { areas: unknown[] }).areas.filter(isDensityArea);
+    else console.warn(`snapshot: ignoring malformed density/density-areas.json in ${dir}`);
+  } catch {
+    // Optional sidecar: honestly empty below.
+  }
+  densityAreaCache.set(dir, areas);
+  return areas;
+}
+
 // DRAINAGE-HOOK (#616): maaparandus network/outflow sidecar
 // (`maaparandus/maaparandus-areas.json`, written by
 // scripts/build/batch_maaparandus.py off the cached WFS GeoJSON):
@@ -1386,6 +1421,10 @@ const RASTER_FILE: Record<LayerId, string> = {
   // built — BUILDINGS_NO_RASTER; the tint grid IS the field; absent
   // file degrades to null, honestly).
   ...BUILDINGS_RASTER_FILE,
+  // DENSITY-HOOK (#622): density square raster name only (no master
+  // built — DENSITY_NO_RASTER; the squares ARE the field; absent file
+  // degrades to null, honestly).
+  ...DENSITY_RASTER_FILE,
 };
 
 /**
@@ -1926,6 +1965,11 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // name resolves to an absent file so windows fall back to county
   // cleanly.
   buildings: "buildings-metro",
+  // DENSITY-HOOK (#622): no density metro master by documented
+  // decision (see layers_p4_density.ts DENSITY_NO_METRO) — the name
+  // resolves to an absent file so windows fall back to county
+  // cleanly.
+  density: "density-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

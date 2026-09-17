@@ -628,6 +628,14 @@ export function overlayColorFor(layer: LayerId): string {
     // from every other marker (distinct-color test).
     case "buildings":
       return "#3730a3";
+    // DENSITY-HOOK (#622): density marker (square layer — the point
+    // overlay stays empty live, so this colors only the toggle dot).
+    // #5b21b6: violet-800 census plum (NOT #4c1d95 violet-900, #6d28d9
+    // violet-700 or #7c3aed violet-600 — taken; layers never
+    // co-render). Distinct from every other marker (distinct-color
+    // test).
+    case "density":
+      return "#5b21b6";
     // MEDRE-HOOK (#609): medre slice markers (Step-1 honest-empty —
     // the point overlay stays empty live, so this colors only the
     // toggle dot). #ffedd5: orange-100 clinic paper; #ede9fe:
@@ -1174,6 +1182,13 @@ export function overlayLegendFor(layer: LayerId): string {
     // from the harvest.
     case "buildings":
       return "Hoonete kõrguse toon (LoD1 mõõdetud kõrgus, maitsekaart, lend 2025, Harju 199k hoonet) · toon = hoonestuse iseloom (0–3 / 3–6 / 6–12 / 12–25 / >25 m MEIE klassid — toon ERISTAB, ei hinda); maitse, mitte hinne (kõrgus = varju-iseloom, madalus = aia-iseloom — kummki pole hinne); LoD1 lamekatus liialdab, skoorijal jalgu EI OLE";
+    // DENSITY-HOOK (#622): INSPIRE PD 1 km character choropleth
+    // (taste-only) — the fills describe settled character, never
+    // quality: dense squares are buzz character, empty squares are
+    // quiet character, neither is a score (density is taste).
+    // Class 0 is empty OR privacy-masked (<4) — honestly one class.
+    case "density":
+      return "Asustuse toon (INSPIRE rahvastikutihedus 1 km, maitsekaart, 2024, Harju 8210 ruutu) · toon = asustuse iseloom (0 tühi/varjatud / 1–9 / 10–99 / 100–999 / 1000–4999 / 5000+ MEIE klassid — toon ERISTAB, ei hinda); maitse, mitte hinne (tihedus = melu-iseloom, hõredus = vaikuse-iseloom — kummki pole hinne); ruudud TÄPSELT (1 km on väli), väljaspool = teadmata; skoorijal jalgu EI OLE";
     // ASUMEDIA-HOOK (#495): asumedia (own-snapshot asking medians) —
     // the dated negative rides along: 0/84 asums reach MIN_N=5, so
     // the field is unknown everywhere until the reopen lands real
