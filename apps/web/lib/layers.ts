@@ -714,6 +714,18 @@ import {
   bonusSpecForNoise,
   isNoisePolygonOnlyLayer,
 } from "./layers_p4_noise";
+// HARBOUR-HOOK (#627): harbour port/cell tables live in
+// ./layers_p4_harbour (joined sadamaregister ports + AIS cells,
+// points + fills). That module imports layers only as
+// types, so no runtime cycle.
+import type { HarbourLayerId } from "./layers_p4_harbour";
+import {
+  HARBOUR_DECAY,
+  HARBOUR_DEFS,
+  HARBOUR_TAGS,
+  bonusSpecForHarbour,
+  isHarbourLayerId,
+} from "./layers_p4_harbour";
 // FIXIT-HOOK (#623): report-pin tables live in ./layers_p4_fixit
 // (fixit markers, register sidecar). That module imports layers only
 // as types, so no runtime cycle.
@@ -908,7 +920,11 @@ export type LayerId =
   // NOISE-HOOK (#625): noise band id (./layers_p4_noise,
   // myrakaart Lden/Lnight bands, polygons-only, no
   // parameters3 id).
-  | NoiseLayerId;
+  | NoiseLayerId
+  // HARBOUR-HOOK (#627): harbour id (./layers_p4_harbour,
+  // joined ports + AIS cells, points + fills, no
+  // parameters3 id).
+  | HarbourLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -1177,6 +1193,10 @@ const DECAY_KM: Record<LayerId, number> = {
   // layers_p4_noise.ts NOISE_DECAY — INERT placeholder, polygons
   // only: zero points, never evaluated).
   ...NOISE_DECAY,
+  // HARBOUR-HOOK (#627): harbour radius (see
+  // layers_p4_harbour.ts HARBOUR_DECAY — INERT placeholder, ports
+  // score in dims_p4_harbour.py, never evaluated).
+  ...HARBOUR_DECAY,
   // SEVESO-HOOK (#613): danger-polygon radius (see layers_p4_seveso.ts
   // SEVESO_DECAY — INERT placeholder, polygons only: zero points,
   // never evaluated).
@@ -1461,6 +1481,9 @@ export const LAYERS: LayerDef[] = [
   // NOISE-HOOK (#625): noise band def (myrakaart Lden/Lnight bands,
   // polygons-only, no parameters3 id) from ./layers_p4_noise.
   ...NOISE_DEFS,
+  // HARBOUR-HOOK (#627): harbour def (joined ports + AIS cells,
+  // points + fills, no parameters3 id) from ./layers_p4_harbour.
+  ...HARBOUR_DEFS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -1641,6 +1664,9 @@ const TAGS: Record<LayerId, string> = {
   // NOISE-HOOK (#625): noise band source note (see
   // layers_p4_noise.ts NOISE_TAGS — prose, NOT an Overpass fragment).
   ...NOISE_TAGS,
+  // HARBOUR-HOOK (#627): harbour source note (see
+  // layers_p4_harbour.ts HARBOUR_TAGS — prose, NOT an Overpass fragment).
+  ...HARBOUR_TAGS,
   // SEVESO-HOOK (#613): danger-polygon source note (see
   // layers_p4_seveso.ts SEVESO_TAGS — prose, NOT an Overpass fragment).
   ...SEVESO_TAGS,
@@ -1947,6 +1973,11 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // live scorer leg is dims_p4_noisemap.py).
   const noise = bonusSpecForNoise(layer);
   if (noise) return noise;
+  // HARBOUR-HOOK (#627): harbour spec lives in
+  // ./layers_p4_harbour (INERT — ports + fills, never evaluated; the
+  // live scorer legs are dims_p4_harbour.py).
+  const harbour = bonusSpecForHarbour(layer);
+  if (harbour) return harbour;
   // SEVESO-HOOK (#613): danger-polygon spec lives in
   // ./layers_p4_seveso (INERT — polygons only, never evaluated).
   const seveso = bonusSpecForSeveso(layer);
@@ -2359,6 +2390,10 @@ export async function fetchWindow(
   // (polygons only — the areas sidecar carries the data). Same skip,
   // same reason.
   if (isNoisePolygonOnlyLayer(layer)) return null;
+  // HARBOUR-HOOK (#627): harbour has no raster master by decision
+  // (points + fills — the areas sidecar carries the data). Same skip,
+  // same reason.
+  if (isHarbourLayerId(layer)) return null;
   // QUARRY-HOOK (#614): quarry has no raster master by decision
   // (polygons only — the sidecar carries the data). Same skip, same
   // reason.

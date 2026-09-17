@@ -500,6 +500,25 @@ def dim_noise_zone_trans(origin: Optional[Tuple[float, float]],
                       "mürataset ei saa lugeda (EI OLE tsooniliidestust)"
                       % _fmt_m(dist_m))
     s = NOISE_ZONE_SCORES[zone]
+    measured = None
+    if zone == "sadam":
+        # MEASURED REPLACEMENT (issue #627, row-for-row): a sadam row
+        # carrying a joined register function (1/2/3, proven against
+        # /ports/public-active + INSPIRE PortNode) scores from the
+        # function bands by distance instead of the flat fixture 60.
+        # Rows without a function keep the fixture, honestly.
+        from dims_p4_harbour import FUNCTION_BANDS as _HARBOUR_BANDS
+        bands = _HARBOUR_BANDS.get(poi.get("function"))
+        if bands:
+            for within, bs in bands:
+                if dist_m <= within:
+                    measured = (bs, poi.get("function"))
+                    break
+    if measured is not None:
+        s, fn = measured
+        return s, ("Müratsooni hinnang (MÕÕDETUD sadamafunktsioon %d, "
+                   "tsooniliidestus): sadam %s, kirje %s -> skoor %d"
+                   % (fn, zone, _fmt_m(dist_m), s))
     return s, ("Müratsooni hinnang (tsooniliidestus, mitte kaugusgradient): "
                "tsoon %s, kirje %s -> skoor %d"
                % (zone, _fmt_m(dist_m), s))

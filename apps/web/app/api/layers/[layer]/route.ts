@@ -46,6 +46,12 @@ import { isDensityLayerId } from "../../../../lib/layers_p4_density";
 import { isForestLayerId } from "../../../../lib/layers_p4_forest";
 // NOISE-HOOK (#625): polygons-only branch guard (see below).
 import { isNoiseLayerId } from "../../../../lib/layers_p4_noise";
+// HARBOUR-HOOK (#627): port points branch (see below) + vintage.
+import {
+  HARBOUR_VINTAGE,
+  harbourPointsIn,
+  isHarbourLayerId,
+} from "../../../../lib/layers_p4_harbour";
 
 import {
   intersectsCoverage,
@@ -53,6 +59,7 @@ import {
   loadEhisPoints,
   loadLayerRaster,
   loadFixitPoints,
+  loadHarbourAreas,
   loadMedrePoints,
   loadOhuseirePoints,
   loadPoiPoints,
@@ -407,6 +414,19 @@ export async function GET(
       provenance: "snapshot",
       ageMs: Date.now() - SNAPSHOT_AS_OF_MS,
       distance,
+    });
+  }
+  // HARBOUR-HOOK (#627): harbour port points come from the snapshot
+  // sidecar (harbour/harbour-areas.json, built offline by
+  // scripts/build/batch_harbour.py — never live). A missing sidecar
+  // stays honestly-empty. Vintage rides HARBOUR_VINTAGE (AIS 2024).
+  if (isHarbourLayerId(def.id)) {
+    const { ports } = await loadHarbourAreas(snapshotDir());
+    const points = harbourPointsIn(ports, bbox);
+    return NextResponse.json({
+      points,
+      provenance: points.length > 0 ? "snapshot" : "empty",
+      ageMs: Date.now() - Date.parse(`${HARBOUR_VINTAGE}-01-01T00:00:00`),
     });
   }
   // NOISE-HOOK (#625): noise is polygons-only (zero points, zero

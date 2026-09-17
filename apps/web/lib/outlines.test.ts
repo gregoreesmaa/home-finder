@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   applyFloodPolygons,
+  applyHarbourOverlays,
 
   applyMaaParcelPolygons,
   applyEelisPolygons,
@@ -737,6 +738,69 @@ describe("applySevesoPolygons (#613)", () => {
     const map = mockMap();
     applySevesoPolygons(map, null);
     applySevesoPolygons(map, []);
+    expect(map.sources.size).toBe(0);
+    expect(map.layers.size).toBe(0);
+  });
+});
+
+describe("applyHarbourOverlays (#627)", () => {
+  const CELL = { lon: 24.75, lat: 59.45, pleasure: 42, all: 100 };
+  const PORT = {
+    harbour_id: "port-1",
+    name: "KALASADAM",
+    function: 3,
+    function_label: "tasuta",
+    address: "Tallinn",
+    lon: 24.74,
+    lat: 59.44,
+  };
+
+  it("paints cell fills + casing + port dots in one pass (never stacked)", () => {
+    const map = mockMap();
+    applyHarbourOverlays(map, [CELL], [PORT], { color: "#115e59" });
+    expect(map.sources.has("harbour-cell-polys")).toBe(true);
+    expect(map.layers.has("harbour-cell-fill")).toBe(true);
+    expect(map.layers.has("harbour-cell-casing")).toBe(true);
+    expect(map.sources.has("layer-overlay-src")).toBe(true);
+    expect(map.layers.has("layer-overlay-casing")).toBe(true);
+    expect(map.layers.has("layer-overlay-core")).toBe(true);
+    // One clear pass: every id removed at most once (cells + dots share
+    // the slot instead of wiping each other — two stacked painters
+    // would clear twice).
+    expect(new Set(map.removedLayers).size).toBe(map.removedLayers.length);
+  });
+
+  it("paints whichever half has data (cells-only, ports-only)", () => {
+    const cellsOnly = mockMap();
+    applyHarbourOverlays(cellsOnly, [CELL], [], { color: "#115e59" });
+    expect(cellsOnly.layers.has("harbour-cell-fill")).toBe(true);
+    expect(cellsOnly.layers.has("layer-overlay-core")).toBe(false);
+    const portsOnly = mockMap();
+    applyHarbourOverlays(portsOnly, [], [PORT], { color: "#115e59" });
+    expect(portsOnly.layers.has("harbour-cell-fill")).toBe(false);
+    expect(portsOnly.layers.has("layer-overlay-core")).toBe(true);
+  });
+
+  it("skips junk records, never faked", () => {
+    const map = mockMap();
+    const junkCell = { lon: Number.NaN, lat: 59.45, pleasure: 5, all: 9 };
+    const junkPort = { ...PORT, harbour_id: "x", lon: Number.POSITIVE_INFINITY };
+    applyHarbourOverlays(
+      map,
+      [junkCell, CELL],
+      [junkPort, PORT],
+      { color: "#115e59" },
+    );
+    const cellSrc = map.added.find(
+      (s) => (s as { type?: string }).type === "geojson" && (s as { data: { features: { geometry: { type: string } }[] } }).data.features[0]?.geometry.type === "MultiPolygon",
+    ) as { data: { features: unknown[] } };
+    expect(cellSrc.data.features).toHaveLength(1);
+  });
+
+  it("is a no-op on nullish input (outside stays unpainted)", () => {
+    const map = mockMap();
+    applyHarbourOverlays(map, null, null, { color: "#115e59" });
+    applyHarbourOverlays(map, [], [], { color: "#115e59" });
     expect(map.sources.size).toBe(0);
     expect(map.layers.size).toBe(0);
   });

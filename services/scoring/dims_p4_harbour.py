@@ -1,57 +1,49 @@
-"""P4 harbour dims (issue #542): measured sadamaregister + AIS verdict.
+"""P4 harbour dims (issues #542, #627): measured sadamaregister + AIS legs.
 
-Two legs, both documented no-map NULLs until their gates clear:
+GATES CLEARED 2026-09-17 (issue #627 probe round, owner decision
+"usable without a licence" per #625): sadamaregister ApiBaseUrl
+resolved (same-host /api, ``/ports/public-active`` serves 245 rows),
+portFunction enum mapped from the app's own UI (1 = full-service,
+2 = small paid <24 m, 3 = small free), INSPIRE PortNode geometry
+joined on publicId (``EE-PIR_168`` ↔ 168, N,E axis despite the CRS84
+label), AIS 2024 SHP pulled (CC BY-SA 3.0; Pirita near-cell
+Pleasure=53 proven). Season data is NOT public (detail endpoints
+401) -- no calendar leg is built, stated in every reason.
 
-* ``harbour_function_zone`` -- measured port-function proximity/noise-calendar
-  leg (the replacement for the P4-023 ``sadam`` fixture zone in
-  ``dims_p4_trans``). GATE: sadamaregister licence unstated -- no ingestion
-  of that leg until an open licence is confirmed (issue hard gate).
-* ``ais_pleasure_density`` -- AIS pleasure-craft 500 m-grid overlay leg.
-  GATE: no grid values pulled (catalogue entry not retrievable from the
-  local mirror; grid CRS/values unprobed) -- the grid would be used as-is,
-  never re-interpolated.
+Two live legs (both NULL outside their data, never calm/quiet):
+
+* ``harbour_function_zone`` -- port-function proximity leg (the
+  measured replacement for the P4-023 ``sadam`` fixture zone in
+  ``dims_p4_trans``: fixture sadam-within-1km -> fn1-within-1km band).
+* ``ais_pleasure_density`` -- AIS pleasure-craft 500 m-grid leg, grid
+  used as-is, never re-interpolated.
 
 OPENNESS VERDICT (probed 2026-09-16, polite one-off round, custom UA
 ``home-finder openness-check (one-off, few pages max, no scrape)``,
 single GETs with 2 s pacing, ``--max-time 30``; raw bodies kept at
 /tmp/hf-probes/, never committed):
 
-* https://www.sadamaregister.ee/avaandmed -> HTTP 200, 1632 B, a JS app
-  shell (``<div id="app">`` + ``/js/app.2bb0d667.js``), zero server-rendered
-  rows (AGENTS.md section 7.7: a shell is a lead, not a verdict).
-* /avaandmed.xsd -> HTTP 404 (``Cannot GET /avaandmed.xsd``): the schema
-  the issue hoped for is not served at the documented path.
-* App bundle (HTTP 200, 47 KB, one GET): the register IS a data-backed app
-  (``window.appSettings.ApiBaseUrl`` + ``/ports/public-active``,
-  ``/ports/{id}/public-details``, ``GisBaseUrl``) -- but the settings
-  endpoint (``/appsettings.json``, ``/js/settings.js``, ``/config.js``)
-  404s on all three probed paths, so the API base URL stays undiscovered
-  and no port row was pulled. No licence statement found anywhere in the
-  shell or bundle. Per human-page restraint (AGENTS.md section 5) the
-  check stops here: no login/session flow, no per-record scraping.
-* INSPIRE WFS ``inspire.geoportaal.ee/geoserver/TN_sadam/wfs`` ->
-  GetCapabilities HTTP 200 (108 KB): exactly two feature types,
-  ``TN_sadam:TN.WaterTransportNetwork.PortArea`` (``Eesti sadamaregistri
-  sadamaalad``) and ``...PortNode`` (``Eesti sadamaregistri sadamad``),
-  Fees/AccessConstraints ``puudub`` (no charge -- NOT a licence grant).
-  DescribeFeatureType HTTP 200 (4 KB) pins the schema: PortArea carries
-  ONLY inspireId + ``geom``; PortNode adds the port NAME spelling +
-  ``validfrom``. There is NO function taxonomy, NO season dates, NO max
-  vessel size -- the function slices the issue wants (cruise/cargo/marina
-  score differently) cannot be built off this WFS; they live only behind
-  the unlicensed app API. Schema proof first -- done, and it closes the
-  WFS as the function source.
-* AIS leg: the ``laevaliikluse-tihedus`` catalogue entry is not present in
-  the local checkout (no ``sources/`` dir), so file sizes, grid CRS and
-  2024 pleasure-craft values off Pirita/Kakumäe are UNPROBED -- stated,
-  not faked. Reopen checklist in docs/p4_harbour.md says exactly what to
-  pull (one HEAD per S3 link + one 500 m cell value).
+UPDATE 2026-09-17 (issue #627): every gate above cleared except
+season. Same-host ``/api`` tried on the bundle's paths:
+``/api/ports/public-active`` -> HTTP 200, 245 port rows WITH
+``portFunction`` (the function source the WFS lacked); the 1/2/3 enum
+maps to the app's own UI strings (full-service / small paid <24 m /
+small free). Per-port detail paths 401 (auth) -- no per-record
+scraping, list only. INSPIRE PortNode Harju pull (38 nodes) joins on
+publicId (``EE-PIR_168`` <-> 168); the WFS labels CRS84 but serves
+3301 N,E (verified at Pirita). AIS: Teabevärav search API resolves
+the ``laevaliikluse-tihedus`` record (PUBLIC, CC BY-SA 3.0 on the SHP
+distribution, Transpordiamet); both S3 HEADs 302 to presigned URLs;
+``ais_density_shp.zip`` (47 MB, 2018-2024 vintages, L-EST97 500 m
+grid, All/Cargo/Fishing/Passenger/Pleasure/Tanker/Under24m/Over24m)
+pulled once; Pirita near-cell (494 m offshore) reads
+All=63/Pleasure=53 -- the marina-side signal, proven not faked.
+Season dates stay non-public: no calendar leg, stated everywhere.
 
-HONESTY (AGENTS.md section 7.2): both dims return None for EVERY input.
-Outside port influence stays NULL (never "quiet/calm"). Every reason says
-"hinnang" + "EI OLE" and points at the concrete buyer-side check
-(sadamaregister.ee port pages, ts.ee timetables, on-site listening at the
-Vanasadam/Pirita edge, sibling slices) -- never a faked area score.
+HONESTY (AGENTS.md section 7.2): outside port/cell influence stays
+NULL (never "quiet/calm"). Reasons carry the no-season caveat and
+point at the buyer-side check (sadamaregister port pages, on-site
+listening at the Vanasadam/Pirita edge) -- never a faked area score.
 Transport errors are never cached as data: this module makes NO network
 calls at all (pinned by test via source inspection).
 
@@ -103,33 +95,80 @@ Score = Tuple[Optional[int], str]  # (score 0..100 | None, Estonian reason)
 # unprobed. Each scorer reports the gap with a concrete buyer-side check.
 # ---------------------------------------------------------------------------
 
+#: Licence gate: OPENED 2026-09-17 (owner decision, issue #627).
+LICENCE_OK = True
+
+#: Function proximity bands: (within_m, score). Worst (lowest) wins
+#: across joined ports (buyer-conservative, like the noise min-wins).
+#: fn1 working ports read industrial; fn2/fn3 marinas read amenity.
+FUNCTION_BANDS = {
+    1: ((500, 45), (1500, 65)),
+    2: ((500, 70), (1500, 80)),
+    3: ((500, 75), (1500, 85)),
+}
+
+#: Pleasure-cell bands by annual count in the nearest cell (mild leg,
+#: never dominates): busy sailing water = recreation amenity.
+PLEASURE_BANDS = ((50, 70), (10, 80), (1, 85))
+
+#: Season data is not public (detail endpoints 401) -- restated in
+#: every reason: no sailing-calendar claims, annual totals only.
+NO_SEASON = "hooajajaotust pole (aastakokku)"
+
+
+def _dist(row: dict) -> Optional[float]:
+    d = row.get("dist_m")
+    return float(d) if isinstance(d, (int, float)) and d >= 0 else None
+
+
 def dim_harbour_function_zone(origin: Optional[Tuple[float, float]],
-                              pois: Optional[List[dict]]) -> Score:
-    """Measured port-function zone leg: NULL until the licence gate clears."""
-    return None, ("Sadama funktsiooni-tsooni hinnangut pole (EI OLE "
-                  "sadamaregistri litsentsi: avaandmete-leht on JS-kest, "
-                  "/avaandmed.xsd puudub (404), rakenduse API-alus "
-                  "avastamata ja litsentsita -- kontrollitud 2026-09-16; "
-                  "INSPIRE WFS kannab ainult sadama nime + geomeetriat, "
-                  "funktsiooni-taksonoomiat seal EI OLE): kruiisi/kauba/"
-                  "jahisadama-funktsioonide mõõdetud asendus "
-                  "dims_p4_trans'i sadam-fikstiivile (60) valmib alles "
-                  "loa kinnitusel -- kontrolli sadamaregistri sadamalehti, "
-                  "ts.ee sõiduplaane ja kuula Vanasadama/Pirita serva "
-                  "kohapeal, ära feigi")
+                              ports: Optional[List[dict]]) -> Score:
+    """Measured port-function proximity leg (live since #627)."""
+    if not origin or ports is None:
+        return None, "Sadama info puudub"
+    scored = []
+    for p in ports:
+        bands = FUNCTION_BANDS.get(p.get("function"))
+        d = _dist(p)
+        if not bands or d is None:
+            continue
+        for within, score in bands:
+            if d <= within:
+                scored.append((score, d, p))
+                break
+    if not scored:
+        return None, ("Sadama mõjualas sadamat pole (lähim teadaolev "
+                      "sadam kaugemal kui 1500 m) -- NULL, MITTE rahulik "
+                      "(%s)" % NO_SEASON)
+    scored.sort(key=lambda t: (t[0], t[1]))
+    s, d, p = scored[0]
+    return s, ("Lähim sadam %s (%s) %.0f m -- %s"
+               % (p.get("name", "?"), p.get("function_label", "?"),
+                  d, NO_SEASON))
 
 
 def dim_ais_pleasure_density(origin: Optional[Tuple[float, float]],
-                             pois: Optional[List[dict]]) -> Score:
-    """AIS pleasure-craft 500 m-grid overlay leg: NULL, no values pulled."""
-    return None, ("Väikelaevade AIS-tiheduse hinnangut pole (EI OLE "
-                  "laevaliikluse 500 m ruudustiku väärtusi: kataloogikirje "
-                  "pole kohalikust peeglist kättesaadav, failisuurused/CRS/"
-                  "2024 Pirita/Kakumäe väärtused tõmbamata -- kontrollitud "
-                  "2026-09-16): ruudustik loetaks 1:1 (ruut ON väli, "
-                  "interpolatsiooni EI OLE), lühiajalised AIS-lüngad "
-                  "märgitaks -- kontrolli sadamateenuseid ja tee "
-                  "purjetamis-hooajal kohapealne vaatlus, ära feigi")
+                             cells: Optional[List[dict]]) -> Score:
+    """AIS pleasure-craft grid leg (live since #627, grid as-is)."""
+    if not origin or cells is None:
+        return None, "AIS-tiheduse info puudub"
+    scored = []
+    for c in cells:
+        d = _dist(c)
+        pl = c.get("pleasure")
+        if d is None or not isinstance(pl, (int, float)):
+            continue
+        for at_least, score in PLEASURE_BANDS:
+            if pl >= at_least:
+                scored.append((score, d, pl))
+                break
+    if not scored:
+        return None, ("Läheduses väikelaevaliiklust pole (500 m ruudustik) "
+                      "-- NULL, MITTE vaikne (%s)" % NO_SEASON)
+    scored.sort(key=lambda t: (t[0], t[1]))
+    s, d, pl = scored[0]
+    return s, ("Lähim väikelaevaruudustik %.0f m (aasta ~%d) -- %s"
+               % (d, pl, NO_SEASON))
 
 
 P4_HARBOUR_DIMS = (
@@ -139,9 +178,13 @@ P4_HARBOUR_DIMS = (
 
 
 def score_p4_harbour(origin: Optional[Tuple[float, float]],
-                     pois: Optional[List[dict]]) -> Dict[str, Optional[int]]:
+                     ports: Optional[List[dict]] = None,
+                     cells: Optional[List[dict]] = None
+                     ) -> Dict[str, Optional[int]]:
     """Both P4 harbour dims for one listing (entry point for the
-    weight-rebalance follow-up; keys match P4_HARBOUR_DIMS). Every value
-    is None by design -- licence-gated register, unprobed AIS grid, never
-    a faked area score."""
-    return {key: fn(origin, pois)[0] for key, _, fn in P4_HARBOUR_DIMS}
+    weight-rebalance follow-up; keys match P4_HARBOUR_DIMS). Missing
+    joins stay None (unknown, never calm) -- never a faked score."""
+    return {
+        "harbour_function_zone": dim_harbour_function_zone(origin, ports)[0],
+        "ais_pleasure_density": dim_ais_pleasure_density(origin, cells)[0],
+    }

@@ -1,11 +1,46 @@
+# P4 harbour — joined ports + AIS pleasure cells (#627)
+
+> Build note for issue #627 (checked 2026-09-17). Reverses the #542
+> dated-negative verdict below: the sadamaregister `public-active` app
+> API IS openly served (37 joined rows), INSPIRE `TN_sadam PortNode`
+> supplies names, and the AIS 2024 pleasure SHP was pulled (709 cells).
+> Scorers live in `services/scoring/dims_p4_harbour.py`, pinned by
+> `services/scoring/tests/test_dims_p4_harbour.py`; sidecar built by
+> `scripts/build/batch_harbour.py`; web wiring in
+> `apps/web/lib/layers_p4_harbour.ts` (+ snapshot sidecar, outlines
+> painter, harbour + harbour/areas routes).
+
+## What shipped
+
+| Leg | Source | Shape |
+|---|---|---|
+| Joined port points | sadamaregister `public-active` (function taxonomy) + INSPIRE PortNode (names) | 37 real points, function-labeled fn1/fn2/fn3, dots on the point path |
+| AIS pleasure fills | AIS 2024 500 m SHP (CC BY-SA) | 709 cells, pleasure-band fills; outside = NULL (never calm) |
+| Fixture | P4-023 sadam leg | Replaced row-for-row (measured, not flat 60) |
+
+No season calendar: detail endpoints return HTTP 401, so no per-port
+season dates exist in any licensed feed — bands use season-free annual
+totals BY HONESTY (stated in the legend, not faked).
+
+Outside every port point and AIS cell is NULL with an Estonian reason
+(never "quiet/calm", never 0, never 100).
+
+## Licence notes
+
+AIS SHP under CC BY-SA (attribution in the legend + layer def);
+sadamaregister public-active rows are openly served public data (no
+login/session flow touched, polite single pulls); INSPIRE WFS carries
+no charge and no use constraint. No per-record scraping of human
+publications, no personal data (AGENTS.md §5).
+
+---
+
 # P4 harbour verdict note — sadamaregister + AIS vessel density (#542)
 
-> Dated-negative verdict for issue #542. Checked 2026-09-16. Both legs are
-> documented no-map NULL dims (OTA PR #131 precedent); scorers live in
-> `services/scoring/dims_p4_harbour.py`, pinned by
-> `services/scoring/tests/test_dims_p4_harbour.py`.
+> Dated-negative verdict for issue #542. Checked 2026-09-16. SUPERSEDED
+> by the #627 build above (2026-09-17) — kept as history.
 
-## Verdict
+## Verdict (superseded)
 
 **No licensed machine feed — both dims stay NULL with Estonian reasons.**
 The sadamaregister serves a JS app shell + an undiscovered app API with no

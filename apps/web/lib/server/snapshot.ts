@@ -229,6 +229,11 @@ import { FOREST_RASTER_FILE, isForestArea, type ForestArea } from "../layers_p4_
 // degrade to null; the band sidecar is honestly empty when
 // unharvested).
 import { NOISE_RASTER_FILE, isNoiseArea, type NoiseArea } from "../layers_p4_noise";
+// HARBOUR-HOOK (#627): port/cell sidecar types live in
+// layers_p4_harbour.ts (points + fills intentionally never rasterised —
+// HARBOUR_NO_RASTER; the name resolves to an absent file so windows
+// degrade to null; the sidecar is honestly empty when unharvested).
+import { HARBOUR_RASTER_FILE, isHarbourCell, isHarbourPort, type HarbourCell, type HarbourPort } from "../layers_p4_harbour";
 // OHUSEIRE-HOOK (#610): station raster filename + sidecar point type
 // live in layers_p4_ohuseire.ts (raster intentionally never built —
 // OHUSEIRE_NO_RASTER; the name resolves to an absent file so rasters
@@ -1116,6 +1121,41 @@ export async function loadNoiseAreas(dir: string): Promise<NoiseArea[]> {
   return areas;
 }
 
+// HARBOUR-HOOK (#627): harbour sidecar
+// (`harbour/harbour-areas.json`, written by
+// scripts/build/batch_harbour.py off the sadamaregister API + INSPIRE
+// PortNode join + AIS SHP): ports (joined points) + cells (pleasure
+// centroids). A missing sidecar is honestly empty (harbour
+// unharvested), never an error; malformed rows are skipped,
+// never faked.
+const harbourAreaCache = new Map<string, { ports: HarbourPort[]; cells: HarbourCell[] }>();
+
+export async function loadHarbourAreas(dir: string): Promise<{ ports: HarbourPort[]; cells: HarbourCell[] }> {
+  const hit = harbourAreaCache.get(dir);
+  if (hit) return hit;
+  const empty = { ports: [], cells: [] };
+  try {
+    const raw = await fs.readFile(path.join(dir, "harbour", "harbour-areas.json"), "utf8");
+    const parsed: unknown = JSON.parse(raw);
+    if (parsed && typeof parsed === "object") {
+      const doc = parsed as { ports?: unknown[]; cells?: unknown[] };
+      if (Array.isArray(doc.ports) && Array.isArray(doc.cells)) {
+        const loaded = {
+          ports: doc.ports.filter(isHarbourPort),
+          cells: doc.cells.filter(isHarbourCell),
+        };
+        harbourAreaCache.set(dir, loaded);
+        return loaded;
+      }
+      console.warn(`snapshot: ignoring malformed harbour/harbour-areas.json in ${dir}`);
+    } else console.warn(`snapshot: ignoring malformed harbour/harbour-areas.json in ${dir}`);
+  } catch {
+    // Optional sidecar: honestly empty below.
+  }
+  harbourAreaCache.set(dir, empty);
+  return empty;
+}
+
 // DRAINAGE-HOOK (#616): maaparandus network/outflow sidecar
 // (`maaparandus/maaparandus-areas.json`, written by
 // scripts/build/batch_maaparandus.py off the cached WFS GeoJSON):
@@ -1503,6 +1543,10 @@ const RASTER_FILE: Record<LayerId, string> = {
   // built — NOISE_NO_RASTER; the polygons ARE the field; absent file
   // degrades to null, honestly).
   ...NOISE_RASTER_FILE,
+  // HARBOUR-HOOK (#627): harbour raster name only (no master
+  // built — HARBOUR_NO_RASTER; points + fills ARE the field; absent
+  // file degrades to null, honestly).
+  ...HARBOUR_RASTER_FILE,
 };
 
 /**
@@ -2056,6 +2100,10 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // (see layers_p4_noise.ts NOISE_NO_METRO) — the name resolves to
   // an absent file so windows fall back to county cleanly.
   noise: "noise-metro",
+  // HARBOUR-HOOK (#627): no harbour metro master by documented decision
+  // (see layers_p4_harbour.ts HARBOUR_NO_METRO) — the name resolves to
+  // an absent file so windows fall back to county cleanly.
+  harbour: "harbour-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

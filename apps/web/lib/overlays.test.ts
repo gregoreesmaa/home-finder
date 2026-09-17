@@ -139,8 +139,9 @@ describe("overlay legend + colors", () => {
     // BUILDINGS-HOOK (#621) is in; DENSITY-HOOK (#622): density joins the registry (132 + 1).
     // DENSITY-HOOK (#622) is in; FOREST-HOOK (#624): forest joins the registry (133 + 1).
     // FOREST-HOOK (#624) is in; NOISE-HOOK (#625): noise joins the registry (134 + 1).
-    // MERGE (#613+#614+#615+#616+#617+#618+#619+#620+#621+#622+#624+#625): 123 shipped + seveso + stateland + quarry + maaparandus + soil + etak + relief + canopy + buildings + density + forest + noise = 135.
-    expect(ids).toHaveLength(135);
+    // NOISE-HOOK (#625) is in; HARBOUR-HOOK (#627): harbour joins the registry (135 + 1).
+    // MERGE (#613+#614+#615+#616+#617+#618+#619+#620+#621+#622+#624+#625+#627): 123 shipped + seveso + stateland + quarry + maaparandus + soil + etak + relief + canopy + buildings + density + forest + noise + harbour = 136.
+    expect(ids).toHaveLength(136);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -221,6 +222,12 @@ describe("overlay legend + colors", () => {
     expect(overlayLegendFor("noise")).toContain("MUDEL");
     expect(overlayLegendFor("noise")).toContain("MITTE vaikne");
     expect(overlayColorFor("noise")).toBe("#500f28");
+    // HARBOUR-HOOK (#627): harbour legend states joined ports + AIS
+    // pleasure cells, season-free annual, NULL-outside (never calm);
+    // toggle dot is emerald-950 deep sea.
+    expect(overlayLegendFor("harbour")).toContain("sadamaregister");
+    expect(overlayLegendFor("harbour")).toContain("MITTE rahulik");
+    expect(overlayColorFor("harbour")).toBe("#115e59");
     // Batch G08D half (see G08D_CAL in layers_group08d.ts).
     expect(overlayLegendFor("vernalpool")).toContain("300 m");
     expect(overlayLegendFor("vernalpool")).toContain("proksi");
@@ -438,7 +445,7 @@ describe("overlay legend + colors", () => {
     // ETAK-HOOK (#618): etak joins the registry (128 + 1).
     // RELIEF-HOOK (#619): relief joins the registry (129 + 1).
     // MERGE (#613+#614+#615): 123 shipped + seveso + stateland + quarry = 126.
-    expect(seen.size).toBe(135); // MERGE (#613+#614+#615+#616+#617+#618+#619+#620+#621+#622+#624+#625): 123 shipped + seveso + stateland + quarry + maaparandus + soil + etak + relief + canopy + buildings + density + forest + noise = 135 (both branch counts superseded).
+    expect(seen.size).toBe(136); // HARBOUR (#627): 135 shipped + harbour = 136.
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

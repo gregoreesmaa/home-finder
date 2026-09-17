@@ -301,6 +301,9 @@ describe("layer registry", () => {
       // NOISE-HOOK (#625): noise band id (myrakaart Lden/Lnight —
       // paramIds empty, parameters4 namespace, polygons-only).
       "noise",
+      // HARBOUR-HOOK (#627): harbour id (joined ports + AIS cells —
+      // paramIds empty, parameters4 namespace, points + fills).
+      "harbour",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -472,6 +475,10 @@ describe("layer registry", () => {
     // (parameters4 polygons, no parameters3 number).
     expect(LAYERS.find((l) => l.id === "noise")?.paramIds).toEqual([]);
     expect(LAYERS.find((l) => l.id === "noise")?.paramLabel).toBe("P4-müra");
+    // HARBOUR-HOOK (#627): harbour rides paramLabel, paramIds stays []
+    // (parameters4 points+fills, no parameters3 number).
+    expect(LAYERS.find((l) => l.id === "harbour")?.paramIds).toEqual([]);
+    expect(LAYERS.find((l) => l.id === "harbour")?.paramLabel).toBe("P4-sadam");
   });
 
   it("wires the B10C utility layers with locked calibration", () => {
@@ -831,6 +838,14 @@ describe("layer registry", () => {
       // layers_p4_medre.test.ts; Step 2 fills joined points and this
       // exception narrows to the slices that stay unjoined.
       if (l.id === "medre_gp" || l.id === "medre_clinic") {
+        expect(l.fallbackPoints).toEqual([]);
+        continue;
+      }
+      // HARBOUR-HOOK (#627): harbour is the same honest-empty shape —
+      // ZERO fallback points BY HONESTY (ports come from the snapshot
+      // sidecar on the point path; invented fallback dots would be
+      // fake ports). Pinned in layers_p4_harbour.test.ts.
+      if (l.id === "harbour") {
         expect(l.fallbackPoints).toEqual([]);
         continue;
       }

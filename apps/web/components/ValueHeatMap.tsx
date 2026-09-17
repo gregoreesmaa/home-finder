@@ -25,6 +25,7 @@ import type { BuildingsTintGrid } from "../lib/layers_p4_buildings";
 import type { DensityArea } from "../lib/layers_p4_density";
 import type { ForestArea } from "../lib/layers_p4_forest";
 import type { NoiseArea } from "../lib/layers_p4_noise";
+import type { HarbourCell, HarbourPort } from "../lib/layers_p4_harbour";
 import {
   applyFloodPolygons,
   applyMaaParcelPolygons,
@@ -42,6 +43,7 @@ import {
   applyBuildingsTint,
   applyDensityPolygons,
   applyForestPolygons,
+  applyHarbourOverlays,
   applyNoisePolygons,
   applyUsePolygons,
   clearVectorOverlays,
@@ -98,6 +100,8 @@ function paintOverlay(
     densityAreas?: DensityArea[] | null;
     forestAreas?: ForestArea[] | null;
     noiseAreas?: NoiseArea[] | null;
+    harbourCells?: HarbourCell[] | null;
+    harbourPorts?: HarbourPort[] | null;
     overlayPoints?: OverlayPoint[] | null;
     usePolygons?: UseFillPolygon[] | null;
     overlayColor?: string;
@@ -144,6 +148,18 @@ function paintOverlay(
   // never measured — outside stays NULL, never quiet).
   if (opts.noiseAreas && opts.noiseAreas.length > 0) {
     applyNoisePolygons(mapObj, opts.noiseAreas);
+    return;
+  }
+  // HARBOUR-HOOK (#627): AIS pleasure-cell fills (grid as-is) UNDER
+  // joined-port dots in ONE slot pass (peers clear first, so cells +
+  // dots cannot stack as two passes); outside stays NULL.
+  if (
+    (opts.harbourCells && opts.harbourCells.length > 0) ||
+    (opts.harbourPorts && opts.harbourPorts.length > 0)
+  ) {
+    applyHarbourOverlays(mapObj, opts.harbourCells, opts.harbourPorts, {
+      color: opts.overlayColor ?? "#115e59",
+    });
     return;
   }
   // STATELAND-HOOK (#615): stateland state/auction fills (polygons
@@ -213,6 +229,18 @@ function paintOverlay(
     applyNoisePolygons(mapObj, opts.noiseAreas);
     return;
   }
+  // HARBOUR-HOOK (#627): AIS pleasure-cell fills (grid as-is) UNDER
+  // joined-port dots in ONE slot pass (peers clear first, so cells +
+  // dots cannot stack as two passes); outside stays NULL.
+  if (
+    (opts.harbourCells && opts.harbourCells.length > 0) ||
+    (opts.harbourPorts && opts.harbourPorts.length > 0)
+  ) {
+    applyHarbourOverlays(mapObj, opts.harbourCells, opts.harbourPorts, {
+      color: opts.overlayColor ?? "#115e59",
+    });
+    return;
+  }
   if (opts.overlayPoints && opts.overlayPoints.length > 0) {
     applyPointOverlay(mapObj, opts.overlayPoints, { color: opts.overlayColor ?? "#1d4ed8" });
     return;
@@ -254,6 +282,8 @@ export function ValueHeatMap({
   densityAreas,
   forestAreas,
   noiseAreas,
+  harbourCells,
+  harbourPorts,
   overlayPoints,
   usePolygons,
   overlayColor,
@@ -306,6 +336,10 @@ export function ValueHeatMap({
   forestAreas?: ForestArea[] | null;
   /** Myrakaart 2022 bands (noise layer only); Lden/Lnight fills. */
   noiseAreas?: NoiseArea[] | null;
+  /** AIS pleasure cells (harbour layer only); recreation fills. */
+  harbourCells?: HarbourCell[] | null;
+  /** Joined ports (harbour layer only); dots over the cell fills. */
+  harbourPorts?: HarbourPort[] | null;
   /** Point markers drawn ABOVE the raster (all layers but parks). */
   overlayPoints?: OverlayPoint[] | null;
   /** Designated-use fills drawn ABOVE the field (planktpr only). */
@@ -367,6 +401,11 @@ export function ValueHeatMap({
     // NOISE-HOOK (#625): noiseAreas ride the refresh slot so pans
     // keep the fills (same slot as the painted effect below).
     noiseAreas,
+    // HARBOUR-HOOK (#627): harbourCells + harbourPorts ride the
+    // refresh slot so pans keep the fills + dots (same slot as the
+    // painted effect below).
+    harbourCells,
+    harbourPorts,
     overlayPoints,
     usePolygons,
     overlayColor,
@@ -406,6 +445,11 @@ export function ValueHeatMap({
     // NOISE-HOOK (#625): noiseAreas ride the refresh slot so pans
     // keep the fills (same slot as the painted effect below).
     noiseAreas,
+    // HARBOUR-HOOK (#627): harbourCells + harbourPorts ride the
+    // refresh slot so pans keep the fills + dots (same slot as the
+    // painted effect below).
+    harbourCells,
+    harbourPorts,
     overlayPoints,
     usePolygons,
     overlayColor,
@@ -605,9 +649,9 @@ export function ValueHeatMap({
       // BUILDINGS-HOOK (#621): buildingsTint joins the painted slot.
       // DENSITY-HOOK (#622): densityAreas join the painted slot.
       // FOREST-HOOK (#624): forestAreas join the painted slot.
-      paintOverlay(mapRef.current, { outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, reliefTint, canopyTint, buildingsTint, densityAreas, forestAreas, noiseAreas, overlayPoints, usePolygons, overlayColor, showOverlay });
+      paintOverlay(mapRef.current, { outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, reliefTint, canopyTint, buildingsTint, densityAreas, forestAreas, noiseAreas, harbourCells, harbourPorts, overlayPoints, usePolygons, overlayColor, showOverlay });
     }
-  }, [outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, reliefTint, canopyTint, buildingsTint, densityAreas, forestAreas, noiseAreas, overlayPoints, usePolygons, overlayColor, showOverlay]);
+  }, [outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, reliefTint, canopyTint, buildingsTint, densityAreas, forestAreas, noiseAreas, harbourCells, harbourPorts, overlayPoints, usePolygons, overlayColor, showOverlay]);
 
   return (
     <section aria-label={title}>
