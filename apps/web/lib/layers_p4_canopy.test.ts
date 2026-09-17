@@ -93,8 +93,9 @@ describe("canopy registry (#620)", () => {
   it("merges into LAYERS via the CANOPY-HOOK (page + routes serve it)", () => {
     const ids = LAYERS.map((l) => l.id);
     // 124 shipped + seveso + stateland + quarry + maaparandus + soil +
-    // etak + relief + 1 canopy overlay (CANOPY-HOOK #620, 130 + 1 = 131).
-    expect(ids.length).toBe(131);
+    // etak + relief + 1 canopy overlay (CANOPY-HOOK #620, 130 + 1) + 1 buildings overlay
+    // (BUILDINGS-HOOK #621, 131 + 1 = 132)..
+    expect(ids.length).toBe(132);
     expect(ids).toContain("canopy");
   });
   it("rides paramLabel with empty paramIds (tint only, no parameters3 number)", () => {

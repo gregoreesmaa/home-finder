@@ -43,6 +43,8 @@ import { isEtakPolygonOnlyLayer } from "./layers_p4_etak";
 import { isReliefTasteOnlyLayer } from "./layers_p4_relief";
 // CANOPY-HOOK (#620): taste-only carve-out for the fallback assertion.
 import { isCanopyTasteOnlyLayer } from "./layers_p4_canopy";
+// BUILDINGS-HOOK (#621): taste-only carve-out for the fallback assertion.
+import { isBuildingsTasteOnlyLayer } from "./layers_p4_buildings";
 
 const TALLINN_BBOX: BBoxLike = { minlon: 24.5, minlat: 59.35, maxlon: 24.9, maxlat: 59.5 };
 
@@ -281,6 +283,9 @@ describe("layer registry", () => {
       // CANOPY-HOOK (#620): canopy tint id (CHM classes —
       // paramIds empty, parameters4 namespace, taste-only).
       "canopy",
+      // BUILDINGS-HOOK (#621): buildings tint id (LoD1 heights —
+      // paramIds empty, parameters4 namespace, taste-only).
+      "buildings",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -436,6 +441,10 @@ describe("layer registry", () => {
     // (parameters4 tint, no parameters3 number).
     expect(LAYERS.find((l) => l.id === "canopy")?.paramIds).toEqual([]);
     expect(LAYERS.find((l) => l.id === "canopy")?.paramLabel).toBe("P4-võra");
+    // BUILDINGS-HOOK (#621): buildings rides paramLabel, paramIds stays []
+    // (parameters4 tint, no parameters3 number).
+    expect(LAYERS.find((l) => l.id === "buildings")?.paramIds).toEqual([]);
+    expect(LAYERS.find((l) => l.id === "buildings")?.paramLabel).toBe("P4-hooned");
   });
 
   it("wires the B10C utility layers with locked calibration", () => {
@@ -800,7 +809,7 @@ describe("layer registry", () => {
       }
       if (isPolygonOnlyMaaLayer(l.id)) {
         expect(l.fallbackPoints).toEqual([]);
-      } else if (!isPolygonOnlyLayer(l.id) && !isEelisPolygonOnlyLayer(l.id) && !isSevesoPolygonOnlyLayer(l.id) && !isStatelandPolygonOnlyLayer(l.id) && !isQuarryPolygonOnlyLayer(l.id) && !isMaaparandusPolygonOnlyLayer(l.id) && !isSoilPolygonOnlyLayer(l.id) && !isEtakPolygonOnlyLayer(l.id) && !isReliefTasteOnlyLayer(l.id) && !isCanopyTasteOnlyLayer(l.id)) {
+      } else if (!isPolygonOnlyLayer(l.id) && !isEelisPolygonOnlyLayer(l.id) && !isSevesoPolygonOnlyLayer(l.id) && !isStatelandPolygonOnlyLayer(l.id) && !isQuarryPolygonOnlyLayer(l.id) && !isMaaparandusPolygonOnlyLayer(l.id) && !isSoilPolygonOnlyLayer(l.id) && !isEtakPolygonOnlyLayer(l.id) && !isReliefTasteOnlyLayer(l.id) && !isCanopyTasteOnlyLayer(l.id) && !isBuildingsTasteOnlyLayer(l.id)) {
         expect(l.fallbackPoints.length).toBeGreaterThan(0);
       }
     }

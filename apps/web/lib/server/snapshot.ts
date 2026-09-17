@@ -205,6 +205,12 @@ import { RELIEF_RASTER_FILE } from "../layers_p4_relief";
 // resolves to an absent file so windows degrade to null; the grid
 // sidecar is honestly null when unharvested).
 import { CANOPY_RASTER_FILE } from "../layers_p4_canopy";
+// BUILDINGS-HOOK (#621): tint raster name lives in
+// layers_p4_buildings.ts (master intentionally never built —
+// BUILDINGS_NO_RASTER; the name resolves to an absent file so windows
+// degrade to null; the grid sidecar is honestly null when
+// unharvested).
+import { BUILDINGS_RASTER_FILE } from "../layers_p4_buildings";
 // OHUSEIRE-HOOK (#610): station raster filename + sidecar point type
 // live in layers_p4_ohuseire.ts (raster intentionally never built —
 // OHUSEIRE_NO_RASTER; the name resolves to an absent file so rasters
@@ -963,6 +969,8 @@ export async function loadReliefTint(dir: string): Promise<unknown | null> {
 
 // CANOPY-HOOK (#620): canopy tint-grid sidecar cache (same discipline).
 const canopyTintCache = new Map<string, unknown | null>();
+// BUILDINGS-HOOK (#621): buildings tint-grid sidecar cache (same discipline).
+const buildingsTintCache = new Map<string, unknown | null>();
 
 // CANOPY-HOOK (#620): canopy tint grid sidecar
 // (`canopy/canopy-tint.json`, written by scripts/build/batch_canopy.py
@@ -980,6 +988,26 @@ export async function loadCanopyTint(dir: string): Promise<unknown | null> {
     // Optional sidecar: honestly null below.
   }
   canopyTintCache.set(dir, grid);
+  return grid;
+}
+
+// BUILDINGS-HOOK (#621): buildings tint grid sidecar
+// (`buildings/buildings-tint.json`, written by
+// scripts/build/batch_buildings.py off the cached LoD1 CityGML):
+// county height-class grid. A missing sidecar is honestly null
+// (LoD1 unharvested), never an error; a malformed grid is honestly
+// null (never a shifted tint).
+export async function loadBuildingsTint(dir: string): Promise<unknown | null> {
+  const hit = buildingsTintCache.get(dir);
+  if (hit !== undefined) return hit;
+  let grid: unknown | null = null;
+  try {
+    const raw = await fs.readFile(path.join(dir, "buildings", "buildings-tint.json"), "utf8");
+    grid = JSON.parse(raw);
+  } catch {
+    // Optional sidecar: honestly null below.
+  }
+  buildingsTintCache.set(dir, grid);
   return grid;
 }
 
@@ -1354,6 +1382,10 @@ const RASTER_FILE: Record<LayerId, string> = {
   // — CANOPY_NO_RASTER; the tint grid IS the field; absent file
   // degrades to null, honestly).
   ...CANOPY_RASTER_FILE,
+  // BUILDINGS-HOOK (#621): buildings tint raster name only (no master
+  // built — BUILDINGS_NO_RASTER; the tint grid IS the field; absent
+  // file degrades to null, honestly).
+  ...BUILDINGS_RASTER_FILE,
 };
 
 /**
@@ -1889,6 +1921,11 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // (see layers_p4_canopy.ts CANOPY_NO_METRO) — the name resolves to
   // an absent file so windows fall back to county cleanly.
   canopy: "canopy-metro",
+  // BUILDINGS-HOOK (#621): no buildings metro master by documented
+  // decision (see layers_p4_buildings.ts BUILDINGS_NO_METRO) — the
+  // name resolves to an absent file so windows fall back to county
+  // cleanly.
+  buildings: "buildings-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */
