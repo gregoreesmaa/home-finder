@@ -1,4 +1,4 @@
-"""Tallinn GPS typical-delay sampler + table builder (issue #629).
+"""Tallinn GPS typical-delay sampler + table builder (issues #629/#667).
 
 Cron step (`pull`): ONE polite gps.txt snapshot per invocation into a
 timestamped cache file (the 60 s cadence guard lives in
@@ -6,11 +6,15 @@ fetch_gps_snapshot -- faster re-invocations are no-ops). Build step
 (`build`): all cached snapshots -> vehicle-tracked segment speeds ->
 corridor x hour typical/free-flow table -> delay/delay-corridors.json.
 
-Free-flow baseline per corridor = its off-peak ("muu") median from
-the SAME samples (GTFS static carries schedules, never speeds, so the
-vintage validates corridor service -- weekday stops + lines nearby --
-instead of pretending to supply speeds). No school-holiday split
-(documented limitation); thin cells (<20 samples) stay NULL.
+Corridor web (#667): every GTFS trip shape is a corridor (name
+"short · headsign", road-following ribbon strips on the map); legacy
+8 street corridors survive ONLY as the GTFS-less fallback (and the
+hermetic-test default). Free-flow baseline per corridor = its
+off-peak ("muu") median from the SAME samples (GTFS static carries
+schedules, never speeds, so the vintage validates corridor service --
+weekday stops nearby -- instead of pretending to supply speeds). No
+school-holiday split (documented limitation); thin cells (<20
+samples) stay NULL.
 
 Sampler host (recorded decision, #629): scheduled GitHub workflow is
 REJECTED (artefact round-trip for a 60 s+ cadence pull is the wrong
@@ -30,6 +34,7 @@ import json
 import os
 import sys
 import time
+from typing import Dict
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 "..", "..", "services", "scoring"))
@@ -38,12 +43,15 @@ from dims_p4_typical_delay import (  # noqa: E402
     CORRIDORS,
     MAP_BANDS,
     WORST_BAND,
+    build_corridor_index,
     build_delay_table,
     corridor_midpoint,
     corridor_of,
     fetch_gps_snapshot,
+    load_shape_corridors,
     muu_baselines,
     parse_gps_txt,
+    strip_ribbon,
     table_to_pois,
     tallinn_hour,
     track_segments,
@@ -52,8 +60,28 @@ from dims_p4_typical_delay import (  # noqa: E402
 SNAP_PREFIX = "gps-"
 SNAP_SUFFIX = ".txt"
 
-#: Strip half-width (m) around a corridor segment for the map band.
-MAP_HALF_WIDTH_M = 250.0
+
+def _resolve_corridors(snap, vintage):
+    """Shape web from the GTFS vintage, else legacy CORRIDORS (pure-ish).
+
+    Missing/unreadable vintage keeps the legacy 8 (offline fallback,
+    never a failed build): the web fills in once the vintage lands.
+    """
+    if snap and vintage:
+        path = os.path.join(snap, vintage)
+        if os.path.exists(path):
+            try:
+                shapes = load_shape_corridors(path)
+            except Exception as exc:  # noqa: BLE001 -- corrupt zip, fall back
+                print("WARNING: shape web unreadable (%s) -- legacy 8"
+                      % exc, flush=True)
+            else:
+                if shapes:
+                    print("corridor web: %d GTFS shapes" % len(shapes),
+                          flush=True)
+                    return shapes
+    print("corridor web: legacy 8 (no GTFS vintage)", flush=True)
+    return CORRIDORS
 
 
 def pull(cache_dir):
@@ -84,8 +112,8 @@ def _fixes_from_cache(cache_dir):
     return fixes
 
 
-def _gtfs_validation(snap, vintage):
-    """Weekday bus stops + lines near each corridor (service proof)."""
+def _gtfs_validation(snap, vintage, corridors):
+    """Weekday bus stops near each corridor (service proof)."""
     out = {}
     if not snap or not vintage:
         return out
@@ -102,50 +130,45 @@ def _gtfs_validation(snap, vintage):
                           row.get("stop_id", "")))
         except (TypeError, ValueError, KeyError):
             continue
-    # Lines NOT mapped: route-to-corridor needs GTFS shapes.txt, absent
-    # from the vintage -- stops-nearby is the validation, honestly thin.
-    for name, _a, _b, _label in CORRIDORS:
-        near = [s for s in stops if corridor_of(s[0], s[1]) == name]
-        out[name] = {"weekday_stops_nearby": len(near)}
+    # ONE join per stop (never corridors x stops: the 196-shape web
+    # turns the naive nesting into 220k distance calls).
+    counts: Dict[str, int] = {}
+    for s in stops:
+        name = corridor_of(s[0], s[1], corridors)
+        if name:
+            counts[name] = counts.get(name, 0) + 1
+    for name, _poly, _bbox, _label in corridors:
+        out[name] = {"weekday_stops_nearby": counts.get(name, 0)}
     return out
 
 
-def _strip_polygon(a, b, half_m=MAP_HALF_WIDTH_M):
-    """Corridor segment -> narrow map band quad (display only).
-
-    Equirectangular degrees (documented approx): the band shows the
-    500 m join window, never a surveyed road polygon.
-    """
-    import math
-    (x0, y0), (x1, y1) = a, b
-    mx = math.cos(math.radians((y0 + y1) / 2))
-    dx, dy = (x1 - x0) * mx, y1 - y0
-    leng = math.hypot(dx, dy) or 1e-9
-    dlat = half_m / 6371000.0 * 180.0 / math.pi
-    # Perpendicular offset in degrees (lon scaled by cos latitude).
-    ox = -dy / leng * dlat / max(mx, 0.2)
-    oy = dx / leng * dlat
-    quad = [[x0 + ox, y0 + oy], [x1 + ox, y1 + oy],
-            [x1 - ox, y1 - oy], [x0 - ox, y0 - oy],
-            [x0 + ox, y0 + oy]]
-    return [quad]
+def _poly_bbox(poly):
+    lons = [p[0] for p in poly]
+    lats = [p[1] for p in poly]
+    return [min(lons), min(lats), max(lons), max(lats)]
 
 
 def build(cache_dir, snap, vintage=None):
     """Samples -> corridor x hour table + map sidecar."""
+    corridors = _resolve_corridors(snap, vintage)
+    # One prebuilt bbox index for the whole build: corridor_of scans
+    # bboxes per query, and recomputing them per query stalled the
+    # 196-shape web (~1 s/stop in validation).
+    index = build_corridor_index(corridors)
     fixes = _fixes_from_cache(cache_dir)
     # Host-local hours: cron hosts run TZ=Europe/Tallinn (host
     # requirement -- hour bands are Tallinn wall-clock).
-    segments = track_segments(fixes, hour_of=tallinn_hour)
+    segments = track_segments(fixes, hour_of=tallinn_hour,
+                              corridors=index)
     table = build_delay_table(segments)
     baselines = muu_baselines(segments)
-    validation = _gtfs_validation(snap, vintage)
+    validation = _gtfs_validation(snap, vintage, index)
     by_corridor = {}
     for (c, band), cell in table.items():
         by_corridor.setdefault(c, {})[band] = cell
     areas = []
-    for name, a, b, _label in CORRIDORS:
-        mid = corridor_midpoint(name)
+    for name, poly, _bbox, _label in index:
+        mid = corridor_midpoint(name, index)
         cells = by_corridor.get(name, {})
         factors = {}
         ns = {}
@@ -165,23 +188,22 @@ def build(cache_dir, snap, vintage=None):
         factors[WORST_BAND] = max(peaks) if peaks else None
         ns[WORST_BAND] = max([ns[band] for band in MAP_BANDS
                               if band != "muu"] or [0])
-        xs = [a[0], b[0]]
-        ys = [a[1], b[1]]
+        ring = strip_ribbon(poly)
         areas.append({"corridor": name,
                       "factors": factors, "ns": ns,
                       "gtfs": validation.get(name, {}),
                       "rep": {"lon": mid[0], "lat": mid[1]} if mid else None,
-                      "b": [min(xs), min(ys), max(xs), max(ys)],
-                      "r": _strip_polygon(a, b)})
+                      "b": _poly_bbox(poly),
+                      "r": [ring] if ring else []})
     doc = {"vintage": time.strftime("%Y-%m-%dT%H:%M:%S"),
            "cells": [{"corridor": c, "hour_band": band,
                       "factor": cell["factor"], "n": cell["n"]}
                      for (c, band), cell in sorted(table.items())],
-           "pois": table_to_pois(table),
+           "pois": table_to_pois(table, index),
            "areas": areas,
            "stats": {"fixes": len(fixes), "segments": len(segments),
                      "cells": len(table),
-                     "corridors": len(CORRIDORS),
+                     "corridors": len(corridors),
                      "attribution": ("Tallinna Linnavalitsus GPS "
                                      "(keyless gps.txt) + TLT GTFS "
                                      "vintage (schedules, validation)")}}

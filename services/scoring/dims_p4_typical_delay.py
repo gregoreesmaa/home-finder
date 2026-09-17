@@ -65,10 +65,13 @@ folds snapshots into the corridor x hour table. Scorers and tests
 never touch the network.
 """
 
+import csv
+import io
 import math
 import os
 import time
 import urllib.request
+import zipfile
 from typing import Dict, List, Optional, Tuple
 
 Score = Tuple[Optional[int], str]  # (score 0..100 | None, Estonian reason)
@@ -402,25 +405,34 @@ def dim_commute_delay(origin: Optional[Tuple[float, float]],
 #: not a road survey -- corridor_of() matches within
 #: CORRIDOR_WINDOW_M. GTFS validation counts (weekday stops near each
 #: segment) ride the sidecar stats, not these coordinates.
+#: Corridor = (name, polyline [(lon, lat), ...], label). The 8 legacy
+#: street corridors are 2-point polylines (straight A-B strips, #629);
+#: production builds use load_shape_corridors() (all GTFS trip shapes,
+#: road-following, #667). Callers pass corridors= explicitly; None
+#: means the legacy 8 (hermetic tests, GTFS-less fallback).
 CORRIDORS = (
-    # (name, (lon0, lat0), (lon1, lat1), endpoint labels)
-    ("Pärnu mnt", (24.742, 59.434), (24.685, 59.389),
+    ("Pärnu mnt", ((24.742, 59.434), (24.685, 59.389)),
      "Vabaduse väljak-Nõmme keskus"),
-    ("Tartu mnt", (24.753, 59.436), (24.798, 59.424),
+    ("Tartu mnt", ((24.753, 59.436), (24.798, 59.424)),
      "Viru-Ülemiste"),
-    ("Narva mnt", (24.754, 59.438), (24.817, 59.466),
+    ("Narva mnt", ((24.754, 59.438), (24.817, 59.466)),
      "Viru-Pirita"),
-    ("Paldiski mnt", (24.737, 59.441), (24.671, 59.412),
+    ("Paldiski mnt", ((24.737, 59.441), (24.671, 59.412)),
      "Balti jaam-Õismäe"),
-    ("Ehitajate tee", (24.732, 59.427), (24.710, 59.406),
+    ("Ehitajate tee", ((24.732, 59.427), (24.710, 59.406)),
      "Mustamäe-Kadaka"),
-    ("Laagna tee", (24.800, 59.425), (24.860, 59.445),
+    ("Laagna tee", ((24.800, 59.425), (24.860, 59.445)),
      "Ülemiste-Laagna"),
-    ("Peterburi tee", (24.805, 59.423), (24.884, 59.433),
+    ("Peterburi tee", ((24.805, 59.423), (24.884, 59.433)),
      "Ülemiste-Väo"),
-    ("Sõpruse pst", (24.715, 59.428), (24.700, 59.410),
+    ("Sõpruse pst", ((24.715, 59.428), (24.700, 59.410)),
      "Kristiine-Mustamäe"),
 )
+
+#: Ribbon half-width (m) for road-following map strips (#667). Narrower
+#: than the legacy 500 m join window: the dense shape web would wash
+#: the county solid at full window width.
+RIBBON_HALF_M = 150.0
 
 #: Consecutive-fix window for vehicle-tracked segments (the cron
 #: pulls at 60 s+ cadence; wider gaps are not one segment).
@@ -448,8 +460,69 @@ def _seg_dist_m(lat, lon, a, b):
     return r * math.hypot(px - dx * t, py - dy * t)
 
 
-def corridor_of(lat, lon):
-    """Nearest corridor within CORRIDOR_WINDOW_M (None when off). Pure."""
+def _poly_bbox(poly):
+    """(minlon, minlat, maxlon, maxlat) of a polyline (pure)."""
+    lons = [p[0] for p in poly]
+    lats = [p[1] for p in poly]
+    return (min(lons), min(lats), max(lons), max(lats))
+
+
+def build_corridor_index(corridors=None):
+    """Precomputed join index: ((name, poly, bbox, label), ...). Pure.
+
+    corridor_of scans bboxes per query; recomputing them per query
+    costs a full polyline walk each time (the 196-shape web stalled
+    builds: ~1 s/stop). Build once per web, pass the index wherever a
+    corridors web goes -- every join entry point accepts both shapes.
+    """
+    if corridors is None:
+        corridors = CORRIDORS
+    return tuple((name, poly, _poly_bbox(poly), label)
+                 for name, poly, label in corridors
+                 if poly and len(poly) >= 2)
+
+
+#: Import-time index of the legacy 8 (tiny polys, no I/O, hermetic).
+_LEGACY_INDEX = build_corridor_index(CORRIDORS)
+
+
+def _as_index(corridors):
+    """Plain web or prebuilt index -> index (never recomputed twice)."""
+    if corridors is None:
+        return _LEGACY_INDEX
+    if len(corridors) == 0:
+        return ()
+    first = corridors[0]
+    if (len(first) == 4 and isinstance(first[2], tuple)
+            and len(first[2]) == 4
+            and all(isinstance(v, float) for v in first[2])):
+        return corridors
+    return build_corridor_index(corridors)
+
+
+def _poly_dist_m(lat, lon, poly):
+    """Nearest distance (m) from a point to a polyline (pure).
+
+    Min over consecutive-vertex segments (equirectangular, fine <1 km
+    per leg -- GTFS shape legs are metres apart).
+    """
+    best = None
+    for a, b in zip(poly, poly[1:]):
+        d = _seg_dist_m(lat, lon, a, b)
+        if best is None or d < best:
+            best = d
+    return best
+
+
+def corridor_of(lat, lon, corridors=None):
+    """Nearest corridor within CORRIDOR_WINDOW_M (None when off). Pure.
+
+    corridors = ((name, polyline, label), ...) or a prebuilt
+    build_corridor_index(); None means CORRIDORS. Per-corridor bbox
+    prefilter (window-expanded, precomputed) keeps the 196-shape web
+    cheap: only nearby polylines pay the per-leg distance.
+    """
+    index = _as_index(corridors)
     try:
         lat = float(lat)
         lon = float(lon)
@@ -459,9 +532,19 @@ def corridor_of(lat, lon):
         return None
     if not (math.isfinite(lat) and math.isfinite(lon)):
         return None
+    pad_lat = CORRIDOR_WINDOW_M / 111320.0
+    pad_lon = CORRIDOR_WINDOW_M / (111320.0 * max(math.cos(
+        math.radians(lat)), 0.2))
     best = None
-    for name, a, b, _label in CORRIDORS:
-        d = _seg_dist_m(lat, lon, a, b)
+    for name, poly, bbox, _label in index:
+        x0, y0, x1, y1 = bbox
+        if lon < x0 - pad_lon or lon > x1 + pad_lon:
+            continue
+        if lat < y0 - pad_lat or lat > y1 + pad_lat:
+            continue
+        d = _poly_dist_m(lat, lon, poly)
+        if d is None:
+            continue
         if best is None or d < best[0]:
             best = (d, name)
     if best is None or best[0] > CORRIDOR_WINDOW_M:
@@ -469,12 +552,116 @@ def corridor_of(lat, lon):
     return best[1]
 
 
-def corridor_midpoint(name):
-    """Representative map point of a corridor (segment midpoint)."""
-    for cname, a, b, _label in CORRIDORS:
-        if cname == name:
-            return ((a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0)
+def corridor_midpoint(name, corridors=None):
+    """Representative map point of a corridor (middle vertex). Pure."""
+    for cname, poly, _rest in ((e[0], e[1], e[2:]) for e in
+                               _as_index(corridors)):
+        if cname == name and poly and len(poly) >= 2:
+            mid = poly[len(poly) // 2]
+            return (mid[0], mid[1])
     return None
+
+
+def load_shape_corridors(zip_path):
+    """GTFS shapes.txt + trips/routes -> corridor web (offline, pure-ish).
+
+    One corridor per shape_id: name "short · headsign" (deduped with
+    " (2)" suffixes), polyline in trip order, label = route long name.
+    Shapes with <2 points and rows with bad coords are dropped (never
+    faked). Raises on unreadable zip (callers fall back to CORRIDORS).
+    """
+    with zipfile.ZipFile(zip_path) as zf:
+        def _rows(name):
+            with zf.open(name) as fh:
+                return list(csv.DictReader(
+                    io.TextIOWrapper(fh, encoding="utf-8-sig")))
+        shapes = _rows("shapes.txt")
+        trips = _rows("trips.txt")
+        routes = _rows("routes.txt")
+    route_by_id = {r.get("route_id"): r for r in routes
+                   if isinstance(r, dict)}
+    pts = {}
+    for row in shapes:
+        try:
+            sid = row["shape_id"]
+            pt = (float(row["shape_pt_lon"]), float(row["shape_pt_lat"]))
+            seq = int(row["shape_pt_sequence"])
+        except (TypeError, ValueError, KeyError):
+            continue
+        if not (math.isfinite(pt[0]) and math.isfinite(pt[1])):
+            continue
+        pts.setdefault(sid, []).append((seq, pt))
+    headsign = {}
+    route_of = {}
+    for t in trips:
+        sid = t.get("shape_id")
+        if not sid or sid in headsign:
+            continue
+        headsign[sid] = (t.get("trip_headsign") or "").strip()
+        route_of[sid] = t.get("route_id")
+    out = []
+    used = set()
+    for sid in sorted(pts):
+        poly = [pt for _, pt in sorted(pts[sid])]
+        if len(poly) < 2:
+            continue
+        route = route_by_id.get(route_of.get(sid), {})
+        short = (route.get("route_short_name") or "").strip()
+        head = headsign.get(sid, "")
+        base = ("%s · %s" % (short, head)).strip(" ·") or sid
+        name, k = base, 2
+        while name in used:
+            name = "%s (%d)" % (base, k)
+            k += 1
+        used.add(name)
+        out.append((name, tuple(poly),
+                    (route.get("route_long_name") or "").strip()))
+    return tuple(out)
+
+
+def strip_ribbon(polyline, half_m=RIBBON_HALF_M):
+    """Polyline -> closed road-following ribbon ring (display only).
+
+    Per-vertex perpendicular offsets (equirectangular metres, labelled
+    approx like _seg_dist_m): left chain out, right chain back, closed.
+    Degenerate input (<2 distinct points) reads [] (never faked).
+    """
+    pts = [(float(x), float(y)) for x, y in polyline or []]
+    if len(pts) < 2:
+        return []
+    if pts[0] == pts[-1] and len(pts) > 2:
+        pts = pts[:-1]
+    n = len(pts)
+    normals = []
+    for i in range(n):
+        mx = max(math.cos(math.radians(pts[i][1])), 0.2)
+        acc = [0.0, 0.0]
+        for j in (i - 1, i):
+            if 0 <= j < n - 1:
+                dx = (pts[j + 1][0] - pts[j][0]) * mx
+                dy = pts[j + 1][1] - pts[j][1]
+                leng = math.hypot(dx, dy) or 1e-12
+                acc[0] += -dy / leng
+                acc[1] += dx / leng
+        leng = math.hypot(*acc)
+        if leng < 1e-9:
+            normals.append(None)
+        else:
+            dlat = half_m / 6371000.0 * 180.0 / math.pi
+            normals.append((acc[0] / leng * dlat / mx,
+                            acc[1] / leng * dlat))
+    left, right = [], []
+    for (x, y), normal in zip(pts, normals):
+        if normal is None:
+            continue
+        ox, oy = normal
+        left.append([x + ox, y + oy])
+        right.append([x - ox, y - oy])
+    if len(left) < 2:
+        return []
+    ring = left + right[::-1]
+    ring.append([ring[0][0], ring[0][1]])
+    return ring
 
 
 def _utc_hour(t):
@@ -489,14 +676,15 @@ def tallinn_hour(t):
     return time.localtime(t).tm_hour
 
 
-def track_segments(fixes, hour_of=None):
+def track_segments(fixes, hour_of=None, corridors=None):
     """Timestamped fixes -> vehicle segment speeds. Pure.
 
     ``fixes``: [{vehicle, t (epoch s), lat, lon}] for road vehicles
     (vtype 1/2/7 -- filter BEFORE calling). ``hour_of`` maps the
     segment-midpoint epoch to a 0-23 hour -- pass tallinn_hour on
     Europe/Tallinn cron hosts, _utc_hour (default) in tests and
-    UTC-stamped pipelines. Consecutive same-vehicle fixes with dt in
+    UTC-stamped pipelines. ``corridors`` is the corridor web
+    (None = legacy CORRIDORS). Consecutive same-vehicle fixes with dt in
     [TRACK_MIN_DT_S, TRACK_MAX_DT_S] and speed in
     [TRACK_MIN_KMH, TRACK_MAX_KMH] yield {vehicle, t (midpoint),
     hour, lat, lon (midpoint), speed_kmh, corridor}. Jitter, layovers
@@ -535,7 +723,7 @@ def track_segments(fixes, hour_of=None):
             if not (TRACK_MIN_KMH <= kmh <= TRACK_MAX_KMH):
                 continue
             mlat, mlon = (la0 + la1) / 2.0, (lo0 + lo1) / 2.0
-            corridor = corridor_of(mlat, mlon)
+            corridor = corridor_of(mlat, mlon, corridors)
             if not corridor:
                 continue
             hour = hour_of((t0 + t1) / 2.0)
@@ -636,11 +824,11 @@ def muu_baselines(segments):
             for c, v in buckets.items() if len(v) >= TABLE_MIN_SAMPLES}
 
 
-def table_to_pois(table):
+def table_to_pois(table, corridors=None):
     """Delay table -> delaycell_p4 POIs for the scorer join. Pure."""
     pois = []
     for (corridor, band), cell in table.items():
-        mid = corridor_midpoint(corridor)
+        mid = corridor_midpoint(corridor, corridors)
         if mid is None:
             continue
         pois.append({"kind": "delaycell_p4", "corridor": corridor,

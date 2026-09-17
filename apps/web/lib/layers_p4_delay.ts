@@ -8,11 +8,12 @@
 // the three peaks, muu excluded).
 //
 // HONESTY (load-bearing): typical, NEVER live — every def carries
-// "tavaline, mitte reaalajas"; bands are the 500 m join window around
-// representative corridor segments (documented approx, never surveyed
-// road polygons); thin/missing cells paint slate "mõõtmata" (never
-// dropped, never free-flow green). The per-listing legs are the
-// scorer's job (services/scoring/dims_p4_typical_delay.py).
+// "tavaline, mitte reaalajas"; bands are ±150 m ribbons around GTFS
+// trip-shape polylines (road-following by construction, #667 —
+// equirectangular approx, never surveyed road polygons); thin/missing
+// cells paint slate "mõõtmata" (never dropped, never free-flow
+// green). The per-listing legs are the scorer's job
+// (services/scoring/dims_p4_typical_delay.py).
 //
 // This file owns ALL delay runtime data; shared files (lib/layers.ts,
 // lib/overlays.ts, lib/outlines.ts, lib/server/snapshot.ts,
@@ -228,9 +229,9 @@ export function bonusSpecForDelay(layer: string): BonusSpec | undefined {
 /**
  * One delay corridor band row for the map sidecar. factors/ns carry
  * the four hour bands plus worst (null/0 = thin or missing ->
- * unknown slate, never dropped). rep is the segment midpoint; b is
- * the segment bbox prefilter; r holds the ±250 m display strip
- * (the 500 m join window, documented approx).
+ * unknown slate, never dropped). rep is the polyline middle vertex;
+ * b is the polyline bbox prefilter; r holds the ±150 m road ribbon
+ * (equirectangular approx, documented).
  */
 export interface DelayArea {
   corridor: string;
