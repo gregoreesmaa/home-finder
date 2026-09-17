@@ -77,21 +77,40 @@ def test_classify_exact_legend_only():
     assert (cls, matched) == (0, False)                  # never guessed
 
 
-def test_inverse_tm_tallinn():
-    lon, lat = lest97_to_lonlat(542538, 6589288)
-    assert abs(lon - 24.75) < 1e-4
-    assert abs(lat - 59.44) < 1e-4
+def test_lcc_origin_exact():
+    # EPSG:3301 definition: the projection origin maps EXACTLY to
+    # (E0, N0). Non-circular (no Tallinn reference involved).
+    e, n = lonlat_to_lest97(24.0, 57.5175538888889)
+    assert abs(e - 500000.0) < 1e-6
+    assert abs(n - 6375000.0) < 1e-6
+    lon, lat = lest97_to_lonlat(500000.0, 6375000.0)
+    assert abs(lon - 24.0) < 1e-9
+    assert abs(lat - 57.5175538888889) < 1e-9
 
 
-def test_forward_tm_tallinn():
-    # Forward series twin: within a metre of the surveyed point and a
-    # clean round-trip (reverse-map sampling depends on it).
+def test_lcc_central_meridian_easting():
+    # The central meridian (lon0 24E) maps to E0 at every latitude.
+    for lat in (58.0, 59.0, 59.44, 59.6):
+        e, _n = lonlat_to_lest97(24.0, lat)
+        assert abs(e - 500000.0) < 1e-6
+
+
+def test_lcc_tallinn_replaces_tm_pin():
+    # True LCC values for the old TM reference point (24.75, 59.44):
+    # E542555.36 N6589368.19 — dE ~17 m / dN ~80 m off the legacy TM
+    # pin (542538, 6589288), matching the measured #648 disagreement.
+    # Authority: computed from the EPSG:3301 params in batch_canopy.py
+    # (origin-exact verified above; .prj + epsg.io triple authority in
+    # the module header). This pin is the load-bearing discriminator:
+    # the old TM code fails it by ~82 m (origin/meridian pins alone
+    # pass under both projections). The old pin's agreement was
+    # circular (TM computing TM).
     e, n = lonlat_to_lest97(24.75, 59.44)
-    assert abs(e - 542538) < 1.0
-    assert abs(n - 6589288) < 1.0
+    assert abs(e - 542555.36) < 0.01
+    assert abs(n - 6589368.19) < 0.01
     lon, lat = lest97_to_lonlat(e, n)
-    assert abs(lon - 24.75) < 1e-7
-    assert abs(lat - 59.44) < 1e-7
+    assert abs(lon - 24.75) < 1e-13
+    assert abs(lat - 59.44) < 1e-13
 
 
 def test_reproject_keeps_tallest():

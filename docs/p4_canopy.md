@@ -11,8 +11,8 @@ unlabeled).
 - Maa- ja Ruumiamet CHM WMS `teenus.maaamet.ee/ows/wms-chm`
   (CC BY 4.0). Layer `CHM2022_suvi` (2022 summer flight).
 - Layer serves EPSG:3301 ONLY (no 4326 — the batch reprojects by
-  exact inverse Transverse Mercator, L-EST97, verified <1 m at
-  Tallinn, pinned by test).
+  exact Lambert Conformal Conic 2SP, true L-EST97: origin-exact +
+  2e-14 deg round-trip, pinned by test; legacy TM retired in #648).
 - Publisher legend (`GetLegendGraphic`, exact RGB match in
   `CLASS_COLORS` — verified against the live legend 2026-09-17):
   `25510F` 1-4 m, `35690D` 4-10 m, `6B860A` 10-20 m,
@@ -29,17 +29,19 @@ unlabeled).
 
 | Class | Cells | Share of canopy |
 |---|---|---|
-| <1 m / puudub (transparent) | 326 016 | — (missing) |
-| 1-4 m | 44 915 | 18 % |
-| 4-10 m | 73 771 | 30 % |
-| 10-20 m | 114 055 | 47 % (dominant) |
-| 20-30 m | 11 239 | 5 % |
+| <1 m / puudub (transparent) | 326 523 | — (missing) |
+| 1-4 m | 44 817 | 18 % |
+| 4-10 m | 73 423 | 30 % |
+| 10-20 m | 114 058 | 47 % (dominant) |
+| 20-30 m | 11 175 | 5 % |
 | >30 m | 4 | <0.1 % |
 
-Canopy cells: 243 984/570 000 (~43 %). Tall canopy (>20 m) is
+Canopy cells: 243 477/570 000 (~43 %). Tall canopy (>20 m) is
 rare; the tint ERISTAB (distinguishes), never hindab (scores).
 (Reverse-map sampling: every lon/lat cell reads its nearest source
 pixel, so 0 cells are transparent source, never splat gaps.)
+Rebuilt 2026-09-17 with the true LCC projection (#648; was
+243 984 under legacy TM — the 20-85 m shift reassigns edge cells).
 
 ## Overlay-vs-leg split
 
