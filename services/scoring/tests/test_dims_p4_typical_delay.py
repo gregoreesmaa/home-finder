@@ -30,9 +30,11 @@ from dims_p4_typical_delay import (
     dim_commute_delay,
     fetch_gps_snapshot,
     hour_band,
+    load_shape_corridors,
     muu_baselines,
     parse_gps_txt,
     score_p4_delay,
+    strip_ribbon,
     table_to_pois,
     track_segments,
 )
@@ -265,8 +267,9 @@ def test_registry_and_aggregator():
 def test_corridor_table_shape():
     names = [c[0] for c in CORRIDORS]
     assert len(names) == 8 and len(set(names)) == 8
-    for name, a, b, label in CORRIDORS:
-        assert label and isinstance(a, tuple) and isinstance(b, tuple)
+    for name, poly, label in CORRIDORS:
+        assert label and len(poly) >= 2
+        assert all(len(p) == 2 for p in poly)
         assert corridor_midpoint(name) is not None
     assert corridor_midpoint("olematu") is None
 
@@ -338,3 +341,127 @@ def test_muu_baselines_anchor_free_flow():
     assert set(MAP_BANDS) == {"hommikune tipp", "keskpäev",
                               "õhtune tipp", "muu"}
     assert WORST_BAND == "worst"
+
+
+# ---------------------------------------------------------------------------
+# Issue #667: GTFS shape web + road-following ribbons.
+# ---------------------------------------------------------------------------
+
+def _shape_zip(tmp_path):
+    """Tiny GTFS vintage: 2 routes, 3 shapes (one dup-name, one broken)."""
+    import csv
+    import io
+    import zipfile
+
+    def _write(zf, name, fieldnames, rows):
+        buf = io.StringIO()
+        w = csv.DictWriter(buf, fieldnames=fieldnames)
+        w.writeheader()
+        w.writerows(rows)
+        zf.writestr(name, buf.getvalue())
+
+    dest = str(tmp_path / "tiny-gtfs.zip")
+    with zipfile.ZipFile(dest, "w") as zf:
+        _write(zf, "routes.txt",
+               ["route_id", "route_short_name", "route_long_name"],
+               [{"route_id": "r5", "route_short_name": "5",
+                 "route_long_name": "Männiku-Viru"},
+                {"route_id": "r8", "route_short_name": "8",
+                 "route_long_name": "Õismäe-Äigrumäe"}])
+        _write(zf, "trips.txt",
+               ["trip_id", "route_id", "shape_id", "trip_headsign"],
+               [{"trip_id": "t1", "route_id": "r5", "shape_id": "s1",
+                 "trip_headsign": "Männiku"},
+                {"trip_id": "t2", "route_id": "r5", "shape_id": "s2",
+                 "trip_headsign": "Männiku"},
+                {"trip_id": "t3", "route_id": "r8", "shape_id": "s3",
+                 "trip_headsign": "Äigrumäe"}])
+        _write(zf, "shapes.txt",
+               ["shape_id", "shape_pt_lon", "shape_pt_lat",
+                "shape_pt_sequence"],
+               [{"shape_id": "s1", "shape_pt_lon": "24.70",
+                 "shape_pt_lat": "59.40", "shape_pt_sequence": "2"},
+                {"shape_id": "s1", "shape_pt_lon": "24.71",
+                 "shape_pt_lat": "59.41", "shape_pt_sequence": "1"},
+                {"shape_id": "s2", "shape_pt_lon": "24.72",
+                 "shape_pt_lat": "59.42", "shape_pt_sequence": "1"},
+                {"shape_id": "s2", "shape_pt_lon": "24.73",
+                 "shape_pt_lat": "59.43", "shape_pt_sequence": "2"},
+                {"shape_id": "s3", "shape_pt_lon": "24.80",
+                 "shape_pt_lat": "59.44", "shape_pt_sequence": "1"},
+                {"shape_id": "s3", "shape_pt_lon": "bogus",
+                 "shape_pt_lat": "59.45", "shape_pt_sequence": "2"},
+                {"shape_id": "s4", "shape_pt_lon": "24.90",
+                 "shape_pt_lat": "59.50", "shape_pt_sequence": "1"}])
+    return dest
+
+
+def test_load_shape_corridors_names_and_order(tmp_path):
+    web = load_shape_corridors(_shape_zip(tmp_path))
+    names = [c[0] for c in web]
+    # s1+s2 share "5 · Männiku": second is deduped; s3 keeps one good
+    # point but drops below 2 (out); s4 is a single point (out).
+    assert names == ["5 · Männiku", "5 · Männiku (2)"]
+    poly = web[0][1]
+    assert poly[0] == (24.71, 59.41)  # sequence order, not file order
+    assert poly[1] == (24.70, 59.40)
+    assert web[0][2] == "Männiku-Viru"
+
+
+def test_corridor_of_follows_road_not_chord():
+    # L-shaped road: the chord midpoint is far from both legs.
+    web = (("L-road", ((24.70, 59.40), (24.70, 59.42),
+                       (24.72, 59.42)), "test"),)
+    assert corridor_of(59.415, 24.701, web) == "L-road"  # on the leg
+    assert corridor_of(59.415, 24.715, web) is None  # near chord, off road
+
+
+def test_corridor_midpoint_middle_vertex():
+    web = (("L-road", ((24.70, 59.40), (24.70, 59.42),
+                       (24.72, 59.42)), "test"),)
+    assert corridor_midpoint("L-road", web) == (24.70, 59.42)
+    assert corridor_midpoint("L-road") is None  # not in legacy web
+
+
+def test_track_segments_labels_shape_web():
+    # Viimsi leg: on the shape, ~3.8 km past legacy Narva's endpoint.
+    web = (("tee", ((24.815, 59.498), (24.830, 59.502)), "test"),)
+    base = 1_700_000_000
+    fixes = [_fix("101", base, 59.500, 24.820),
+             _fix("101", base + 60, 59.500, 24.825)]
+    segs = track_segments(fixes, corridors=web)
+    assert len(segs) == 1 and segs[0]["corridor"] == "tee"
+    assert track_segments(fixes) == []  # legacy web: off-corridor here
+
+
+def test_corridor_index_matches_plain_web():
+    from dims_p4_typical_delay import _as_index, build_corridor_index
+    web = (("tee", ((24.815, 59.498), (24.830, 59.502)), "test"),)
+    index = build_corridor_index(web)
+    assert _as_index(index) is index  # prebuilt passes through untouched
+    assert _as_index(None) is not None
+    assert corridor_of(59.500, 24.822, index) == "tee"
+    assert corridor_midpoint("tee", index) == (24.830, 59.502)
+    assert corridor_midpoint("puudu", index) is None
+
+
+def test_strip_ribbon_straight_rectangle():
+    ring = strip_ribbon([(24.70, 59.40), (24.71, 59.40)], half_m=150.0)
+    assert len(ring) == 5 and ring[0] == ring[-1]
+    lats = [p[1] for p in ring]
+    assert max(lats) - min(lats) == pytest.approx(300 / 111320.0, rel=0.05)
+    lons = [p[0] for p in ring]
+    assert min(lons) == pytest.approx(24.70) and max(lons) == pytest.approx(
+        24.71)
+
+
+def test_strip_ribbon_follows_elbow_and_degenerate():
+    ring = strip_ribbon([(24.70, 59.40), (24.70, 59.42), (24.72, 59.42)],
+                        half_m=150.0)
+    assert len(ring) == 7 and ring[0] == ring[-1]  # 3+3, closed
+    lons = [p[0] for p in ring]
+    # elbow vertex (index 1 left / 4 right) straddled roadside, on-map
+    assert lons[1] < 24.70 < lons[4]
+    assert max(lons) == pytest.approx(24.72)  # end vertex: no overshoot
+    assert strip_ribbon([]) == []
+    assert strip_ribbon([(24.70, 59.40)]) == []

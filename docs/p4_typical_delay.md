@@ -80,11 +80,14 @@ segments across all 8 corridors (p50 16.9 km/h, plausible urban bus)
 → 0 table cells (honestly thin: 3 snapshots cannot reach n=20 with
 a free-flow baseline — NULLs, never assumed factors).
 
-**Corridors** (representative segments ±500 m join window, GTFS
-shapes.txt absent from the vintage so geometry is documented
-representative, validated by weekday-stop counts): Pärnu mnt, Tartu
-mnt, Narva mnt, Paldiski mnt, Ehitajate tee, Laagna tee, Peterburi
-tee, Sõpruse pst.
+**Corridors** (#667: the full GTFS shape web, NOT the 8 legacy
+streets): every trip shape_id is a corridor (name "short ·
+headsign", e.g. "5 · Männiku"), geometry = ±150 m ribbon along the
+shape polyline (road-following by construction — shapes ARE the
+driven roads, so sea overlap is gone by construction), join =
+nearest shape within the 500 m window (bbox-prefiltered). Legacy 8
+survive only as the GTFS-less fallback. Validation = weekday stops
+nearby per shape.
 
 **Map** (approved 5-layer design): delay-morning/midday/evening/
 offpeak/worst (`apps/web/lib/layers_p4_delay.ts` + areas route +
