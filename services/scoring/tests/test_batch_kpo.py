@@ -168,5 +168,34 @@ def test_build_merge_only_offline(tmp_path):
     assert "CC-BY 4.0" in doc["attribution"]
 
 
+def test_fetch_window_fails_loud_on_corrupt_xml(tmp_path):
+    # A corrupt window must raise (main exits 1, writes nothing) --
+    # never silently drop coverage.
+    import batch_kpo
+    from unittest.mock import patch
+    with patch.object(batch_kpo, "_get", return_value=b"<broken"):
+        try:
+            batch_kpo._fetch_window(str(tmp_path), (24.74, 59.43, 24.75, 59.44))
+        except ValueError as exc:
+            assert "unparseable GML" in str(exc)
+        else:
+            raise AssertionError("corrupt window did not raise")
+
+
+def test_kataster_proof_restores_sys_path():
+    # Regression: the lazy dims import used bare sys.path.pop(),
+    # eating one stdlib entry per call until lazy stdlib imports
+    # (datetime.strptime -> _strptime) broke suite-wide.
+    before = list(sys.path)
+    for _ in range(3):
+        kataster_proof(parcel_windows(PARCELS),
+                       to_sidecar(parse_members(GML)))
+    assert sys.path == before
+    import datetime
+    moment = datetime.datetime.strptime("2026/09/16 19:00:00 +0300",
+                                        "%Y/%m/%d %H:%M:%S %z")
+    assert moment.utcoffset().total_seconds() == 3 * 3600
+
+
 def test_families_cover_all_eighteen():
     assert len(FAMILIES) == 18

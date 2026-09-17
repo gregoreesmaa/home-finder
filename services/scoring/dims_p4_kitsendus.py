@@ -170,8 +170,13 @@ def _band_for_zone(attrs: dict) -> Optional[int]:
     pinned as conditioned 50 by the #626 acceptance ("Müna"/50).
     """
     attrs = attrs or {}
+    # "voond" is the sidecar-row key (batch_kpo.to_sidecar); the
+    # voond_liik_id* keys are the raw WFS attribute names. Callers pass
+    # either shape -- a live sidecar row must score, never silently
+    # NULL on a key-name mismatch.
     raw = str(attrs.get("voond_liik_id_vaartus", "")
-              or attrs.get("voond_liik_id", "")).lower()
+              or attrs.get("voond_liik_id", "")
+              or attrs.get("voond", "")).lower()
     for key, score in BAN_SCORES.items():
         if key in raw:
             return score

@@ -225,7 +225,6 @@ export const KPO_BAND_FILL: Record<string, string> = {
   unknown: "#d1d5db",
 };
 
-/** Fill key for one zone-type value (mirrors the scorer band table). */
 /** Fill key for one zone (mirrors the scorer band table: ban words
  * first, then the conditioned set incl. "kaitsevöönd" + "asjaõigus";
  * heritage zones condition whatever the wording, Muinsuskaitseamet

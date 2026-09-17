@@ -155,6 +155,42 @@ def test_module_adds_no_network_calls():
     assert "urllib" not in src
 
 
+def test_sidecar_row_shape_scores_end_to_end():
+    # The exact row shape batch_kpo.to_sidecar ships (top-level voond,
+    # no voond_liik_id* keys) must drive measured bands -- a key-name
+    # mismatch that silently NULLs live data is the failure mode.
+    row = {"family": "elekter", "nimi": "AXPK.4x16",
+           "voond": "Elektripaigaldise kaitsevöönd",
+           "reegel": "Ehitusseadustik",
+           "b": [24.74, 59.43, 24.75, 59.44],
+           "r": [[[24.7472, 59.4373], [24.7474, 59.4373],
+                  [24.7474, 59.4375], [24.7472, 59.4375]]]}
+    zones = [{"attrs": {"voond": row["voond"], "nimi": row["nimi"],
+                        "family": row["family"]},
+              "polygons": row["r"]}]
+    v, reason = dim_restriction_zone({"lon": 24.7473, "lat": 59.4374},
+                                     zones)
+    assert v == 50
+    assert "AXPK.4x16" in reason
+
+
+def test_worst_min_wins_across_bands():
+    # One parcel inside BOTH a ban and a conditioned zone scores the
+    # ban (buyer-conservative worst/min wins).
+    box = [[[24.74, 59.44], [24.743, 59.44],
+            [24.743, 59.45], [24.74, 59.45]]]
+    zones = [
+        {"attrs": {"voond": "tingimuslik-kooskõlastus", "nimi": "C"},
+         "polygons": box},
+        {"attrs": {"voond": "ehituskeeld", "nimi": "B"},
+         "polygons": box},
+    ]
+    v, reason = dim_restriction_zone({"lon": 24.7417, "lat": 59.4483},
+                                     zones)
+    assert v == 20
+    assert "skoor 20" in reason
+
+
 def test_registry_and_aggregator():
     assert [k for k, _ in P4_KITSENDUS_DIMS] == [
         "restriction_zone", "utility_corridor"]

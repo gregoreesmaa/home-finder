@@ -132,7 +132,10 @@ def _fetch_window(cache_dir: str, bbox: Tuple[float, float, float, float],
     try:
         root = ET.fromstring(raw)
     except ET.ParseError:
-        return []
+        # A corrupt window fails LOUD (exit 1, writes nothing): silent
+        # drops would let the "known-parcel windows" coverage claim
+        # quietly overstate. Caught in main like every error path.
+        raise ValueError("unparseable GML for window %s" % key)
     members = root.findall(
         "{http://www.opengis.net/wfs/2.0}member")
     if len(members) >= WINDOW_COUNT and depth < MAXDEPTH:
@@ -313,12 +316,17 @@ def kataster_proof(parcels: List[dict], rows: List[dict],
     >=20-parcel live proof (kataster tunnus) on live rows, counted
     honestly even when some parcels stay empty.
     """
-    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                    "..", "..", "services", "scoring"))
+    scoring_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                 "..", "..", "services", "scoring")
+    sys.path.insert(0, scoring_dir)
     try:
         from dims_p4_kitsendus import point_in_polygon
     finally:
-        sys.path.pop()
+        # pop(0) restores OUR entry: bare pop() eats a stdlib entry
+        # off the end per call, eventually breaking lazy stdlib
+        # imports suite-wide (datetime.strptime -> _strptime).
+        if sys.path and sys.path[0] == scoring_dir:
+            del sys.path[0]
     parcel_rings = parcel_rings or {}
     # Zone bboxes once (the ray-casts run only on bbox overlap).
     zb = []
