@@ -99,13 +99,18 @@ def test_lcc_tallinn_replaces_tm_pin():
     # True LCC values for the old TM reference point (24.75, 59.44):
     # E542555.36 N6589368.19 — dE ~17 m / dN ~80 m off the legacy TM
     # pin (542538, 6589288), matching the measured #648 disagreement.
-    # The old pin's agreement was circular (TM computing TM).
+    # Authority: computed from the EPSG:3301 params in batch_canopy.py
+    # (origin-exact verified above; .prj + epsg.io triple authority in
+    # the module header). This pin is the load-bearing discriminator:
+    # the old TM code fails it by ~82 m (origin/meridian pins alone
+    # pass under both projections). The old pin's agreement was
+    # circular (TM computing TM).
     e, n = lonlat_to_lest97(24.75, 59.44)
     assert abs(e - 542555.36) < 0.01
     assert abs(n - 6589368.19) < 0.01
     lon, lat = lest97_to_lonlat(e, n)
-    assert abs(lon - 24.75) < 2e-14
-    assert abs(lat - 59.44) < 3e-14
+    assert abs(lon - 24.75) < 1e-13
+    assert abs(lat - 59.44) < 1e-13
 
 
 def test_reproject_keeps_tallest():

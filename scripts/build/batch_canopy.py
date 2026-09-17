@@ -242,7 +242,7 @@ def reproject(
 ) -> List[int]:
     """Nearest-neighbour reproject of the 3301 class grid onto the
     lon/lat target grid. REVERSE-map: every dest cell samples its own
-    centre (forward TM -> nearest source pixel), so coverage is
+    centre (forward LCC -> nearest source pixel), so coverage is
     complete by construction — a 0 cell means the source render is
     transparent there (honestly missing), never a splat gap. Cells
     whose centre falls outside the source window stay 0."""

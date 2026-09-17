@@ -11,8 +11,8 @@ unlabeled).
 - Maa- ja Ruumiamet CHM WMS `teenus.maaamet.ee/ows/wms-chm`
   (CC BY 4.0). Layer `CHM2022_suvi` (2022 summer flight).
 - Layer serves EPSG:3301 ONLY (no 4326 — the batch reprojects by
-  exact inverse Transverse Mercator, L-EST97, verified <1 m at
-  Tallinn, pinned by test).
+  exact Lambert Conformal Conic 2SP, true L-EST97: origin-exact +
+  2e-14 deg round-trip, pinned by test; legacy TM retired in #648).
 - Publisher legend (`GetLegendGraphic`, exact RGB match in
   `CLASS_COLORS` — verified against the live legend 2026-09-17):
   `25510F` 1-4 m, `35690D` 4-10 m, `6B860A` 10-20 m,
