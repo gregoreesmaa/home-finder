@@ -607,6 +607,13 @@ export function overlayColorFor(layer: LayerId): string {
     // other marker (distinct-color test).
     case "etak":
       return "#1e1b4b";
+    // RELIEF-HOOK (#619): relief marker (tint layer — the point overlay
+    // stays empty live, so this colors only the toggle dot). #292524:
+    // stone-800 cliff dark (NOT #1c1917 stone-950 or #44403c stone-700
+    // — taken; layers never co-render). Distinct from every other
+    // marker (distinct-color test).
+    case "relief":
+      return "#292524";
     // MEDRE-HOOK (#609): medre slice markers (Step-1 honest-empty —
     // the point overlay stays empty live, so this colors only the
     // toggle dot). #ffedd5: orange-100 clinic paper; #ede9fe:
@@ -1133,6 +1140,12 @@ export function overlayLegendFor(layer: LayerId): string {
     // MAALI (litsentsita); ETAK võidab OSMi vastuolu korral.
     case "etak":
       return "ETAK märgala/vesi/õu (mõõdetud, vaatepõhine WFS) · tsoonis = märgala (raba/madalsoo 25 niiskeim, soovik 35) / vesi 30 (nimega, kaugusvööndid hindab skoorija) / õu (era/tootmis 45 läbiv, haljas 70 roheline); väljaspool = teadmata, mitte kuiv maa; reljeef EI MAALI";
+    // RELIEF-HOOK (#619): relief hypsometric character tint (DTM,
+    // taste-only) — the tint describes ground character, never quality:
+    // high ground is view character, low ground is dampness character,
+    // neither is a score (flatness is taste: cyclist vs view-seeker).
+    case "relief":
+      return "Reljeefi toon (DTM hüpsomeetria, maitsekaart) · toon = maapinna iseloom (klint 41–45 / Nõmme 27–52 / Pirita 0–6 — toon ERISTAB, ei hinda); maitse, mitte hinne (kõrgus = vaate-iseloom, madalus = tasane iseloom — kummki pole hinne); skoorijal jalgu EI OLE";
     // ASUMEDIA-HOOK (#495): asumedia (own-snapshot asking medians) —
     // the dated negative rides along: 0/84 asums reach MIN_N=5, so
     // the field is unknown everywhere until the reopen lands real

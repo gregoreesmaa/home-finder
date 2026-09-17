@@ -645,6 +645,17 @@ import {
   bonusSpecForEtak,
   isEtakPolygonOnlyLayer,
 } from "./layers_p4_etak";
+// RELIEF-HOOK (#619): relief tint tables live in ./layers_p4_relief
+// (DTM hypsometric tint, taste-only, grid sidecar). That module
+// imports layers only as types, so no runtime cycle.
+import type { ReliefLayerId } from "./layers_p4_relief";
+import {
+  RELIEF_DECAY,
+  RELIEF_DEFS,
+  RELIEF_TAGS,
+  bonusSpecForRelief,
+  isReliefTasteOnlyLayer,
+} from "./layers_p4_relief";
 // FIXIT-HOOK (#623): report-pin tables live in ./layers_p4_fixit
 // (fixit markers, register sidecar). That module imports layers only
 // as types, so no runtime cycle.
@@ -819,7 +830,10 @@ export type LayerId =
   | QuarryLayerId
   // SOIL-HOOK (#617): soil contour id (./layers_p4_soil, Maa-amet
   // mullastiku kaart, polygons only, no parameters3 id).
-  | SoilLayerId;
+  | SoilLayerId
+  // RELIEF-HOOK (#619): relief tint id (./layers_p4_relief, DTM
+  // hypsometric tint, taste-only, no parameters3 id).
+  | ReliefLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -1064,6 +1078,10 @@ const DECAY_KM: Record<LayerId, number> = {
   // ETAK_DECAY — INERT placeholder, polygons only: zero points, never
   // evaluated).
   ...ETAK_DECAY,
+  // RELIEF-HOOK (#619): relief tint radius (see layers_p4_relief.ts
+  // RELIEF_DECAY — INERT placeholder, tint only: zero points, never
+  // evaluated).
+  ...RELIEF_DECAY,
   // SEVESO-HOOK (#613): danger-polygon radius (see layers_p4_seveso.ts
   // SEVESO_DECAY — INERT placeholder, polygons only: zero points,
   // never evaluated).
@@ -1330,6 +1348,9 @@ export const LAYERS: LayerDef[] = [
   // ETAK-HOOK (#618): etak contour def (ETAK maakate/hüdro, polygons
   // only, no parameters3 id) from ./layers_p4_etak.
   ...ETAK_DEFS,
+  // RELIEF-HOOK (#619): relief tint def (DTM hypsometric tint,
+  // taste-only, no parameters3 id) from ./layers_p4_relief.
+  ...RELIEF_DEFS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -1492,6 +1513,9 @@ const TAGS: Record<LayerId, string> = {
   // ETAK-HOOK (#618): etak contour source note (see
   // layers_p4_etak.ts ETAK_TAGS — prose, NOT an Overpass fragment).
   ...ETAK_TAGS,
+  // RELIEF-HOOK (#619): relief tint source note (see
+  // layers_p4_relief.ts RELIEF_TAGS — prose, NOT an Overpass fragment).
+  ...RELIEF_TAGS,
   // SEVESO-HOOK (#613): danger-polygon source note (see
   // layers_p4_seveso.ts SEVESO_TAGS — prose, NOT an Overpass fragment).
   ...SEVESO_TAGS,
@@ -1772,6 +1796,10 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // (INERT — polygons only, never evaluated).
   const etak = bonusSpecForEtak(layer);
   if (etak) return etak;
+  // RELIEF-HOOK (#619): relief tint spec lives in ./layers_p4_relief
+  // (INERT — tint only, never evaluated).
+  const relief = bonusSpecForRelief(layer);
+  if (relief) return relief;
   // SEVESO-HOOK (#613): danger-polygon spec lives in
   // ./layers_p4_seveso (INERT — polygons only, never evaluated).
   const seveso = bonusSpecForSeveso(layer);
@@ -2156,6 +2184,10 @@ export async function fetchWindow(
   // (polygons only — the viewport proxy carries the data). Same skip,
   // same reason.
   if (isEtakPolygonOnlyLayer(layer)) return null;
+  // RELIEF-HOOK (#619): relief has no raster master by decision
+  // (tint only — the grid sidecar carries the data). Same skip,
+  // same reason.
+  if (isReliefTasteOnlyLayer(layer)) return null;
   // SEVESO-HOOK (#613): seveso has no raster master by licence decision
   // (polygons only — the sidecar carries the data). Same skip, same
   // reason.

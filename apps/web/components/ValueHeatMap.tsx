@@ -19,6 +19,7 @@ import type { QuarryArea } from "../lib/layers_p4_quarry";
 import type { MaaparandusArea } from "../lib/layers_p4_maaparandus";
 import type { SoilArea } from "../lib/layers_p4_soil";
 import type { EtakArea } from "../lib/layers_p4_etak";
+import type { ReliefTintGrid } from "../lib/layers_p4_relief";
 import {
   applyFloodPolygons,
   applyMaaParcelPolygons,
@@ -31,6 +32,7 @@ import {
   applyQuarryPolygons,
   applyMaaparandusPolygons,
   applyEtakPolygons,
+  applyReliefTint,
   applyUsePolygons,
   clearVectorOverlays,
   type OutlineMap,
@@ -56,13 +58,13 @@ const ESTONIA_CENTER: [number, number] = [25.0, 58.75];
  * present, then parcel fills, then eelis polygons, then seveso danger
  * fills, then stateland state/auction fills, then quarry permit fills,
  * then drainage network/outflow shapes, then soil contour fills, then
- * etak contour fills, then point markers, then use-fills (page
- * guarantees flood-areas, maa-parcels, eelis-areas, seveso-areas,
- * stateland-areas, quarry-areas, drainage-areas, soil-areas,
- * etak-areas, outlines and points never coincide — and fills and
- * points never coincide either), otherwise park outlines; hidden
- * clears the slot. All painters clear stale layers first, so switches
- * never stack.
+ * etak contour fills, then the relief character tint, then point
+ * markers, then use-fills (page guarantees flood-areas, maa-parcels,
+ * eelis-areas, seveso-areas, stateland-areas, quarry-areas,
+ * drainage-areas, soil-areas, etak-areas, relief-tint, outlines and
+ * points never coincide — and fills and points never coincide either),
+ * otherwise park outlines; hidden clears the slot. All painters clear
+ * stale layers first, so switches never stack.
  */
 function paintOverlay(
   mapObj: OutlineMap,
@@ -79,6 +81,7 @@ function paintOverlay(
     maaparandusAreas?: MaaparandusArea[] | null;
     soilAreas?: SoilArea[] | null;
     etakAreas?: EtakArea[] | null;
+    reliefTint?: ReliefTintGrid | null;
     overlayPoints?: OverlayPoint[] | null;
     usePolygons?: UseFillPolygon[] | null;
     overlayColor?: string;
@@ -146,6 +149,12 @@ function paintOverlay(
     applyEtakPolygons(mapObj, opts.etakAreas);
     return;
   }
+  // RELIEF-HOOK (#619): DTM hypsometric character tint (taste-only —
+  // no score field is painted for this layer, by design).
+  if (opts.reliefTint) {
+    applyReliefTint(mapObj, opts.reliefTint);
+    return;
+  }
   if (opts.overlayPoints && opts.overlayPoints.length > 0) {
     applyPointOverlay(mapObj, opts.overlayPoints, { color: opts.overlayColor ?? "#1d4ed8" });
     return;
@@ -181,6 +190,7 @@ export function ValueHeatMap({
   maaparandusAreas,
   soilAreas,
   etakAreas,
+  reliefTint,
   overlayPoints,
   usePolygons,
   overlayColor,
@@ -221,6 +231,8 @@ export function ValueHeatMap({
   soilAreas?: SoilArea[] | null;
   /** ETAK wetland/water/yard fills (etak layer only); class choropleth. */
   etakAreas?: EtakArea[] | null;
+  /** DTM hypsometric tint grid (relief layer only); taste-only image. */
+  reliefTint?: ReliefTintGrid | null;
   /** Point markers drawn ABOVE the raster (all layers but parks). */
   overlayPoints?: OverlayPoint[] | null;
   /** Designated-use fills drawn ABOVE the field (planktpr only). */
@@ -264,6 +276,9 @@ export function ValueHeatMap({
     // ETAK-HOOK (#618): etakAreas ride the refresh slot so pans keep
     // the contour fills (same slot as the painted effect below).
     etakAreas,
+    // RELIEF-HOOK (#619): reliefTint rides the refresh slot so pans
+    // keep the tint (same slot as the painted effect below).
+    reliefTint,
     overlayPoints,
     usePolygons,
     overlayColor,
@@ -285,6 +300,9 @@ export function ValueHeatMap({
     // ETAK-HOOK (#618): etakAreas ride the refresh slot so pans keep
     // the contour fills (same slot as the painted effect below).
     etakAreas,
+    // RELIEF-HOOK (#619): reliefTint rides the refresh slot so pans
+    // keep the tint (same slot as the painted effect below).
+    reliefTint,
     overlayPoints,
     usePolygons,
     overlayColor,
@@ -479,9 +497,10 @@ export function ValueHeatMap({
       // DRAINAGE-HOOK (#616): maaparandusAreas join the painted slot.
       // SOIL-HOOK (#617): soilAreas join the painted slot.
       // ETAK-HOOK (#618): etakAreas join the painted slot.
-      paintOverlay(mapRef.current, { outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, overlayPoints, usePolygons, overlayColor, showOverlay });
+      // RELIEF-HOOK (#619): reliefTint joins the painted slot.
+      paintOverlay(mapRef.current, { outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, reliefTint, overlayPoints, usePolygons, overlayColor, showOverlay });
     }
-  }, [outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, overlayPoints, usePolygons, overlayColor, showOverlay]);
+  }, [outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, reliefTint, overlayPoints, usePolygons, overlayColor, showOverlay]);
 
   return (
     <section aria-label={title}>

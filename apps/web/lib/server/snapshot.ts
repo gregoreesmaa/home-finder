@@ -195,6 +195,11 @@ import { SOIL_RASTER_FILE } from "../layers_p4_soil";
 // to an absent file so windows degrade to null; the viewport proxy is
 // honestly empty when the WFS is down).
 import { ETAK_RASTER_FILE } from "../layers_p4_etak";
+// RELIEF-HOOK (#619): tint raster name lives in layers_p4_relief.ts
+// (master intentionally never built — RELIEF_NO_RASTER; the name
+// resolves to an absent file so windows degrade to null; the grid
+// sidecar is honestly null when unharvested).
+import { RELIEF_RASTER_FILE } from "../layers_p4_relief";
 // OHUSEIRE-HOOK (#610): station raster filename + sidecar point type
 // live in layers_p4_ohuseire.ts (raster intentionally never built —
 // OHUSEIRE_NO_RASTER; the name resolves to an absent file so rasters
@@ -929,6 +934,28 @@ export async function loadQuarryAreas(dir: string): Promise<QuarryArea[]> {
 // DRAINAGE-HOOK (#616): network/outflow sidecar cache (same discipline).
 const maaparandusAreaCache = new Map<string, MaaparandusArea[]>();
 
+// RELIEF-HOOK (#619): relief tint-grid sidecar cache (same discipline).
+const reliefTintCache = new Map<string, unknown | null>();
+
+// RELIEF-HOOK (#619): relief tint grid sidecar
+// (`relief/relief-tint.json`, written by scripts/build/batch_relief.py
+// off the cached WCS DTM GeoTIFF): county height grid. A missing
+// sidecar is honestly null (DTM unharvested), never an error; a
+// malformed grid is honestly null (never a shifted tint).
+export async function loadReliefTint(dir: string): Promise<unknown | null> {
+  const hit = reliefTintCache.get(dir);
+  if (hit !== undefined) return hit;
+  let grid: unknown | null = null;
+  try {
+    const raw = await fs.readFile(path.join(dir, "relief", "relief-tint.json"), "utf8");
+    grid = JSON.parse(raw);
+  } catch {
+    // Optional sidecar: honestly null below.
+  }
+  reliefTintCache.set(dir, grid);
+  return grid;
+}
+
 // DRAINAGE-HOOK (#616): maaparandus network/outflow sidecar
 // (`maaparandus/maaparandus-areas.json`, written by
 // scripts/build/batch_maaparandus.py off the cached WFS GeoJSON):
@@ -1292,6 +1319,10 @@ const RASTER_FILE: Record<LayerId, string> = {
   // SOIL_NO_RASTER; contours ARE the field; absent file degrades to
   // null, honestly).
   ...SOIL_RASTER_FILE,
+  // RELIEF-HOOK (#619): relief tint raster name only (no master built
+  // — RELIEF_NO_RASTER; the tint grid IS the field; absent file
+  // degrades to null, honestly).
+  ...RELIEF_RASTER_FILE,
 };
 
 /**
@@ -1819,6 +1850,10 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // layers_p4_soil.ts SOIL_NO_METRO) — the name resolves to an absent
   // file so windows fall back to county cleanly.
   soil: "soil-metro",
+  // RELIEF-HOOK (#619): no relief metro master by documented decision
+  // (see layers_p4_relief.ts RELIEF_NO_METRO) — the name resolves to
+  // an absent file so windows fall back to county cleanly.
+  relief: "relief-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */
