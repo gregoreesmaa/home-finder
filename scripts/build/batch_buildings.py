@@ -40,7 +40,7 @@ import zipfile
 import xml.etree.ElementTree as ET
 from typing import Dict, List, Optional, Tuple
 
-from batch_canopy import lest97_to_lonlat  # noqa: E402  (exact inverse TM, shared)
+from batch_canopy import lest97_to_lonlat  # noqa: E402  (true LCC inverse, shared; #648)
 
 #: Sidecar filename inside the snapshot dir.
 SIDECAR_PATH = os.path.join("buildings", "buildings-tint.json")

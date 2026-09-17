@@ -29,17 +29,19 @@ unlabeled).
 
 | Class | Cells | Share of canopy |
 |---|---|---|
-| <1 m / puudub (transparent) | 326 016 | — (missing) |
-| 1-4 m | 44 915 | 18 % |
-| 4-10 m | 73 771 | 30 % |
-| 10-20 m | 114 055 | 47 % (dominant) |
-| 20-30 m | 11 239 | 5 % |
+| <1 m / puudub (transparent) | 326 523 | — (missing) |
+| 1-4 m | 44 817 | 18 % |
+| 4-10 m | 73 423 | 30 % |
+| 10-20 m | 114 058 | 47 % (dominant) |
+| 20-30 m | 11 175 | 5 % |
 | >30 m | 4 | <0.1 % |
 
-Canopy cells: 243 984/570 000 (~43 %). Tall canopy (>20 m) is
+Canopy cells: 243 477/570 000 (~43 %). Tall canopy (>20 m) is
 rare; the tint ERISTAB (distinguishes), never hindab (scores).
 (Reverse-map sampling: every lon/lat cell reads its nearest source
 pixel, so 0 cells are transparent source, never splat gaps.)
+Rebuilt 2026-09-17 with the true LCC projection (#648; was
+243 984 under legacy TM — the 20-85 m shift reassigns edge cells).
 
 ## Overlay-vs-leg split
 

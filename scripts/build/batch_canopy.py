@@ -19,11 +19,12 @@ low/short canopy).
 
 HONESTY (load-bearing): the render is EPSG:3301 (the layer serves no
 4326); each lon/lat cell reverse-samples its nearest source pixel by
-exact forward Transverse Mercator (L-EST97, round-trip <1 m at
-Tallinn — pinned by test), nearest-neighbour, so coverage is complete
-by construction (no splat gaps). Unmatched legend colors are MISSING + counted
-(never guessed into the nearest class: a style change must fail
-visibly). A missing input writes NOTHING (unknown, never partial).
+exact forward Lambert Conformal Conic 2SP (true L-EST97, origin-exact
++ round-trip 2e-14 deg — pinned by test), nearest-neighbour, so
+coverage is complete by construction (no splat gaps). Unmatched legend
+colors are MISSING + counted (never guessed into the nearest class: a
+style change must fail visibly). A missing input writes NOTHING
+(unknown, never partial).
 
 Rebuild: python3 scripts/build/batch_canopy.py \\
     --png /tmp/hf-620-cache/harjumaa-chm22.png \\
@@ -56,20 +57,13 @@ CLASS_COLORS: List[Tuple[int, int, int]] = [
     (0xE0, 0x1F, 0x1F),  # 30 m <
 ]
 
-#: L-EST97 constants (GRS80 Transverse Mercator, lon0 24E).
-#: LEGACY (issue #648): L-EST97 is really Lambert Conformal Conic 2SP
-#: (see the LCC block below) — the TM below disagrees with LCC by
-#: 20-85 m across Harju and is kept ONLY until #648 flips the two
-#: lest97_* functions. New code must use lest97_to_lonlat_lcc /
-#: lonlat_to_lest97_lcc.
+#: GRS80 ellipsoid (shared by the LCC projection below).
+#: RETIRED (#648): the Transverse Mercator constants (_EP2/_K0/_LON0/
+#: _E0/_E1) are gone — L-EST97 is Lambert Conformal Conic 2SP, and the
+#: TM twins disagreed with LCC by 20-85 m across Harju.
 _A = 6378137.0
 _F = 1 / 298.257222101
 _E2 = 2 * _F - _F * _F
-_EP2 = _E2 / (1 - _E2)
-_K0 = 0.9996
-_LON0 = math.radians(24.0)
-_E0 = 500000.0
-_E1 = (1 - math.sqrt(1 - _E2)) / (1 + math.sqrt(1 - _E2))
 
 #: True L-EST97 = Lambert Conformal Conic 2SP (EPSG:3301), GRS80.
 #: Triple authority: the official .prj inside Metsamuutused_2024.zip
@@ -110,8 +104,8 @@ def lonlat_to_lest97_lcc(lon: float, lat: float) -> Tuple[float, float]:
     """True forward L-EST97 (lon/lat degrees -> easting/northing).
 
     Lambert Conformal Conic 2SP per EPSG:3301 (see constants above).
-    Round-trips to 2e-14 deg (pinned by test). USE THIS for new code;
-    the TM twins stay until issue #648 flips them.
+    Round-trips to 2e-14 deg (pinned by test). Issue #648 flipped
+    the legacy TM twins onto these delegates.
     """
     t = _lcc_t(math.radians(lat))
     r = _A * _LCC_F * t ** _LCC_N
@@ -146,75 +140,24 @@ DST_ROWS = 570
 
 
 def lonlat_to_lest97(lon: float, lat: float) -> Tuple[float, float]:
-    """Exact forward Transverse Mercator (lon/lat degrees -> L-EST97).
+    """True forward L-EST97 (lon/lat degrees -> easting/northing).
 
-    Series twin of lest97_to_lonlat (same ellipsoid constants):
-    round-trips to <1 m at Tallinn (pinned by test). Used by the
-    reverse-map reproject so every lon/lat cell samples its own
-    nearest source pixel — no forward-splat voids, ever.
+    Lambert Conformal Conic 2SP per EPSG:3301 (issue #648 flipped the
+    legacy Transverse Mercator twins, which disagreed with LCC by
+    20-85 m across Harju). Delegates to lonlat_to_lest97_lcc — same
+    signature, true projection. Used by the reverse-map reproject so
+    every lon/lat cell samples its own nearest source pixel.
     """
-    phi = math.radians(lat)
-    lam = math.radians(lon)
-    sin_phi = math.sin(phi)
-    cos_phi = math.cos(phi)
-    tan_phi = math.tan(phi)
-    n1 = _A / math.sqrt(1 - _E2 * sin_phi * sin_phi)
-    t = tan_phi * tan_phi
-    c = _EP2 * cos_phi * cos_phi
-    a = (lam - _LON0) * cos_phi
-    e2 = _E2
-    m = _A * (
-        (1 - e2 / 4 - 3 * e2 * e2 / 64 - 5 * e2**3 / 256) * phi
-        - (3 * e2 / 8 + 3 * e2 * e2 / 32 + 45 * e2**3 / 1024) * math.sin(2 * phi)
-        + (15 * e2 * e2 / 256 + 45 * e2**3 / 1024) * math.sin(4 * phi)
-        - (35 * e2**3 / 3072) * math.sin(6 * phi)
-    )
-    easting = _E0 + _K0 * n1 * (
-        a
-        + (1 - t + c) * a**3 / 6
-        + (5 - 18 * t + t * t + 72 * c - 58 * _EP2) * a**5 / 120
-    )
-    northing = _K0 * (
-        m
-        + n1
-        * tan_phi
-        * (
-            a * a / 2
-            + (5 - t + 9 * c + 4 * c * c) * a**4 / 24
-            + (61 - 58 * t + t * t + 600 * c - 330 * _EP2) * a**6 / 720
-        )
-    )
-    return easting, northing
+    return lonlat_to_lest97_lcc(lon, lat)
 
 
 def lest97_to_lonlat(easting: float, northing: float) -> Tuple[float, float]:
-    """Exact inverse Transverse Mercator (L-EST97 -> lon/lat degrees)."""
-    x = easting - _E0
-    m = northing / _K0
-    mu = m / (_A * (1 - _E2 / 4 - 3 * _E2 * _E2 / 64 - 5 * _E2 ** 3 / 256))
-    fp = (
-        mu
-        + (3 * _E1 / 2 - 27 * _E1 ** 3 / 32) * math.sin(2 * mu)
-        + (21 * _E1 * _E1 / 16 - 55 * _E1 ** 4 / 32) * math.sin(4 * mu)
-        + (151 * _E1 ** 3 / 96) * math.sin(6 * mu)
-        + (1097 * _E1 ** 4 / 512) * math.sin(8 * mu)
-    )
-    c1 = _EP2 * math.cos(fp) ** 2
-    t1 = math.tan(fp) ** 2
-    n1 = _A / math.sqrt(1 - _E2 * math.sin(fp) ** 2)
-    r1 = _A * (1 - _E2) / (1 - _E2 * math.sin(fp) ** 2) ** 1.5
-    dd = x / (n1 * _K0)
-    lat = fp - (n1 * math.tan(fp) / r1) * (
-        dd * dd / 2 - (5 + 3 * t1 + 10 * c1 - 4 * _EP2 - 9 * _EP2) * dd**4 / 24
-    )
-    lon = _LON0 + (
-        dd
-        - (1 + 2 * t1 + c1) * dd**3 / 6
-        + (5 - 2 * c1 + 28 * t1 - 3 * c1 * c1 + 8 * _EP2 + 24 * t1 * t1)
-        * dd**5
-        / 120
-    ) / math.cos(fp)
-    return math.degrees(lon), math.degrees(lat)
+    """True inverse L-EST97 (easting/northing -> lon/lat degrees).
+
+    Lambert Conformal Conic 2SP per EPSG:3301 (issue #648 — see
+    lonlat_to_lest97). Delegates to lest97_to_lonlat_lcc.
+    """
+    return lest97_to_lonlat_lcc(easting, northing)
 
 
 def read_png_rgba(path: str) -> Tuple[int, int, List[Tuple[int, int, int, int]]]:

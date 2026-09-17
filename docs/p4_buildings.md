@@ -29,13 +29,14 @@ underground parts, excluded + counted; 13 without a year stamp).
 
 | Class (OUR bins) | Cells | Reads as |
 |---|---|---|
-| 0-3 m | 1 727 | sheds, garages |
-| 3-6 m | 5 454 | 1-storey houses |
-| 6-12 m | 20 490 | 2-3 storey stock (dominant) |
-| 12-25 m | 4 592 | apartment blocks |
-| >25 m | 793 | towers (Tallinn centre) |
+| 0-3 m | 1 704 | sheds, garages |
+| 3-6 m | 5 417 | 1-storey houses |
+| 6-12 m | 20 455 | 2-3 storey stock (dominant) |
+| 12-25 m | 4 662 | apartment blocks |
+| >25 m | 792 | towers (Tallinn centre) |
 
-Painted cells: 33 056/570 000. Only roof-plane rings paint (walls/
+Painted cells: 33 030/570 000 (rebuilt 2026-09-17, true LCC #648;
+was 33 056 under legacy TM). Only roof-plane rings paint (walls/
 ground never do); courtyards subtract (even-odd); sub-cell houses
 mark their centroid cell (the cell DOES contain the building — no
 invented area); max class wins per cell (stated). Spot-checks:
