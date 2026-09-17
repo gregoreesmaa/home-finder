@@ -138,8 +138,9 @@ describe("overlay legend + colors", () => {
     // RELIEF-HOOK (#619): relief joins the registry (129 + 1).
     // BUILDINGS-HOOK (#621) is in; DENSITY-HOOK (#622): density joins the registry (132 + 1).
     // DENSITY-HOOK (#622) is in; FOREST-HOOK (#624): forest joins the registry (133 + 1).
-    // MERGE (#613+#614+#615+#616+#617+#618+#619+#620+#621+#622+#624): 123 shipped + seveso + stateland + quarry + maaparandus + soil + etak + relief + canopy + buildings + density + forest = 134.
-    expect(ids).toHaveLength(134);
+    // FOREST-HOOK (#624) is in; NOISE-HOOK (#625): noise joins the registry (134 + 1).
+    // MERGE (#613+#614+#615+#616+#617+#618+#619+#620+#621+#622+#624+#625): 123 shipped + seveso + stateland + quarry + maaparandus + soil + etak + relief + canopy + buildings + density + forest + noise = 135.
+    expect(ids).toHaveLength(135);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -215,6 +216,11 @@ describe("overlay legend + colors", () => {
     // Batch G08A half (see G08A_CAL in layers_group08a.ts).
     expect(overlayLegendFor("wildfire")).toContain("100 m");
     expect(overlayLegendFor("wildfire")).toContain("hinnang");
+    // NOISE-HOOK (#625): noise legend states modelled-not-measured +
+    // NULL-outside (never quiet); toggle dot is deep siren rose.
+    expect(overlayLegendFor("noise")).toContain("MUDEL");
+    expect(overlayLegendFor("noise")).toContain("MITTE vaikne");
+    expect(overlayColorFor("noise")).toBe("#500f28");
     // Batch G08D half (see G08D_CAL in layers_group08d.ts).
     expect(overlayLegendFor("vernalpool")).toContain("300 m");
     expect(overlayLegendFor("vernalpool")).toContain("proksi");
@@ -432,7 +438,7 @@ describe("overlay legend + colors", () => {
     // ETAK-HOOK (#618): etak joins the registry (128 + 1).
     // RELIEF-HOOK (#619): relief joins the registry (129 + 1).
     // MERGE (#613+#614+#615): 123 shipped + seveso + stateland + quarry = 126.
-    expect(seen.size).toBe(134); // MERGE (#613+#614+#615+#616+#617+#618+#619+#620+#621+#622+#624): 123 shipped + seveso + stateland + quarry + maaparandus + soil + etak + relief + canopy + buildings + density + forest = 134 (both branch counts superseded).
+    expect(seen.size).toBe(135); // MERGE (#613+#614+#615+#616+#617+#618+#619+#620+#621+#622+#624+#625): 123 shipped + seveso + stateland + quarry + maaparandus + soil + etak + relief + canopy + buildings + density + forest + noise = 135 (both branch counts superseded).
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

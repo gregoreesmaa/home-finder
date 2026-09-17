@@ -223,6 +223,12 @@ import { DENSITY_RASTER_FILE, isDensityArea, type DensityArea } from "../layers_
 // degrade to null; the change sidecar is honestly empty when
 // unharvested).
 import { FOREST_RASTER_FILE, isForestArea, type ForestArea } from "../layers_p4_forest";
+// NOISE-HOOK (#625): band sidecar type lives in
+// layers_p4_noise.ts (polygons intentionally never rasterised —
+// NOISE_NO_RASTER; the name resolves to an absent file so windows
+// degrade to null; the band sidecar is honestly empty when
+// unharvested).
+import { NOISE_RASTER_FILE, isNoiseArea, type NoiseArea } from "../layers_p4_noise";
 // OHUSEIRE-HOOK (#610): station raster filename + sidecar point type
 // live in layers_p4_ohuseire.ts (raster intentionally never built —
 // OHUSEIRE_NO_RASTER; the name resolves to an absent file so rasters
@@ -1081,6 +1087,35 @@ export async function loadForestAreas(dir: string): Promise<ForestArea[]> {
   return areas;
 }
 
+// NOISE-HOOK (#625): noise band sidecar
+// (`noise/noise-areas.json`, written by
+// scripts/build/batch_noisemap.py off the cached myrakaart WFS):
+// noise_id + leg + band_db + polygons. A missing
+// sidecar is honestly empty (myrakaart unharvested), never an
+// error; malformed rows are skipped, never faked.
+const noiseAreaCache = new Map<string, NoiseArea[]>();
+
+export async function loadNoiseAreas(dir: string): Promise<NoiseArea[]> {
+  const hit = noiseAreaCache.get(dir);
+  if (hit) return hit;
+  let areas: NoiseArea[] = [];
+  try {
+    const raw = await fs.readFile(path.join(dir, "noise", "noise-areas.json"), "utf8");
+    const parsed: unknown = JSON.parse(raw);
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      Array.isArray((parsed as { areas: unknown }).areas)
+    )
+      areas = (parsed as { areas: unknown[] }).areas.filter(isNoiseArea);
+    else console.warn(`snapshot: ignoring malformed noise/noise-areas.json in ${dir}`);
+  } catch {
+    // Optional sidecar: honestly empty below.
+  }
+  noiseAreaCache.set(dir, areas);
+  return areas;
+}
+
 // DRAINAGE-HOOK (#616): maaparandus network/outflow sidecar
 // (`maaparandus/maaparandus-areas.json`, written by
 // scripts/build/batch_maaparandus.py off the cached WFS GeoJSON):
@@ -1464,6 +1499,10 @@ const RASTER_FILE: Record<LayerId, string> = {
   // built — FOREST_NO_RASTER; the polygons ARE the field; absent file
   // degrades to null, honestly).
   ...FOREST_RASTER_FILE,
+  // NOISE-HOOK (#625): noise band raster name only (no master
+  // built — NOISE_NO_RASTER; the polygons ARE the field; absent file
+  // degrades to null, honestly).
+  ...NOISE_RASTER_FILE,
 };
 
 /**
@@ -2013,6 +2052,10 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // (see layers_p4_forest.ts FOREST_NO_METRO) — the name resolves to
   // an absent file so windows fall back to county cleanly.
   forest: "forest-metro",
+  // NOISE-HOOK (#625): no noise metro master by documented decision
+  // (see layers_p4_noise.ts NOISE_NO_METRO) — the name resolves to
+  // an absent file so windows fall back to county cleanly.
+  noise: "noise-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

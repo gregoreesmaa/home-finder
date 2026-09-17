@@ -15,6 +15,7 @@ import { renderCanopyTint, type CanopyTintGrid } from "./layers_p4_canopy";
 import { renderBuildingsTint, type BuildingsTintGrid } from "./layers_p4_buildings";
 import { DENSITY_CLASS_FILL, type DensityArea } from "./layers_p4_density";
 import { FOREST_CLASS_FILL, type ForestArea } from "./layers_p4_forest";
+import { NOISE_BAND_FILL, type NoiseArea } from "./layers_p4_noise";
 import type { OverlayPoint } from "./overlays";
 
 /** Minimal map surface for vector overlays (sources + paint layers). */
@@ -121,6 +122,9 @@ const DENSITY_CASING = "density-square-casing";
 const FOREST_SRC = "forest-change-polys";
 const FOREST_FILL = "forest-change-fill";
 const FOREST_CASING = "forest-change-casing";
+const NOISE_SRC = "noise-band-polys";
+const NOISE_FILL = "noise-band-fill";
+const NOISE_CASING = "noise-band-casing";
 const POINT_SRC = "layer-overlay-src";
 const POINT_CASING = "layer-overlay-casing";
 const POINT_CORE = "layer-overlay-core";
@@ -139,7 +143,7 @@ export function clearVectorOverlays(mapObj: OutlineMap): void {
   // SOIL-HOOK (#617): contour fill + casing join the cleared slot.
   // ETAK-HOOK (#618): etak contour fill + casing join the cleared
   // slot.
-  for (const id of [PARK_CASING, PARK_CORE, POINT_CASING, POINT_CORE, FLOOD_FILL, FLOOD_CASING, MAAPARCEL_FILL, MAAPARCEL_CASING, EELIS_FILL, EELIS_CASING, USE_FILL, USE_CASING, SEVESO_FILL, SEVESO_CASING, STATELAND_FILL, STATELAND_CASING, QUARRY_FILL, QUARRY_CASING, MAAPARANDUS_FILL, MAAPARANDUS_CASING, MAAPARANDUS_LINES, SOIL_FILL, SOIL_CASING, ETAK_FILL, ETAK_CASING, RELIEF_LYR, CANOPY_LYR, BUILDINGS_LYR, DENSITY_FILL, DENSITY_CASING, FOREST_FILL, FOREST_CASING]) {
+  for (const id of [PARK_CASING, PARK_CORE, POINT_CASING, POINT_CORE, FLOOD_FILL, FLOOD_CASING, MAAPARCEL_FILL, MAAPARCEL_CASING, EELIS_FILL, EELIS_CASING, USE_FILL, USE_CASING, SEVESO_FILL, SEVESO_CASING, STATELAND_FILL, STATELAND_CASING, QUARRY_FILL, QUARRY_CASING, MAAPARANDUS_FILL, MAAPARANDUS_CASING, MAAPARANDUS_LINES, SOIL_FILL, SOIL_CASING, ETAK_FILL, ETAK_CASING, RELIEF_LYR, CANOPY_LYR, BUILDINGS_LYR, DENSITY_FILL, DENSITY_CASING, FOREST_FILL, FOREST_CASING, NOISE_FILL, NOISE_CASING]) {
     try {
       if (mapObj.getLayer(id)) mapObj.removeLayer(id);
     } catch {
@@ -156,7 +160,7 @@ export function clearVectorOverlays(mapObj: OutlineMap): void {
   // DRAINAGE-HOOK (#616): the network-fill source joins the same slot.
   // SOIL-HOOK (#617): the contour-fill source joins the same slot.
   // ETAK-HOOK (#618): the etak-contour source joins the same slot.
-  for (const id of [PARK_SRC, POINT_SRC, FLOOD_SRC, MAAPARCEL_SRC, EELIS_SRC, USE_SRC, SEVESO_SRC, STATELAND_SRC, QUARRY_SRC, MAAPARANDUS_SRC, MAAPARANDUS_OUTFLOW_SRC, SOIL_SRC, ETAK_SRC, RELIEF_SRC, CANOPY_SRC, BUILDINGS_SRC, DENSITY_SRC, FOREST_SRC]) {
+  for (const id of [PARK_SRC, POINT_SRC, FLOOD_SRC, MAAPARCEL_SRC, EELIS_SRC, USE_SRC, SEVESO_SRC, STATELAND_SRC, QUARRY_SRC, MAAPARANDUS_SRC, MAAPARANDUS_OUTFLOW_SRC, SOIL_SRC, ETAK_SRC, RELIEF_SRC, CANOPY_SRC, BUILDINGS_SRC, DENSITY_SRC, FOREST_SRC, NOISE_SRC]) {
     try {
       if (mapObj.getSource(id)) mapObj.removeSource(id);
     } catch {
@@ -1596,6 +1600,112 @@ export function applyForestPolygons(
       id: FOREST_CASING,
       type: "line",
       source: FOREST_SRC,
+      paint: { "line-color": "#ffffff", "line-width": 1, "line-opacity": 0.5 },
+    },
+    before,
+  );
+}
+
+// NOISE-HOOK (#625): myrakaart Lden/Lnight band fills.
+
+/**
+ * Paint noise bands (quiet-green to loud-red fills + white casing) so
+ * modelled loud vs quiet reads at a glance. This is a CHOROPLETH of
+ * modelled facts, never a score: colors encode the 5 dB band lower
+ * bound (see NOISE_BAND_FILL), and the per-listing binding leg
+ * (min wins) is the scorer's job. Lnight paints the same ramp on top
+ * at lower opacity (night binds sleep). Outside every polygon is NULL
+ * — never "quiet". Clears stale overlay layers first; no-op when the
+ * style is not loaded yet or areas is nullish. Malformed rings are
+ * skipped, never faked; unknown bands fall back gray (never dropped).
+ */
+export function applyNoisePolygons(
+  mapObj: OutlineMap,
+  areas: NoiseArea[] | null | undefined,
+): void {
+  if (!mapObj.getStyle()) return;
+  clearVectorOverlays(mapObj);
+  if (!areas || areas.length === 0) return;
+  const features = [];
+  for (const a of areas) {
+    if (!a || !Array.isArray(a.r)) continue;
+    const polys = [];
+    for (const ring of a.r) {
+      if (!Array.isArray(ring) || ring.length < 3) continue;
+      const pts = ring.filter(
+        (pt) =>
+          Array.isArray(pt) &&
+          pt.length === 2 &&
+          pt.every((n) => typeof n === "number" && Number.isFinite(n)),
+      );
+      if (pts.length < 3) continue;
+      const first = pts[0];
+      const last = pts[pts.length - 1];
+      const closed =
+        first[0] === last[0] && first[1] === last[1] ? pts : [...pts, [first[0], first[1]]];
+      polys.push([closed]);
+    }
+    if (polys.length === 0) continue;
+    const band =
+      typeof a.band_db === "number" && Number.isFinite(a.band_db)
+        ? String(a.band_db)
+        : "unknown";
+    const leg = a.leg === "Lnight" ? "Lnight" : "Lden";
+    features.push({
+      type: "Feature",
+      properties: {
+        band,
+        leg,
+        noise_id: typeof a.noise_id === "string" ? a.noise_id : "",
+      },
+      geometry: { type: "MultiPolygon", coordinates: polys },
+    });
+  }
+  if (features.length === 0) return;
+  mapObj.addSource(NOISE_SRC, {
+    type: "geojson",
+    data: { type: "FeatureCollection", features },
+  });
+  const before = abovePaint(mapObj);
+  mapObj.addLayer(
+    {
+      id: NOISE_FILL,
+      type: "fill",
+      source: NOISE_SRC,
+      paint: {
+        "fill-color": [
+          "match",
+          ["get", "band"],
+          "45",
+          NOISE_BAND_FILL["45"],
+          "50",
+          NOISE_BAND_FILL["50"],
+          "55",
+          NOISE_BAND_FILL["55"],
+          "60",
+          NOISE_BAND_FILL["60"],
+          "65",
+          NOISE_BAND_FILL["65"],
+          "70",
+          NOISE_BAND_FILL["70"],
+          NOISE_BAND_FILL.unknown,
+        ],
+        "fill-opacity": [
+          "match",
+          ["get", "leg"],
+          "Lnight",
+          0.35,
+          0.5,
+        ],
+      },
+    },
+    before,
+  );
+  mapObj.addLayer(
+    {
+      id: NOISE_CASING,
+      type: "line",
+      source: NOISE_SRC,
       paint: { "line-color": "#ffffff", "line-width": 1, "line-opacity": 0.5 },
     },
     before,

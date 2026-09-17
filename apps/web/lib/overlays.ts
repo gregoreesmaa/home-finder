@@ -643,6 +643,12 @@ export function overlayColorFor(layer: LayerId): string {
     // from every other marker (distinct-color test).
     case "forest":
       return "#5c4033";
+    // NOISE-HOOK (#625): noise marker (polygon layer — the point
+    // overlay stays empty live, so this colors only the toggle dot).
+    // #500f28: rose-950 deep siren (loud reads red; distinct from
+    // every other marker — distinct-color test).
+    case "noise":
+      return "#500f28";
     // MEDRE-HOOK (#609): medre slice markers (Step-1 honest-empty —
     // the point overlay stays empty live, so this colors only the
     // toggle dot). #ffedd5: orange-100 clinic paper; #ede9fe:
@@ -1202,6 +1208,12 @@ export function overlayLegendFor(layer: LayerId): string {
     // is NULL. Vintage + licence + caveat ride along, always.
     case "forest":
       return "Tuvastatud võramuutis (metsamuutused 2024 lend, Harju+2 km 5288 polügooni) · pruun = 2024 tuvastatud muutus (värske tume, vanem hele — hoiatus, mitte hinne ruudule); skoor: värske+lähedal (≤3a≤500m→30), värske+kaugemal (≤3a≤1500m→55), vanem+lähedal (≤10a≤500m→60), muu→70; muutisaknas muutust pole = NULL (MITTE turvaline mets); tuvastatud muutus, mitte ametlik raiestatistika (automaat-töötlus, vead võimalikud); ETAK avaandmete litsents";
+    // NOISE-HOOK (#625): myrakaart Lden/Lnight bands (modelled,
+    // never measured) — the fills grade audibility, the scorer binds
+    // per listing (min wins); outside every polygon is NULL (never
+    // quiet). Vintage + source ride along, always.
+    case "noise":
+      return "Strateegiline müra (myrakaart 2022 mudel, Harju+2 km) · roheline = vaikne (Lden ≤45), punane = vali (Lden >65 — siduv jalg: Lnight −5 dB); MUDEL, mitte mõõtmine (2020–2021 andmed; tee/tramm/rong/lend/tööstus); vööndist väljas = NULL (MITTE vaikne); skoorijal siduv (miinimum) jalg loeb";
     // ASUMEDIA-HOOK (#495): asumedia (own-snapshot asking medians) —
     // the dated negative rides along: 0/84 asums reach MIN_N=5, so
     // the field is unknown everywhere until the reopen lands real

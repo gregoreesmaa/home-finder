@@ -131,14 +131,21 @@ def test_no_rows_is_none_with_verdict_markers():
 
 
 # ---------------------------------------------------------------------------
-# MYRAKLASS adapter seam (assumed domain — see module docstring).
+# MYRAKLASS adapter seam (confirmed domain 2026-09-17 — see module docstring).
 # ---------------------------------------------------------------------------
 
-def test_parse_myaklass_assumed_domain():
+def test_parse_myaklass_confirmed_domain():
+    # Real WFS values (2026-09-17): plain 5 dB lower bounds.
+    assert parse_myaklass("45") == 49.9
+    assert parse_myaklass("50") == 54.9
+    assert parse_myaklass("55") == 59.9
+    assert parse_myaklass("65") == 69.9
+
+
+def test_parse_myaklass_legacy_fallback():
     assert parse_myaklass("55-59") == 59.0
     assert parse_myaklass("55-59 dB") == 59.0
     assert parse_myaklass("55–59") == 59.0  # en dash tolerated
-    assert parse_myaklass("65") == 65.0
     assert parse_myaklass(">65") == 99.0
     assert parse_myaklass("<45") == 44.9
 
@@ -188,7 +195,7 @@ def test_probe_record_pinned():
     assert PROBE_HARJU_HITS == 4705
     assert PROBE_FEES == "Teenuse kasutamisel tasusid ei rakendu"
     assert PROBE_ACCESS == "NONE"
-    assert "kinnitamata" in PROBE_LICENCE
+    assert "omaniku otsus 2026-09-17" in PROBE_LICENCE
 
 
 def test_all_none_reasons_carry_honesty_markers():

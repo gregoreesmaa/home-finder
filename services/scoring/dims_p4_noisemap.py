@@ -49,10 +49,10 @@ Judgment calls (reviewable per AGENTS.md 7.5):
 * The binding (minimum) leg wins when both Lden and Lnight rows
   are present: a quiet day does not cancel a loud night (the issue
   names Lnight "the binding one").
-* parse_myaklass assumes the band domain reads like "55-59",
-  "55-59 dB", ">65", "<45" (UNVERIFIED — no feature data was
-  pulled; the adapter must confirm against real MYRAKLASS values
-  and this assumption is pinned in docs/p4_noisemap.md §5).
+* parse_myaklass domain CONFIRMED 2026-09-17 (issue #625, real
+  features: plain 5 dB lower bounds "45","50","55",… on nested
+  contours) — upper edge reads L + 4.9 (buyer-conservative judgment,
+  histogram-challengeable). Legacy range shapes stay as fallback.
   Unparseable labels read as None (never guessed).
 * The capabilities fetch (TTL 180 d — maps renew every 5 years)
   exists only to date the verdict; it never feeds the scorer.
@@ -99,10 +99,12 @@ PROBE_HARJU_HITS = 4705
 #: Service self-declaration (service use, NOT a data licence — see verdict).
 PROBE_FEES = "Teenuse kasutamisel tasusid ei rakendu"
 PROBE_ACCESS = "NONE"
-#: Licence state on the probe date: catalogue states NONE, Teabevärav
-#: page is a JS shell with no static licence text, WFS lines govern
-#: service use only.
-PROBE_LICENCE = "kinnitamata (EI OLE avatud litsentsi)"
+#: Licence state: catalogue states NONE, Teabevärav page is a JS
+#: shell with no static licence text, WFS self-declares Fees none +
+#: AccessConstraints NONE and GetMetadata carries no use constraints.
+#: Owner decision 2026-09-17 (issue #625): usable without a licence —
+#: harvest proceeds, attribution stamped in every sidecar.
+PROBE_LICENCE = "EI OLE eraldi litsentsi (omaniku otsus 2026-09-17: kasutatav)"
 
 #: Provisional Lden bands (dB upper bound -> score; issue proposal verbatim).
 LDEN_BANDS = ((45.0, 85), (55.0, 65), (65.0, 40))
@@ -124,6 +126,10 @@ def _band_score(db_value: float,
     return loud
 
 
+#: Width of one strategic-noise band in dB (confirmed 2026-09-17:
+#: MYRAKLASS values step 45/50/55/… on nested contours).
+BAND_WIDTH_DB = 5.0
+
 _MYA_UPPER_RE = re.compile(r"(\d+(?:[.,]\d+)?)\s*(?:dB)?\s*$")
 _MYA_GT_RE = re.compile(r"^>\s*(\d+(?:[.,]\d+)?)")
 _MYA_LT_RE = re.compile(r"^<\s*(\d+(?:[.,]\d+)?)")
@@ -139,10 +145,13 @@ def _num(text: str) -> Optional[float]:
 def parse_myaklass(raw: Optional[str]) -> Optional[float]:
     """Parse a MYRAKLASS band label to its dB upper bound (pure, fail-closed).
 
-    Assumed domain (UNVERIFIED — no feature data pulled, see module
-    docstring): "55-59" / "55-59 dB" -> 59.0, ">65" -> 99.0 (above
-    every band -> loud leg), "<45" -> 44.9 (below the first band ->
-    quiet leg), "65" -> 65.0. Anything else reads as None.
+    CONFIRMED domain (2026-09-17, real WFS features — the old
+    "55-59"-range guess was wrong): plain 5 dB LOWER bounds "45",
+    "50", "55", … A label L spans L..L+4.9, so the upper bound reads
+    L + 4.9 (buyer-conservative: a listing inside the "45" polygon
+    hears up to ~50 dB; challenge with the histogram). Legacy shapes
+    ("55-59" -> 59.0, ">65" -> 99.0, "<45" -> 44.9) stay as fallback.
+    Anything else reads as None.
     """
     if not isinstance(raw, str):
         return None
@@ -162,7 +171,10 @@ def parse_myaklass(raw: Optional[str]) -> Optional[float]:
         upper = _MYA_UPPER_RE.match(text.split("-")[-1].strip())
         return _num(upper.group(1)) if upper else None
     m = _MYA_UPPER_RE.match(text)
-    return _num(m.group(1)) if m else None
+    v = _num(m.group(1)) if m else None
+    if v is not None and v.is_integer():
+        return v + BAND_WIDTH_DB - 0.1
+    return v
 
 
 _TITLE_RE = re.compile(r"<ows:Title>(.*?)</ows:Title>", re.DOTALL)
@@ -274,9 +286,8 @@ def dim_noise_lden(origin: Optional[Tuple[float, float]],
                 legs[key] = f
     if not legs:
         return None, ("Mürakaardi hinnang teadmata (EI OLE hinnangut): "
-                      "strateegilise mürakaardi (Maa- ja Ruumiamet, WFS) "
-                      "litsents on kinnitamata ja Tallinna histogrammi "
-                      "pole (%s) — vööndi väljavõtet hetktõmmises pole; "
+                      "strateegilise mürakaardi (Maa- ja Ruumiamet, WFS, "
+                      "2022) vööndi väljavõtet hetktõmmises pole (%s) — "
                       "kontrolli xgis.maaamet.ee mürakaardi rakendust ja "
                       "9. rühma liiklusprokseid kohapeal"
                       % PROBE_LICENCE)

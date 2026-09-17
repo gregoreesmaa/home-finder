@@ -48,7 +48,7 @@ describe("marukov registry (#486)", () => {
     // 3 eelis (EELIS-HOOK #488, 101 + 3) + 1 planktpr (PLANKTPR-HOOK #492, 104 + 1).
     // TERVISE-HOOK (#494): +1 tervise bathing-water layer (105 + 1).
     // PAASTE-HOOK (#493): +1 komando overlay (107 + 1).
-    expect(ids.length).toBe(134); // MERGE (#613+#614+#615+#616+#617+#618+#619+#620): 123 shipped + seveso + stateland + quarry + maaparandus + soil + etak + relief + canopy = 131 (both branch counts superseded).
+    expect(ids.length).toBe(135); // MERGE (#613+#614+#615+#616+#617+#618+#619+#620): 123 shipped + seveso + stateland + quarry + maaparandus + soil + etak + relief + canopy = 131 (both branch counts superseded).
     for (const id of MARUKOV_LAYER_IDS) expect(ids).toContain(id);
   });
 

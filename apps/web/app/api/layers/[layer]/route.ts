@@ -44,6 +44,8 @@ import { isBuildingsLayerId } from "../../../../lib/layers_p4_buildings";
 import { isDensityLayerId } from "../../../../lib/layers_p4_density";
 // FOREST-HOOK (#624): polygons-only branch guard (see below).
 import { isForestLayerId } from "../../../../lib/layers_p4_forest";
+// NOISE-HOOK (#625): polygons-only branch guard (see below).
+import { isNoiseLayerId } from "../../../../lib/layers_p4_noise";
 
 import {
   intersectsCoverage,
@@ -399,6 +401,22 @@ export async function GET(
   // gradient), and demo fallback points are refused by the layer def
   // (empty fallbackPoints, pinned by test).
   if (isForestLayerId(def.id)) {
+    const { distance } = await loadLayerRaster(def.id);
+    return NextResponse.json({
+      points: [],
+      provenance: "snapshot",
+      ageMs: Date.now() - SNAPSHOT_AS_OF_MS,
+      distance,
+    });
+  }
+  // NOISE-HOOK (#625): noise is polygons-only (zero points, zero
+  // raster — the /noise/areas sidecar carries the data; the live
+  // scorer leg is dims_p4_noisemap.py). Answer honestly-empty
+  // points on snapshot provenance: requiring points or a raster here
+  // would 500 a healthy layer into labeled demo points (a fake
+  // gradient), and demo fallback points are refused by the layer def
+  // (empty fallbackPoints, pinned by test).
+  if (isNoiseLayerId(def.id)) {
     const { distance } = await loadLayerRaster(def.id);
     return NextResponse.json({
       points: [],

@@ -24,6 +24,7 @@ import type { CanopyTintGrid } from "../lib/layers_p4_canopy";
 import type { BuildingsTintGrid } from "../lib/layers_p4_buildings";
 import type { DensityArea } from "../lib/layers_p4_density";
 import type { ForestArea } from "../lib/layers_p4_forest";
+import type { NoiseArea } from "../lib/layers_p4_noise";
 import {
   applyFloodPolygons,
   applyMaaParcelPolygons,
@@ -41,6 +42,7 @@ import {
   applyBuildingsTint,
   applyDensityPolygons,
   applyForestPolygons,
+  applyNoisePolygons,
   applyUsePolygons,
   clearVectorOverlays,
   type OutlineMap,
@@ -95,6 +97,7 @@ function paintOverlay(
     buildingsTint?: BuildingsTintGrid | null;
     densityAreas?: DensityArea[] | null;
     forestAreas?: ForestArea[] | null;
+    noiseAreas?: NoiseArea[] | null;
     overlayPoints?: OverlayPoint[] | null;
     usePolygons?: UseFillPolygon[] | null;
     overlayColor?: string;
@@ -135,6 +138,12 @@ function paintOverlay(
   // (warning bands, never "safe forest" — outside stays NULL).
   if (opts.forestAreas && opts.forestAreas.length > 0) {
     applyForestPolygons(mapObj, opts.forestAreas);
+    return;
+  }
+  // NOISE-HOOK (#625): myrakaart Lden/Lnight band fills (modelled,
+  // never measured — outside stays NULL, never quiet).
+  if (opts.noiseAreas && opts.noiseAreas.length > 0) {
+    applyNoisePolygons(mapObj, opts.noiseAreas);
     return;
   }
   // STATELAND-HOOK (#615): stateland state/auction fills (polygons
@@ -198,6 +207,12 @@ function paintOverlay(
     applyForestPolygons(mapObj, opts.forestAreas);
     return;
   }
+  // NOISE-HOOK (#625): myrakaart Lden/Lnight band fills (modelled,
+  // never measured — outside stays NULL, never quiet).
+  if (opts.noiseAreas && opts.noiseAreas.length > 0) {
+    applyNoisePolygons(mapObj, opts.noiseAreas);
+    return;
+  }
   if (opts.overlayPoints && opts.overlayPoints.length > 0) {
     applyPointOverlay(mapObj, opts.overlayPoints, { color: opts.overlayColor ?? "#1d4ed8" });
     return;
@@ -238,6 +253,7 @@ export function ValueHeatMap({
   buildingsTint,
   densityAreas,
   forestAreas,
+  noiseAreas,
   overlayPoints,
   usePolygons,
   overlayColor,
@@ -288,6 +304,8 @@ export function ValueHeatMap({
   densityAreas?: DensityArea[] | null;
   /** Metsamuutused 2024 changes (forest layer only); warning fills. */
   forestAreas?: ForestArea[] | null;
+  /** Myrakaart 2022 bands (noise layer only); Lden/Lnight fills. */
+  noiseAreas?: NoiseArea[] | null;
   /** Point markers drawn ABOVE the raster (all layers but parks). */
   overlayPoints?: OverlayPoint[] | null;
   /** Designated-use fills drawn ABOVE the field (planktpr only). */
@@ -346,6 +364,9 @@ export function ValueHeatMap({
     // FOREST-HOOK (#624): forestAreas ride the refresh slot so pans
     // keep the fills (same slot as the painted effect below).
     forestAreas,
+    // NOISE-HOOK (#625): noiseAreas ride the refresh slot so pans
+    // keep the fills (same slot as the painted effect below).
+    noiseAreas,
     overlayPoints,
     usePolygons,
     overlayColor,
@@ -382,6 +403,9 @@ export function ValueHeatMap({
     // FOREST-HOOK (#624): forestAreas ride the refresh slot so pans
     // keep the fills (same slot as the painted effect below).
     forestAreas,
+    // NOISE-HOOK (#625): noiseAreas ride the refresh slot so pans
+    // keep the fills (same slot as the painted effect below).
+    noiseAreas,
     overlayPoints,
     usePolygons,
     overlayColor,
@@ -581,9 +605,9 @@ export function ValueHeatMap({
       // BUILDINGS-HOOK (#621): buildingsTint joins the painted slot.
       // DENSITY-HOOK (#622): densityAreas join the painted slot.
       // FOREST-HOOK (#624): forestAreas join the painted slot.
-      paintOverlay(mapRef.current, { outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, reliefTint, canopyTint, buildingsTint, densityAreas, forestAreas, overlayPoints, usePolygons, overlayColor, showOverlay });
+      paintOverlay(mapRef.current, { outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, reliefTint, canopyTint, buildingsTint, densityAreas, forestAreas, noiseAreas, overlayPoints, usePolygons, overlayColor, showOverlay });
     }
-  }, [outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, reliefTint, canopyTint, buildingsTint, densityAreas, forestAreas, overlayPoints, usePolygons, overlayColor, showOverlay]);
+  }, [outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, reliefTint, canopyTint, buildingsTint, densityAreas, forestAreas, noiseAreas, overlayPoints, usePolygons, overlayColor, showOverlay]);
 
   return (
     <section aria-label={title}>
