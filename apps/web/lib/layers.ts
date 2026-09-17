@@ -726,6 +726,18 @@ import {
   bonusSpecForHarbour,
   isHarbourLayerId,
 } from "./layers_p4_harbour";
+// KPO-HOOK (#626): kpo zone tables live in
+// ./layers_p4_kpo (joined WFS restriction zones,
+// polygons-only, areas sidecar). That module imports layers only as
+// types, so no runtime cycle.
+import type { KpoLayerId } from "./layers_p4_kpo";
+import {
+  KPO_DECAY,
+  KPO_DEFS,
+  KPO_TAGS,
+  bonusSpecForKpo,
+  isKpoPolygonOnlyLayer,
+} from "./layers_p4_kpo";
 // FIXIT-HOOK (#623): report-pin tables live in ./layers_p4_fixit
 // (fixit markers, register sidecar). That module imports layers only
 // as types, so no runtime cycle.
@@ -924,7 +936,11 @@ export type LayerId =
   // HARBOUR-HOOK (#627): harbour id (./layers_p4_harbour,
   // joined ports + AIS cells, points + fills, no
   // parameters3 id).
-  | HarbourLayerId;
+  | HarbourLayerId
+  // KPO-HOOK (#626): kpo zone id (./layers_p4_kpo,
+  // WFS restriction zones, polygons-only, no
+  // parameters3 id).
+  | KpoLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -1197,6 +1213,10 @@ const DECAY_KM: Record<LayerId, number> = {
   // layers_p4_harbour.ts HARBOUR_DECAY — INERT placeholder, ports
   // score in dims_p4_harbour.py, never evaluated).
   ...HARBOUR_DECAY,
+  // KPO-HOOK (#626): kpo zone radius (see
+  // layers_p4_kpo.ts KPO_DECAY — INERT placeholder, polygons
+  // only: zero points, never evaluated).
+  ...KPO_DECAY,
   // SEVESO-HOOK (#613): danger-polygon radius (see layers_p4_seveso.ts
   // SEVESO_DECAY — INERT placeholder, polygons only: zero points,
   // never evaluated).
@@ -1484,6 +1504,9 @@ export const LAYERS: LayerDef[] = [
   // HARBOUR-HOOK (#627): harbour def (joined ports + AIS cells,
   // points + fills, no parameters3 id) from ./layers_p4_harbour.
   ...HARBOUR_DEFS,
+  // KPO-HOOK (#626): kpo zone def (WFS restriction zones,
+  // polygons-only, no parameters3 id) from ./layers_p4_kpo.
+  ...KPO_DEFS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -1667,6 +1690,9 @@ const TAGS: Record<LayerId, string> = {
   // HARBOUR-HOOK (#627): harbour source note (see
   // layers_p4_harbour.ts HARBOUR_TAGS — prose, NOT an Overpass fragment).
   ...HARBOUR_TAGS,
+  // KPO-HOOK (#626): kpo zone source note (see
+  // layers_p4_kpo.ts KPO_TAGS — prose, NOT an Overpass fragment).
+  ...KPO_TAGS,
   // SEVESO-HOOK (#613): danger-polygon source note (see
   // layers_p4_seveso.ts SEVESO_TAGS — prose, NOT an Overpass fragment).
   ...SEVESO_TAGS,
@@ -1978,6 +2004,11 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // live scorer legs are dims_p4_harbour.py).
   const harbour = bonusSpecForHarbour(layer);
   if (harbour) return harbour;
+  // KPO-HOOK (#626): kpo zone spec lives in
+  // ./layers_p4_kpo (INERT — polygons only, never evaluated; the
+  // live scorer legs are dims_p4_kitsendus.py).
+  const kpo = bonusSpecForKpo(layer);
+  if (kpo) return kpo;
   // SEVESO-HOOK (#613): danger-polygon spec lives in
   // ./layers_p4_seveso (INERT — polygons only, never evaluated).
   const seveso = bonusSpecForSeveso(layer);
@@ -2394,6 +2425,10 @@ export async function fetchWindow(
   // (points + fills — the areas sidecar carries the data). Same skip,
   // same reason.
   if (isHarbourLayerId(layer)) return null;
+  // KPO-HOOK (#626): kpo has no raster master by decision
+  // (polygons only — the areas sidecar carries the data). Same skip,
+  // same reason.
+  if (isKpoPolygonOnlyLayer(layer)) return null;
   // QUARRY-HOOK (#614): quarry has no raster master by decision
   // (polygons only — the sidecar carries the data). Same skip, same
   // reason.

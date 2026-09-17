@@ -86,7 +86,7 @@ describe("forest registry (#624)", () => {
     // 124 shipped + seveso + stateland + quarry + maaparandus + soil +
     // etak + relief + canopy + buildings + density + 1 forest overlay
     // (FOREST-HOOK #624, 133 + 1 = 134).
-    expect(ids.length).toBe(136); // HARBOUR (#627): 135 shipped + harbour = 136.
+    expect(ids.length).toBe(137); // KPO (#626): 136 shipped + kpo = 137. // HARBOUR (#627): 135 shipped + harbour = 136.
     expect(ids).toContain("forest");
   });
   it("rides paramLabel with empty paramIds (polygons only, no parameters3 number)", () => {

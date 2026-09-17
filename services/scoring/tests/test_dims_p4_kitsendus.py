@@ -1,12 +1,13 @@
-"""P4 kitsendus dims (issue #543): hermetic tests.
+"""P4 kitsendus dims (issues #543, #626): hermetic tests.
 
-No network: both scorers are licence-gated NULLs (2026-09-16 verdict, see
-dims_p4_kitsendus docstring), so the tests pin the None contract, the
-Estonian honesty markers (hinnang + EI OLE + kinnistusraamat/notar buyer
-check), the NULL-outside shape (never "clean title"), the offline join
-helper on fixtures, the band-table helper, and the registry/aggregator
-coverage. The module itself makes no network calls (pinned by source
-inspection).
+No network: the restriction leg scores measured bands since the
+licence gate cleared (#626, CC-BY 4.0); the corridor leg stays a
+dated flag (no calibration). Tests pin the measured bands, the None
+contract elsewhere, the Estonian honesty markers (hinnang + EI OLE +
+kinnistusraamat/notar buyer check), the NULL-outside shape (never
+"clean title"), the offline join helper on fixtures, the band-table
+helper, and the registry/aggregator coverage. The module itself makes
+no network calls (pinned by source inspection).
 """
 
 import inspect
@@ -38,24 +39,39 @@ COND_ZONE = {"attrs": {"voond_liik_id_vaartus": "tingimuslik-kooskõlastus",
 FAR_PARCEL = {"lon": 24.8000, "lat": 59.4600}
 
 
-def test_both_dims_always_none_for_every_input():
+def test_none_contract_where_no_measurement():
+    # Empty / missing zones, missing coords: None everywhere (both legs).
     for fn, arg in [(dim_restriction_zone, [BAN_ZONE]),
                     (dim_utility_corridor, [BAN_ZONE])]:
-        for parcel, zones in [(PARCEL, arg), (PARCEL, []),
-                              (FAR_PARCEL, arg), (None, None),
-                              (PARCEL, None), ({}, arg)]:
+        for parcel, zones in [(PARCEL, []), (FAR_PARCEL, arg),
+                              (None, None), (PARCEL, None), ({}, arg)]:
             v, _ = fn(parcel, zones)
             assert v is None, (fn.__name__, parcel, zones)
 
 
-def test_inside_ban_zone_still_none_with_licence_gate_named():
+def test_inside_ban_zone_scores_measured_band():
     v, reason = dim_restriction_zone(PARCEL, [BAN_ZONE])
-    assert v is None
-    assert "litsentsi EI OLE" in reason
+    assert v == 20
     assert "Veekogu ehituskeeluvöönd" in reason
-    assert "skoor 20 ootab litsentsi" in reason
+    assert "skoor 20" in reason
+    assert "CC-BY 4.0" in reason
+    assert "EI OLE omandiõigus" in reason
     assert "kinnistusraamatust" in reason
     assert "ära feigi" in reason
+
+
+def test_inside_conditioned_zone_scores_mid_band():
+    v, reason = dim_restriction_zone(
+        {"lon": 24.7410, "lat": 59.4495}, [BAN_ZONE, COND_ZONE])
+    assert v == 50
+    assert "skoor 50" in reason
+
+
+def test_bool_coordinate_is_honest_null():
+    for fn in (dim_restriction_zone, dim_utility_corridor):
+        v, reason = fn({"lon": True, "lat": 59.4480}, [BAN_ZONE])
+        assert v is None
+        assert "koordinaati EI OLE" in reason
 
 
 def test_outside_every_polygon_is_unknown_never_clean_title():
@@ -75,6 +91,17 @@ def test_unknown_zone_type_scores_no_band():
     assert v is None
     assert "tundmatu liigiga" in reason
     assert _band_for_zone({"voond_liik_id_vaartus": "midagi-uut-xyz"}) is None
+
+
+def test_live_harvest_values_are_conditioned():
+    # Live harvest values (#626): utility kaitsevöönd + limited real
+    # right are CONDITIONED (operator/right-holder consent required).
+    assert _band_for_zone({"voond_liik_id_vaartus": "Elektripaigaldise kaitsevöönd"}) == 50
+    assert _band_for_zone({"voond_liik_id_vaartus": "Piiratud asjaõigusega ala"}) == 50
+    # Heritage family conditions whatever the wording (#626: Müna/50).
+    assert _band_for_zone({"voond_liik_id_vaartus": "Arheoloogiamälestis",
+                            "family": "muinsuskaitse"}) == 50
+    assert _band_for_zone({"voond_liik_id_vaartus": "Arheoloogiamälestis"}) is None
 
 
 def test_band_table_reviewable_values():
@@ -132,6 +159,6 @@ def test_registry_and_aggregator():
     assert [k for k, _ in P4_KITSENDUS_DIMS] == [
         "restriction_zone", "utility_corridor"]
     assert score_p4_kitsendus(PARCEL, [BAN_ZONE], [COND_ZONE]) == {
-        "restriction_zone": None, "utility_corridor": None}
+        "restriction_zone": 20, "utility_corridor": None}
     assert score_p4_kitsendus(None) == {
         "restriction_zone": None, "utility_corridor": None}

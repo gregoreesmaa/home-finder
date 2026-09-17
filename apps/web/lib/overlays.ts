@@ -655,6 +655,12 @@ export function overlayColorFor(layer: LayerId): string {
     // marker — distinct-color test).
     case "harbour":
       return "#115e59";
+    // KPO-HOOK (#626): kpo marker (polygon layer — the point
+    // overlay stays empty live, so this colors only the toggle dot).
+    // #4a044e: dark plum restriction boundary (distinct from every
+    // other marker — distinct-color test; NOT heritage #7c2d12).
+    case "kpo":
+      return "#4a044e";
     // MEDRE-HOOK (#609): medre slice markers (Step-1 honest-empty —
     // the point overlay stays empty live, so this colors only the
     // toggle dot). #ffedd5: orange-100 clinic paper; #ede9fe:
@@ -1225,6 +1231,13 @@ export function overlayLegendFor(layer: LayerId): string {
     // is NULL (never calm).
     case "harbour":
       return "Sadamad + väikelaevaliiklus (sadamaregister + AIS 2024) · roheline ruut = väikelaevatihedus (tume = tihe); punkt = sadam (fn1 täisteenus / fn2 tasuline väikesadam / fn3 tasuta); hooajajaotust pole (aastakokku); väljas = NULL (MITTE rahulik)";
+    // KPO-HOOK (#626): joined restriction zones (ban/conditioned
+    // fills) — the fills flag build limits, the scorer bands per
+    // parcel (worst/min wins); outside every polygon is NULL (never
+    // clean title — zones are not title truth). Vintage + source +
+    // coverage ride along, always.
+    case "kpo":
+      return "KPO piiranguvööndid (kmakitsendused WFS, CC-BY 4.0, 2026-09, teadaolevate kruntide aknad) · punane = ehituskeeld (20-35), merevaik = tingimuslik (50-65); vööndist väljas = NULL (MITTE puhas omand — tsoonid pole omandiõigus, kontrolli kinnistusraamatust ja notarilt)";
     // ASUMEDIA-HOOK (#495): asumedia (own-snapshot asking medians) —
     // the dated negative rides along: 0/84 asums reach MIN_N=5, so
     // the field is unknown everywhere until the reopen lands real

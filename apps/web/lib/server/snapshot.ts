@@ -234,6 +234,7 @@ import { NOISE_RASTER_FILE, isNoiseArea, type NoiseArea } from "../layers_p4_noi
 // HARBOUR_NO_RASTER; the name resolves to an absent file so windows
 // degrade to null; the sidecar is honestly empty when unharvested).
 import { HARBOUR_RASTER_FILE, isHarbourCell, isHarbourPort, type HarbourCell, type HarbourPort } from "../layers_p4_harbour";
+import { KPO_RASTER_FILE, isKpoArea, type KpoArea } from "../layers_p4_kpo";
 // OHUSEIRE-HOOK (#610): station raster filename + sidecar point type
 // live in layers_p4_ohuseire.ts (raster intentionally never built —
 // OHUSEIRE_NO_RASTER; the name resolves to an absent file so rasters
@@ -1156,6 +1157,35 @@ export async function loadHarbourAreas(dir: string): Promise<{ ports: HarbourPor
   return empty;
 }
 
+// KPO-HOOK (#626): kpo zone sidecar
+// (`kpo/kpo-areas.json`, written by
+// scripts/build/batch_kpo.py off the cached KMA kmakitsendused WFS):
+// family + nimi + voond + reegel + polygons. A missing
+// sidecar is honestly empty (KMA unharvested), never an
+// error; malformed rows are skipped, never faked.
+const kpoAreaCache = new Map<string, KpoArea[]>();
+
+export async function loadKpoAreas(dir: string): Promise<KpoArea[]> {
+  const hit = kpoAreaCache.get(dir);
+  if (hit) return hit;
+  let areas: KpoArea[] = [];
+  try {
+    const raw = await fs.readFile(path.join(dir, "kpo", "kpo-areas.json"), "utf8");
+    const parsed: unknown = JSON.parse(raw);
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      Array.isArray((parsed as { areas: unknown }).areas)
+    )
+      areas = (parsed as { areas: unknown[] }).areas.filter(isKpoArea);
+    else console.warn(`snapshot: ignoring malformed kpo/kpo-areas.json in ${dir}`);
+  } catch {
+    // Optional sidecar: honestly empty below.
+  }
+  kpoAreaCache.set(dir, areas);
+  return areas;
+}
+
 // DRAINAGE-HOOK (#616): maaparandus network/outflow sidecar
 // (`maaparandus/maaparandus-areas.json`, written by
 // scripts/build/batch_maaparandus.py off the cached WFS GeoJSON):
@@ -1547,6 +1577,10 @@ const RASTER_FILE: Record<LayerId, string> = {
   // built — HARBOUR_NO_RASTER; points + fills ARE the field; absent
   // file degrades to null, honestly).
   ...HARBOUR_RASTER_FILE,
+  // KPO-HOOK (#626): kpo zone raster name only (no master
+  // built — KPO_NO_RASTER; the polygons ARE the field; absent file
+  // degrades to null, honestly).
+  ...KPO_RASTER_FILE,
 };
 
 /**
@@ -2104,6 +2138,10 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // (see layers_p4_harbour.ts HARBOUR_NO_METRO) — the name resolves to
   // an absent file so windows fall back to county cleanly.
   harbour: "harbour-metro",
+  // KPO-HOOK (#626): no kpo metro master by documented decision
+  // (see layers_p4_kpo.ts KPO_NO_METRO) — the name resolves to
+  // an absent file so windows fall back to county cleanly.
+  kpo: "kpo-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

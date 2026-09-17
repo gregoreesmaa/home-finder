@@ -1,9 +1,45 @@
 # P4 kitsendus verdict note — KPO restriction zones + tehnovõrgud (#543)
 
-> Dated-negative verdict for issue #543. Checked 2026-09-16. Both legs are
-> documented no-map NULL dims (OTA PR #131 precedent); scorers + offline
-> join core live in `services/scoring/dims_p4_kitsendus.py`, pinned by
-> `services/scoring/tests/test_dims_p4_kitsendus.py`.
+> Dated-negative verdict for issue #543. Checked 2026-09-16. SUPERSEDED
+> by the #626 build below (2026-09-17) — kept as history.
+
+## Build note (#626, checked 2026-09-17)
+
+The licence gate CLEARED: a re-probe of the capabilities found the
+service-level Abstract (Maa- ja Ruumiamet public WFS) publishing data
+under **CC-BY 4.0** unless a layer sets separate conditions — and NO
+per-layer conditions exist, so the default covers all 18 families
+(attribution: KMA kmakitsendused WFS, source MKM; rides the sidecar +
+legend).
+
+What shipped (harvest + build in `scripts/build/batch_kpo.py`, pinned
+by `services/scoring/tests/test_batch_kpo.py`):
+
+- 18/18 families probed live (1 row each, paced): every family joins
+  (`voond_liik_id_vaartus` + `nimi` + `reegel` present everywhere).
+- Parcel-windowed harvest (a full Harju pull is infeasible: `elekter`
+  alone matches ~479k features): one multi-family GetFeature per
+  known-parcel window (`maa/parcel-areas.json` + margin), count-capped
+  with subdivision, 3 s pacing, 429-stop, cache-resume.
+- Sidecar `kpo/kpo-areas.json`: 10 600 zones (elekter 8 430 +
+  asjaoigus 2 170 — the only families intersecting known-parcel
+  windows), LCC-projected exterior rings (#648 twins, never TM);
+  coverage honestly labelled (parcel windows, never the whole
+  county).
+- Kataster proof: per-tunnus AREA join tally in the sidecar proof
+  block — 83/100 parcels intersect ≥1 live zone (bidirectional
+  vertex containment, spot-checked: e.g. 78401:101:0044 contains a
+  30-vertex elekter substation footprint; centroid-only would
+  underclaim at 8/100).
+- Scorers flipped to measured bands (`dims_p4_kitsendus.py`): ban
+  20-35, conditioned 50-65, worst/min wins; unknown types NULL;
+  corridor leg stays a dated flag (no calibration exists).
+- Web: `P4-kitsendus` registry entry, kpo + kpo/areas routes, snapshot
+  sidecar, outlines painter (ban-red / conditioned-amber / unknown
+  gray), legend + toggle dot. Outside every polygon is NULL — never
+  clean title.
+
+> Original #543 verdict (superseded, kept as history):
 
 ## Verdict
 

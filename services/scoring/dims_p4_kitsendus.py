@@ -1,6 +1,6 @@
 """P4 kitsendus dims (issue #543): kataster KPO restriction zones + tehnovorgud.
 
-Two legs, both documented no-map NULLs until the licence gate clears:
+Two legs, both live since the licence gate cleared (#626):
 
 * ``restriction_zone`` -- per-parcel restriction-zone membership
   (piiranguvööndid: ehituskeeld vs conditioned).
@@ -27,21 +27,21 @@ single GETs with 2 s pacing, ``--max-time 30``; raw bodies kept at
   unprobed (no rows pulled -- see the gate).
 * GATE (issue hard gate): the catalogue states NO licence, and none was
   found in the capabilities either -- so NO zone row is ingested, NO
-  Harjumaa count is pulled, NO per-parcel containment is proven on live
-  rows. The join below is proven on FIXTURES only; the >=20-parcel live
-  proof (kataster tunnus) is reopen-checklist item 2.
+  Harjumaa count is pulled (parcel windows only -- a full-county pull
+  is infeasible, see batch_kpo.py). The >=20-parcel live proof
+  (kataster tunnus) is pinned by test_batch_kpo.py + the sidecar
+  proof tally.
 
-HONESTY (AGENTS.md section 7.2): both scorers return None for EVERY
-input. Inside/outside is computed ONLY by the offline join helper over
+HONESTY (AGENTS.md section 7.2): inside/outside is computed ONLY by the offline join helper over
 caller-supplied polygons; outside every polygon stays NULL (teadmata,
 never "clean title" -- zones are not title truth, the legend must say
 so, and every reason names the kinnistusraamat/notar buyer check).
 Transport errors are never cached as data: this module makes NO network
 calls at all (pinned by test via source inspection).
 
-ZONE-TYPE -> BAND MAPPING (reviewable; APPLIES ONLY after the gate --
-today every call returns None. Calibrated per the issue: building ban
--> 20-35, conditioned -> 50-65; exact Harjumaa tally on reopen):
+ZONE-TYPE -> BAND MAPPING (reviewable; LIVE since #626.
+Calibrated per the issue: building ban -> 20-35, conditioned ->
+50-65; unknown types stay NULL, never a guess):
 
 ===========================+==========+=====================================
 zone family (voond_liik)   | band     | rationale
@@ -67,13 +67,14 @@ pure offline join core (rings are [[lon, lat], ...] in EPSG:4326;
 projection happens upstream), per-parcel class flags, scorers
 (parcel, zones) -> (Optional[int 0..100], Estonian reason). Helpers are
 local copies (no livability import -- that would turn the future central
-hook into a cycle, same precedent as PRs #100/#106/#115). No shared-file
-edits: 3 new files only (this module + tests + docs/p4_kitsendus.md).
+hook into a cycle, same precedent as PRs #100/#106/#115). Shared-file change: the #626 gate flip touches this module + tests
+(this module + tests + docs/p4_kitsendus.md + the #626 PR files).
 
 Judgment calls (reviewable per AGENTS.md section 7.5):
-* Verdict instead of bands (OTA PR #131 precedent): the no-licence hard
-  gate forbids ingestion; painting bands from unlicensed polygons would
-  be fake precision AND a licence breach.
+* Bands instead of verdict (gate opened #626): CC-BY 4.0 default
+  confirmed 2026-09-17, so joined rows score measured bands -- bands
+  BEFORE the join would have been fake precision (OTA PR #131
+  precedent).
 * Polygons-only, never gradients (issue conformance): the join is
   containment only; no distance-to-zone gradient is computed anywhere.
 * G4 title/legal params stay documented no-map NULLs against the PAID
@@ -139,65 +140,81 @@ def join_zone_flags(lon: float, lat: float,
 
 
 # ---------------------------------------------------------------------------
-# Band table (APPLIES ONLY after the licence gate -- see module docstring).
-# Today both scorers below return None for every input.
+# Band table (LIVE since the licence gate cleared, #626).
 # ---------------------------------------------------------------------------
 
 #: Building-ban zone families -> low band (20-35: full ban 20, setback 35).
 BAN_SCORES = {"ehituskeeld": 20, "ehituskeeluvöönd": 20, "tagasilöök": 35}
 
 #: Conditioned zone families -> mid band (50-65: heavy 50, notice-duty 65).
+#: Calibrated on the live 2026-09-17 harvest (#626): only two voond
+#: values occur in the parcel windows -- "Elektripaigaldise
+#: kaitsevöönd" (utility protection: building needs the operator's
+#: kooskõlastus, ehitusseadustik) and "Piiratud asjaõigusega ala"
+#: (limited real right: building needs the right-holder's consent).
+#: Both are CONDITIONED by what the words mean: "kaitsevöönd"
+#: (protection zone) always conditions activity, and a registered
+#: "asjaõigus" (real right) always burdens use. Ban words win first
+#: (an ehituskeeluvöönd never reads conditioned).
 CONDITIONED_SCORES = {"tingimuslik": 50, "kooskõlastus": 50,
-                      "teavitus": 65}
+                      "teavitus": 65, "kaitsevöönd": 50,
+                      "asjaõigus": 50}
 
 
 def _band_for_zone(attrs: dict) -> Optional[int]:
-    """Zone-type -> band per the table above; unknown type -> None."""
-    raw = str((attrs or {}).get("voond_liik_id_vaartus", "")
-              or (attrs or {}).get("voond_liik_id", "")).lower()
+    """Zone-type -> band per the table above; unknown type -> None.
+
+    attrs SHOULD carry "family" (the kma_avalik_* name; sidecar rows
+    do at top level, callers copy it in): heritage zones condition
+    building whatever the voond wording (Muinsuskaitseamet approval),
+    pinned as conditioned 50 by the #626 acceptance ("Müna"/50).
+    """
+    attrs = attrs or {}
+    raw = str(attrs.get("voond_liik_id_vaartus", "")
+              or attrs.get("voond_liik_id", "")).lower()
     for key, score in BAN_SCORES.items():
         if key in raw:
             return score
     for key, score in CONDITIONED_SCORES.items():
         if key in raw:
             return score
+    if str(attrs.get("family", "")).lower() == "muinsuskaitse":
+        return 50
     return None
 
 
 # ---------------------------------------------------------------------------
-# P4 scorers: licence-gated NULLs (OTA PR #131 precedent). Each reports the
-# gap with the concrete buyer-side check instead of a faked number.
+# P4 scorers: measured bands since the licence gate cleared (#626).
 # ---------------------------------------------------------------------------
 
-NO_LICENCE = ("KPO kitsenduste litsentsi EI OLE kinnitatud "
-              "(kataloogis puudub, WFS-võimekuses 2026-09-16 litsentsi "
-              "EI OLE): ühtegi tsooni EI OLE liidestatud")
+LICENCE = ("CC-BY 4.0 (Maa- ja Ruumiamet WFS-teenus, allikas MKM; "
+           "kihipõhiseid eritingimusi EI OLE -- vaikimisi litsents kehtib)")
 
 
 def dim_restriction_zone(parcel: Optional[dict],
                          zones: Optional[List[dict]]) -> Score:
-    """Restriction-zone membership leg: NULL until the licence gate clears."""
+    """Restriction-zone membership leg: measured bands since #626."""
     parcel = parcel or {}
     lon, lat = parcel.get("lon"), parcel.get("lat")
-    if not isinstance(lon, (int, float)) \
-            or not isinstance(lat, (int, float)):
+    if isinstance(lon, bool) or not isinstance(lon, (int, float)) \
+            or isinstance(lat, bool) or not isinstance(lat, (int, float)):
         return None, ("Krundi koordinaati EI OLE (hinnang puudub): "
                       "kitsendustsooni-liidetust ei saa arvutada -- "
                       "täienda koordinaat, ära feigi")
     if not zones:
-        return None, ("Piiranguvööndite hinnangut pole (%s) -- "
-                      "ehituskeeld (20-35) vs tingimuslik (50-65) "
-                      "liigitus ootab loa kinnitust; väljaspool kõiki "
-                      "polügoone jääks teadmata, mitte puhtaks: tsoonid "
-                      "EI OLE omandiõigus -- kontrolli kinnistusraamatust "
-                      "ja notarilt, ära feigi" % NO_LICENCE)
+        return None, ("Piiranguvööndite hinnangut pole (tsoonikiht "
+                      "laadimata -- %s): ehituskeeld (20-35) vs "
+                      "tingimuslik (50-65); väljaspool kõiki polügoone "
+                      "jääks teadmata, mitte puhtaks: tsoonid EI OLE "
+                      "omandiõigus -- kontrolli kinnistusraamatust ja "
+                      "notarilt, ära feigi" % LICENCE)
     hits = join_zone_flags(lon, lat, zones)
     if not hits:
-        return None, ("Krunt pole üheski liidestatud piiranguvööndis, "
-                      "aga kiht pole litsentsi tõttu laetud (%s) -- "
-                      "teadmata, mitte puhas omand: kontrolli "
+        return None, ("Krunt pole üheski liidestatud piiranguvööndis "
+                      "(teadaolevate krundiakende %s) -- teadmata, mitte "
+                      "puhas omand: tsoonid EI OLE omandiõigus, kontrolli "
                       "kinnistusraamatust ja notarilt, ära feigi"
-                      % NO_LICENCE)
+                      % LICENCE)
     scored = [(h, _band_for_zone(h)) for h in hits]
     known = [(h, s) for h, s in scored if s is not None]
     if not known:
@@ -209,39 +226,44 @@ def dim_restriction_zone(parcel: Optional[dict],
     score = min(s for _, s in known)
     names = ", ".join(str(h.get("nimi", h.get("voond_liik_id_vaartus",
                                               "?"))) for h, _ in known)
-    return None, ("Krunt vööndis (%s -> skoor %d ootab litsentsi): "
-                  "hinnangut EI OLE (%s) -- kontrolli kinnistusraamatust "
-                  "ja notarilt, ära feigi" % (names, score, NO_LICENCE))
+    return score, ("Krunt piiranguvööndis (%s -> skoor %d, %s): tsoonid "
+                   "EI OLE omandiõigus -- kontrolli kinnistusraamatust "
+                   "ja notarilt, ära feigi" % (names, score, LICENCE))
 
 
 def dim_utility_corridor(parcel: Optional[dict],
                          corridors: Optional[List[dict]]) -> Score:
-    """Tehnovõrgud corridor leg: NULL until the licence gate clears."""
+    """Tehnovõrgud corridor leg: dated flag since #626 (no band table).
+
+    Corridor hits name the networks + the operator check but NEVER a
+    score: no corridor calibration exists, and inventing one would be
+    fake precision. The restriction leg carries the bands.
+    """
     parcel = parcel or {}
     lon, lat = parcel.get("lon"), parcel.get("lat")
-    if not isinstance(lon, (int, float)) \
-            or not isinstance(lat, (int, float)):
+    if isinstance(lon, bool) or not isinstance(lon, (int, float)) \
+            or isinstance(lat, bool) or not isinstance(lat, (int, float)):
         return None, ("Krundi koordinaati EI OLE (hinnang puudub): "
                       "tehnovõrgu-koridori ei saa arvutada -- täienda "
                       "koordinaat, ära feigi")
     if not corridors:
         return None, ("Tehnovõrkude (elekter/gaas/side/vesi/kaugküte) "
-                      "koridori-hinnangut pole (%s) -- trasside "
-                      "kaitsevööndid ootavad loa kinnitust; kontrolli "
-                      "võrguettevõtjalt (Elektrilevi/vee-ettevõte) ja "
-                      "kinnistusraamatust, ära feigi" % NO_LICENCE)
+                      "koridori-hinnangut pole (koridorikiht laadimata -- "
+                      "%s); kontrolli võrguettevõtjalt "
+                      "(Elektrilevi/vee-ettevõte) ja kinnistusraamatust, "
+                      "ära feigi" % LICENCE)
     hits = join_zone_flags(lon, lat, corridors)
     if not hits:
-        return None, ("Krunt pole üheski liidestatud tehnovõrgu-koridoris, "
-                      "aga kiht pole litsentsi tõttu laetud (%s) -- "
-                      "teadmata, mitte vaba: kontrolli võrguettevõtjalt "
+        return None, ("Krunt pole üheski liidestatud tehnovõrgu-koridoris "
+                      "(teadaolevate krundiakende %s) -- teadmata, mitte "
+                      "vaba: kontrolli võrguettevõtjalt "
                       "(Elektrilevi/vee-ettevõte) ja kinnistusraamatust, "
-                      "ära feigi" % NO_LICENCE)
+                      "ära feigi" % LICENCE)
     names = ", ".join(str(h.get("nimi", "?")) for h in hits)
-    return None, ("Krunt tehnovõrgu-koridoris (%s): hinnangut EI OLE "
-                  "(%s) -- kaitsevööndi ulatus võrguettevõtjalt, "
-                  "koormatis kinnistusraamatust, ära feigi"
-                  % (names, NO_LICENCE))
+    return None, ("Krunt tehnovõrgu-koridoris (%s, %s): lipuke, mitte "
+                  "hinne (koridoride kalibreerimist EI OLE) -- "
+                  "kaitsevööndi ulatus võrguettevõtjalt, koormatis "
+                  "kinnistusraamatust, ära feigi" % (names, LICENCE))
 
 
 P4_KITSENDUS_DIMS = (
@@ -255,8 +277,9 @@ def score_p4_kitsendus(parcel: Optional[dict],
                        corridors: Optional[List[dict]] = None) -> Dict[
                            str, Optional[int]]:
     """Both P4 kitsendus dims for one parcel (entry point for the
-    weight-rebalance follow-up). Every value is None by design -- no
-    licence, no ingestion, never a faked zone score."""
+    weight-rebalance follow-up). Restriction hits score measured bands;
+    corridor hits stay flags (no calibration); everything else is None
+    (unknown, never clean title)."""
     return {
         "restriction_zone": dim_restriction_zone(parcel, zones)[0],
         "utility_corridor": dim_utility_corridor(parcel, corridors)[0],

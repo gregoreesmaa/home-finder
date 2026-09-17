@@ -21,6 +21,7 @@ import {
   type HarbourCell,
   type HarbourPort,
 } from "./layers_p4_harbour";
+import { KPO_BAND_FILL, kpoFillKey, type KpoArea } from "./layers_p4_kpo";
 import type { OverlayPoint } from "./overlays";
 
 /** Minimal map surface for vector overlays (sources + paint layers). */
@@ -131,6 +132,12 @@ const NOISE_SRC = "noise-band-polys";
 const NOISE_FILL = "noise-band-fill";
 const NOISE_CASING = "noise-band-casing";
 const HARBOUR_SRC = "harbour-cell-polys";
+// KPO-HOOK (#626): kpo zone slot (ban/conditioned fills, never a
+// gradient/score). Clearing covers these ids too — one overlay slot
+// paints either kind, never stacks (see clearVectorOverlays).
+const KPO_SRC = "kpo-zone-polys";
+const KPO_FILL = "kpo-zone-fill";
+const KPO_CASING = "kpo-zone-casing";
 const HARBOUR_FILL = "harbour-cell-fill";
 const HARBOUR_CASING = "harbour-cell-casing";
 const POINT_SRC = "layer-overlay-src";
@@ -151,7 +158,7 @@ export function clearVectorOverlays(mapObj: OutlineMap): void {
   // SOIL-HOOK (#617): contour fill + casing join the cleared slot.
   // ETAK-HOOK (#618): etak contour fill + casing join the cleared
   // slot.
-  for (const id of [PARK_CASING, PARK_CORE, POINT_CASING, POINT_CORE, FLOOD_FILL, FLOOD_CASING, MAAPARCEL_FILL, MAAPARCEL_CASING, EELIS_FILL, EELIS_CASING, USE_FILL, USE_CASING, SEVESO_FILL, SEVESO_CASING, STATELAND_FILL, STATELAND_CASING, QUARRY_FILL, QUARRY_CASING, MAAPARANDUS_FILL, MAAPARANDUS_CASING, MAAPARANDUS_LINES, SOIL_FILL, SOIL_CASING, ETAK_FILL, ETAK_CASING, RELIEF_LYR, CANOPY_LYR, BUILDINGS_LYR, DENSITY_FILL, DENSITY_CASING, FOREST_FILL, FOREST_CASING, NOISE_FILL, NOISE_CASING, HARBOUR_FILL, HARBOUR_CASING]) {
+  for (const id of [PARK_CASING, PARK_CORE, POINT_CASING, POINT_CORE, FLOOD_FILL, FLOOD_CASING, MAAPARCEL_FILL, MAAPARCEL_CASING, EELIS_FILL, EELIS_CASING, USE_FILL, USE_CASING, SEVESO_FILL, SEVESO_CASING, STATELAND_FILL, STATELAND_CASING, QUARRY_FILL, QUARRY_CASING, MAAPARANDUS_FILL, MAAPARANDUS_CASING, MAAPARANDUS_LINES, SOIL_FILL, SOIL_CASING, ETAK_FILL, ETAK_CASING, RELIEF_LYR, CANOPY_LYR, BUILDINGS_LYR, DENSITY_FILL, DENSITY_CASING, FOREST_FILL, FOREST_CASING, NOISE_FILL, NOISE_CASING, HARBOUR_FILL, HARBOUR_CASING, KPO_FILL, KPO_CASING]) {
     try {
       if (mapObj.getLayer(id)) mapObj.removeLayer(id);
     } catch {
@@ -168,7 +175,7 @@ export function clearVectorOverlays(mapObj: OutlineMap): void {
   // DRAINAGE-HOOK (#616): the network-fill source joins the same slot.
   // SOIL-HOOK (#617): the contour-fill source joins the same slot.
   // ETAK-HOOK (#618): the etak-contour source joins the same slot.
-  for (const id of [PARK_SRC, POINT_SRC, FLOOD_SRC, MAAPARCEL_SRC, EELIS_SRC, USE_SRC, SEVESO_SRC, STATELAND_SRC, QUARRY_SRC, MAAPARANDUS_SRC, MAAPARANDUS_OUTFLOW_SRC, SOIL_SRC, ETAK_SRC, RELIEF_SRC, CANOPY_SRC, BUILDINGS_SRC, DENSITY_SRC, FOREST_SRC, NOISE_SRC, HARBOUR_SRC]) {
+  for (const id of [PARK_SRC, POINT_SRC, FLOOD_SRC, MAAPARCEL_SRC, EELIS_SRC, USE_SRC, SEVESO_SRC, STATELAND_SRC, QUARRY_SRC, MAAPARANDUS_SRC, MAAPARANDUS_OUTFLOW_SRC, SOIL_SRC, ETAK_SRC, RELIEF_SRC, CANOPY_SRC, BUILDINGS_SRC, DENSITY_SRC, FOREST_SRC, NOISE_SRC, HARBOUR_SRC, KPO_SRC]) {
     try {
       if (mapObj.getSource(id)) mapObj.removeSource(id);
     } catch {
@@ -1714,6 +1721,96 @@ export function applyNoisePolygons(
       id: NOISE_CASING,
       type: "line",
       source: NOISE_SRC,
+      paint: { "line-color": "#ffffff", "line-width": 1, "line-opacity": 0.5 },
+    },
+    before,
+  );
+}
+
+// KPO-HOOK (#626): restriction-zone ban/conditioned fills.
+
+/**
+ * Paint KPO restriction zones (ban-red to conditioned-amber fills +
+ * white casing) so build limits read at a glance. This is a
+ * CHOROPLETH of joined facts, never a score: colors encode the zone
+ * band key (see kpoFillKey — ban 20-35, conditioned 50-65), and the
+ * per-parcel worst/min band is the scorer's job. Outside every
+ * polygon is NULL — never "clean title" (zones are not title truth).
+ * Clears stale overlay layers first; no-op when the style is not
+ * loaded yet or areas is nullish. Malformed rings are skipped, never
+ * faked; unknown types fall back gray (never dropped).
+ */
+export function applyKpoPolygons(
+  mapObj: OutlineMap,
+  areas: KpoArea[] | null | undefined,
+): void {
+  if (!mapObj.getStyle()) return;
+  clearVectorOverlays(mapObj);
+  if (!areas || areas.length === 0) return;
+  const features = [];
+  for (const a of areas) {
+    if (!a || !Array.isArray(a.r)) continue;
+    const polys = [];
+    for (const ring of a.r) {
+      if (!Array.isArray(ring) || ring.length < 3) continue;
+      const pts = ring.filter(
+        (pt) =>
+          Array.isArray(pt) &&
+          pt.length === 2 &&
+          pt.every((n) => typeof n === "number" && Number.isFinite(n)),
+      );
+      if (pts.length < 3) continue;
+      const first = pts[0];
+      const last = pts[pts.length - 1];
+      const closed =
+        first[0] === last[0] && first[1] === last[1] ? pts : [...pts, [first[0], first[1]]];
+      polys.push([closed]);
+    }
+    if (polys.length === 0) continue;
+    features.push({
+      type: "Feature",
+      properties: {
+        band: kpoFillKey(
+          typeof a.voond === "string" ? a.voond : "",
+          typeof a.family === "string" ? a.family : "",
+        ),
+        family: typeof a.family === "string" ? a.family : "",
+        nimi: typeof a.nimi === "string" ? a.nimi : "",
+      },
+      geometry: { type: "MultiPolygon", coordinates: polys },
+    });
+  }
+  if (features.length === 0) return;
+  mapObj.addSource(KPO_SRC, {
+    type: "geojson",
+    data: { type: "FeatureCollection", features },
+  });
+  const before = abovePaint(mapObj);
+  mapObj.addLayer(
+    {
+      id: KPO_FILL,
+      type: "fill",
+      source: KPO_SRC,
+      paint: {
+        "fill-color": [
+          "match",
+          ["get", "band"],
+          "ban",
+          KPO_BAND_FILL.ban,
+          "conditioned",
+          KPO_BAND_FILL.conditioned,
+          KPO_BAND_FILL.unknown,
+        ],
+        "fill-opacity": 0.5,
+      },
+    },
+    before,
+  );
+  mapObj.addLayer(
+    {
+      id: KPO_CASING,
+      type: "line",
+      source: KPO_SRC,
       paint: { "line-color": "#ffffff", "line-width": 1, "line-opacity": 0.5 },
     },
     before,
