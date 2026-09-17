@@ -91,7 +91,7 @@ caveat in every reason.
 python3 scripts/build/batch_forest.py --zip /tmp/hf-624-cache/metsamuutused-2024.zip --snap /tmp/hf-624-proof
 # → ok=True polygons=10201 kept=5288 dropped=0 verts=2982965->119881
 python3 -m pytest services/scoring/tests/test_batch_forest.py services/scoring/tests/test_dims_p4_forestchange.py -q -p no:cacheprovider
-# → 25 passed (observed 2026-09-17, worktree 624-forest)
+# → 15 passed (observed 2026-09-17, worktree 624-forest)
 python3 -m pytest services/scoring/tests -q -p no:cacheprovider
 # → 2952 passed, 8 skipped
 npm test (turbo vitest) → green; npm run typecheck, npm run lint → clean
