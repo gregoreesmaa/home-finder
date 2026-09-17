@@ -1791,54 +1791,6 @@ function harbourPortFeatures(ports: HarbourPort[]): object[] {
   return features;
 }
 
-export function applyHarbourPolygons(
-  mapObj: OutlineMap,
-  cells: HarbourCell[] | null | undefined,
-): void {
-  if (!mapObj.getStyle()) return;
-  clearVectorOverlays(mapObj);
-  if (!cells || cells.length === 0) return;
-  const features = harbourCellFeatures(cells);
-  if (features.length === 0) return;
-  void HARBOUR_CELL_FILL;
-  mapObj.addSource(HARBOUR_SRC, {
-    type: "geojson",
-    data: { type: "FeatureCollection", features },
-  });
-  const before = abovePaint(mapObj);
-  mapObj.addLayer(
-    {
-      id: HARBOUR_FILL,
-      type: "fill",
-      source: HARBOUR_SRC,
-      paint: {
-        "fill-color": [
-          "match",
-          ["get", "band"],
-          "low",
-          HARBOUR_CELL_FILL.low,
-          "mid",
-          HARBOUR_CELL_FILL.mid,
-          "high",
-          HARBOUR_CELL_FILL.high,
-          HARBOUR_CELL_FILL.unknown,
-        ],
-        "fill-opacity": 0.5,
-      },
-    },
-    before,
-  );
-  mapObj.addLayer(
-    {
-      id: HARBOUR_CASING,
-      type: "line",
-      source: HARBOUR_SRC,
-      paint: { "line-color": "#ffffff", "line-width": 1, "line-opacity": 0.5 },
-    },
-    before,
-  );
-}
-
 /**
  * Paint the full harbour picture in ONE overlay-slot pass: AIS
  * pleasure-cell fills (grid as-is) UNDER joined-port dots. One

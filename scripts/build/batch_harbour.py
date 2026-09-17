@@ -76,6 +76,10 @@ NS = {
 }
 
 
+class _StopSignal(RuntimeError):
+    """HTTP 429 back-off signal: stop the run, rerun resumes via cache."""
+
+
 def _get(url: str, timeout: int = 120) -> bytes:
     req = urllib.request.Request(url, headers={"User-Agent": UA})
     try:
@@ -85,11 +89,11 @@ def _get(url: str, timeout: int = 120) -> bytes:
             return resp.read()
     except urllib.error.HTTPError as exc:
         if exc.code == 429:
-            raise RuntimeError("HTTP 429 — stop signal")
+            raise _StopSignal("HTTP 429 — stop signal")
         raise RuntimeError("HTTP %d on %s" % (exc.code, url))
 
 
-def _node_pos(member: ET.Element) -> Optional[Tuple[str, float, float]]:
+def _node_pos(member: ET.Element) -> Optional[Tuple[str, float, float, str]]:
     """One PortNode member -> (gml_id, E, N in 3301)."""
     gid, name, pos = "", "", ""
     for child in member.iter():
@@ -138,11 +142,15 @@ def read_ais_cells(zip_path: str, vintage: str = AIS_VINTAGE) -> List[Dict]:
     """
     import struct
     zf = zipfile.ZipFile(zip_path)
-    base = next(n[:-4] for n in zf.namelist()
-                if vintage in n and n.endswith(".shp"))
+    base = next((n[:-4] for n in zf.namelist()
+                 if vintage in n and n.endswith(".shp")), None)
+    if base is None:
+        raise ValueError("no %s .shp in %s" % (vintage, zip_path))
     shp = zf.read(base + ".shp")
     dbf = zf.read(base + ".dbf")
-    nrec, hlen, _rlen = struct.unpack("<IHH", dbf[4:12])
+    nrec, hlen, rlen = struct.unpack("<IHH", dbf[4:12])
+    if rlen != 119:
+        raise ValueError("AIS DBF record-length drift: %d != 119" % rlen)
     cells = []
     off = 100
     for i in range(nrec):
@@ -222,6 +230,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             nodes_raw = _get(NODES_URL)
         nodes = parse_nodes(nodes_raw)
         cells = read_ais_cells(args.ais_zip) if args.ais_zip else []
+    except _StopSignal as exc:
+        print("harvest stopped (%s) — writing NOTHING" % exc)
+        return 2
     except (RuntimeError, OSError, ValueError, ET.ParseError,
             zipfile.BadZipFile, KeyError) as exc:
         print("harvest failed (%s) — writing NOTHING" % exc)

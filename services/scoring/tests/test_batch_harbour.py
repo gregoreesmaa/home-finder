@@ -6,8 +6,12 @@ builds-nothing rules.
 """
 
 import os
+import struct
 import sys
 import xml.etree.ElementTree as ET
+import zipfile
+
+import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..",
                                 "..", "scripts", "build"))
@@ -17,7 +21,49 @@ from batch_harbour import (  # noqa: E402
     build,
     main,
     parse_nodes,
+    read_ais_cells,
 )
+
+
+def _ais_zip(path, shp_name="ais_2024_density.shp", rlen=119,
+             pleasure=b"53", all_n=b"100"):
+    """One-cell synthetic AIS zip (3301 centroid near Pirita)."""
+    content = struct.pack("<i", 5) + struct.pack(
+        "<4d", 546000.0, 6592000.0, 546500.0, 6592500.0)
+    rwords = len(content) // 2
+    shp = (b"\x00" * 100 + struct.pack(">2i", 1, rwords) + content)
+    hlen = 32
+    rec = bytearray(b" " * rlen)
+    rec[1:11] = all_n.ljust(10, b" ")[:10]
+    rec[41:51] = pleasure.ljust(10, b" ")[:10]
+    dbf = (b"\x03\x19\x09\x11" + struct.pack("<IHH", 1, hlen, rlen)
+           + b"\x00" * (hlen - 12) + bytes(rec))
+    with zipfile.ZipFile(path, "w") as zf:
+        zf.writestr(shp_name, shp)
+        zf.writestr(shp_name[:-4] + ".dbf", dbf)
+    return str(path)
+
+
+def test_read_ais_cells_parses_synthetic_zip(tmp_path):
+    zp = _ais_zip(tmp_path / "ais.zip")
+    cells = read_ais_cells(zp)
+    assert len(cells) == 1
+    assert cells[0]["pleasure"] == 53
+    assert cells[0]["all"] == 100
+    assert 24.55 <= cells[0]["lon"] <= 25.10
+    assert 59.35 <= cells[0]["lat"] <= 59.55
+
+
+def test_read_ais_cells_missing_vintage_fails_clean(tmp_path):
+    zp = _ais_zip(tmp_path / "ais.zip", shp_name="ais_2023_density.shp")
+    with pytest.raises(ValueError, match="no 2024 .shp"):
+        read_ais_cells(zp)
+
+
+def test_read_ais_cells_record_drift_fails_loud(tmp_path):
+    zp = _ais_zip(tmp_path / "ais.zip", rlen=100)
+    with pytest.raises(ValueError, match="record-length drift"):
+        read_ais_cells(zp)
 
 WFS = """<wfs:FeatureCollection xmlns:wfs="http://www.opengis.net/wfs/2.0" xmlns:gml="http://www.opengis.net/gml/3.2" xmlns:TN_sadam="urn:x">
 <wfs:member><TN_sadam:PortNode gml:id="n1"><TN_sadam:gml_id>EE-PIR_168</TN_sadam:gml_id><TN_sadam:spellingofname_text xmlns:TN_sadam="urn:x">PIRITA SADAM</TN_sadam:spellingofname_text><TN_sadam:geom><gml:Point srsName="x"><gml:pos>6592572.0 546582.0</gml:pos></gml:Point></TN_sadam:geom></TN_sadam:PortNode></wfs:member>

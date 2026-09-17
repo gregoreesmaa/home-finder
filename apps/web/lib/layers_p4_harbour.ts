@@ -5,8 +5,8 @@
 // from the app's own UI) joined to INSPIRE PortNode geometry on
 // publicId — served as POINTS on the standard point path (real
 // data, snapshot provenance). Cells: AIS 2024 500 m pleasure counts
-// (CC BY-SA 3.0, grid as-is) painted as band FILLS via
-// applyHarbourPolygons. Outside every port influence radius and
+// (CC BY-SA 3.0, grid as-is) painted as band FILLS under port DOTS
+// via applyHarbourOverlays (one slot pass). Outside every port influence radius and
 // every cell is NULL — never calm/quiet. Season data is not public,
 // so no calendar claims anywhere (legend + reasons say so).
 //
@@ -40,7 +40,7 @@ export const HARBOUR_DEFS: LayerDef[] = [
       "läheduses sadamat/AIS-tihedust pole (mitte 'rahulik' — kaardistamata on teadmata)",
     badLabel:
       "töösadam lähedal (fn1) või tihe väikelaevaliiklus (Pleasure ≥50)",
-    source: `${HARBOUR_ATTRIBUTION}: Harju sadamad (37 liitunud punkti) + Tallinna lahe väikelaevaruudud (hooajajaotuseta, aastakokku)`,
+    source: `${HARBOUR_ATTRIBUTION}: Harju sadamad (liitunud punktid) + Tallinna lahe väikelaevaruudud (hooajajaotuseta, aastakokku)`,
     // Points ARE the data for ports (served on the point path);
     // cells paint as fills. No demo points ever (empty fallback,
     // pinned by test).
@@ -211,7 +211,7 @@ export function harbourPointsIn(
 
 /**
  * Pleasure-cell fill colors (recreation pressure, pale → deep green).
- * Shared by the map painter (applyHarbourPolygons) and unit-tested.
+ * Shared by the map painter (applyHarbourOverlays) and unit-tested.
  */
 export const HARBOUR_CELL_FILL: Record<string, string> = {
   low: "#bbf7d0",

@@ -76,6 +76,29 @@ def test_pleasure_outside_is_unknown_not_quiet():
     assert "rahulik" not in reason  # never claims calm water either
 
 
+def test_pleasure_far_cell_is_null_despite_busy_count():
+    # AIS influence window (1500 m, mirror of the function gate): a busy
+    # cell kilometres away must NOT score -- outside is NULL.
+    s, reason = dim_ais_pleasure_density(
+        TALLINN, [{**CELL_BUSY, "dist_m": 5000.0}])
+    assert s is None
+    assert "1500" in reason
+    assert "MITTE vaikne" in reason
+
+
+def test_bool_inputs_are_not_distances_or_counts():
+    # True == 1 would fake fn1 proximity / a pleasure count of 1.
+    s, _ = dim_harbour_function_zone(
+        TALLINN, [{**VANASADAM, "dist_m": True}])
+    assert s is None
+    s, _ = dim_ais_pleasure_density(
+        TALLINN, [{"pleasure": True, "dist_m": 100.0}])
+    assert s is None
+    s, _ = dim_harbour_function_zone(
+        TALLINN, [{**VANASADAM, "function": True, "dist_m": 100.0}])
+    assert s is None
+
+
 def test_module_adds_no_network_calls():
     src = inspect.getsource(harbour)
     assert "urlopen" not in src

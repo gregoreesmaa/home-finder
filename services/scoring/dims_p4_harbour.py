@@ -51,26 +51,26 @@ FIXTURE-REPLACEMENT AUDIT (P4-023 sadam leg, row-for-row): the live
 ``dims_p4_trans.dim_noise_zone_trans`` join reads fixture labels
 ``NOISE_ZONE_SCORES = {"lennumüra": 35, "õppus": 50, "sadam": 60}`` --
 any ``noisezone_p4`` POI labelled ``sadam`` within 1 km scores a flat 60.
-The measured replacement (BLOCKED on the licence gate) maps row-for-row:
-fixture ``sadam``-within-1km -> PortArea containment by function
-(cruise-terminal adjacency -> calendar leg, cargo-port adjacency -> low
-noise band, marina adjacency -> recreation note, each scored from joined
-port rows, never a distance gradient). Until the gate clears, the fixture
-stays EXACTLY as-is -- this PR changes no shared file and no existing
-score. Full table in docs/p4_harbour.md.
+The measured replacement (SHIPPED in #627 once the licence gate
+opened) maps row-for-row: fixture ``sadam``-within-1km -> function bands
+by distance from joined port rows (fn1 working ports read industrial,
+fn2/fn3 marinas read amenity -- worst/lowest wins, buyer-conservative).
+Rows without a joined function keep the fixture 60, honestly. The live
+hook is ``dims_p4_trans.dim_noise_zone_trans``. Full table in
+docs/p4_harbour.md.
 
 Style mirrors services/scoring/dims_p4_sadam.py (#298/#368): pure
 offline scorers (origin, pois) -> (Optional[int 0..100], Estonian
 reason); helpers are local (no livability import -- that would turn the
 future central hook into a cycle, same precedent as PRs #100/#106/#115).
-No shared-file edits: 3 new files only (this module + tests +
-docs/p4_harbour.md).
+Shared-file change: the P4-023 hook in ``dims_p4_trans`` (plus this
+module + tests + docs/p4_harbour.md).
 
 Judgment calls (reviewable per AGENTS.md section 7.5):
-* Verdict instead of bands: the licence hard gate (issue Constraints)
-  forbids ingesting the sadamaregister leg, and the AIS values were never
-  pulled -- painting bands from either would be fake precision (OTA PR
-  #131 precedent).
+* Bands instead of verdict (gate opened #627): the sadamaregister
+  ``public-active`` leg + INSPIRE names + pulled AIS grid graduate both
+  legs to bands from joined records only -- bands from either BEFORE
+  the join would have been fake precision (OTA PR #131 precedent).
 * P4-047 event-traffic + P4-055 icebreaking dims stay cousins (distinct
   keys); P4-023 keeps the trans fixture band plus the KAUR/EHR slices --
   each reason names its cousins.
@@ -88,15 +88,11 @@ Score = Tuple[Optional[int], str]  # (score 0..100 | None, Estonian reason)
 
 
 # ---------------------------------------------------------------------------
-# P4-023/P4-033-adjacent: measured harbour legs (licence-gated NULLs).
-# sadamaregister.ee serves a JS shell + an undiscovered keyless-looking app
-# API with NO licence statement (2026-09-16 verdict above); the INSPIRE WFS
-# carries geometry + names only (no function taxonomy); AIS grid values are
-# unprobed. Each scorer reports the gap with a concrete buyer-side check.
+# P4-023/P4-033-adjacent: measured harbour legs (live since #627).
+# sadamaregister.ee public-active app API (function taxonomy) + INSPIRE
+# PortNode (names) + pulled AIS 2024 grid. Each scorer still reports its
+# gap with a concrete buyer-side check (no-season caveat, NULL outside).
 # ---------------------------------------------------------------------------
-
-#: Licence gate: OPENED 2026-09-17 (owner decision, issue #627).
-LICENCE_OK = True
 
 #: Function proximity bands: (within_m, score). Worst (lowest) wins
 #: across joined ports (buyer-conservative, like the noise min-wins).
@@ -111,6 +107,10 @@ FUNCTION_BANDS = {
 #: never dominates): busy sailing water = recreation amenity.
 PLEASURE_BANDS = ((50, 70), (10, 80), (1, 85))
 
+#: AIS influence window (mirror of the 1500 m function gate): cells past
+#: this are outside influence -> NULL, never a far-away busy score.
+AIS_WINDOW_M = 1500.0
+
 #: Season data is not public (detail endpoints 401) -- restated in
 #: every reason: no sailing-calendar claims, annual totals only.
 NO_SEASON = "hooajajaotust pole (aastakokku)"
@@ -118,7 +118,16 @@ NO_SEASON = "hooajajaotust pole (aastakokku)"
 
 def _dist(row: dict) -> Optional[float]:
     d = row.get("dist_m")
-    return float(d) if isinstance(d, (int, float)) and d >= 0 else None
+    if isinstance(d, bool) or not isinstance(d, (int, float)) or d < 0:
+        return None
+    return float(d)
+
+
+def _pleasure(c: dict) -> Optional[float]:
+    pl = c.get("pleasure")
+    if isinstance(pl, bool) or not isinstance(pl, (int, float)):
+        return None
+    return float(pl)
 
 
 def dim_harbour_function_zone(origin: Optional[Tuple[float, float]],
@@ -128,7 +137,8 @@ def dim_harbour_function_zone(origin: Optional[Tuple[float, float]],
         return None, "Sadama info puudub"
     scored = []
     for p in ports:
-        bands = FUNCTION_BANDS.get(p.get("function"))
+        fn = p.get("function")
+        bands = FUNCTION_BANDS.get(fn) if type(fn) is int else None
         d = _dist(p)
         if not bands or d is None:
             continue
@@ -155,16 +165,17 @@ def dim_ais_pleasure_density(origin: Optional[Tuple[float, float]],
     scored = []
     for c in cells:
         d = _dist(c)
-        pl = c.get("pleasure")
-        if d is None or not isinstance(pl, (int, float)):
+        pl = _pleasure(c)
+        if d is None or pl is None or d > AIS_WINDOW_M:
             continue
         for at_least, score in PLEASURE_BANDS:
             if pl >= at_least:
                 scored.append((score, d, pl))
                 break
     if not scored:
-        return None, ("Läheduses väikelaevaliiklust pole (500 m ruudustik) "
-                      "-- NULL, MITTE vaikne (%s)" % NO_SEASON)
+        return None, ("Läheduses väikelaevaliiklust pole (500 m ruudustik, "
+                      "mõjuaken 1500 m) -- NULL, MITTE vaikne (%s)"
+                      % NO_SEASON)
     scored.sort(key=lambda t: (t[0], t[1]))
     s, d, pl = scored[0]
     return s, ("Lähim väikelaevaruudustik %.0f m (aasta ~%d) -- %s"
