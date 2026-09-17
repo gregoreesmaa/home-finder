@@ -614,6 +614,13 @@ export function overlayColorFor(layer: LayerId): string {
     // marker (distinct-color test).
     case "relief":
       return "#292524";
+    // CANOPY-HOOK (#620): canopy marker (tint layer — the point overlay
+    // stays empty live, so this colors only the toggle dot). #042f2e:
+    // teal-950 deep spruce (NOT #1a2e05 lime-950, #3f6212 lime-800 or
+    // #14532d green-900 — taken; layers never co-render). Distinct from
+    // every other marker (distinct-color test).
+    case "canopy":
+      return "#042f2e";
     // MEDRE-HOOK (#609): medre slice markers (Step-1 honest-empty —
     // the point overlay stays empty live, so this colors only the
     // toggle dot). #ffedd5: orange-100 clinic paper; #ede9fe:
@@ -1146,6 +1153,12 @@ export function overlayLegendFor(layer: LayerId): string {
     // neither is a score (flatness is taste: cyclist vs view-seeker).
     case "relief":
       return "Reljeefi toon (DTM hüpsomeetria, maitsekaart) · toon = maapinna iseloom (klint 41–45 / Nõmme 27–52 / Pirita 0–6 — toon ERISTAB, ei hinda); maitse, mitte hinne (kõrgus = vaate-iseloom, madalus = tasane iseloom — kummki pole hinne); skoorijal jalgu EI OLE";
+    // CANOPY-HOOK (#620): CHM canopy-height character tint (taste-only)
+    // — the tint describes tree character, never quality: tall canopy
+    // is shade/shelter character, open ground is light character,
+    // neither is a score (height is taste: shade vs view).
+    case "canopy":
+      return "Võrastiku toon (CHM kõrgusklassid, maitsekaart, lend 2022-suvi) · toon = puistu iseloom (1–4 / 4–10 / 10–20 / 20–30 / >30 m — toon ERISTAB, ei hinda); maitse, mitte hinne (kõrgus = varju-iseloom, lagendik = valguse-iseloom — kummki pole hinne); skoorijal jalgu EI OLE";
     // ASUMEDIA-HOOK (#495): asumedia (own-snapshot asking medians) —
     // the dated negative rides along: 0/84 asums reach MIN_N=5, so
     // the field is unknown everywhere until the reopen lands real

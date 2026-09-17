@@ -9,6 +9,7 @@ import { MAAPARANDUS_CLASS_FILL, type MaaparandusArea } from "./layers_p4_maapar
 import { SOIL_CLASS_FILL, type SoilArea } from "./layers_p4_soil";
 import { ETAK_CLASS_FILL, type EtakArea } from "./layers_p4_etak";
 import { renderReliefTint, type ReliefTintGrid } from "./layers_p4_relief";
+import { renderCanopyTint, type CanopyTintGrid } from "./layers_p4_canopy";
 import type { OverlayPoint } from "./overlays";
 
 /** Minimal map surface for vector overlays (sources + paint layers). */
@@ -92,6 +93,11 @@ const ETAK_CASING = "etak-contour-casing";
 // slot paints either kind, never stacks (see clearVectorOverlays).
 const RELIEF_SRC = "relief-tint-src";
 const RELIEF_LYR = "relief-tint-lyr";
+// CANOPY-HOOK (#620): canopy class-tint image slot (character tint,
+// never a gradient/score). Clearing covers these ids too — one overlay
+// slot paints either kind, never stacks (see clearVectorOverlays).
+const CANOPY_SRC = "canopy-tint-src";
+const CANOPY_LYR = "canopy-tint-lyr";
 const POINT_SRC = "layer-overlay-src";
 const POINT_CASING = "layer-overlay-casing";
 const POINT_CORE = "layer-overlay-core";
@@ -110,7 +116,7 @@ export function clearVectorOverlays(mapObj: OutlineMap): void {
   // SOIL-HOOK (#617): contour fill + casing join the cleared slot.
   // ETAK-HOOK (#618): etak contour fill + casing join the cleared
   // slot.
-  for (const id of [PARK_CASING, PARK_CORE, POINT_CASING, POINT_CORE, FLOOD_FILL, FLOOD_CASING, MAAPARCEL_FILL, MAAPARCEL_CASING, EELIS_FILL, EELIS_CASING, USE_FILL, USE_CASING, SEVESO_FILL, SEVESO_CASING, STATELAND_FILL, STATELAND_CASING, QUARRY_FILL, QUARRY_CASING, MAAPARANDUS_FILL, MAAPARANDUS_CASING, MAAPARANDUS_LINES, SOIL_FILL, SOIL_CASING, ETAK_FILL, ETAK_CASING, RELIEF_LYR]) {
+  for (const id of [PARK_CASING, PARK_CORE, POINT_CASING, POINT_CORE, FLOOD_FILL, FLOOD_CASING, MAAPARCEL_FILL, MAAPARCEL_CASING, EELIS_FILL, EELIS_CASING, USE_FILL, USE_CASING, SEVESO_FILL, SEVESO_CASING, STATELAND_FILL, STATELAND_CASING, QUARRY_FILL, QUARRY_CASING, MAAPARANDUS_FILL, MAAPARANDUS_CASING, MAAPARANDUS_LINES, SOIL_FILL, SOIL_CASING, ETAK_FILL, ETAK_CASING, RELIEF_LYR, CANOPY_LYR]) {
     try {
       if (mapObj.getLayer(id)) mapObj.removeLayer(id);
     } catch {
@@ -127,7 +133,7 @@ export function clearVectorOverlays(mapObj: OutlineMap): void {
   // DRAINAGE-HOOK (#616): the network-fill source joins the same slot.
   // SOIL-HOOK (#617): the contour-fill source joins the same slot.
   // ETAK-HOOK (#618): the etak-contour source joins the same slot.
-  for (const id of [PARK_SRC, POINT_SRC, FLOOD_SRC, MAAPARCEL_SRC, EELIS_SRC, USE_SRC, SEVESO_SRC, STATELAND_SRC, QUARRY_SRC, MAAPARANDUS_SRC, MAAPARANDUS_OUTFLOW_SRC, SOIL_SRC, ETAK_SRC, RELIEF_SRC]) {
+  for (const id of [PARK_SRC, POINT_SRC, FLOOD_SRC, MAAPARCEL_SRC, EELIS_SRC, USE_SRC, SEVESO_SRC, STATELAND_SRC, QUARRY_SRC, MAAPARANDUS_SRC, MAAPARANDUS_OUTFLOW_SRC, SOIL_SRC, ETAK_SRC, RELIEF_SRC, CANOPY_SRC]) {
     try {
       if (mapObj.getSource(id)) mapObj.removeSource(id);
     } catch {
@@ -1273,6 +1279,57 @@ export function applyReliefTint(
       id: RELIEF_LYR,
       type: "raster",
       source: RELIEF_SRC,
+      paint: { "raster-opacity": 0.85 },
+    },
+    before,
+  );
+}
+
+// CANOPY-HOOK (#620): CHM class character-tint image overlay.
+
+/**
+ * Paint the canopy tint grid as a semi-transparent image overlay so
+ * tree character reads at a glance. This is a CHARACTER TINT, never
+ * a score: colors are the publisher's own CHM classes (see CANOPY_LUT),
+ * and no score field is painted anywhere. Clears stale overlay layers
+ * first; no-op when the style is not loaded yet, when grid is nullish,
+ * or when there is no document (canvas glue — the pure renderer
+ * renderCanopyTint is unit-tested; this seam only moves its bytes into
+ * an image source).
+ */
+export function applyCanopyTint(
+  mapObj: OutlineMap,
+  grid: CanopyTintGrid | null | undefined,
+): void {
+  if (!mapObj.getStyle()) return;
+  clearVectorOverlays(mapObj);
+  if (!grid) return;
+  if (typeof document === "undefined") return;
+  const { cols, rows, rgba } = renderCanopyTint(grid);
+  const canvas = document.createElement("canvas");
+  canvas.width = cols;
+  canvas.height = rows;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  ctx.putImageData(new ImageData(rgba, cols, rows), 0, 0);
+  const url = canvas.toDataURL("image/png");
+  const b = grid.bbox;
+  mapObj.addSource(CANOPY_SRC, {
+    type: "image",
+    url,
+    coordinates: [
+      [b.minlon, b.maxlat],
+      [b.maxlon, b.maxlat],
+      [b.maxlon, b.minlat],
+      [b.minlon, b.minlat],
+    ],
+  });
+  const before = abovePaint(mapObj);
+  mapObj.addLayer(
+    {
+      id: CANOPY_LYR,
+      type: "raster",
+      source: CANOPY_SRC,
       paint: { "raster-opacity": 0.85 },
     },
     before,

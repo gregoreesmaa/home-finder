@@ -145,6 +145,14 @@ import {
   isReliefTasteOnlyLayer,
   type ReliefTintGrid,
 } from "../../lib/layers_p4_relief";
+// CANOPY-HOOK (#620): canopy paints the CHM class character tint
+// (taste-only, never a gradient/score) instead of points — fetched once
+// per selection (the county grid covers every view).
+import {
+  fetchCanopyTint,
+  isCanopyTasteOnlyLayer,
+  type CanopyTintGrid,
+} from "../../lib/layers_p4_canopy";
 
 /** Viewport bbox rounded for fetch stability (matches server key rounding). */
 function sameView(a: BBoxLike, b: BBoxLike): boolean {
@@ -465,6 +473,26 @@ export default function LayersPage() {
     };
   }, [layer]);
 
+  // CANOPY-HOOK (#620): CHM class tint grid (canopy layer only,
+  // fetched once per selection): the character tint itself — tree
+  // character vs honestly-unknown (missing sidecar). No points and no
+  // score field are painted for this layer, by design (taste-only,
+  // never a gradient/score).
+  const [canopyTint, setCanopyTint] = useState<CanopyTintGrid | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!isCanopyTasteOnlyLayer(layer)) {
+      setCanopyTint(null);
+      return;
+    }
+    fetchCanopyTint().then((grid) => {
+      if (!cancelled) setCanopyTint(grid);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [layer]);
+
   // Park boundaries (parks layer only): fetched once per selection, a
   // visual aid so scored-inside vs surroundings reads at a glance.
   const [outlines, setOutlines] = useState<ParkOutline[] | null>(null);
@@ -589,7 +617,7 @@ export default function LayersPage() {
     // QUARRY-HOOK (#614): quarry paints polygons, never point markers.
     // SOIL-HOOK (#617): soil paints polygons, never point markers.
     // ETAK-HOOK (#618): etak paints polygons, never point markers.
-    layer === "parks" || isPolygonOnlyLayer(layer) || isPolygonOnlyMaaLayer(layer) || isEelisPolygonOnlyLayer(layer) || isSevesoPolygonOnlyLayer(layer) || isStatelandPolygonOnlyLayer(layer) || isQuarryPolygonOnlyLayer(layer) || isMaaparandusPolygonOnlyLayer(layer) || isSoilPolygonOnlyLayer(layer) || isEtakPolygonOnlyLayer(layer) || isReliefTasteOnlyLayer(layer)
+    layer === "parks" || isPolygonOnlyLayer(layer) || isPolygonOnlyMaaLayer(layer) || isEelisPolygonOnlyLayer(layer) || isSevesoPolygonOnlyLayer(layer) || isStatelandPolygonOnlyLayer(layer) || isQuarryPolygonOnlyLayer(layer) || isMaaparandusPolygonOnlyLayer(layer) || isSoilPolygonOnlyLayer(layer) || isEtakPolygonOnlyLayer(layer) || isReliefTasteOnlyLayer(layer) || isCanopyTasteOnlyLayer(layer)
       ? null
       : needsGraphOverlay(layer)
         ? graphPoints
@@ -615,6 +643,8 @@ export default function LayersPage() {
           ? (etakAreas?.length ?? 0)
         : isReliefTasteOnlyLayer(layer)
           ? (reliefTint ? 1 : 0)
+        : isCanopyTasteOnlyLayer(layer)
+          ? (canopyTint ? 1 : 0)
         : isPlanktprLayerId(layer)
           ? (usePolygons?.length ?? 0)
     : layer === "parks"
@@ -711,6 +741,13 @@ export default function LayersPage() {
     reliefTint === null
       ? "Laadin reljeefitooni…"
       : `Reljeefi toon · ${reliefTint.cols}×${reliefTint.rows} maastikuruudustik (maitse, mitte hinne — toon ERISTAB, ei hinda)`;
+  // CANOPY-HOOK (#620): canopy status names the tint grid, never
+  // points — the layer serves zero points by design (taste-only, no
+  // score field anywhere).
+  const canopyStatus =
+    canopyTint === null
+      ? "Laadin võrastikutooni…"
+      : `Võrastiku toon · ${canopyTint.cols}×${canopyTint.rows} klassiruudustik (maitse, mitte hinne — toon ERISTAB, ei hinda)`;
   const base =
     isPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
       ? floodStatus
@@ -733,6 +770,8 @@ export default function LayersPage() {
         ? etakStatus
       : isReliefTasteOnlyLayer(layer) && provenance !== null && provenance !== "demo"
         ? reliefStatus
+      : isCanopyTasteOnlyLayer(layer) && provenance !== null && provenance !== "demo"
+        ? canopyStatus
       : provenance === null
       ? "Laadin kihi andmeid…"
       : provenance === "snapshot"
@@ -843,6 +882,7 @@ export default function LayersPage() {
         soilAreas={soilAreas}
         etakAreas={etakAreas}
         reliefTint={reliefTint}
+        canopyTint={canopyTint}
         overlayPoints={pointOverlay}
         usePolygons={usePolygons}
         overlayColor={overlayColorFor(layer)}
@@ -891,6 +931,9 @@ export default function LayersPage() {
             // RELIEF-HOOK (#619): relief paints no field at all (zero
             // points, null raster) -- same skip for the taste tint.
             isReliefTasteOnlyLayer(layer) ||
+            // CANOPY-HOOK (#620): canopy paints no field at all (zero
+            // points, null raster) -- same skip for the taste tint.
+            isCanopyTasteOnlyLayer(layer) ||
             isPlanktprLayerId(layer)
             ? ""
             : distance === "euclidean" && provenance === "snapshot"

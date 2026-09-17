@@ -13,6 +13,7 @@ import {
   applyMaaparandusPolygons,
   applyEtakPolygons,
   applyReliefTint,
+  applyCanopyTint,
   applyUsePolygons,
   clearVectorOverlays,
   type OutlineMap,
@@ -406,6 +407,17 @@ describe("clearVectorOverlays", () => {
     const map = mockMap();
     map.layers.add("relief-tint-lyr");
     map.sources.add("relief-tint-src");
+    clearVectorOverlays(map);
+    expect(map.layers.size).toBe(0);
+    expect(map.sources.size).toBe(0);
+  });
+
+  // CANOPY-HOOK (#620): the tint image source + raster layer join the
+  // cleared slot (one overlay slot paints any kind, never stacks).
+  it("removes the canopy tint slot too", () => {
+    const map = mockMap();
+    map.layers.add("canopy-tint-lyr");
+    map.sources.add("canopy-tint-src");
     clearVectorOverlays(map);
     expect(map.layers.size).toBe(0);
     expect(map.sources.size).toBe(0);
@@ -1103,5 +1115,72 @@ describe("applyEtakPolygons (#618)", () => {
     applyEtakPolygons(map, []);
     expect(map.sources.size).toBe(0);
     expect(map.layers.size).toBe(0);
+  });
+});
+
+describe("applyCanopyTint (#620)", () => {
+  const GRID = {
+    cols: 2,
+    rows: 1,
+    bbox: { minlon: 24.6, minlat: 59.28, maxlon: 24.7, maxlat: 59.33 },
+    vintage: "2022-suvi",
+    classes: [3, 0],
+  };
+
+  function stubDom() {
+    const putImageData = vi.fn();
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: () => ({ putImageData }),
+      toDataURL: () => "data:image/png;base64,tint",
+    };
+    vi.stubGlobal("document", { createElement: () => canvas });
+    vi.stubGlobal("ImageData", class {
+      data: Uint8ClampedArray;
+      constructor(data: Uint8ClampedArray) {
+        this.data = data;
+      }
+    });
+    return { putImageData, canvas };
+  }
+
+  it("paints a taste-only image overlay with county corners", () => {
+    const { putImageData } = stubDom();
+    try {
+      const map = mockMap();
+      applyCanopyTint(map, GRID);
+      expect(map.sources.has("canopy-tint-src")).toBe(true);
+      expect(map.layers.has("canopy-tint-lyr")).toBe(true);
+      expect(putImageData).toHaveBeenCalledOnce();
+      const src = map.added[0] as {
+        type: string;
+        url: string;
+        coordinates: number[][][];
+      };
+      expect(src.type).toBe("image");
+      expect(src.url).toBe("data:image/png;base64,tint");
+      expect(src.coordinates[0]).toEqual([24.6, 59.33]);
+      expect(src.coordinates[2]).toEqual([24.7, 59.28]);
+      const lyr = map.added.find(
+        (l) => (l as { id?: string }).id === "canopy-tint-lyr",
+      ) as { type: string };
+      expect(lyr.type).toBe("raster");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("is a no-op on nullish grid (outside stays unpainted)", () => {
+    stubDom();
+    try {
+      const map = mockMap();
+      applyCanopyTint(map, null);
+      applyCanopyTint(map, undefined);
+      expect(map.sources.size).toBe(0);
+      expect(map.layers.size).toBe(0);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
