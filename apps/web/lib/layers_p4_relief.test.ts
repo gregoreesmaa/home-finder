@@ -106,8 +106,9 @@ describe("relief registry (#619)", () => {
   it("merges into LAYERS via the RELIEF-HOOK (page + routes serve it)", () => {
     const ids = LAYERS.map((l) => l.id);
     // 124 shipped + seveso + stateland + quarry + maaparandus + soil +
-    // etak + 1 relief overlay (RELIEF-HOOK #619, 129 + 1 = 130).
-    expect(ids.length).toBe(130);
+    // etak + 1 relief overlay (RELIEF-HOOK #619, 129 + 1) + 1 canopy overlay
+    // (CANOPY-HOOK #620, 130 + 1 = 131)..
+    expect(ids.length).toBe(131);
     expect(ids).toContain("relief");
   });
   it("rides paramLabel with empty paramIds (tint only, no parameters3 number)", () => {

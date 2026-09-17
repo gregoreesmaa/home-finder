@@ -36,6 +36,8 @@ import { isSoilLayerId } from "../../../../lib/layers_p4_soil";
 import { isEtakLayerId } from "../../../../lib/layers_p4_etak";
 // RELIEF-HOOK (#619): taste-only branch guard (see below).
 import { isReliefLayerId } from "../../../../lib/layers_p4_relief";
+// CANOPY-HOOK (#620): taste-only branch guard (see below).
+import { isCanopyLayerId } from "../../../../lib/layers_p4_canopy";
 
 import {
   intersectsCoverage,
@@ -330,6 +332,21 @@ export async function GET(
   // (a fake gradient), and demo fallback points are refused by the
   // layer def (empty fallbackPoints, pinned by test).
   if (isReliefLayerId(def.id)) {
+    const { distance } = await loadLayerRaster(def.id);
+    return NextResponse.json({
+      points: [],
+      provenance: "snapshot",
+      ageMs: Date.now() - SNAPSHOT_AS_OF_MS,
+      distance,
+    });
+  }
+  // CANOPY-HOOK (#620): canopy is taste-only (zero points, zero raster
+  // — the /canopy/areas tint grid carries the data). Answer
+  // honestly-empty points on snapshot provenance: requiring points or
+  // a raster here would 500 a healthy layer into labeled demo points
+  // (a fake gradient), and demo fallback points are refused by the
+  // layer def (empty fallbackPoints, pinned by test).
+  if (isCanopyLayerId(def.id)) {
     const { distance } = await loadLayerRaster(def.id);
     return NextResponse.json({
       points: [],

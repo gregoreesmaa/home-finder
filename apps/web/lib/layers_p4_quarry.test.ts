@@ -65,8 +65,9 @@ describe("quarry registry (#614)", () => {
     // stateland (#615) + maaparandus (#616) + soil (#617) + 1 quarry
     // extraction/exploration overlay (QUARRY-HOOK #614, 127 + 1) + 1
     // etak overlay (ETAK-HOOK #618, 128 + 1) + 1 relief overlay
-    // (RELIEF-HOOK #619, 129 + 1 = 130).
-    expect(ids.length).toBe(130);
+    // (RELIEF-HOOK #619, 129 + 1) + 1 canopy overlay
+    // (CANOPY-HOOK #620, 130 + 1 = 131)..
+    expect(ids.length).toBe(131);
     expect(ids).toContain("quarry");
   });
 

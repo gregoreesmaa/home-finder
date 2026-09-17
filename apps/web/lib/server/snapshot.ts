@@ -200,6 +200,11 @@ import { ETAK_RASTER_FILE } from "../layers_p4_etak";
 // resolves to an absent file so windows degrade to null; the grid
 // sidecar is honestly null when unharvested).
 import { RELIEF_RASTER_FILE } from "../layers_p4_relief";
+// CANOPY-HOOK (#620): tint raster name lives in layers_p4_canopy.ts
+// (master intentionally never built — CANOPY_NO_RASTER; the name
+// resolves to an absent file so windows degrade to null; the grid
+// sidecar is honestly null when unharvested).
+import { CANOPY_RASTER_FILE } from "../layers_p4_canopy";
 // OHUSEIRE-HOOK (#610): station raster filename + sidecar point type
 // live in layers_p4_ohuseire.ts (raster intentionally never built —
 // OHUSEIRE_NO_RASTER; the name resolves to an absent file so rasters
@@ -956,6 +961,28 @@ export async function loadReliefTint(dir: string): Promise<unknown | null> {
   return grid;
 }
 
+// CANOPY-HOOK (#620): canopy tint-grid sidecar cache (same discipline).
+const canopyTintCache = new Map<string, unknown | null>();
+
+// CANOPY-HOOK (#620): canopy tint grid sidecar
+// (`canopy/canopy-tint.json`, written by scripts/build/batch_canopy.py
+// off the cached WMS CHM render): county class grid. A missing
+// sidecar is honestly null (CHM unharvested), never an error; a
+// malformed grid is honestly null (never a shifted tint).
+export async function loadCanopyTint(dir: string): Promise<unknown | null> {
+  const hit = canopyTintCache.get(dir);
+  if (hit !== undefined) return hit;
+  let grid: unknown | null = null;
+  try {
+    const raw = await fs.readFile(path.join(dir, "canopy", "canopy-tint.json"), "utf8");
+    grid = JSON.parse(raw);
+  } catch {
+    // Optional sidecar: honestly null below.
+  }
+  canopyTintCache.set(dir, grid);
+  return grid;
+}
+
 // DRAINAGE-HOOK (#616): maaparandus network/outflow sidecar
 // (`maaparandus/maaparandus-areas.json`, written by
 // scripts/build/batch_maaparandus.py off the cached WFS GeoJSON):
@@ -1323,6 +1350,10 @@ const RASTER_FILE: Record<LayerId, string> = {
   // — RELIEF_NO_RASTER; the tint grid IS the field; absent file
   // degrades to null, honestly).
   ...RELIEF_RASTER_FILE,
+  // CANOPY-HOOK (#620): canopy tint raster name only (no master built
+  // — CANOPY_NO_RASTER; the tint grid IS the field; absent file
+  // degrades to null, honestly).
+  ...CANOPY_RASTER_FILE,
 };
 
 /**
@@ -1854,6 +1885,10 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // (see layers_p4_relief.ts RELIEF_NO_METRO) — the name resolves to
   // an absent file so windows fall back to county cleanly.
   relief: "relief-metro",
+  // CANOPY-HOOK (#620): no canopy metro master by documented decision
+  // (see layers_p4_canopy.ts CANOPY_NO_METRO) — the name resolves to
+  // an absent file so windows fall back to county cleanly.
+  canopy: "canopy-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

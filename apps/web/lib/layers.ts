@@ -656,6 +656,17 @@ import {
   bonusSpecForRelief,
   isReliefTasteOnlyLayer,
 } from "./layers_p4_relief";
+// CANOPY-HOOK (#620): canopy tint tables live in ./layers_p4_canopy
+// (CHM class tint, taste-only, grid sidecar). That module imports
+// layers only as types, so no runtime cycle.
+import type { CanopyLayerId } from "./layers_p4_canopy";
+import {
+  CANOPY_DECAY,
+  CANOPY_DEFS,
+  CANOPY_TAGS,
+  bonusSpecForCanopy,
+  isCanopyTasteOnlyLayer,
+} from "./layers_p4_canopy";
 // FIXIT-HOOK (#623): report-pin tables live in ./layers_p4_fixit
 // (fixit markers, register sidecar). That module imports layers only
 // as types, so no runtime cycle.
@@ -833,7 +844,10 @@ export type LayerId =
   | SoilLayerId
   // RELIEF-HOOK (#619): relief tint id (./layers_p4_relief, DTM
   // hypsometric tint, taste-only, no parameters3 id).
-  | ReliefLayerId;
+  | ReliefLayerId
+  // CANOPY-HOOK (#620): canopy tint id (./layers_p4_canopy, CHM
+  // class tint, taste-only, no parameters3 id).
+  | CanopyLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -1082,6 +1096,10 @@ const DECAY_KM: Record<LayerId, number> = {
   // RELIEF_DECAY — INERT placeholder, tint only: zero points, never
   // evaluated).
   ...RELIEF_DECAY,
+  // CANOPY-HOOK (#620): canopy tint radius (see layers_p4_canopy.ts
+  // CANOPY_DECAY — INERT placeholder, tint only: zero points, never
+  // evaluated).
+  ...CANOPY_DECAY,
   // SEVESO-HOOK (#613): danger-polygon radius (see layers_p4_seveso.ts
   // SEVESO_DECAY — INERT placeholder, polygons only: zero points,
   // never evaluated).
@@ -1351,6 +1369,9 @@ export const LAYERS: LayerDef[] = [
   // RELIEF-HOOK (#619): relief tint def (DTM hypsometric tint,
   // taste-only, no parameters3 id) from ./layers_p4_relief.
   ...RELIEF_DEFS,
+  // CANOPY-HOOK (#620): canopy tint def (CHM class tint,
+  // taste-only, no parameters3 id) from ./layers_p4_canopy.
+  ...CANOPY_DEFS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -1516,6 +1537,9 @@ const TAGS: Record<LayerId, string> = {
   // RELIEF-HOOK (#619): relief tint source note (see
   // layers_p4_relief.ts RELIEF_TAGS — prose, NOT an Overpass fragment).
   ...RELIEF_TAGS,
+  // CANOPY-HOOK (#620): canopy tint source note (see
+  // layers_p4_canopy.ts CANOPY_TAGS — prose, NOT an Overpass fragment).
+  ...CANOPY_TAGS,
   // SEVESO-HOOK (#613): danger-polygon source note (see
   // layers_p4_seveso.ts SEVESO_TAGS — prose, NOT an Overpass fragment).
   ...SEVESO_TAGS,
@@ -1800,6 +1824,10 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // (INERT — tint only, never evaluated).
   const relief = bonusSpecForRelief(layer);
   if (relief) return relief;
+  // CANOPY-HOOK (#620): canopy tint spec lives in ./layers_p4_canopy
+  // (INERT — tint only, never evaluated).
+  const canopy = bonusSpecForCanopy(layer);
+  if (canopy) return canopy;
   // SEVESO-HOOK (#613): danger-polygon spec lives in
   // ./layers_p4_seveso (INERT — polygons only, never evaluated).
   const seveso = bonusSpecForSeveso(layer);
@@ -2188,6 +2216,10 @@ export async function fetchWindow(
   // (tint only — the grid sidecar carries the data). Same skip,
   // same reason.
   if (isReliefTasteOnlyLayer(layer)) return null;
+  // CANOPY-HOOK (#620): canopy has no raster master by decision
+  // (tint only — the grid sidecar carries the data). Same skip,
+  // same reason.
+  if (isCanopyTasteOnlyLayer(layer)) return null;
   // SEVESO-HOOK (#613): seveso has no raster master by licence decision
   // (polygons only — the sidecar carries the data). Same skip, same
   // reason.
