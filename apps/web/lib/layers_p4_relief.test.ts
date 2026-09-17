@@ -108,8 +108,9 @@ describe("relief registry (#619)", () => {
     // 124 shipped + seveso + stateland + quarry + maaparandus + soil +
     // etak + 1 relief overlay (RELIEF-HOOK #619, 129 + 1) + 1 canopy overlay
     // (CANOPY-HOOK #620, 130 + 1) + 1 buildings overlay
-    // (BUILDINGS-HOOK #621, 131 + 1 = 132)...
-    expect(ids.length).toBe(132);
+    // (BUILDINGS-HOOK #621, 131 + 1) + 1 density overlay
+    // (DENSITY-HOOK #622, 132 + 1 = 133)....
+    expect(ids.length).toBe(133);
     expect(ids).toContain("relief");
   });
   it("rides paramLabel with empty paramIds (tint only, no parameters3 number)", () => {

@@ -161,6 +161,14 @@ import {
   isBuildingsTasteOnlyLayer,
   type BuildingsTintGrid,
 } from "../../lib/layers_p4_buildings";
+// DENSITY-HOOK (#622): density paints INSPIRE PD 1 km squares
+// (taste-only, never a gradient/score) instead of points — fetched
+// once per selection (the county squares cover every view).
+import {
+  fetchDensityAreas,
+  isDensityTasteOnlyLayer,
+  type DensityArea,
+} from "../../lib/layers_p4_density";
 
 /** Viewport bbox rounded for fetch stability (matches server key rounding). */
 function sameView(a: BBoxLike, b: BBoxLike): boolean {
@@ -521,6 +529,26 @@ export default function LayersPage() {
     };
   }, [layer]);
 
+  // DENSITY-HOOK (#622): INSPIRE PD 1 km squares (density layer only,
+  // fetched once per selection): the choropleth itself — settled
+  // character vs honestly-unknown (missing sidecar). No points and no
+  // score field are painted for this layer, by design (taste-only,
+  // never a gradient/score).
+  const [densityAreas, setDensityAreas] = useState<DensityArea[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!isDensityTasteOnlyLayer(layer)) {
+      setDensityAreas(null);
+      return;
+    }
+    fetchDensityAreas().then((areas) => {
+      if (!cancelled) setDensityAreas(areas);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [layer]);
+
   // Park boundaries (parks layer only): fetched once per selection, a
   // visual aid so scored-inside vs surroundings reads at a glance.
   const [outlines, setOutlines] = useState<ParkOutline[] | null>(null);
@@ -645,7 +673,7 @@ export default function LayersPage() {
     // QUARRY-HOOK (#614): quarry paints polygons, never point markers.
     // SOIL-HOOK (#617): soil paints polygons, never point markers.
     // ETAK-HOOK (#618): etak paints polygons, never point markers.
-    layer === "parks" || isPolygonOnlyLayer(layer) || isPolygonOnlyMaaLayer(layer) || isEelisPolygonOnlyLayer(layer) || isSevesoPolygonOnlyLayer(layer) || isStatelandPolygonOnlyLayer(layer) || isQuarryPolygonOnlyLayer(layer) || isMaaparandusPolygonOnlyLayer(layer) || isSoilPolygonOnlyLayer(layer) || isEtakPolygonOnlyLayer(layer) || isReliefTasteOnlyLayer(layer) || isCanopyTasteOnlyLayer(layer) || isBuildingsTasteOnlyLayer(layer)
+    layer === "parks" || isPolygonOnlyLayer(layer) || isPolygonOnlyMaaLayer(layer) || isEelisPolygonOnlyLayer(layer) || isSevesoPolygonOnlyLayer(layer) || isStatelandPolygonOnlyLayer(layer) || isQuarryPolygonOnlyLayer(layer) || isMaaparandusPolygonOnlyLayer(layer) || isSoilPolygonOnlyLayer(layer) || isEtakPolygonOnlyLayer(layer) || isReliefTasteOnlyLayer(layer) || isCanopyTasteOnlyLayer(layer) || isBuildingsTasteOnlyLayer(layer) || isDensityTasteOnlyLayer(layer)
       ? null
       : needsGraphOverlay(layer)
         ? graphPoints
@@ -675,6 +703,8 @@ export default function LayersPage() {
           ? (canopyTint ? 1 : 0)
         : isBuildingsTasteOnlyLayer(layer)
           ? (buildingsTint ? 1 : 0)
+        : isDensityTasteOnlyLayer(layer)
+          ? (densityAreas?.length ?? 0)
         : isPlanktprLayerId(layer)
           ? (usePolygons?.length ?? 0)
     : layer === "parks"
@@ -785,6 +815,13 @@ export default function LayersPage() {
     buildingsTint === null
       ? "Laadin hoonetooni…"
       : `Hoonete toon · ${buildingsTint.cols}×${buildingsTint.rows} kõrgusruudustik (maitse, mitte hinne — toon ERISTAB, ei hinda)`;
+  // DENSITY-HOOK (#622): density status counts squares, never points
+  // — the layer serves zero points by design (taste-only, no score
+  // field anywhere).
+  const densityStatus =
+    densityAreas === null
+      ? "Laadin asustusruute…"
+      : `Asustuse toon · ${densityAreas.length} ruutu 1x1 km, 2024 (maitse, mitte hinne — toon ERISTAB, ei hinda)`;
   const base =
     isPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
       ? floodStatus
@@ -811,6 +848,8 @@ export default function LayersPage() {
         ? canopyStatus
       : isBuildingsTasteOnlyLayer(layer) && provenance !== null && provenance !== "demo"
         ? buildingsStatus
+      : isDensityTasteOnlyLayer(layer) && provenance !== null && provenance !== "demo"
+        ? densityStatus
       : provenance === null
       ? "Laadin kihi andmeid…"
       : provenance === "snapshot"
@@ -923,6 +962,7 @@ export default function LayersPage() {
         reliefTint={reliefTint}
         canopyTint={canopyTint}
         buildingsTint={buildingsTint}
+        densityAreas={densityAreas}
         overlayPoints={pointOverlay}
         usePolygons={usePolygons}
         overlayColor={overlayColorFor(layer)}
@@ -978,6 +1018,10 @@ export default function LayersPage() {
             // (zero points, null raster) -- same skip for the taste
             // tint.
             isBuildingsTasteOnlyLayer(layer) ||
+            // DENSITY-HOOK (#622): density paints no field at all
+            // (zero points, null raster) -- same skip for the square
+            // fills.
+            isDensityTasteOnlyLayer(layer) ||
             isPlanktprLayerId(layer)
             ? ""
             : distance === "euclidean" && provenance === "snapshot"

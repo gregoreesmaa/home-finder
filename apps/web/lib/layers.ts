@@ -678,6 +678,18 @@ import {
   bonusSpecForBuildings,
   isBuildingsTasteOnlyLayer,
 } from "./layers_p4_buildings";
+// DENSITY-HOOK (#622): density square tables live in
+// ./layers_p4_density (INSPIRE PD 1 km taste-only choropleth, areas
+// sidecar). That module imports layers only as types, so no runtime
+// cycle.
+import type { DensityLayerId } from "./layers_p4_density";
+import {
+  DENSITY_DECAY,
+  DENSITY_DEFS,
+  DENSITY_TAGS,
+  bonusSpecForDensity,
+  isDensityTasteOnlyLayer,
+} from "./layers_p4_density";
 // FIXIT-HOOK (#623): report-pin tables live in ./layers_p4_fixit
 // (fixit markers, register sidecar). That module imports layers only
 // as types, so no runtime cycle.
@@ -861,7 +873,10 @@ export type LayerId =
   | CanopyLayerId
   // BUILDINGS-HOOK (#621): buildings tint id (./layers_p4_buildings,
   // LoD1 height tint, taste-only, no parameters3 id).
-  | BuildingsLayerId;
+  | BuildingsLayerId
+  // DENSITY-HOOK (#622): density square id (./layers_p4_density,
+  // INSPIRE PD 1 km choropleth, taste-only, no parameters3 id).
+  | DensityLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -1118,6 +1133,10 @@ const DECAY_KM: Record<LayerId, number> = {
   // layers_p4_buildings.ts BUILDINGS_DECAY — INERT placeholder, tint
   // only: zero points, never evaluated).
   ...BUILDINGS_DECAY,
+  // DENSITY-HOOK (#622): density square radius (see
+  // layers_p4_density.ts DENSITY_DECAY — INERT placeholder, squares
+  // only: zero points, never evaluated).
+  ...DENSITY_DECAY,
   // SEVESO-HOOK (#613): danger-polygon radius (see layers_p4_seveso.ts
   // SEVESO_DECAY — INERT placeholder, polygons only: zero points,
   // never evaluated).
@@ -1393,6 +1412,9 @@ export const LAYERS: LayerDef[] = [
   // BUILDINGS-HOOK (#621): buildings tint def (LoD1 height tint,
   // taste-only, no parameters3 id) from ./layers_p4_buildings.
   ...BUILDINGS_DEFS,
+  // DENSITY-HOOK (#622): density square def (INSPIRE PD 1 km taste
+  // choropleth, no parameters3 id) from ./layers_p4_density.
+  ...DENSITY_DEFS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -1564,6 +1586,9 @@ const TAGS: Record<LayerId, string> = {
   // BUILDINGS-HOOK (#621): buildings tint source note (see
   // layers_p4_buildings.ts BUILDINGS_TAGS — prose, NOT an Overpass fragment).
   ...BUILDINGS_TAGS,
+  // DENSITY-HOOK (#622): density square source note (see
+  // layers_p4_density.ts DENSITY_TAGS — prose, NOT an Overpass fragment).
+  ...DENSITY_TAGS,
   // SEVESO-HOOK (#613): danger-polygon source note (see
   // layers_p4_seveso.ts SEVESO_TAGS — prose, NOT an Overpass fragment).
   ...SEVESO_TAGS,
@@ -1856,6 +1881,10 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // ./layers_p4_buildings (INERT — tint only, never evaluated).
   const buildings = bonusSpecForBuildings(layer);
   if (buildings) return buildings;
+  // DENSITY-HOOK (#622): density square spec lives in
+  // ./layers_p4_density (INERT — squares only, never evaluated).
+  const density = bonusSpecForDensity(layer);
+  if (density) return density;
   // SEVESO-HOOK (#613): danger-polygon spec lives in
   // ./layers_p4_seveso (INERT — polygons only, never evaluated).
   const seveso = bonusSpecForSeveso(layer);
@@ -2252,6 +2281,10 @@ export async function fetchWindow(
   // (tint only — the grid sidecar carries the data). Same skip,
   // same reason.
   if (isBuildingsTasteOnlyLayer(layer)) return null;
+  // DENSITY-HOOK (#622): density has no raster master by decision
+  // (squares only — the areas sidecar carries the data). Same skip,
+  // same reason.
+  if (isDensityTasteOnlyLayer(layer)) return null;
   // SEVESO-HOOK (#613): seveso has no raster master by licence decision
   // (polygons only — the sidecar carries the data). Same skip, same
   // reason.

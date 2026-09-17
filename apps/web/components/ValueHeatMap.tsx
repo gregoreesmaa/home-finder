@@ -22,6 +22,7 @@ import type { EtakArea } from "../lib/layers_p4_etak";
 import type { ReliefTintGrid } from "../lib/layers_p4_relief";
 import type { CanopyTintGrid } from "../lib/layers_p4_canopy";
 import type { BuildingsTintGrid } from "../lib/layers_p4_buildings";
+import type { DensityArea } from "../lib/layers_p4_density";
 import {
   applyFloodPolygons,
   applyMaaParcelPolygons,
@@ -37,6 +38,7 @@ import {
   applyReliefTint,
   applyCanopyTint,
   applyBuildingsTint,
+  applyDensityPolygons,
   applyUsePolygons,
   clearVectorOverlays,
   type OutlineMap,
@@ -66,7 +68,7 @@ const ESTONIA_CENTER: [number, number] = [25.0, 58.75];
  * class tint, then point markers, then use-fills (page guarantees
  * flood-areas, maa-parcels, eelis-areas, seveso-areas, stateland-areas,
  * quarry-areas, drainage-areas, soil-areas, etak-areas, relief-tint,
- * canopy-tint, buildings-tint, outlines and points never coincide — and fills and
+ * canopy-tint, buildings-tint, density-squares, outlines and points never coincide — and fills and
  * points never coincide either), otherwise park outlines; hidden
  * clears the slot. All painters clear stale layers first, so switches
  * never stack.
@@ -89,6 +91,7 @@ function paintOverlay(
     reliefTint?: ReliefTintGrid | null;
     canopyTint?: CanopyTintGrid | null;
     buildingsTint?: BuildingsTintGrid | null;
+    densityAreas?: DensityArea[] | null;
     overlayPoints?: OverlayPoint[] | null;
     usePolygons?: UseFillPolygon[] | null;
     overlayColor?: string;
@@ -174,6 +177,12 @@ function paintOverlay(
     applyBuildingsTint(mapObj, opts.buildingsTint);
     return;
   }
+  // DENSITY-HOOK (#622): INSPIRE PD 1 km square fills (taste-only —
+  // no score field is painted for this layer, by design).
+  if (opts.densityAreas) {
+    applyDensityPolygons(mapObj, opts.densityAreas);
+    return;
+  }
   if (opts.overlayPoints && opts.overlayPoints.length > 0) {
     applyPointOverlay(mapObj, opts.overlayPoints, { color: opts.overlayColor ?? "#1d4ed8" });
     return;
@@ -212,6 +221,7 @@ export function ValueHeatMap({
   reliefTint,
   canopyTint,
   buildingsTint,
+  densityAreas,
   overlayPoints,
   usePolygons,
   overlayColor,
@@ -258,6 +268,8 @@ export function ValueHeatMap({
   canopyTint?: CanopyTintGrid | null;
   /** LoD1 height tint grid (buildings layer only); taste-only image. */
   buildingsTint?: BuildingsTintGrid | null;
+  /** INSPIRE PD 1 km squares (density layer only); taste-only fills. */
+  densityAreas?: DensityArea[] | null;
   /** Point markers drawn ABOVE the raster (all layers but parks). */
   overlayPoints?: OverlayPoint[] | null;
   /** Designated-use fills drawn ABOVE the field (planktpr only). */
@@ -310,6 +322,9 @@ export function ValueHeatMap({
     // BUILDINGS-HOOK (#621): buildingsTint rides the refresh slot so
     // pans keep the tint (same slot as the painted effect below).
     buildingsTint,
+    // DENSITY-HOOK (#622): densityAreas ride the refresh slot so pans
+    // keep the fills (same slot as the painted effect below).
+    densityAreas,
     overlayPoints,
     usePolygons,
     overlayColor,
@@ -340,6 +355,9 @@ export function ValueHeatMap({
     // BUILDINGS-HOOK (#621): buildingsTint rides the refresh slot so
     // pans keep the tint (same slot as the painted effect below).
     buildingsTint,
+    // DENSITY-HOOK (#622): densityAreas ride the refresh slot so pans
+    // keep the fills (same slot as the painted effect below).
+    densityAreas,
     overlayPoints,
     usePolygons,
     overlayColor,
@@ -537,9 +555,10 @@ export function ValueHeatMap({
       // RELIEF-HOOK (#619): reliefTint joins the painted slot.
       // CANOPY-HOOK (#620): canopyTint joins the painted slot.
       // BUILDINGS-HOOK (#621): buildingsTint joins the painted slot.
-      paintOverlay(mapRef.current, { outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, reliefTint, canopyTint, buildingsTint, overlayPoints, usePolygons, overlayColor, showOverlay });
+      // DENSITY-HOOK (#622): densityAreas join the painted slot.
+      paintOverlay(mapRef.current, { outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, reliefTint, canopyTint, buildingsTint, densityAreas, overlayPoints, usePolygons, overlayColor, showOverlay });
     }
-  }, [outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, reliefTint, canopyTint, buildingsTint, overlayPoints, usePolygons, overlayColor, showOverlay]);
+  }, [outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, reliefTint, canopyTint, buildingsTint, densityAreas, overlayPoints, usePolygons, overlayColor, showOverlay]);
 
   return (
     <section aria-label={title}>
