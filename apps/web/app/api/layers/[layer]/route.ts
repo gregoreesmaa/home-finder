@@ -24,6 +24,8 @@ import { isMaaParcelLayerId } from "../../../../lib/layers_maaparcel";
 import { isEelisLayerId } from "../../../../lib/layers_eelis";
 // SEVESO-HOOK (#613): polygons-only branch guard (see below).
 import { isSevesoLayerId } from "../../../../lib/layers_p4_seveso";
+// DELAY-HOOK (#629): polygons-only branch guard (see below).
+import { isDelayLayerId } from "../../../../lib/layers_p4_delay";
 // STATELAND-HOOK (#615): polygons-only branch guard (see below).
 import { isStatelandLayerId } from "../../../../lib/layers_p4_stateland";
 // QUARRY-HOOK (#614): polygons-only branch guard (see below).
@@ -250,6 +252,21 @@ export async function GET(
   // (a fake gradient), and demo fallback points are refused by the
   // layer def (empty fallbackPoints, pinned by test).
   if (isSevesoLayerId(def.id)) {
+    const { distance } = await loadLayerRaster(def.id);
+    return NextResponse.json({
+      points: [],
+      provenance: "snapshot",
+      ageMs: Date.now() - SNAPSHOT_AS_OF_MS,
+      distance,
+    });
+  }
+  // DELAY-HOOK (#629): delay is polygons-only (zero points, zero
+  // raster — the /delay/areas sidecar carries the data). Answer
+  // honestly-empty points on snapshot provenance: requiring points or
+  // a raster here would 500 a healthy layer into labeled demo points
+  // (a fake gradient), and demo fallback points are refused by the
+  // layer defs (empty fallbackPoints, pinned by test).
+  if (isDelayLayerId(def.id)) {
     const { distance } = await loadLayerRaster(def.id);
     return NextResponse.json({
       points: [],

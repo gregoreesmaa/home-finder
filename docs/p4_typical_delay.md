@@ -54,3 +54,47 @@ from aggregation (rails, not road jams).
    precision, stated not hidden.
 3. No livability.WEIGHTS splice here (joint follow-up). 3 new files
    only, zero shared-file edits.
+
+## #629 sampler + corridor layers (built 2026-09-17)
+
+**Parse correction (load-bearing):** the live feed carries LONGITUDE
+first (`2,1,24841420,59519450,...` = bus 1 to Viimsi at
+24.84142/59.51945) — the catalogue description had lat/lon swapped
+and the #557 parser read ZERO live rows (verified: 0/384 before,
+384/384 after). Live rows carry 10 fields and NO speeds (0/384 rows
+with speed), so delay factors come from **vehicle-tracked segment
+speeds** (same vehicle, consecutive pulls, 30–900 s apart, 3–80 km/h),
+not the speed column.
+
+**Sampler** (`scripts/build/batch_delay_sampler.py`): `--pull` (one
+polite snapshot per cron tick, 60 s cadence guard, timestamped
+cache) + `--build` (fixes → segments → corridor×hour medians →
+free-flow = off-peak "muu" median per corridor → factors ≥ 1.0 →
+`delay/delay-corridors.json` with scorer POIs + map strips + GTFS
+stop-nearby validation). Cron hosts MUST run TZ=Europe/Tallinn
+(hour bands are Tallinn wall-clock; tests anchor local-midnight so
+they pass in any host TZ).
+
+**Live proof 2026-09-17:** 3 pulls ~70 s apart → 1015 fixes → 186
+segments across all 8 corridors (p50 16.9 km/h, plausible urban bus)
+→ 0 table cells (honestly thin: 3 snapshots cannot reach n=20 with
+a free-flow baseline — NULLs, never assumed factors).
+
+**Corridors** (representative segments ±500 m join window, GTFS
+shapes.txt absent from the vintage so geometry is documented
+representative, validated by weekday-stop counts): Pärnu mnt, Tartu
+mnt, Narva mnt, Paldiski mnt, Ehitajate tee, Laagna tee, Peterburi
+tee, Sõpruse pst.
+
+**Map** (approved 5-layer design): delay-morning/midday/evening/
+offpeak/worst (`apps/web/lib/layers_p4_delay.ts` + areas route +
+DELAY-HOOK blocks). Off-peak shows the measured free-flow anchor
+(factor 1.0 where n≥20); worst = max over peaks. Fills mirror the
+scorer bands; thin cells slate mõõtmata; every label carries
+"tavaline, mitte reaalajas".
+
+**Sampler host (recorded decision):** scheduled GitHub workflow
+REJECTED (60 s+ cadence pulls with artefact round-trips are the
+wrong tool); production = container cron sidecar (compose
+follow-up), research = maintainer machine. No school-holiday split
+(unchanged limitation).

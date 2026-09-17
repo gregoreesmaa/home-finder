@@ -661,6 +661,21 @@ export function overlayColorFor(layer: LayerId): string {
     // other marker — distinct-color test; NOT heritage #7c2d12).
     case "kpo":
       return "#4a044e";
+    // DELAY-HOOK (#629): delay markers (polygon layers — the point
+    // overlay stays empty live, so these color only the toggle dots).
+    // Dark jewel tones, each verified free 2026-09-17 (distinct-color
+    // test): #082f49 sky-950 / #022c22 emerald-950 / #4c0519 rose-950 /
+    // #2e1065 violet-950 / #9f1239 rose-800.
+    case "delay-morning":
+      return "#082f49";
+    case "delay-midday":
+      return "#022c22";
+    case "delay-evening":
+      return "#4c0519";
+    case "delay-offpeak":
+      return "#2e1065";
+    case "delay-worst":
+      return "#9f1239";
     // MEDRE-HOOK (#609): medre slice markers (Step-1 honest-empty —
     // the point overlay stays empty live, so this colors only the
     // toggle dot). #ffedd5: orange-100 clinic paper; #ede9fe:
@@ -1238,6 +1253,20 @@ export function overlayLegendFor(layer: LayerId): string {
     // coverage ride along, always.
     case "kpo":
       return "KPO piiranguvööndid (kmakitsendused WFS, CC-BY 4.0, 2026-09, teadaolevate kruntide aknad) · punane = ehituskeeld (20-35), merevaik = tingimuslik (50-65); vööndist väljas = NULL (MITTE puhas omand — tsoonid pole omandiõigus, kontrolli kinnistusraamatust ja notarilt)";
+    // DELAY-HOOK (#629): delay band legends (keyless gps.txt typical
+    // tables) — inside a measured corridor band reads by factor
+    // color; thin/missing cells are slate mõõtmata (never free-flow
+    // green). Every legend carries tavaline, mitte reaalajas.
+    case "delay-morning":
+      return "Tavaviivitus hommikul (busside GPS-jäljed, hommikune tipp 7–9) · roheline = voolab (tegur ≤1,1), punane = ummikus (tegur >1,6); hall = mõõtmata, mitte vaba tee (tavaline, mitte reaalajas)";
+    case "delay-midday":
+      return "Tavaviivitus keskpäeval (busside GPS-jäljed, keskpäev 10–15) · roheline = voolab (tegur ≤1,1), punane = ummikus (tegur >1,6); hall = mõõtmata, mitte vaba tee (tavaline, mitte reaalajas)";
+    case "delay-evening":
+      return "Tavaviivitus õhtul (busside GPS-jäljed, õhtune tipp 16–18) · roheline = voolab (tegur ≤1,1), punane = ummikus (tegur >1,6); hall = mõõtmata, mitte vaba tee (tavaline, mitte reaalajas)";
+    case "delay-offpeak":
+      return "Tavaviivitus tipuvälisel ajal (busside GPS-jäljed) · roheline = mõõdetud vaba liiklus (tegur 1,0, tugitase); hall = tugitase mõõtmata, mitte vaba tee (tavaline, mitte reaalajas)";
+    case "delay-worst":
+      return "Tavaviivitus halvimal tipul (busside GPS-jäljed, tippude maksimum) · roheline = voolab ka halvimal tipul (tegur ≤1,1), punane = ummikus (tegur >1,6); hall = mõõtmata, mitte vaba tee (tavaline, mitte reaalajas)";
     // ASUMEDIA-HOOK (#495): asumedia (own-snapshot asking medians) —
     // the dated negative rides along: 0/84 asums reach MIN_N=5, so
     // the field is unknown everywhere until the reopen lands real

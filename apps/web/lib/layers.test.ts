@@ -307,6 +307,14 @@ describe("layer registry", () => {
       // KPO-HOOK (#626): kpo zone id (WFS restriction zones —
       // paramIds empty, parameters4 namespace, polygons-only).
       "kpo",
+      // DELAY-HOOK (#629): delay band ids (harvested typical-delay
+      // corridors — paramIds empty, parameters4 namespace,
+      // polygons-only, one layer per hour band + worst).
+      "delay-morning",
+      "delay-midday",
+      "delay-evening",
+      "delay-offpeak",
+      "delay-worst",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -486,6 +494,12 @@ describe("layer registry", () => {
     // (parameters4 polygons-only, no parameters3 number).
     expect(LAYERS.find((l) => l.id === "kpo")?.paramIds).toEqual([]);
     expect(LAYERS.find((l) => l.id === "kpo")?.paramLabel).toBe("P4-kitsendus");
+    // DELAY-HOOK (#629): delay rides paramLabel, paramIds stays []
+    // (parameters4 polygons-only, no parameters3 number).
+    for (const id of ["delay-morning", "delay-midday", "delay-evening", "delay-offpeak", "delay-worst"]) {
+      expect(LAYERS.find((l) => l.id === id)?.paramIds).toEqual([]);
+      expect(LAYERS.find((l) => l.id === id)?.paramLabel).toBe("P4-viivitus");
+    }
   });
 
   it("wires the B10C utility layers with locked calibration", () => {
@@ -860,6 +874,13 @@ describe("layer registry", () => {
       // points BY HONESTY (zones come from the sidecar; a demo
       // point would paint a fake gradient splat).
       if (l.id === "kpo") {
+        expect(l.fallbackPoints).toEqual([]);
+        continue;
+      }
+      // DELAY-HOOK (#629): delay is polygons-only — ZERO fallback
+      // points BY HONESTY (bands come from the sidecar; demo points
+      // would paint fake gradient splats).
+      if ((l.id as string).startsWith("delay-")) {
         expect(l.fallbackPoints).toEqual([]);
         continue;
       }

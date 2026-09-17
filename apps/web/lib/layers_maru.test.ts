@@ -48,7 +48,8 @@ describe("marukov registry (#486)", () => {
     // 3 eelis (EELIS-HOOK #488, 101 + 3) + 1 planktpr (PLANKTPR-HOOK #492, 104 + 1).
     // TERVISE-HOOK (#494): +1 tervise bathing-water layer (105 + 1).
     // PAASTE-HOOK (#493): +1 komando overlay (107 + 1).
-    expect(ids.length).toBe(137); // KPO (#626): 136 shipped + kpo = 137. // HARBOUR (#627): 135 shipped + harbour = 136.
+    expect(ids.length).toBe(142); // KPO (#626): 136 shipped + kpo = 137. // HARBOUR (#627): 135 shipped + harbour = 136.
+    // DELAY-HOOK (#629): + 5 delay band overlays (137 + 5 = 142).
     for (const id of MARUKOV_LAYER_IDS) expect(ids).toContain(id);
   });
 
