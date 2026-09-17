@@ -981,8 +981,8 @@ export default function LayersPage() {
   // every polygon is NULL, never safe forest.
   const forestStatus =
     forestAreas === null
-      ? "Laadin võramuutisi…"
-      : `Tuvastatud võramuutis · ${forestAreas.length} polügooni, 2024 lend (väljaspool = teadmata, MITTE turvaline mets)`;
+      ? "Laadin võra muutusi…"
+      : `Tuvastatud võra muutus · ${forestAreas.length} polügooni, 2024 lend (väljaspool = teadmata, MITTE turvaline mets)`;
   // NOISE-HOOK (#625): noise status counts bands, never points —
   // the layer serves zero points by design (polygons only); outside
   // every polygon is NULL, never quiet.
