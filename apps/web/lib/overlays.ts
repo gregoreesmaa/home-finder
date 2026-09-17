@@ -621,6 +621,13 @@ export function overlayColorFor(layer: LayerId): string {
     // every other marker (distinct-color test).
     case "canopy":
       return "#042f2e";
+    // BUILDINGS-HOOK (#621): buildings marker (tint layer — the point
+    // overlay stays empty live, so this colors only the toggle dot).
+    // #3730a3: indigo-800 roof indigo (NOT #312e81 indigo-900 or
+    // #4f46e5 indigo-600 — taken; layers never co-render). Distinct
+    // from every other marker (distinct-color test).
+    case "buildings":
+      return "#3730a3";
     // MEDRE-HOOK (#609): medre slice markers (Step-1 honest-empty —
     // the point overlay stays empty live, so this colors only the
     // toggle dot). #ffedd5: orange-100 clinic paper; #ede9fe:
@@ -1159,6 +1166,14 @@ export function overlayLegendFor(layer: LayerId): string {
     // neither is a score (height is taste: shade vs view).
     case "canopy":
       return "Võrastiku toon (CHM kõrgusklassid, maitsekaart, lend 2022-suvi) · toon = puistu iseloom (1–4 / 4–10 / 10–20 / 20–30 / >30 m — toon ERISTAB, ei hinda); maitse, mitte hinne (kõrgus = varju-iseloom, lagendik = valguse-iseloom — kummki pole hinne); skoorijal jalgu EI OLE";
+    // BUILDINGS-HOOK (#621): LoD1 building-height character tint
+    // (taste-only) — the tint describes built character, never quality:
+    // tall blocks are shade/overlook character, low houses are garden
+    // character, neither is a score (height is taste: view vs shade).
+    // Bins are OURS over measuredHeight (stated); vintage + coverage
+    // from the harvest.
+    case "buildings":
+      return "Hoonete kõrguse toon (LoD1 mõõdetud kõrgus, maitsekaart, lend 2025, Harju 199k hoonet) · toon = hoonestuse iseloom (0–3 / 3–6 / 6–12 / 12–25 / >25 m MEIE klassid — toon ERISTAB, ei hinda); maitse, mitte hinne (kõrgus = varju-iseloom, madalus = aia-iseloom — kummki pole hinne); LoD1 lamekatus liialdab, skoorijal jalgu EI OLE";
     // ASUMEDIA-HOOK (#495): asumedia (own-snapshot asking medians) —
     // the dated negative rides along: 0/84 asums reach MIN_N=5, so
     // the field is unknown everywhere until the reopen lands real

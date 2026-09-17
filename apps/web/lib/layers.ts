@@ -667,6 +667,17 @@ import {
   bonusSpecForCanopy,
   isCanopyTasteOnlyLayer,
 } from "./layers_p4_canopy";
+// BUILDINGS-HOOK (#621): buildings tint tables live in
+// ./layers_p4_buildings (LoD1 height tint, taste-only, grid sidecar).
+// That module imports layers only as types, so no runtime cycle.
+import type { BuildingsLayerId } from "./layers_p4_buildings";
+import {
+  BUILDINGS_DECAY,
+  BUILDINGS_DEFS,
+  BUILDINGS_TAGS,
+  bonusSpecForBuildings,
+  isBuildingsTasteOnlyLayer,
+} from "./layers_p4_buildings";
 // FIXIT-HOOK (#623): report-pin tables live in ./layers_p4_fixit
 // (fixit markers, register sidecar). That module imports layers only
 // as types, so no runtime cycle.
@@ -847,7 +858,10 @@ export type LayerId =
   | ReliefLayerId
   // CANOPY-HOOK (#620): canopy tint id (./layers_p4_canopy, CHM
   // class tint, taste-only, no parameters3 id).
-  | CanopyLayerId;
+  | CanopyLayerId
+  // BUILDINGS-HOOK (#621): buildings tint id (./layers_p4_buildings,
+  // LoD1 height tint, taste-only, no parameters3 id).
+  | BuildingsLayerId;
 
 export interface BBoxLike {
   minlon: number;
@@ -1100,6 +1114,10 @@ const DECAY_KM: Record<LayerId, number> = {
   // CANOPY_DECAY — INERT placeholder, tint only: zero points, never
   // evaluated).
   ...CANOPY_DECAY,
+  // BUILDINGS-HOOK (#621): buildings tint radius (see
+  // layers_p4_buildings.ts BUILDINGS_DECAY — INERT placeholder, tint
+  // only: zero points, never evaluated).
+  ...BUILDINGS_DECAY,
   // SEVESO-HOOK (#613): danger-polygon radius (see layers_p4_seveso.ts
   // SEVESO_DECAY — INERT placeholder, polygons only: zero points,
   // never evaluated).
@@ -1372,6 +1390,9 @@ export const LAYERS: LayerDef[] = [
   // CANOPY-HOOK (#620): canopy tint def (CHM class tint,
   // taste-only, no parameters3 id) from ./layers_p4_canopy.
   ...CANOPY_DEFS,
+  // BUILDINGS-HOOK (#621): buildings tint def (LoD1 height tint,
+  // taste-only, no parameters3 id) from ./layers_p4_buildings.
+  ...BUILDINGS_DEFS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -1540,6 +1561,9 @@ const TAGS: Record<LayerId, string> = {
   // CANOPY-HOOK (#620): canopy tint source note (see
   // layers_p4_canopy.ts CANOPY_TAGS — prose, NOT an Overpass fragment).
   ...CANOPY_TAGS,
+  // BUILDINGS-HOOK (#621): buildings tint source note (see
+  // layers_p4_buildings.ts BUILDINGS_TAGS — prose, NOT an Overpass fragment).
+  ...BUILDINGS_TAGS,
   // SEVESO-HOOK (#613): danger-polygon source note (see
   // layers_p4_seveso.ts SEVESO_TAGS — prose, NOT an Overpass fragment).
   ...SEVESO_TAGS,
@@ -1828,6 +1852,10 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // (INERT — tint only, never evaluated).
   const canopy = bonusSpecForCanopy(layer);
   if (canopy) return canopy;
+  // BUILDINGS-HOOK (#621): buildings tint spec lives in
+  // ./layers_p4_buildings (INERT — tint only, never evaluated).
+  const buildings = bonusSpecForBuildings(layer);
+  if (buildings) return buildings;
   // SEVESO-HOOK (#613): danger-polygon spec lives in
   // ./layers_p4_seveso (INERT — polygons only, never evaluated).
   const seveso = bonusSpecForSeveso(layer);
@@ -2220,6 +2248,10 @@ export async function fetchWindow(
   // (tint only — the grid sidecar carries the data). Same skip,
   // same reason.
   if (isCanopyTasteOnlyLayer(layer)) return null;
+  // BUILDINGS-HOOK (#621): buildings has no raster master by decision
+  // (tint only — the grid sidecar carries the data). Same skip,
+  // same reason.
+  if (isBuildingsTasteOnlyLayer(layer)) return null;
   // SEVESO-HOOK (#613): seveso has no raster master by licence decision
   // (polygons only — the sidecar carries the data). Same skip, same
   // reason.

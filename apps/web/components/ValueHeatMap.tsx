@@ -21,6 +21,7 @@ import type { SoilArea } from "../lib/layers_p4_soil";
 import type { EtakArea } from "../lib/layers_p4_etak";
 import type { ReliefTintGrid } from "../lib/layers_p4_relief";
 import type { CanopyTintGrid } from "../lib/layers_p4_canopy";
+import type { BuildingsTintGrid } from "../lib/layers_p4_buildings";
 import {
   applyFloodPolygons,
   applyMaaParcelPolygons,
@@ -35,6 +36,7 @@ import {
   applyEtakPolygons,
   applyReliefTint,
   applyCanopyTint,
+  applyBuildingsTint,
   applyUsePolygons,
   clearVectorOverlays,
   type OutlineMap,
@@ -64,7 +66,7 @@ const ESTONIA_CENTER: [number, number] = [25.0, 58.75];
  * class tint, then point markers, then use-fills (page guarantees
  * flood-areas, maa-parcels, eelis-areas, seveso-areas, stateland-areas,
  * quarry-areas, drainage-areas, soil-areas, etak-areas, relief-tint,
- * canopy-tint, outlines and points never coincide — and fills and
+ * canopy-tint, buildings-tint, outlines and points never coincide — and fills and
  * points never coincide either), otherwise park outlines; hidden
  * clears the slot. All painters clear stale layers first, so switches
  * never stack.
@@ -86,6 +88,7 @@ function paintOverlay(
     etakAreas?: EtakArea[] | null;
     reliefTint?: ReliefTintGrid | null;
     canopyTint?: CanopyTintGrid | null;
+    buildingsTint?: BuildingsTintGrid | null;
     overlayPoints?: OverlayPoint[] | null;
     usePolygons?: UseFillPolygon[] | null;
     overlayColor?: string;
@@ -165,6 +168,12 @@ function paintOverlay(
     applyCanopyTint(mapObj, opts.canopyTint);
     return;
   }
+  // BUILDINGS-HOOK (#621): LoD1 height character tint (taste-only —
+  // no score field is painted for this layer, by design).
+  if (opts.buildingsTint) {
+    applyBuildingsTint(mapObj, opts.buildingsTint);
+    return;
+  }
   if (opts.overlayPoints && opts.overlayPoints.length > 0) {
     applyPointOverlay(mapObj, opts.overlayPoints, { color: opts.overlayColor ?? "#1d4ed8" });
     return;
@@ -202,6 +211,7 @@ export function ValueHeatMap({
   etakAreas,
   reliefTint,
   canopyTint,
+  buildingsTint,
   overlayPoints,
   usePolygons,
   overlayColor,
@@ -246,6 +256,8 @@ export function ValueHeatMap({
   reliefTint?: ReliefTintGrid | null;
   /** CHM class tint grid (canopy layer only); taste-only image. */
   canopyTint?: CanopyTintGrid | null;
+  /** LoD1 height tint grid (buildings layer only); taste-only image. */
+  buildingsTint?: BuildingsTintGrid | null;
   /** Point markers drawn ABOVE the raster (all layers but parks). */
   overlayPoints?: OverlayPoint[] | null;
   /** Designated-use fills drawn ABOVE the field (planktpr only). */
@@ -295,6 +307,9 @@ export function ValueHeatMap({
     // CANOPY-HOOK (#620): canopyTint rides the refresh slot so pans
     // keep the tint (same slot as the painted effect below).
     canopyTint,
+    // BUILDINGS-HOOK (#621): buildingsTint rides the refresh slot so
+    // pans keep the tint (same slot as the painted effect below).
+    buildingsTint,
     overlayPoints,
     usePolygons,
     overlayColor,
@@ -322,6 +337,9 @@ export function ValueHeatMap({
     // CANOPY-HOOK (#620): canopyTint rides the refresh slot so pans
     // keep the tint (same slot as the painted effect below).
     canopyTint,
+    // BUILDINGS-HOOK (#621): buildingsTint rides the refresh slot so
+    // pans keep the tint (same slot as the painted effect below).
+    buildingsTint,
     overlayPoints,
     usePolygons,
     overlayColor,
@@ -518,9 +536,10 @@ export function ValueHeatMap({
       // ETAK-HOOK (#618): etakAreas join the painted slot.
       // RELIEF-HOOK (#619): reliefTint joins the painted slot.
       // CANOPY-HOOK (#620): canopyTint joins the painted slot.
-      paintOverlay(mapRef.current, { outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, reliefTint, canopyTint, overlayPoints, usePolygons, overlayColor, showOverlay });
+      // BUILDINGS-HOOK (#621): buildingsTint joins the painted slot.
+      paintOverlay(mapRef.current, { outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, reliefTint, canopyTint, buildingsTint, overlayPoints, usePolygons, overlayColor, showOverlay });
     }
-  }, [outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, reliefTint, canopyTint, overlayPoints, usePolygons, overlayColor, showOverlay]);
+  }, [outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, reliefTint, canopyTint, buildingsTint, overlayPoints, usePolygons, overlayColor, showOverlay]);
 
   return (
     <section aria-label={title}>

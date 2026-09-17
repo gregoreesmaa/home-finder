@@ -153,6 +153,14 @@ import {
   isCanopyTasteOnlyLayer,
   type CanopyTintGrid,
 } from "../../lib/layers_p4_canopy";
+// BUILDINGS-HOOK (#621): buildings paints the LoD1 height character
+// tint (taste-only, never a gradient/score) instead of points —
+// fetched once per selection (the county grid covers every view).
+import {
+  fetchBuildingsTint,
+  isBuildingsTasteOnlyLayer,
+  type BuildingsTintGrid,
+} from "../../lib/layers_p4_buildings";
 
 /** Viewport bbox rounded for fetch stability (matches server key rounding). */
 function sameView(a: BBoxLike, b: BBoxLike): boolean {
@@ -493,6 +501,26 @@ export default function LayersPage() {
     };
   }, [layer]);
 
+  // BUILDINGS-HOOK (#621): LoD1 height tint grid (buildings layer
+  // only, fetched once per selection): the character tint itself —
+  // built character vs honestly-unknown (missing sidecar). No points
+  // and no score field are painted for this layer, by design
+  // (taste-only, never a gradient/score).
+  const [buildingsTint, setBuildingsTint] = useState<BuildingsTintGrid | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!isBuildingsTasteOnlyLayer(layer)) {
+      setBuildingsTint(null);
+      return;
+    }
+    fetchBuildingsTint().then((grid) => {
+      if (!cancelled) setBuildingsTint(grid);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [layer]);
+
   // Park boundaries (parks layer only): fetched once per selection, a
   // visual aid so scored-inside vs surroundings reads at a glance.
   const [outlines, setOutlines] = useState<ParkOutline[] | null>(null);
@@ -617,7 +645,7 @@ export default function LayersPage() {
     // QUARRY-HOOK (#614): quarry paints polygons, never point markers.
     // SOIL-HOOK (#617): soil paints polygons, never point markers.
     // ETAK-HOOK (#618): etak paints polygons, never point markers.
-    layer === "parks" || isPolygonOnlyLayer(layer) || isPolygonOnlyMaaLayer(layer) || isEelisPolygonOnlyLayer(layer) || isSevesoPolygonOnlyLayer(layer) || isStatelandPolygonOnlyLayer(layer) || isQuarryPolygonOnlyLayer(layer) || isMaaparandusPolygonOnlyLayer(layer) || isSoilPolygonOnlyLayer(layer) || isEtakPolygonOnlyLayer(layer) || isReliefTasteOnlyLayer(layer) || isCanopyTasteOnlyLayer(layer)
+    layer === "parks" || isPolygonOnlyLayer(layer) || isPolygonOnlyMaaLayer(layer) || isEelisPolygonOnlyLayer(layer) || isSevesoPolygonOnlyLayer(layer) || isStatelandPolygonOnlyLayer(layer) || isQuarryPolygonOnlyLayer(layer) || isMaaparandusPolygonOnlyLayer(layer) || isSoilPolygonOnlyLayer(layer) || isEtakPolygonOnlyLayer(layer) || isReliefTasteOnlyLayer(layer) || isCanopyTasteOnlyLayer(layer) || isBuildingsTasteOnlyLayer(layer)
       ? null
       : needsGraphOverlay(layer)
         ? graphPoints
@@ -645,6 +673,8 @@ export default function LayersPage() {
           ? (reliefTint ? 1 : 0)
         : isCanopyTasteOnlyLayer(layer)
           ? (canopyTint ? 1 : 0)
+        : isBuildingsTasteOnlyLayer(layer)
+          ? (buildingsTint ? 1 : 0)
         : isPlanktprLayerId(layer)
           ? (usePolygons?.length ?? 0)
     : layer === "parks"
@@ -748,6 +778,13 @@ export default function LayersPage() {
     canopyTint === null
       ? "Laadin võrastikutooni…"
       : `Võrastiku toon · ${canopyTint.cols}×${canopyTint.rows} klassiruudustik (maitse, mitte hinne — toon ERISTAB, ei hinda)`;
+  // BUILDINGS-HOOK (#621): buildings status names the tint grid, never
+  // points — the layer serves zero points by design (taste-only, no
+  // score field anywhere).
+  const buildingsStatus =
+    buildingsTint === null
+      ? "Laadin hoonetooni…"
+      : `Hoonete toon · ${buildingsTint.cols}×${buildingsTint.rows} kõrgusruudustik (maitse, mitte hinne — toon ERISTAB, ei hinda)`;
   const base =
     isPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
       ? floodStatus
@@ -772,6 +809,8 @@ export default function LayersPage() {
         ? reliefStatus
       : isCanopyTasteOnlyLayer(layer) && provenance !== null && provenance !== "demo"
         ? canopyStatus
+      : isBuildingsTasteOnlyLayer(layer) && provenance !== null && provenance !== "demo"
+        ? buildingsStatus
       : provenance === null
       ? "Laadin kihi andmeid…"
       : provenance === "snapshot"
@@ -883,6 +922,7 @@ export default function LayersPage() {
         etakAreas={etakAreas}
         reliefTint={reliefTint}
         canopyTint={canopyTint}
+        buildingsTint={buildingsTint}
         overlayPoints={pointOverlay}
         usePolygons={usePolygons}
         overlayColor={overlayColorFor(layer)}
@@ -934,6 +974,10 @@ export default function LayersPage() {
             // CANOPY-HOOK (#620): canopy paints no field at all (zero
             // points, null raster) -- same skip for the taste tint.
             isCanopyTasteOnlyLayer(layer) ||
+            // BUILDINGS-HOOK (#621): buildings paints no field at all
+            // (zero points, null raster) -- same skip for the taste
+            // tint.
+            isBuildingsTasteOnlyLayer(layer) ||
             isPlanktprLayerId(layer)
             ? ""
             : distance === "euclidean" && provenance === "snapshot"

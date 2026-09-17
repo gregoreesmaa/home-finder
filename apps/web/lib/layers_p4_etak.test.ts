@@ -72,8 +72,9 @@ describe("etak registry (#618)", () => {
     // maaparandus (#616) + soil (#617) + 1 etak overlay (ETAK-HOOK
     // #618, 128 + 1) + 1 relief overlay (RELIEF-HOOK #619,
     // 129 + 1) + 1 canopy overlay
-    // (CANOPY-HOOK #620, 130 + 1 = 131)..
-    expect(ids.length).toBe(131);
+    // (CANOPY-HOOK #620, 130 + 1) + 1 buildings overlay
+    // (BUILDINGS-HOOK #621, 131 + 1 = 132)...
+    expect(ids.length).toBe(132);
     expect(ids).toContain("etak");
   });
   it("rides paramLabel with empty paramIds (polygons only, no parameters3 number)", () => {
