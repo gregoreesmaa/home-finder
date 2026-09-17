@@ -52,3 +52,23 @@ cached; 429 is a stop signal.
    — surfaced here, not hidden.
 3. No livability.WEIGHTS splice here (joint follow-up). 3 new files
    only, zero shared-file edits.
+
+## Harvester (issue #630) + §7 key placement
+
+`scripts/build/batch_places.py` drives one keyed Nearby Search pull
+per listing-area through `fetch_places` (30 d TTL, 500-call monthly
+quota cap, 429 = stop — quota/TTL agree with the scorer by
+construction, same functions). Without `GOOGLE_PLACES_API_KEY` it
+hard-refuses (exit 2, tested): no request, no files, key never
+printed or written (pinned by test).
+
+§7 — where the key goes: export `GOOGLE_PLACES_API_KEY` in the
+operator shell only, e.g. `export GOOGLE_PLACES_API_KEY=...` before
+the pull, unset after. Never commit it, never put it in repo files,
+CI, or chat logs; no key material exists anywhere in repo history
+(verified: `git log -S GOOGLE_PLACES_API_KEY` shows code refs only —
+re-run at review). Monthly quota spend is visible in
+`<cache-dir>/places_quota.json`; re-check live SKU dollars + the
+retention clause against the current Terms before the first keyed
+pull. The layer itself graduates separately, once harvest output
+exists.
