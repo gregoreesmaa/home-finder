@@ -65,8 +65,9 @@ describe("seveso registry (#613)", () => {
     // (STATELAND-HOOK #615, 124 + 1) + 1 quarry overlay
     // (QUARRY-HOOK #614, 125 + 1) + 1 drainage overlay
     // (DRAINAGE-HOOK #616, 126 + 1) + soil (#617, 127 + 1) + 1 etak
-    // overlay (ETAK-HOOK #618, 128 + 1 = 129).
-    expect(ids.length).toBe(129);
+    // overlay (ETAK-HOOK #618, 128 + 1) + 1 relief overlay
+    // (RELIEF-HOOK #619, 129 + 1 = 130).
+    expect(ids.length).toBe(130);
     expect(ids).toContain("seveso");
   });
 

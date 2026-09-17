@@ -70,7 +70,7 @@ describe("batch G06B registry (#139)", () => {
     // P4OSM-HOOK: +2 layers (95 + 2).
 
     // TERVISE-HOOK (#494): +1 tervise bathing-water layer (105 + 1).
-    expect(ids.length).toBe(129); // MERGE (#613+#614+#615+#616+#617+#618): 123 shipped + seveso + stateland + quarry + maaparandus + soil + etak = 129 (both branch counts superseded).
+    expect(ids.length).toBe(130); // MERGE (#613+#614+#615+#616+#617+#618+#619): 123 shipped + seveso + stateland + quarry + maaparandus + soil + etak + relief = 130 (both branch counts superseded).
     for (const id of GROUP06B_LAYER_IDS) expect(ids).toContain(id);
   });
 

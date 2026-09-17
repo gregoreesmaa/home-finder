@@ -39,6 +39,8 @@ import { isMaaparandusPolygonOnlyLayer } from "./layers_p4_maaparandus";
 import { isSoilPolygonOnlyLayer } from "./layers_p4_soil";
 // ETAK-HOOK (#618): polygons-only carve-out for the fallback assertion.
 import { isEtakPolygonOnlyLayer } from "./layers_p4_etak";
+// RELIEF-HOOK (#619): taste-only carve-out for the fallback assertion.
+import { isReliefTasteOnlyLayer } from "./layers_p4_relief";
 
 const TALLINN_BBOX: BBoxLike = { minlon: 24.5, minlat: 59.35, maxlon: 24.9, maxlat: 59.5 };
 
@@ -271,6 +273,9 @@ describe("layer registry", () => {
       // ETAK-HOOK (#618): etak contour id (ETAK maakate/hüdro —
       // paramIds empty, parameters4 namespace, polygons only).
       "etak",
+      // RELIEF-HOOK (#619): relief tint id (DTM hypsometry —
+      // paramIds empty, parameters4 namespace, taste-only).
+      "relief",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -418,6 +423,10 @@ describe("layer registry", () => {
     // (parameters4 contours, no parameters3 number).
     expect(LAYERS.find((l) => l.id === "etak")?.paramIds).toEqual([]);
     expect(LAYERS.find((l) => l.id === "etak")?.paramLabel).toBe("P4-etak");
+    // RELIEF-HOOK (#619): relief rides paramLabel, paramIds stays []
+    // (parameters4 tint, no parameters3 number).
+    expect(LAYERS.find((l) => l.id === "relief")?.paramIds).toEqual([]);
+    expect(LAYERS.find((l) => l.id === "relief")?.paramLabel).toBe("P4-reljeef");
   });
 
   it("wires the B10C utility layers with locked calibration", () => {
@@ -782,7 +791,7 @@ describe("layer registry", () => {
       }
       if (isPolygonOnlyMaaLayer(l.id)) {
         expect(l.fallbackPoints).toEqual([]);
-      } else if (!isPolygonOnlyLayer(l.id) && !isEelisPolygonOnlyLayer(l.id) && !isSevesoPolygonOnlyLayer(l.id) && !isStatelandPolygonOnlyLayer(l.id) && !isQuarryPolygonOnlyLayer(l.id) && !isMaaparandusPolygonOnlyLayer(l.id) && !isSoilPolygonOnlyLayer(l.id) && !isEtakPolygonOnlyLayer(l.id)) {
+      } else if (!isPolygonOnlyLayer(l.id) && !isEelisPolygonOnlyLayer(l.id) && !isSevesoPolygonOnlyLayer(l.id) && !isStatelandPolygonOnlyLayer(l.id) && !isQuarryPolygonOnlyLayer(l.id) && !isMaaparandusPolygonOnlyLayer(l.id) && !isSoilPolygonOnlyLayer(l.id) && !isEtakPolygonOnlyLayer(l.id) && !isReliefTasteOnlyLayer(l.id)) {
         expect(l.fallbackPoints.length).toBeGreaterThan(0);
       }
     }

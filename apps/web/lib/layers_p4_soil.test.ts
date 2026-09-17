@@ -79,8 +79,8 @@ describe("soil registry (#617)", () => {
     const ids = LAYERS.map((l) => l.id);
     // 127 shipped layers on main (#616 maaparandus) + 1 soil overlay
     // (SOIL-HOOK #617, 127 + 1) + 1 etak overlay (ETAK-HOOK #618,
-    // 128 + 1 = 129).
-    expect(ids.length).toBe(129);
+    // 128 + 1) + 1 relief overlay (RELIEF-HOOK #619, 129 + 1 = 130).
+    expect(ids.length).toBe(130);
     expect(ids).toContain("soil");
   });
   it("rides paramLabel with empty paramIds (polygons only, no parameters3 number)", () => {
