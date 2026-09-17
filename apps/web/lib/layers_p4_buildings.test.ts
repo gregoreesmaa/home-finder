@@ -96,7 +96,7 @@ describe("buildings registry (#621)", () => {
     // 124 shipped + seveso + stateland + quarry + maaparandus + soil +
     // etak + relief + canopy + 1 buildings overlay
     // (BUILDINGS-HOOK #621, 131 + 1) + 1 density overlay
-    // (DENSITY-HOOK #622, 132 + 1 = 133)..
+    // (DENSITY-HOOK #622, 132 + 1 = 133).
     expect(ids.length).toBe(133);
     expect(ids).toContain("buildings");
   });
