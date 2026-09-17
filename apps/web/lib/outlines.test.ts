@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   applyFloodPolygons,
+  applyKpoPolygons,
   applyHarbourOverlays,
 
   applyMaaParcelPolygons,
@@ -738,6 +739,61 @@ describe("applySevesoPolygons (#613)", () => {
     const map = mockMap();
     applySevesoPolygons(map, null);
     applySevesoPolygons(map, []);
+    expect(map.sources.size).toBe(0);
+    expect(map.layers.size).toBe(0);
+  });
+});
+
+describe("applyKpoPolygons (#626)", () => {
+  const ZONE = {
+    family: "elekter",
+    nimi: "JAAM",
+    voond: "ehituskeeld",
+    reegel: "Ehitusseadustik",
+    b: [24.74, 59.43, 24.75, 59.44] as [number, number, number, number],
+    r: [
+      [
+        [24.74, 59.43],
+        [24.75, 59.43],
+        [24.75, 59.44],
+        [24.74, 59.43],
+      ],
+    ],
+  };
+
+  it("paints ban/conditioned fills + casing in one slot pass", () => {
+    const map = mockMap();
+    applyKpoPolygons(map, [
+      ZONE,
+      { ...ZONE, family: "side", voond: "tingimuslik-kooskõlastus" },
+      { ...ZONE, family: "gaas", voond: "miskit muud" },
+    ]);
+    expect(map.sources.has("kpo-zone-polys")).toBe(true);
+    expect(map.layers.has("kpo-zone-fill")).toBe(true);
+    expect(map.layers.has("kpo-zone-casing")).toBe(true);
+    const src = map.added.find(
+      (s) =>
+        (s as { data?: { features?: { geometry?: { type?: string } }[] } })
+          .data?.features?.[0]?.geometry?.type === "MultiPolygon",
+    ) as { data: { features: { properties: { band: string } }[] } };
+    expect(src.data.features.map((f) => f.properties.band)).toEqual([
+      "ban",
+      "conditioned",
+      "unknown",
+    ]);
+    // One clear pass (never stacks with sibling overlays).
+    expect(new Set(map.removedLayers).size).toBe(map.removedLayers.length);
+  });
+
+  it("skips junk rings, never faked; nullish input paints nothing", () => {
+    const map = mockMap();
+    applyKpoPolygons(map, [
+      { ...ZONE, r: [[[24.74]]] },
+      { ...ZONE, r: [] },
+    ]);
+    expect(map.sources.size).toBe(0);
+    applyKpoPolygons(map, null);
+    applyKpoPolygons(map, []);
     expect(map.sources.size).toBe(0);
     expect(map.layers.size).toBe(0);
   });

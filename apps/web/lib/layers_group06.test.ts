@@ -68,7 +68,7 @@ describe("batch G06 registry (#138)", () => {
     // P4OSM-HOOK: +2 layers (95 + 2).
 
     // TERVISE-HOOK (#494): +1 tervise bathing-water layer (105 + 1).
-    expect(ids.length).toBe(136); // HARBOUR (#627): 135 shipped + harbour = 136.
+    expect(ids.length).toBe(137); // KPO (#626): 136 shipped + kpo = 137. // HARBOUR (#627): 135 shipped + harbour = 136.
     for (const id of GROUP06_LAYER_IDS) expect(ids).toContain(id);
   });
 

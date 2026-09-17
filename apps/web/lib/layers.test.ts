@@ -304,6 +304,9 @@ describe("layer registry", () => {
       // HARBOUR-HOOK (#627): harbour id (joined ports + AIS cells —
       // paramIds empty, parameters4 namespace, points + fills).
       "harbour",
+      // KPO-HOOK (#626): kpo zone id (WFS restriction zones —
+      // paramIds empty, parameters4 namespace, polygons-only).
+      "kpo",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -479,6 +482,10 @@ describe("layer registry", () => {
     // (parameters4 points+fills, no parameters3 number).
     expect(LAYERS.find((l) => l.id === "harbour")?.paramIds).toEqual([]);
     expect(LAYERS.find((l) => l.id === "harbour")?.paramLabel).toBe("P4-sadam");
+    // KPO-HOOK (#626): kpo rides paramLabel, paramIds stays []
+    // (parameters4 polygons-only, no parameters3 number).
+    expect(LAYERS.find((l) => l.id === "kpo")?.paramIds).toEqual([]);
+    expect(LAYERS.find((l) => l.id === "kpo")?.paramLabel).toBe("P4-kitsendus");
   });
 
   it("wires the B10C utility layers with locked calibration", () => {
@@ -846,6 +853,13 @@ describe("layer registry", () => {
       // sidecar on the point path; invented fallback dots would be
       // fake ports). Pinned in layers_p4_harbour.test.ts.
       if (l.id === "harbour") {
+        expect(l.fallbackPoints).toEqual([]);
+        continue;
+      }
+      // KPO-HOOK (#626): kpo is polygons-only — ZERO fallback
+      // points BY HONESTY (zones come from the sidecar; a demo
+      // point would paint a fake gradient splat).
+      if (l.id === "kpo") {
         expect(l.fallbackPoints).toEqual([]);
         continue;
       }

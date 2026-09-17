@@ -186,6 +186,14 @@ import {
   isNoisePolygonOnlyLayer,
   type NoiseArea,
 } from "../../lib/layers_p4_noise";
+// KPO-HOOK (#626): kpo paints restriction-zone ban/conditioned fills
+// (measured bands, never clean title) — fetched once per selection
+// (the parcel-window keep set covers known parcels).
+import {
+  fetchKpoAreas,
+  isKpoPolygonOnlyLayer,
+  type KpoArea,
+} from "../../lib/layers_p4_kpo";
 // HARBOUR-HOOK (#627): harbour paints AIS pleasure-cell fills (grid
 // as-is) over live port dots — fetched once per selection (the Harju
 // keep set covers every view).
@@ -602,6 +610,13 @@ export default function LayersPage() {
   // design (polygons only); the per-listing binding leg is the
   // scorer's job.
   const [noiseAreas, setNoiseAreas] = useState<NoiseArea[] | null>(null);
+  // KPO-HOOK (#626): KMA restriction-zone polygons
+  // (kpo layer only, fetched once per selection): the zone fills
+  // themselves — ban vs conditioned vs honestly-unknown
+  // (missing sidecar). No points are painted for this layer, by
+  // design (polygons only); the per-listing binding legs are the
+  // scorer's job.
+  const [kpoAreas, setKpoAreas] = useState<KpoArea[] | null>(null);
   // HARBOUR-HOOK (#627): harbour sidecar (harbour layer only,
   // fetched once per selection): AIS pleasure-cell fills plus the
   // port count. Port dots ride the standard point overlay (real
@@ -630,6 +645,20 @@ export default function LayersPage() {
     }
     fetchNoiseAreas().then((areas) => {
       if (!cancelled) setNoiseAreas(areas);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [layer]);
+  useEffect(() => {
+    let cancelled = false;
+    // KPO-HOOK (#626): same once-per-selection fetch shape as noise.
+    if (!isKpoPolygonOnlyLayer(layer)) {
+      setKpoAreas(null);
+      return;
+    }
+    fetchKpoAreas().then((areas) => {
+      if (!cancelled) setKpoAreas(areas);
     });
     return () => {
       cancelled = true;
@@ -760,7 +789,7 @@ export default function LayersPage() {
     // QUARRY-HOOK (#614): quarry paints polygons, never point markers.
     // SOIL-HOOK (#617): soil paints polygons, never point markers.
     // ETAK-HOOK (#618): etak paints polygons, never point markers.
-    layer === "parks" || isPolygonOnlyLayer(layer) || isPolygonOnlyMaaLayer(layer) || isEelisPolygonOnlyLayer(layer) || isSevesoPolygonOnlyLayer(layer) || isStatelandPolygonOnlyLayer(layer) || isQuarryPolygonOnlyLayer(layer) || isMaaparandusPolygonOnlyLayer(layer) || isSoilPolygonOnlyLayer(layer) || isEtakPolygonOnlyLayer(layer) || isReliefTasteOnlyLayer(layer) || isCanopyTasteOnlyLayer(layer) || isBuildingsTasteOnlyLayer(layer) || isDensityTasteOnlyLayer(layer) || isForestPolygonOnlyLayer(layer) || isNoisePolygonOnlyLayer(layer)
+    layer === "parks" || isPolygonOnlyLayer(layer) || isPolygonOnlyMaaLayer(layer) || isEelisPolygonOnlyLayer(layer) || isSevesoPolygonOnlyLayer(layer) || isStatelandPolygonOnlyLayer(layer) || isQuarryPolygonOnlyLayer(layer) || isMaaparandusPolygonOnlyLayer(layer) || isSoilPolygonOnlyLayer(layer) || isEtakPolygonOnlyLayer(layer) || isReliefTasteOnlyLayer(layer) || isCanopyTasteOnlyLayer(layer) || isBuildingsTasteOnlyLayer(layer) || isDensityTasteOnlyLayer(layer) || isForestPolygonOnlyLayer(layer) || isNoisePolygonOnlyLayer(layer) || isKpoPolygonOnlyLayer(layer)
       ? null
       : needsGraphOverlay(layer)
         ? graphPoints
@@ -796,6 +825,8 @@ export default function LayersPage() {
           ? (forestAreas?.length ?? 0)
         : isNoisePolygonOnlyLayer(layer)
           ? (noiseAreas?.length ?? 0)
+          : isKpoPolygonOnlyLayer(layer)
+            ? (kpoAreas?.length ?? 0)
         : isPlanktprLayerId(layer)
           ? (usePolygons?.length ?? 0)
     : layer === "parks"
@@ -923,6 +954,12 @@ export default function LayersPage() {
   // NOISE-HOOK (#625): noise status counts bands, never points —
   // the layer serves zero points by design (polygons only); outside
   // every polygon is NULL, never quiet.
+  // KPO-HOOK (#626): kpo status counts zones, never points —
+  // polygons-only (same shape as noise above).
+  const kpoStatus =
+    kpoAreas === null
+      ? "KPO piiranguvööndid · laadimine…"
+      : `KPO piiranguvööndid · ${kpoAreas.length} vööndit, 2026-09, krundiaknad (väljaspool = teadmata, MITTE puhas omand)`;
   const noiseStatus =
     noiseAreas === null
       ? "Laadin müravööndeid…"
@@ -965,6 +1002,8 @@ export default function LayersPage() {
         ? forestStatus
       : isNoisePolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
         ? noiseStatus
+        : isKpoPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
+          ? kpoStatus
       : layer === "harbour" && provenance !== null && provenance !== "demo"
         ? harbourStatus
       : provenance === null
@@ -1087,6 +1126,7 @@ export default function LayersPage() {
         densityAreas={densityAreas}
         forestAreas={forestAreas}
         noiseAreas={noiseAreas}
+        kpoAreas={kpoAreas}
         harbourCells={harbourCells}
         harbourPorts={harbourAreas?.ports ?? null}
         overlayPoints={pointOverlay}
@@ -1156,6 +1196,10 @@ export default function LayersPage() {
             // (zero points, null raster) -- same skip for the band
             // fills.
             isNoisePolygonOnlyLayer(layer) ||
+            // KPO-HOOK (#626): kpo paints no field at all
+            // (zero points, null raster) -- same skip for the zone
+            // fills (ban/conditioned read off polygons, never heat).
+            isKpoPolygonOnlyLayer(layer) ||
             isPlanktprLayerId(layer)
             ? ""
             : distance === "euclidean" && provenance === "snapshot"

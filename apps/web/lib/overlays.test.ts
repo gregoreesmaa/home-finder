@@ -140,8 +140,9 @@ describe("overlay legend + colors", () => {
     // DENSITY-HOOK (#622) is in; FOREST-HOOK (#624): forest joins the registry (133 + 1).
     // FOREST-HOOK (#624) is in; NOISE-HOOK (#625): noise joins the registry (134 + 1).
     // NOISE-HOOK (#625) is in; HARBOUR-HOOK (#627): harbour joins the registry (135 + 1).
-    // MERGE (#613+#614+#615+#616+#617+#618+#619+#620+#621+#622+#624+#625+#627): 123 shipped + seveso + stateland + quarry + maaparandus + soil + etak + relief + canopy + buildings + density + forest + noise + harbour = 136.
-    expect(ids).toHaveLength(136);
+    // HARBOUR-HOOK (#627) is in; KPO-HOOK (#626): kpo joins the registry (136 + 1).
+    // MERGE (#613+#614+#615+#616+#617+#618+#619+#620+#621+#622+#624+#625+#627+#626): 123 shipped + seveso + stateland + quarry + maaparandus + soil + etak + relief + canopy + buildings + density + forest + noise + harbour + kpo = 137.
+    expect(ids).toHaveLength(137);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -228,7 +229,12 @@ describe("overlay legend + colors", () => {
     expect(overlayLegendFor("harbour")).toContain("sadamaregister");
     expect(overlayLegendFor("harbour")).toContain("MITTE rahulik");
     expect(overlayColorFor("harbour")).toBe("#115e59");
-    // Batch G08D half (see G08D_CAL in layers_group08d.ts).
+    // KPO-HOOK (#626): kpo legend states joined zones + bands +
+    // vintage + CC-BY source + parcel-window coverage + NULL-outside
+    // (never clean title); toggle dot is burnt sienna.
+    expect(overlayLegendFor("kpo")).toContain("CC-BY 4.0");
+    expect(overlayLegendFor("kpo")).toContain("MITTE puhas omand");
+    expect(overlayColorFor("kpo")).toBe("#4a044e");    // Batch G08D half (see G08D_CAL in layers_group08d.ts).
     expect(overlayLegendFor("vernalpool")).toContain("300 m");
     expect(overlayLegendFor("vernalpool")).toContain("proksi");
     // Batch G08C halves (see G08C_CAL in layers_group08c.ts).
@@ -445,7 +451,7 @@ describe("overlay legend + colors", () => {
     // ETAK-HOOK (#618): etak joins the registry (128 + 1).
     // RELIEF-HOOK (#619): relief joins the registry (129 + 1).
     // MERGE (#613+#614+#615): 123 shipped + seveso + stateland + quarry = 126.
-    expect(seen.size).toBe(136); // HARBOUR (#627): 135 shipped + harbour = 136.
+    expect(seen.size).toBe(137); // KPO (#626): 136 shipped + kpo = 137.
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

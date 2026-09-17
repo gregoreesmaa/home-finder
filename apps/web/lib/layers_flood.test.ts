@@ -65,7 +65,7 @@ describe("floodzone registry (#487)", () => {
     // 3 eelis (EELIS-HOOK #488, 101 + 3) + 1 planktpr (PLANKTPR-HOOK #492, 104 + 1).
     // TERVISE-HOOK (#494): +1 tervise bathing-water layer (105 + 1).
     // PAASTE-HOOK (#493): +1 komando overlay (107 + 1).
-    expect(ids.length).toBe(136); // HARBOUR (#627): 135 shipped + harbour = 136.
+    expect(ids.length).toBe(137); // KPO (#626): 136 shipped + kpo = 137. // HARBOUR (#627): 135 shipped + harbour = 136.
     expect(ids).toContain("floodzone");
   });
 

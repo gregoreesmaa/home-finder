@@ -135,7 +135,7 @@ describe("paaste registry wiring (#493)", () => {
     expect(ids).toContain("paaste");
     // PAASTE-HOOK (#493): +1 honest-empty komando overlay (107 + 1).
     // (Rebased onto main at #513: 107 shipped layers + paaste.)
-    expect(ids.length).toBe(136); // HARBOUR (#627): 135 shipped + harbour = 136.
+    expect(ids.length).toBe(137); // KPO (#626): 136 shipped + kpo = 137. // HARBOUR (#627): 135 shipped + harbour = 136.
   });
 
   it("tags the layer button (P4-012), leaving parameters3 tags untouched", () => {

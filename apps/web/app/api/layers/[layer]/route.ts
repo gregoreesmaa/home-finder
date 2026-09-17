@@ -46,6 +46,7 @@ import { isDensityLayerId } from "../../../../lib/layers_p4_density";
 import { isForestLayerId } from "../../../../lib/layers_p4_forest";
 // NOISE-HOOK (#625): polygons-only branch guard (see below).
 import { isNoiseLayerId } from "../../../../lib/layers_p4_noise";
+import { isKpoLayerId } from "../../../../lib/layers_p4_kpo";
 // HARBOUR-HOOK (#627): port points branch (see below) + vintage.
 import {
   HARBOUR_VINTAGE,
@@ -436,6 +437,22 @@ export async function GET(
   // would 500 a healthy layer into labeled demo points (a fake
   // gradient), and demo fallback points are refused by the layer def
   // (empty fallbackPoints, pinned by test).
+  // KPO-HOOK (#626): kpo is polygons-only (zero points, zero
+  // raster — the /kpo/areas sidecar carries the data; the live
+  // scorer legs are dims_p4_kitsendus.py). Answer honestly-empty
+  // points on snapshot provenance: requiring points or a raster here
+  // would 500 a healthy layer into labeled demo points (a fake
+  // gradient), and demo fallback points are refused by the layer def
+  // (empty fallbackPoints, pinned by test).
+  if (isKpoLayerId(def.id)) {
+    const { distance } = await loadLayerRaster(def.id);
+    return NextResponse.json({
+      points: [],
+      provenance: "snapshot",
+      ageMs: Date.now() - SNAPSHOT_AS_OF_MS,
+      distance,
+    });
+  }
   if (isNoiseLayerId(def.id)) {
     const { distance } = await loadLayerRaster(def.id);
     return NextResponse.json({
