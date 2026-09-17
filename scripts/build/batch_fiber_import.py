@@ -17,7 +17,7 @@ cached forever. Fetched data lands in ~/hf-data (gitignored snapshot),
 never in the repo.
 
 Usage:
-  python3 scripts/build/batch_fiber_import.py --selftest   # TM math check
+  python3 scripts/build/batch_fiber_import.py --selftest   # LCC pin check
   python3 scripts/build/batch_fiber_import.py \\
       --snap ~/hf-data/2026-09-12 --tier 1000
 Writes <snap>/osm/derived-fiber-addrs.json: [{lon, lat}] covered
@@ -27,7 +27,6 @@ derived-fiber.json, written by batch_b10c_utility.py --derived).
 
 import argparse
 import json
-import math
 import os
 import re
 import sys
@@ -39,57 +38,24 @@ PACE_S = 2.0
 MAXFEATURES = 100000
 TILE_M = 20000.0
 
-# L-EST97 / EPSG:3301 (Transverse Mercator, GRS80): lon0=24E, k0=0.9996,
-# false easting 500000 m, false northing 0.
-A = 6378137.0
-F = 1 / 298.257222101
-E2 = 2 * F - F * F
-K0 = 0.9996
-LON0 = math.radians(24.0)
-X0 = 500000.0
+#: True L-EST97 = Lambert Conformal Conic 2SP (EPSG:3301), shared
+#: implementation in batch_canopy (#648 retired the legacy Transverse
+#: Mercator twins, which disagreed with LCC by 20-85 m across Harju).
+#: NOTE the arg-order trap: lest97_to_wgs84 takes (easting, northing)
+#: like batch_canopy.lest97_to_lonlat -- most other batch_* twins take
+#: (northing, easting). Call sites below are unchanged.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from batch_canopy import lest97_to_lonlat, lonlat_to_lest97  # noqa: E402
 
 
 def lest97_to_wgs84(x, y):
-    """L-EST97 easting/northing -> (lon, lat) degrees (Snyder inverse TM)."""
-    m = y / K0
-    mu = m / (A * (1 - E2 / 4 - 3 * E2 * E2 / 64 - 5 * E2 ** 3 / 256))
-    e1 = (1 - math.sqrt(1 - E2)) / (1 + math.sqrt(1 - E2))
-    j1 = 3 * e1 / 2 - 27 * e1 ** 3 / 32
-    j2 = 21 * e1 * e1 / 16 - 55 * e1 ** 4 / 32
-    j3 = 151 * e1 ** 3 / 96
-    fp = (mu + j1 * math.sin(2 * mu) + j2 * math.sin(4 * mu)
-          + j3 * math.sin(6 * mu))
-    c1 = E2 * math.cos(fp) ** 2 / (1 - E2)
-    t1 = math.tan(fp) ** 2
-    n1 = A / math.sqrt(1 - E2 * math.sin(fp) ** 2)
-    r1 = A * (1 - E2) / (1 - E2 * math.sin(fp) ** 2) ** 1.5
-    dd = (x - X0) / (n1 * K0)
-    lat = (fp - n1 * math.tan(fp) / r1
-           * (dd * dd / 2 - (5 + 3 * t1 + 10 * c1 - 4 * c1 * c1)
-              * dd ** 4 / 24))
-    lon = (LON0 + (dd - (1 + 2 * t1 + c1) * dd ** 3 / 6
-                   + (5 - 2 * c1 + 28 * t1 - 3 * c1 * c1)
-                   * dd ** 5 / 120) / math.cos(fp))
-    return math.degrees(lon), math.degrees(lat)
+    """L-EST97 easting/northing -> (lon, lat) degrees (true LCC, #654)."""
+    return lest97_to_lonlat(x, y)
 
 
 def wgs84_to_lest97(lon, lat):
-    """(lon, lat) degrees -> L-EST97 easting/northing (forward TM)."""
-    lam, phi = math.radians(lon), math.radians(lat)
-    n = A / math.sqrt(1 - E2 * math.sin(phi) ** 2)
-    t = math.tan(phi) ** 2
-    c = E2 * math.cos(phi) ** 2 / (1 - E2)
-    a = (lam - LON0) * math.cos(phi)
-    m = A * ((1 - E2 / 4 - 3 * E2 * E2 / 64 - 5 * E2 ** 3 / 256) * phi
-             - (3 * E2 / 8 + 3 * E2 * E2 / 32 + 45 * E2 ** 3 / 1024)
-             * math.sin(2 * phi)
-             + (15 * E2 * E2 / 256 + 45 * E2 ** 3 / 1024)
-             * math.sin(4 * phi)
-             - 35 * E2 ** 3 / 3072 * math.sin(6 * phi))
-    x = K0 * n * (a + (1 - t + c) * a ** 3 / 6) + X0
-    y = K0 * (m + n * math.tan(phi)
-              * (a * a / 2 + (5 - t + 9 * c + 4 * c * c) * a ** 4 / 24))
-    return x, y
+    """(lon, lat) degrees -> L-EST97 easting/northing (true LCC, #654)."""
+    return lonlat_to_lest97(lon, lat)
 
 
 def fetch_tile(tier, bbox, retries=3):
@@ -137,20 +103,26 @@ def county_tiles():
 
 
 def selftest():
-    # Round-trip must hold to <10 cm across the county (measured worst
-    # case 3.6 mm at the far corner — the truncated TM series is plenty
-    # for a 75 m grid).
+    # Absolute LCC pins (EPSG:3301 definition, #648 precedent) -- the
+    # old selftest round-tripped TM against TM, which is circular and
+    # passes under either projection.
     for lon, lat in ((24.75, 59.4372), (23.5, 58.6), (25.4, 59.6),
                      (24.8867, 59.4712)):
         x, y = wgs84_to_lest97(lon, lat)
         lo, la = lest97_to_wgs84(x, y)
         assert abs(lo - lon) < 1e-6 and abs(la - lat) < 1e-6, (lon, lat)
+    # Origin-exact + Tallinn discriminator (absolute, non-circular).
+    e, n = wgs84_to_lest97(24.0, 57.5175538888889)
+    assert abs(e - 500000.0) < 1e-6 and abs(n - 6375000.0) < 1e-6, (e, n)
+    e, n = wgs84_to_lest97(24.75, 59.44)
+    assert abs(e - 542555.36) < 0.01 and abs(n - 6589368.19) < 0.01, (e, n)
     # Anchor: Õle tn 6b, Põhja-Tallinn (WFS sample 540959/6589072) sits
-    # ~200 m west of Balti jaam (24.7369, 59.4405).
+    # ~200 m west of Balti jaam (24.7369, 59.4405); LCC truth
+    # (retired TM read 24.72213, 59.43822 -- ~80 m off).
     lo, la = lest97_to_wgs84(540959, 6589072)
-    assert 24.72 < lo < 24.75 and 59.43 < la < 59.45, (lo, la)
-    print("selftest OK: TM round-trip <1mm, Õle tn 6b -> %.5f, %.5f"
-          % (lo, la))
+    assert abs(lo - 24.72181) < 1e-4 and abs(la - 59.43750) < 1e-4, (lo, la)
+    print("selftest OK: LCC origin-exact + Tallinn pin, Õle tn 6b -> "
+          "%.5f, %.5f" % (lo, la))
 
 
 def main():
