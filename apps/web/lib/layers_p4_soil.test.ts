@@ -82,8 +82,9 @@ describe("soil registry (#617)", () => {
     // 128 + 1) + 1 relief overlay (RELIEF-HOOK #619, 129 + 1) + 1 canopy overlay
     // (CANOPY-HOOK #620, 130 + 1) + 1 buildings overlay
     // (BUILDINGS-HOOK #621, 131 + 1) + 1 density overlay
-    // (DENSITY-HOOK #622, 132 + 1 = 133)....
-    expect(ids.length).toBe(133);
+    // (DENSITY-HOOK #622, 132 + 1) + 1 forest overlay
+    // (FOREST-HOOK #624, 133 + 1 = 134).....
+    expect(ids.length).toBe(134);
     expect(ids).toContain("soil");
   });
   it("rides paramLabel with empty paramIds (polygons only, no parameters3 number)", () => {

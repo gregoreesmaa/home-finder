@@ -137,8 +137,9 @@ describe("overlay legend + colors", () => {
     // ETAK-HOOK (#618): etak joins the registry (128 + 1).
     // RELIEF-HOOK (#619): relief joins the registry (129 + 1).
     // BUILDINGS-HOOK (#621) is in; DENSITY-HOOK (#622): density joins the registry (132 + 1).
-    // MERGE (#613+#614+#615+#616+#617+#618+#619+#620+#621+#622): 123 shipped + seveso + stateland + quarry + maaparandus + soil + etak + relief + canopy + buildings + density = 133.
-    expect(ids).toHaveLength(133);
+    // DENSITY-HOOK (#622) is in; FOREST-HOOK (#624): forest joins the registry (133 + 1).
+    // MERGE (#613+#614+#615+#616+#617+#618+#619+#620+#621+#622+#624): 123 shipped + seveso + stateland + quarry + maaparandus + soil + etak + relief + canopy + buildings + density + forest = 134.
+    expect(ids).toHaveLength(134);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -431,7 +432,7 @@ describe("overlay legend + colors", () => {
     // ETAK-HOOK (#618): etak joins the registry (128 + 1).
     // RELIEF-HOOK (#619): relief joins the registry (129 + 1).
     // MERGE (#613+#614+#615): 123 shipped + seveso + stateland + quarry = 126.
-    expect(seen.size).toBe(133); // MERGE (#613+#614+#615+#616+#617+#618+#619+#620+#621+#622): 123 shipped + seveso + stateland + quarry + maaparandus + soil + etak + relief + canopy + buildings + density = 133 (both branch counts superseded).
+    expect(seen.size).toBe(134); // MERGE (#613+#614+#615+#616+#617+#618+#619+#620+#621+#622+#624): 123 shipped + seveso + stateland + quarry + maaparandus + soil + etak + relief + canopy + buildings + density + forest = 134 (both branch counts superseded).
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

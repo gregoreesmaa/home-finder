@@ -217,6 +217,12 @@ import { BUILDINGS_RASTER_FILE } from "../layers_p4_buildings";
 // degrade to null; the square sidecar is honestly empty when
 // unharvested).
 import { DENSITY_RASTER_FILE, isDensityArea, type DensityArea } from "../layers_p4_density";
+// FOREST-HOOK (#624): change sidecar type lives in
+// layers_p4_forest.ts (polygons intentionally never rasterised —
+// FOREST_NO_RASTER; the name resolves to an absent file so windows
+// degrade to null; the change sidecar is honestly empty when
+// unharvested).
+import { FOREST_RASTER_FILE, isForestArea, type ForestArea } from "../layers_p4_forest";
 // OHUSEIRE-HOOK (#610): station raster filename + sidecar point type
 // live in layers_p4_ohuseire.ts (raster intentionally never built —
 // OHUSEIRE_NO_RASTER; the name resolves to an absent file so rasters
@@ -1046,6 +1052,35 @@ export async function loadDensityAreas(dir: string): Promise<DensityArea[]> {
   return areas;
 }
 
+// FOREST-HOOK (#624): forest change sidecar
+// (`forest/forest-areas.json`, written by
+// scripts/build/batch_forest.py off the cached metsamuutused SHP):
+// change_id + season + dates + area + class + polygons. A missing
+// sidecar is honestly empty (metsamuutused unharvested), never an
+// error; malformed rows are skipped, never faked.
+const forestAreaCache = new Map<string, ForestArea[]>();
+
+export async function loadForestAreas(dir: string): Promise<ForestArea[]> {
+  const hit = forestAreaCache.get(dir);
+  if (hit) return hit;
+  let areas: ForestArea[] = [];
+  try {
+    const raw = await fs.readFile(path.join(dir, "forest", "forest-areas.json"), "utf8");
+    const parsed: unknown = JSON.parse(raw);
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      Array.isArray((parsed as { areas: unknown }).areas)
+    )
+      areas = (parsed as { areas: unknown[] }).areas.filter(isForestArea);
+    else console.warn(`snapshot: ignoring malformed forest/forest-areas.json in ${dir}`);
+  } catch {
+    // Optional sidecar: honestly empty below.
+  }
+  forestAreaCache.set(dir, areas);
+  return areas;
+}
+
 // DRAINAGE-HOOK (#616): maaparandus network/outflow sidecar
 // (`maaparandus/maaparandus-areas.json`, written by
 // scripts/build/batch_maaparandus.py off the cached WFS GeoJSON):
@@ -1425,6 +1460,10 @@ const RASTER_FILE: Record<LayerId, string> = {
   // built — DENSITY_NO_RASTER; the squares ARE the field; absent file
   // degrades to null, honestly).
   ...DENSITY_RASTER_FILE,
+  // FOREST-HOOK (#624): forest change raster name only (no master
+  // built — FOREST_NO_RASTER; the polygons ARE the field; absent file
+  // degrades to null, honestly).
+  ...FOREST_RASTER_FILE,
 };
 
 /**
@@ -1970,6 +2009,10 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // resolves to an absent file so windows fall back to county
   // cleanly.
   density: "density-metro",
+  // FOREST-HOOK (#624): no forest metro master by documented decision
+  // (see layers_p4_forest.ts FOREST_NO_METRO) — the name resolves to
+  // an absent file so windows fall back to county cleanly.
+  forest: "forest-metro",
 };
 
 /** Decoded county payloads (small); metro .u8 stays on disk per request. */

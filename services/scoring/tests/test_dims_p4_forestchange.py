@@ -7,7 +7,6 @@ python3 -m pytest services/scoring/tests/test_dims_p4_forestchange.py -q
 
 from datetime import date
 
-import dims_p4_forestchange as fc
 from dims_p4_forestchange import (
     CAVEAT,
     FORESTCHANGE_DIMS,
@@ -29,17 +28,18 @@ def _chg(dist, first="2023-05-01", second="2024-05-01", area=1.2):
             "second_date": second, "area_ha": area}
 
 
-# --- licence hard gate ---------------------------------------------------------
+# --- licence gate: OPEN since the #624 verdict ----------------------------------
 
-def test_licence_gate_blocks_ingestion():
-    assert LICENCE_OK is False
+def test_licence_gate_open_with_note():
+    # Bundled ETAK-open-data-licence.pdf + PUBLIC catalogue access
+    # (verdict in the module docstring): the pinned bands go live.
+    assert LICENCE_OK is True
     assert "litsents" in LICENCE_NOTE
     s, reason = dim_forest_recent(TALLINN, [_chg(100)], TODAY)
-    assert s is None
-    assert "litsents kinnitamata" in reason
+    assert s == 30
     assert "ametlik raiestatistika" in reason  # publisher caveat present
     assert score_forestchange(TALLINN, [_chg(100)], TODAY) == {
-        "forest_recent": None}
+        "forest_recent": 30}
 
 
 def test_empty_window_is_null_never_safe():
@@ -74,10 +74,9 @@ def test_score_bands():
     assert _score_change(1.0, None) is None
 
 
-def test_live_shape_once_gate_lifts(monkeypatch):
-    # Shape check only: with the gate lifted the worst change wins and
-    # the empty window stays NULL (never "safe forest").
-    monkeypatch.setattr(fc, "LICENCE_OK", True)
+def test_live_shape_gate_open():
+    # The worst change wins and the empty window stays NULL (never
+    # "safe forest").
     s, reason = dim_forest_recent(
         TALLINN, [_chg(1200, "2023-05-01", "2024-05-01"), _chg(200)],
         TODAY)

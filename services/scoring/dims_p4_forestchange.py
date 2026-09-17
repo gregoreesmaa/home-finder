@@ -1,27 +1,26 @@
-"""Clear-cut dynamics from metsamuutused yearly SHPs (issue #548).
+"""Clear-cut dynamics from metsamuutused yearly SHPs (issues #548, #624).
 
-DOCUMENTED NO-MAP VERDICT with pinned bands: the series exists and
-serves, but the catalogue states NO licence, so nothing is ingested.
-The day an open licence is confirmed, flip LICENCE_OK and the same
-bands go live — tests already pin them.
+LICENCE VERDICT, FLIPPED 2026-09-17 (issue #624): the distribution
+bundles its licence — ETAK-open-data-licence.pdf + Estonian twin
+(verified in the 2024 zip central directory; English PDF
+range-fetched, decompresses to its stated size) — the Land Board
+open-data licence 01.01.2025, grant-by-use for ETAK spatial data,
+catalogue access PUBLIC. Attribution stamped in every sidecar +
+source line. Residual gray (reviewable): the glyph-encoded PDFs
+defeated verbatim clause extraction, and the catalogue still shows no
+licence field — so the verdict cites the bundled file + indexed grant
+text, and the reviewer judges. LICENCE_OK = True; the pinned bands go
+live with the #624 overlay.
 
 Source: Maa- ja Ruumiamet metsamuutuste andmed, ANNUAL. Series
 2012-2015 + 2017-2024 (2016 absent — stated gap). Content: polygons
 where CHM comparison shows vegetation-height drop >5 m on >0.25 ha,
 with area + first/second survey dates.
 
-Probe (2026-09-16, UA home-finder-idea-probe/1.0, HEAD only — the
-~59 MB zip stays on the server):
-HEAD https://geoportaal.maaruum.ee/docs/Avaandmed/Metsamuutused_2024.zip
--> HTTP/2 200, content-type application/zip, content-length 59 179 549,
-content-disposition inline; filename=Metsamuutused_2024.zip,
-last-modified 16.09.2026. Endpoint serves; nothing downloaded.
-
-Licence gate (LOAD-BEARING, issue constraint): catalogue licence NONE
-stated; the description page was not reachable under a polite single
-pull. LICENCE_OK = False until a dated re-probe confirms an open
-licence. While False every public dim returns None with a gate reason
-— no points vendored, no centroids counted, no map.
+Harvest (2026-09-17, UA home-finder-dev/0.1, polite single pull — the
+licence-day bulk job): Metsamuutused_2024.zip (59 179 549 bytes),
+kevad 9212 + suvi 989 polygons national; Harju+2 km keep 4951 + 337;
+all second_dates 2024-04/05/08 (age ~2.3 y — RECENT bracket).
 
 Publisher caveat (LOAD-BEARING, restated in every reason): detected
 change is NOT official logging statistics — automatic CHM-difference
@@ -45,10 +44,11 @@ Judgment calls (reviewable):
   trajectory); anything older/farther with a change on record -> 70;
   empty window -> None. 0.25 ha / 5 m thresholds are the publisher's,
   not ours — we only band age x distance.
-* False-positive sanity (20 Harjumaa spots: new developments vs real
-  cuts) belongs to the licence-day bulk job — the SHPs were never
-  pulled, so a precision note today would be invented. Stated here so
-  the job cannot skip it.
+* False-positive sanity: 20-spot Harjumaa note run 2026-09-17 on the
+  real vintage (see docs/p4_forestchange.md §2) — 20/20 clean forest
+  context, zero buildings inside any sampled polygon. OSM buildings
+  can miss the newest construction, so the detected-change caveat
+  still rides in every reason.
 * No WEIGHTS / livability / layers / registry edits (joint precedent).
 """
 
@@ -57,10 +57,12 @@ from typing import Dict, List, Optional, Tuple
 
 Score = Tuple[Optional[int], str]  # (score 0..100 | None, Estonian reason)
 
-#: Licence hard gate: catalogue states NONE — re-probe before ingesting.
-LICENCE_OK = False
-LICENCE_NOTE = ("litsents kinnitamata (kataloogis puudub) – "
-                "sisse lugemata")
+#: Licence gate, FLIPPED 2026-09-17 (issue #624): bundled
+#: ETAK-open-data-licence.pdf + PUBLIC catalogue access (see module
+#: docstring for the evidence + residual gray).
+LICENCE_OK = True
+LICENCE_NOTE = ("ETAK avaandmete litsents 01.01.2025 "
+                "(jaotuses kaasas, kataloogis PUBLIC)")
 #: Publisher's load-bearing caveat, restated in every reason.
 CAVEAT = ("tuvastatud muutus, mitte ametlik raiestatistika "
           "(automaattöötlus, vead võimalikud)")
@@ -144,14 +146,14 @@ def score_forestchange(origin: Optional[Tuple[float, float]],
             for key, _, fn in FORESTCHANGE_DIMS}
 
 
-#: Honest Estonian web labels for licence-day (never rendered while gated).
+#: Honest Estonian web labels (live since the #624 licence verdict).
 LAYER_META = {
     "forest_recent": {
         "param": "p4-forestchange",
-        "title": "Tuvastatud võramuutis (litsents ootel)",
+        "title": "Tuvastatud võramuutis (2024 lend)",
         "good": "roheline = muutisaknas muutust pole (mitte 'turvaline mets')",
-        "bad": "punane = värske muutus lähedal",
-        "source": ("Maa-amet metsamuutused (litsents kinnitamata; %s)"
-                    % CAVEAT),
+        "bad": "pruun = 2024 tuvastatud muutus lähedal",
+        "source": ("Maa- ja Ruumiamet metsamuutused 2024 "
+                    "(ETAK avaandmete litsents; %s)" % CAVEAT),
     },
 }

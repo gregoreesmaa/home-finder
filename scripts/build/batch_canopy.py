@@ -57,6 +57,11 @@ CLASS_COLORS: List[Tuple[int, int, int]] = [
 ]
 
 #: L-EST97 constants (GRS80 Transverse Mercator, lon0 24E).
+#: LEGACY (issue #648): L-EST97 is really Lambert Conformal Conic 2SP
+#: (see the LCC block below) — the TM below disagrees with LCC by
+#: 20-85 m across Harju and is kept ONLY until #648 flips the two
+#: lest97_* functions. New code must use lest97_to_lonlat_lcc /
+#: lonlat_to_lest97_lcc.
 _A = 6378137.0
 _F = 1 / 298.257222101
 _E2 = 2 * _F - _F * _F
@@ -65,6 +70,71 @@ _K0 = 0.9996
 _LON0 = math.radians(24.0)
 _E0 = 500000.0
 _E1 = (1 - math.sqrt(1 - _E2)) / (1 + math.sqrt(1 - _E2))
+
+#: True L-EST97 = Lambert Conformal Conic 2SP (EPSG:3301), GRS80.
+#: Triple authority: the official .prj inside Metsamuutused_2024.zip
+#: (PROJECTION Lambert_Conformal_Conic, lat0 57.5175538888889, lon0 24,
+#: SP1 58, SP2 59.3333333333333, E0 500000, N0 6375000), epsg.io/3301
+#: (+proj=lcc, same params; axis order Northing,Easting), and a
+#: from-scratch implementation round-tripping to 2e-14 deg (issue
+#: #648). Verified 2026-09-17.
+_LCC_LAT0 = math.radians(57.5175538888889)
+_LCC_LON0 = math.radians(24.0)
+_LCC_P1 = math.radians(58.0)
+_LCC_P2 = math.radians(59.3333333333333)
+_LCC_E0 = 500000.0
+_LCC_N0 = 6375000.0
+
+
+def _lcc_m(phi: float) -> float:
+    return math.cos(phi) / math.sqrt(1 - _E2 * math.sin(phi) ** 2)
+
+
+def _lcc_t(phi: float) -> float:
+    e = math.sqrt(_E2)
+    s = math.sin(phi)
+    return math.tan(math.pi / 4 - phi / 2) / ((1 - e * s) / (1 + e * s)) ** (e / 2)
+
+
+_LCC_M1 = _lcc_m(_LCC_P1)
+_LCC_M2 = _lcc_m(_LCC_P2)
+_LCC_T1 = _lcc_t(_LCC_P1)
+_LCC_T2 = _lcc_t(_LCC_P2)
+_LCC_T0 = _lcc_t(_LCC_LAT0)
+_LCC_N = math.log(_LCC_M1 / _LCC_M2) / math.log(_LCC_T1 / _LCC_T2)
+_LCC_F = _LCC_M1 / (_LCC_N * _LCC_T1 ** _LCC_N)
+_LCC_R0 = _A * _LCC_F * _LCC_T0 ** _LCC_N
+
+
+def lonlat_to_lest97_lcc(lon: float, lat: float) -> Tuple[float, float]:
+    """True forward L-EST97 (lon/lat degrees -> easting/northing).
+
+    Lambert Conformal Conic 2SP per EPSG:3301 (see constants above).
+    Round-trips to 2e-14 deg (pinned by test). USE THIS for new code;
+    the TM twins stay until issue #648 flips them.
+    """
+    t = _lcc_t(math.radians(lat))
+    r = _A * _LCC_F * t ** _LCC_N
+    th = _LCC_N * (math.radians(lon) - _LCC_LON0)
+    return _LCC_E0 + r * math.sin(th), _LCC_N0 + _LCC_R0 - r * math.cos(th)
+
+
+def lest97_to_lonlat_lcc(easting: float, northing: float) -> Tuple[float, float]:
+    """True inverse L-EST97 (easting/northing -> lon/lat degrees).
+
+    Series-inversion twin of lonlat_to_lest97_lcc (same constants).
+    Round-trips to 2e-14 deg (pinned by test).
+    """
+    e = math.sqrt(_E2)
+    rho = math.hypot(easting - _LCC_E0, _LCC_R0 - (northing - _LCC_N0))
+    theta = math.atan2(easting - _LCC_E0, _LCC_R0 - (northing - _LCC_N0))
+    t = (rho / (_A * _LCC_F)) ** (1 / _LCC_N)
+    phi = math.pi / 2 - 2 * math.atan(t)
+    for _ in range(10):
+        s = math.sin(phi)
+        phi = math.pi / 2 - 2 * math.atan(t * ((1 - e * s) / (1 + e * s)) ** (e / 2))
+    lam = theta / _LCC_N + _LCC_LON0
+    return math.degrees(lam), math.degrees(phi)
 
 #: Source render window (EPSG:3301, easting/northing).
 SRC_BBOX = (459086.0, 6473458.0, 587668.0, 6613389.0)

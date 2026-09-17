@@ -169,6 +169,15 @@ import {
   isDensityTasteOnlyLayer,
   type DensityArea,
 } from "../../lib/layers_p4_density";
+// FOREST-HOOK (#624): forest paints metsamuutused detected-change
+// polygons (scored warning bands, never "safe forest") instead of
+// points — fetched once per selection (the county keep set covers
+// every view).
+import {
+  fetchForestAreas,
+  isForestPolygonOnlyLayer,
+  type ForestArea,
+} from "../../lib/layers_p4_forest";
 
 /** Viewport bbox rounded for fetch stability (matches server key rounding). */
 function sameView(a: BBoxLike, b: BBoxLike): boolean {
@@ -549,6 +558,27 @@ export default function LayersPage() {
     };
   }, [layer]);
 
+  // FOREST-HOOK (#624): metsamuutused detected-change polygons
+  // (forest layer only, fetched once per selection): the warning
+  // itself — 2024 detected change vs honestly-unknown
+  // (missing sidecar). No points are painted for this layer, by
+  // design (polygons only); the per-listing distance bands are the
+  // scorer's job.
+  const [forestAreas, setForestAreas] = useState<ForestArea[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!isForestPolygonOnlyLayer(layer)) {
+      setForestAreas(null);
+      return;
+    }
+    fetchForestAreas().then((areas) => {
+      if (!cancelled) setForestAreas(areas);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [layer]);
+
   // Park boundaries (parks layer only): fetched once per selection, a
   // visual aid so scored-inside vs surroundings reads at a glance.
   const [outlines, setOutlines] = useState<ParkOutline[] | null>(null);
@@ -673,7 +703,7 @@ export default function LayersPage() {
     // QUARRY-HOOK (#614): quarry paints polygons, never point markers.
     // SOIL-HOOK (#617): soil paints polygons, never point markers.
     // ETAK-HOOK (#618): etak paints polygons, never point markers.
-    layer === "parks" || isPolygonOnlyLayer(layer) || isPolygonOnlyMaaLayer(layer) || isEelisPolygonOnlyLayer(layer) || isSevesoPolygonOnlyLayer(layer) || isStatelandPolygonOnlyLayer(layer) || isQuarryPolygonOnlyLayer(layer) || isMaaparandusPolygonOnlyLayer(layer) || isSoilPolygonOnlyLayer(layer) || isEtakPolygonOnlyLayer(layer) || isReliefTasteOnlyLayer(layer) || isCanopyTasteOnlyLayer(layer) || isBuildingsTasteOnlyLayer(layer) || isDensityTasteOnlyLayer(layer)
+    layer === "parks" || isPolygonOnlyLayer(layer) || isPolygonOnlyMaaLayer(layer) || isEelisPolygonOnlyLayer(layer) || isSevesoPolygonOnlyLayer(layer) || isStatelandPolygonOnlyLayer(layer) || isQuarryPolygonOnlyLayer(layer) || isMaaparandusPolygonOnlyLayer(layer) || isSoilPolygonOnlyLayer(layer) || isEtakPolygonOnlyLayer(layer) || isReliefTasteOnlyLayer(layer) || isCanopyTasteOnlyLayer(layer) || isBuildingsTasteOnlyLayer(layer) || isDensityTasteOnlyLayer(layer) || isForestPolygonOnlyLayer(layer)
       ? null
       : needsGraphOverlay(layer)
         ? graphPoints
@@ -705,6 +735,8 @@ export default function LayersPage() {
           ? (buildingsTint ? 1 : 0)
         : isDensityTasteOnlyLayer(layer)
           ? (densityAreas?.length ?? 0)
+        : isForestPolygonOnlyLayer(layer)
+          ? (forestAreas?.length ?? 0)
         : isPlanktprLayerId(layer)
           ? (usePolygons?.length ?? 0)
     : layer === "parks"
@@ -822,6 +854,13 @@ export default function LayersPage() {
     densityAreas === null
       ? "Laadin asustusruute…"
       : `Asustuse toon · ${densityAreas.length} ruutu 1x1 km, 2024 (maitse, mitte hinne — toon ERISTAB, ei hinda)`;
+  // FOREST-HOOK (#624): forest status counts changes, never points —
+  // the layer serves zero points by design (polygons only); outside
+  // every polygon is NULL, never safe forest.
+  const forestStatus =
+    forestAreas === null
+      ? "Laadin võramuutisi…"
+      : `Tuvastatud võramuutis · ${forestAreas.length} polügooni, 2024 lend (väljaspool = teadmata, MITTE turvaline mets)`;
   const base =
     isPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
       ? floodStatus
@@ -850,6 +889,8 @@ export default function LayersPage() {
         ? buildingsStatus
       : isDensityTasteOnlyLayer(layer) && provenance !== null && provenance !== "demo"
         ? densityStatus
+      : isForestPolygonOnlyLayer(layer) && provenance !== null && provenance !== "demo"
+        ? forestStatus
       : provenance === null
       ? "Laadin kihi andmeid…"
       : provenance === "snapshot"
@@ -963,6 +1004,7 @@ export default function LayersPage() {
         canopyTint={canopyTint}
         buildingsTint={buildingsTint}
         densityAreas={densityAreas}
+        forestAreas={forestAreas}
         overlayPoints={pointOverlay}
         usePolygons={usePolygons}
         overlayColor={overlayColorFor(layer)}
@@ -1022,6 +1064,10 @@ export default function LayersPage() {
             // (zero points, null raster) -- same skip for the square
             // fills.
             isDensityTasteOnlyLayer(layer) ||
+            // FOREST-HOOK (#624): forest paints no field at all
+            // (zero points, null raster) -- same skip for the change
+            // fills.
+            isForestPolygonOnlyLayer(layer) ||
             isPlanktprLayerId(layer)
             ? ""
             : distance === "euclidean" && provenance === "snapshot"
