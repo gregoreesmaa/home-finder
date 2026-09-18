@@ -125,7 +125,7 @@ def test_build_sidecar_writes_counts_and_attribution(tmp_path):
     auction.write_text(AUCTION_GEOJSON, encoding="utf-8")
     snap = tmp_path / "snap"
     stats = build_sidecar({"katri": [str(katri)], "auction": str(auction)},
-                          str(snap))
+                          str(snap), TODAY)
     assert stats["ok"] is True
     assert stats["zones"] == 2
     assert stats["by_cls"] == {"state": 1, "auction": 1}

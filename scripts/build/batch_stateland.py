@@ -261,7 +261,8 @@ def to_sidecar(zones: Optional[List[dict]]) -> List[dict]:
     return rows
 
 
-def build_sidecar(inputs: Dict[str, object], snap_dir: str) -> Dict[str, object]:
+def build_sidecar(inputs: Dict[str, object], snap_dir: str,
+                  today: Optional[_dt.date] = None) -> Dict[str, object]:
     """Cached WFS GeoJSON files -> <snap>/stateland/stateland-areas.json.
 
     inputs maps "katri" to a list of GeoJSON paths (or []) and
@@ -296,7 +297,7 @@ def build_sidecar(inputs: Dict[str, object], snap_dir: str) -> Dict[str, object]
                 text = fh.read()
         except OSError as exc:
             return {"ok": False, "error": "unreadable auction: %s" % (exc,)}
-        parsed = parse_auction_collection(text)
+        parsed = parse_auction_collection(text, today)
         if parsed is None:
             return {"ok": False, "error": "unparseable auction"}
         zones.extend(parsed)
