@@ -126,3 +126,30 @@ drives the running site like a buyer (sorts, weights, POI, map pan,
 filters), collects every console/page error, and writes screenshots +
 `report.json`. Zero page errors is the bar; fix issues and re-run the
 loop until all green, then report the loop output as DoD evidence.
+
+## 9. Harvest pole (standing offload target, #676)
+
+All **active-polling** datasets run on the always-on Pi
+(`ralphs-server`, `192.168.50.178`, project dir `~/hf-pole`) — never on
+dev machines, never in CI. The repo holds code + tests; the pole holds
+cadence, caches, secrets, and built tables.
+
+- Layout on the pole: `bin/` (cron wrappers — Pi paths live ONLY here,
+  repo scripts stay host-agnostic), `harvesters/` + `dims/` (copies of
+  `scripts/build/batch_*.py` + `services/scoring/dims_*.py`, re-sync after
+  repo changes), `cache/` (rolling raw, e.g. GPS snapshots pruned >7 d),
+  `built/` (latest sidecars), `state/` (secrets + static vintages — NEVER
+  copied back into the repo), `logs/`, `venv/`, `api.py`.
+- Cadence lives in the pole crontab (`@reboot` boot + 5-min API watchdog
+  + per-dataset pull/build lines); `~/hf-pole/README.md` documents it.
+- Read API: pole serves `GET /v1/<dataset>` (+ `/health`, `/v1/datasets`)
+  on `:8001`; direct LAN HTTP is upstream-filtered (port 22 only), so the
+  Mac holds an ssh tunnel `127.0.0.1:18001 -> pole:8001` (LaunchAgent
+  `ee.homefinder.pole-tunnel`, KeepAlive). Consumers use
+  `http://127.0.0.1:18001` (`POLE_BASE_URL`). Source: `pole/api.py`.
+- Adding a future polling dataset: copy its harvester+dims over, add a
+  `bin/run-<name>.sh` wrapper, smoke-run it once, add the cron line,
+  document it in the pole README, expose it via `pole/api.py`.
+- Secrets (TomTom key, OpenCellID token, …) live in pole `state/` + local
+  env only — never committed, never pasted in chat. Missing builds are
+  honest 503s, never faked data.
