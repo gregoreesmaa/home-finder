@@ -122,6 +122,11 @@ import { isViirsLayerId } from "../../lib/layers_p4_viirs";
 // outage (see isQbands branch below) — the Terviseamet default would
 // otherwise misname it (harno #687 rule).
 import { isOutageLayerId } from "../../lib/layers_p4_outage";
+// SILLY-HOOK (#711, status #774): demo-by-design status names the
+// sample state for silly layers (see demo branch below) — the generic
+// "live ebaõnnestus" would otherwise present designed demo as a load
+// failure.
+import { isSillyLayerId, sillyDemoStatus } from "../../lib/layers_p4_silly";
 // POI-HOOK (#612): dbands status names the register extract for poi
 // layers (see isDbands branch below).
 import { isPoiLayerId } from "../../lib/layers_p4_poi";
@@ -1172,7 +1177,13 @@ export default function LayersPage() {
               ? `Vahemälust (vanus ${ageEt(ageMs)}) · ${pointCount} punkti`
               : provenance === "stale"
                 ? `Aegunud vahemälu — upstream maas (vanus ${ageEt(ageMs)}) · ${pointCount} punkti`
-                : `DEMO-varu (live ebaõnnestus) · ${pointCount} punkti`;
+                // SILLY-HOOK (#711, status #774): silly layers are
+                // demo BY DESIGN (no points sidecar, docs/p4_silly.md)
+                // — name the sample state instead of the generic
+                // "live ebaõnnestus" load-failure label.
+                : isSillyLayerId(layer)
+                  ? sillyDemoStatus(pointCount)
+                  : `DEMO-varu (live ebaõnnestus) · ${pointCount} punkti`;
   // PLANKTPR-HOOK (#492): the DEMO base already names the failed
   // refresh, so the suffix would repeat it — it rides only on real
   // (non-demo) provenances.

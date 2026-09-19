@@ -44,6 +44,13 @@ nor raster take the designed 500 → honestly-labeled demo path
 (paaste #493 precedent). `paramIds` stays `[]` everywhere (P4
 namespace — the layers.md 1..500 audit untouched).
 
+Status (issue #774): the generic demo label read as a load failure
+("live ebaõnnestus"), so the `/layers` status line names the
+demo-by-design state for silly layers instead —
+`sillyDemoStatus()` (`DEMO-näidis (näidispunktid, mitte loendus)`),
+wired through a `SILLY-HOOK` branch in `app/layers/page.tsx`.
+Genuine load failures keep the `DEMO-varu (live ebaõnnestus)` label.
+
 ## Screenshot
 
 `docs/p4_silly_tallinn.png`: `/layers` page with the `kajakad` layer
