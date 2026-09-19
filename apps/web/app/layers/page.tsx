@@ -1131,11 +1131,13 @@ export default function LayersPage() {
         ? pointCount > 0 || !raster
           // SHED-HOOK (#763): shed freshness names the 7-day operator
           // cache (user-visible freshness for pole/cache layers —
-          // issue AC). Missing cache reads honestly-empty (no fills).
+          // issue AC). Missing/expired cache is a 503 upstream
+          // (fetchShedAreas -> null) and paints honestly-empty slate
+          // "mõõtmata" (no fills, #787).
           ? isShedLayerId(layer)
             ? shedAreas && shedAreas.length > 0
               ? `TomTomi tööulatus (5 hubi, 7-päeva puhver${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""}) · ${shedAreas.length} polügooni`
-              : "TomTomi tööulatus — operaatoripuhver puudub (tõmmet pole)"
+              : "TomTomi tööulatus — mõõtmata (operaatoripuhver puudub/aegunud — tõmmet pole)"
             // DATEX-HOOK (#763): DATEX freshness names the pole live
             // table per feed (user-visible freshness — issue AC).
             // Geometry-less feeds show the format truth, not a count.

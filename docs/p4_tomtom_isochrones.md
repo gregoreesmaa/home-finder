@@ -66,3 +66,8 @@ Shared-file wiring is a follow-up once a live keyed cache exists.
 Export `TOMTOM_API_KEY` in the operator shell only. Never commit it,
 never put it in repo files, never paste it in chat. No WEIGHTS splice
 here (joint follow-up). 6 new files, zero shared-file edits.
+
+Weekly refresh runs on the pole (`pole/bin/run-tomtom-sheds.sh`,
+Sundays 05:20, key from pole `state/tomtom.key`); without a fresh
+pull the shed layers stay honestly-empty 503 + slate "mõõtmata"
+(#787). Serving the pole cache to web clients is the #782 slice.
