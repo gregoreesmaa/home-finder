@@ -25,7 +25,8 @@ stays unchanged by this issue.
 Usage:
   python3 scripts/build/batch_delay_sampler.py --pull --cache-dir /tmp/hf-delay
   python3 scripts/build/batch_delay_sampler.py --build --cache-dir /tmp/hf-delay \\
-      --snap ~/hf-data/2026-09-17 [--vintage gtfs/tallinn-gtfs-2026-09-11.zip]
+      --snap ~/hf-data/2026-09-17 [--vintage gtfs/tallinn-gtfs-2026-09-11.zip] \\
+      [--thin-reason "night buses skip corridor X: muu baseline thin"]
 """
 
 import argparse
@@ -47,6 +48,7 @@ from dims_p4_typical_delay import (  # noqa: E402
     build_delay_table,
     corridor_midpoint,
     corridor_of,
+    coverage_report,
     fetch_gps_snapshot,
     load_shape_corridors,
     muu_baselines,
@@ -148,8 +150,14 @@ def _poly_bbox(poly):
     return [min(lons), min(lats), max(lons), max(lats)]
 
 
-def build(cache_dir, snap, vintage=None):
-    """Samples -> corridor x hour table + map sidecar."""
+def build(cache_dir, snap, vintage=None, thin_reason=None):
+    """Samples -> corridor x hour table + map sidecar.
+
+    thin_reason is the operator-writable slot for the coverage
+    block: pass --thin-reason on the CLI (documented reason only,
+    e.g. night buses skip a corridor) and it lands verbatim in
+    coverage.thin_reason. None = undocumented gap, investigate.
+    """
     corridors = _resolve_corridors(snap, vintage)
     # One prebuilt bbox index for the whole build: corridor_of scans
     # bboxes per query, and recomputing them per query stalled the
@@ -161,6 +169,18 @@ def build(cache_dir, snap, vintage=None):
     segments = track_segments(fixes, hour_of=tallinn_hour,
                               corridors=index)
     table = build_delay_table(segments)
+    # #666 coverage: per-(corridor, band) tracked-segment counts ride
+    # the sidecar (JSON-safe) so thin cells are auditable downstream.
+    # thin_reason is operator-writable via --thin-reason (None =
+    # undocumented gap, investigate); the cron operator stamps the
+    # reason when the gap is understood (pole README / run log).
+    _cov = coverage_report(segments, index, thin_reason=thin_reason)
+    coverage = {
+        "n": [{"corridor": c, "hour_band": b, "n": _cov["n"][(c, b)]}
+              for (c, b) in sorted(_cov["n"])],
+        "thin": [{"corridor": c, "hour_band": b} for (c, b) in _cov["thin"]],
+        "thin_reason": _cov["thin_reason"],
+    }
     baselines = muu_baselines(segments)
     validation = _gtfs_validation(snap, vintage, index)
     by_corridor = {}
@@ -199,6 +219,7 @@ def build(cache_dir, snap, vintage=None):
            "cells": [{"corridor": c, "hour_band": band,
                       "factor": cell["factor"], "n": cell["n"]}
                      for (c, band), cell in sorted(table.items())],
+           "coverage": coverage,
            "pois": table_to_pois(table, index),
            "areas": areas,
            "stats": {"fixes": len(fixes), "segments": len(segments),
@@ -223,13 +244,17 @@ def main(argv=None):
     ap.add_argument("--cache-dir", default="/tmp/hf-delay")
     ap.add_argument("--snap", default=None)
     ap.add_argument("--vintage", default=None)
+    ap.add_argument("--thin-reason", default=None,
+                    help="operator-stamped reason for thin coverage cells "
+                         "(lands in coverage.thin_reason)")
     args = ap.parse_args(argv)
     if args.pull:
         pull(args.cache_dir)
     if args.build:
         if not args.snap:
             ap.error("--snap is required for --build")
-        build(args.cache_dir, args.snap, args.vintage)
+        build(args.cache_dir, args.snap, args.vintage,
+              thin_reason=args.thin_reason)
     if not args.pull and not args.build:
         ap.error("nothing to do: pass --pull and/or --build")
     return 0

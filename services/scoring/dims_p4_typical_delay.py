@@ -739,6 +739,42 @@ def _median(sorted_vals):
             else (sorted_vals[mid - 1] + sorted_vals[mid]) / 2.0)
 
 
+def coverage_report(segments, corridors=None, thin_reason=None):
+    """Tracked segments -> per-(corridor, MAP band) counts. Pure.
+
+    Returns {"n": {(corridor, band): n}, "thin": [(corridor, band)
+    with n < TABLE_MIN_SAMPLES], "thin_reason": thin_reason}. Every
+    web corridor x every MAP band is listed (zero where unmeasured --
+    absence is the signal, never hidden). thin_reason is an OPERATOR
+    slot: None means no documented reason (undocumented gap --
+    investigate, never assume); the cron operator stamps the reason
+    (pole README / run log) when the gap is understood (e.g. night
+    buses skip a corridor, so its muu baseline can never fill).
+    """
+    names = [name for name, _poly, _bbox, _label
+             in _as_index(corridors if corridors is not None
+                          else build_corridor_index())]
+    n = {(c, b): 0 for c in names for b in MAP_BANDS}
+    for s in segments:
+        if not isinstance(s, dict):
+            continue
+        corridor = s.get("corridor")
+        hour = s.get("hour")
+        if not corridor or not isinstance(corridor, str):
+            continue
+        try:
+            hour = int(hour)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            continue
+        if not 0 <= hour <= 23:
+            continue
+        key = (corridor, hour_band(hour))
+        if key in n:
+            n[key] += 1
+    thin = sorted([k for k, v in n.items() if v < TABLE_MIN_SAMPLES])
+    return {"n": n, "thin": thin, "thin_reason": thin_reason}
+
+
 def build_delay_table(segments):
     """Segments -> {(corridor, hour_band): delay cell}. Pure.
 

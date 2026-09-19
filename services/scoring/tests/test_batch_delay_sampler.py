@@ -227,3 +227,136 @@ def test_main_pull_and_build_flags(tmp_path, monkeypatch):
                                        "delay-corridors.json")).read())
     assert doc["stats"]["cells"] == 0
     assert doc["pois"] == []
+
+
+# ---------------------------------------------------------------------------
+# Coverage (#666): all 8 corridors in all bands n>=20 or documented reason.
+# ---------------------------------------------------------------------------
+
+#: Band -> local wall hour (HOUR_BANDS: hommikune 7-9, keskpäev 10-15,
+#: õhtune 16-18, muu = night catch-all). Local-midnight anchored like
+#: _run: deterministic in ANY host TZ.
+_COVERAGE_HOURS = {"hommikune tipp": 8, "keskpäev": 12,
+                   "õhtune tipp": 17, "muu": 23}
+
+#: Band -> bounce step (m) at fixed 120 s cadence: peaks crawl (factor
+#: ~2.0), midday drags (~1.33), off-peak flows (1.0) — the map shows
+#: band-differentiated colors, never one flat tint.
+_COVERAGE_STEPS = {"hommikune tipp": 200.0, "keskpäev": 300.0,
+                   "õhtune tipp": 200.0, "muu": 400.0}
+
+
+def _run_full_week(cache):
+    """All 8 legacy corridors x all 4 bands x 25 pulls (hermetic).
+
+    One vehicle per (corridor, band), bouncing along the corridor
+    polyline so consecutive-fix speeds stay in the tracking window;
+    pulls spread over 3 local days per band (cron cadence shape).
+    """
+    import math
+    from dims_p4_typical_delay import CORRIDORS, MAP_BANDS
+
+    base = time.mktime(time.strptime("2026-09-15", "%Y-%m-%d"))
+    files = {}
+    for i, (name, poly, _label) in enumerate(CORRIDORS):
+        (lon_a, lat_a), (lon_b, lat_b) = poly[0], poly[1]
+        length_m = math.hypot((lon_b - lon_a) * 111320.0
+                              * math.cos(math.radians((lat_a + lat_b)
+                                                      / 2.0)),
+                              (lat_b - lat_a) * 111320.0)
+        for j, band in enumerate(MAP_BANDS):
+            frac = _COVERAGE_STEPS[band] / length_m
+            vehicle = "t%02d" % (i * 4 + j)
+            for k in range(25):
+                f = (k * frac) % 2.0
+                pos = f if f <= 1.0 else 2.0 - f
+                lon = lon_a + (lon_b - lon_a) * pos
+                lat = lat_a + (lat_b - lat_a) * pos
+                stamp = (base + (k // 9) * 86400
+                         + _COVERAGE_HOURS[band] * 3600 + (k % 9) * 120)
+                key = (band, k // 9, k % 9, int(stamp))
+                files.setdefault(key, []).append(
+                    "2,99,%d,%d,,240,%s,Z,33,Siht"
+                    % (round(lon * 1e6), round(lat * 1e6), vehicle))
+    for (_b, _d, _k, stamp), rows in files.items():
+        with open(os.path.join(cache, "gps-%d.txt" % stamp), "w",
+                  encoding="utf-8") as fh:
+            fh.write("\n".join(rows) + "\n")
+
+
+def test_all_corridors_all_bands_n20_or_documented(tmp_path):
+    """#666: full-week fixture -> every corridor x band cell n>=20.
+
+    Uses the real build() (coverage rides doc["coverage"]); a thin
+    real-world dataset passes only with a documented thin_reason.
+    """
+    cache = str(tmp_path / "cache")
+    snap = str(tmp_path / "snap")
+    os.makedirs(cache)
+    _run_full_week(cache)
+    doc = build(cache, snap, vintage=None)
+    assert doc["stats"]["corridors"] == 8
+    cov = doc["coverage"]
+    thin = [(c["corridor"], c["hour_band"]) for c in cov["n"]
+            if c["n"] < 20]
+    assert thin == [] or cov.get("thin_reason") is not None
+
+
+def test_thin_cells_flagged_without_reason(tmp_path):
+    """#666: thin fixture -> thin cells listed, reason slot explicit.
+
+    No documented reason (None) means an undocumented gap: investigate,
+    never assume. The operator stamps thin_reason (pole README / run
+    log) when the gap has a reason (e.g. night buses skip a corridor).
+    """
+    cache = str(tmp_path / "cache")
+    snap = str(tmp_path / "snap")
+    os.makedirs(cache)
+    midnight = time.mktime(time.strptime("2026-09-17", "%Y-%m-%d"))
+    _run(cache, midnight + 8 * 3600)
+    doc = build(cache, snap, vintage=None)
+    cov = doc["coverage"]
+    thin = [(c["corridor"], c["hour_band"]) for c in cov["n"]
+            if c["n"] < 20]
+    assert thin != []
+    assert cov.get("thin_reason") is None
+
+
+def test_thin_reason_operator_stamped_through_build(tmp_path):
+    """#666 fix: --thin-reason flows through the real build() path.
+
+    Same thin fixture as above, but the operator stamps a documented
+    reason: it must land verbatim in the stamped coverage.thin_reason
+    block (sidecar JSON included), not stay hardcoded None.
+    """
+    reason = "night buses skip Laagna tee: muu baseline thin (op log)"
+    cache = str(tmp_path / "cache")
+    snap = str(tmp_path / "snap")
+    os.makedirs(cache)
+    midnight = time.mktime(time.strptime("2026-09-17", "%Y-%m-%d"))
+    _run(cache, midnight + 8 * 3600)
+    doc = build(cache, snap, vintage=None, thin_reason=reason)
+    cov = doc["coverage"]
+    thin = [(c["corridor"], c["hour_band"]) for c in cov["n"]
+            if c["n"] < 20]
+    assert thin != []
+    assert cov.get("thin_reason") == reason
+    on_disk = json.loads(open(os.path.join(snap, "delay",
+                                           "delay-corridors.json")).read())
+    assert on_disk["coverage"]["thin_reason"] == reason
+
+
+def test_main_thin_reason_flag_reaches_sidecar(tmp_path, monkeypatch):
+    """#666 fix: --thin-reason CLI flag reaches the sidecar block."""
+    def _boom(*a, **k):
+        raise AssertionError("network used")
+
+    monkeypatch.setattr("urllib.request.urlopen", _boom)
+    reason = "operator note: thin week, strike reduced night service"
+    rc = main(["--build", "--cache-dir", str(tmp_path / "c"),
+               "--snap", str(tmp_path / "s"),
+               "--thin-reason", reason])
+    assert rc == 0
+    doc = json.loads(open(os.path.join(str(tmp_path / "s"), "delay",
+                                       "delay-corridors.json")).read())
+    assert doc["coverage"]["thin_reason"] == reason
