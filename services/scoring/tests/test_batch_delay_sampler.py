@@ -320,3 +320,43 @@ def test_thin_cells_flagged_without_reason(tmp_path):
             if c["n"] < 20]
     assert thin != []
     assert cov.get("thin_reason") is None
+
+
+def test_thin_reason_operator_stamped_through_build(tmp_path):
+    """#666 fix: --thin-reason flows through the real build() path.
+
+    Same thin fixture as above, but the operator stamps a documented
+    reason: it must land verbatim in the stamped coverage.thin_reason
+    block (sidecar JSON included), not stay hardcoded None.
+    """
+    reason = "night buses skip Laagna tee: muu baseline thin (op log)"
+    cache = str(tmp_path / "cache")
+    snap = str(tmp_path / "snap")
+    os.makedirs(cache)
+    midnight = time.mktime(time.strptime("2026-09-17", "%Y-%m-%d"))
+    _run(cache, midnight + 8 * 3600)
+    doc = build(cache, snap, vintage=None, thin_reason=reason)
+    cov = doc["coverage"]
+    thin = [(c["corridor"], c["hour_band"]) for c in cov["n"]
+            if c["n"] < 20]
+    assert thin != []
+    assert cov.get("thin_reason") == reason
+    on_disk = json.loads(open(os.path.join(snap, "delay",
+                                           "delay-corridors.json")).read())
+    assert on_disk["coverage"]["thin_reason"] == reason
+
+
+def test_main_thin_reason_flag_reaches_sidecar(tmp_path, monkeypatch):
+    """#666 fix: --thin-reason CLI flag reaches the sidecar block."""
+    def _boom(*a, **k):
+        raise AssertionError("network used")
+
+    monkeypatch.setattr("urllib.request.urlopen", _boom)
+    reason = "operator note: thin week, strike reduced night service"
+    rc = main(["--build", "--cache-dir", str(tmp_path / "c"),
+               "--snap", str(tmp_path / "s"),
+               "--thin-reason", reason])
+    assert rc == 0
+    doc = json.loads(open(os.path.join(str(tmp_path / "s"), "delay",
+                                       "delay-corridors.json")).read())
+    assert doc["coverage"]["thin_reason"] == reason
