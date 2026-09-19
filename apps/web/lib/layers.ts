@@ -804,6 +804,18 @@ import {
   isSkisLayerId,
   skisBonusSpecFor,
 } from "./layers_p4_skis";
+// HARNO-HOOK (#687): Harno school-quality tables live in
+// ./layers_p4_harno (P4-harno quality leg, honest-empty — no annual
+// snapshot). That module imports layers only as types, so no runtime
+// cycle.
+import type { HarnoLayerId } from "./layers_p4_harno";
+import {
+  HARNO_DECAY,
+  HARNO_LAYERS,
+  HARNO_TAGS,
+  harnoBonusSpecFor,
+  isHarnoLayerId,
+} from "./layers_p4_harno";
 
 export type LayerId =
   | "parks"
@@ -924,6 +936,9 @@ export type LayerId =
   // SKIS-HOOK (#692): ski-track overlay id (./layers_p4_skis,
   // P4-skis leisure pins, honest off-season empty).
   | SkisLayerId
+  // HARNO-HOOK (#687): school-quality overlay id (./layers_p4_harno,
+  // P4-harno quality leg, honest-empty).
+  | HarnoLayerId
   // SPORT-HOOK (#607): sport-venue slice ids (./layers_p4_sport,
   // P4-048 pool/hall/field).
   | SportLayerId
@@ -1218,6 +1233,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...GBFS_DECAY,
   // SKIS-HOOK (#692): skis radius (see layers_p4_skis.ts SKIS_DECAY).
   ...SKIS_DECAY,
+  // HARNO-HOOK (#687): harno radius (see layers_p4_harno.ts HARNO_DECAY).
+  ...HARNO_DECAY,
   // SPORT-HOOK (#607): sport-venue radii (see layers_p4_sport.ts SPORT_DECAY).
   ...SPORT_DECAY,
   // EHIS-HOOK (#608): school radii (see layers_p4_ehis.ts EHIS_DECAY).
@@ -1515,6 +1532,9 @@ export const LAYERS: LayerDef[] = [
   // SKIS-HOOK (#692): skis def (P4-skis leisure pins, no
   // parameters3 id) from ./layers_p4_skis.
   ...SKIS_LAYERS,
+  // HARNO-HOOK (#687): harno def (P4-harno quality leg, no
+  // parameters3 id) from ./layers_p4_harno.
+  ...HARNO_LAYERS,
   // SPORT-HOOK (#607): sport-venue slice defs (P4-048 pool/hall/field,
   // no parameters3 id) from ./layers_p4_sport.
   ...SPORT_LAYERS,
@@ -1721,6 +1741,9 @@ const TAGS: Record<LayerId, string> = {
   // SKIS-HOOK (#692): skis source note (see layers_p4_skis.ts
   // SKIS_TAGS — prose, NOT an Overpass fragment).
   ...SKIS_TAGS,
+  // HARNO-HOOK (#687): harno source note (see layers_p4_harno.ts
+  // HARNO_TAGS — prose, NOT an Overpass fragment).
+  ...HARNO_TAGS,
   // SPORT-HOOK (#607): sport-venue source notes (see layers_p4_sport.ts
   // SPORT_TAGS — prose, NOT an Overpass fragment).
   ...SPORT_TAGS,
@@ -2304,6 +2327,8 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   if (isGbfsLayerId(layer)) return gbfsBonusSpecFor(layer);
   // SKIS-HOOK (#692): skis spec lives in ./layers_p4_skis.
   if (isSkisLayerId(layer)) return skisBonusSpecFor(layer);
+  // HARNO-HOOK (#687): harno spec lives in ./layers_p4_harno.
+  if (isHarnoLayerId(layer)) return harnoBonusSpecFor(layer);
   throw new Error(`unknown layer: ${layer}`);
 }
 

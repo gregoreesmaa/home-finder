@@ -140,6 +140,11 @@ import { GBFS_METRO_NAME, GBFS_RASTER_FILE } from "../layers_p4_gbfs";
 // decision, resolves absent so the layer degrades to the designed
 // 500 → demo-empty path, honestly labeled).
 import { SKIS_METRO_NAME, SKIS_RASTER_FILE } from "../layers_p4_skis";
+// HARNO-HOOK (#687): harno raster filename lives in
+// layers_p4_harno.ts (intentionally never built — HARNO_NO_RASTER;
+// the points-splat quality kernel IS the field; the window route
+// serves 500 for this layer and the client falls back to the splat).
+import { HARNO_RASTER_FILE } from "../layers_p4_harno";
 // SPORT-HOOK (#607): sport-venue raster filenames + sidecar point type
 // live in layers_p4_sport.ts (rasters intentionally never built —
 // SPORT_NO_RASTER; the names resolve to absent files so rasters degrade
@@ -1555,6 +1560,10 @@ const RASTER_FILE: Record<LayerId, string> = {
   // off-season — honest-empty; absent file degrades to the designed
   // 500 path).
   ...SKIS_RASTER_FILE,
+  // HARNO-HOOK (#687): harno raster name only (no master built by
+  // decision — HARNO_NO_RASTER; the points-splat quality kernel IS
+  // the field).
+  ...HARNO_RASTER_FILE,
   // SPORT-HOOK (#607): sport-venue raster names only (no masters built
   // by decision — SPORT_NO_RASTER; the points-splat distance kernel IS
   // the field; absent files degrade windows to null, honestly).
@@ -2119,6 +2128,10 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // — the name resolves absent so windows fall back to county
   // cleanly).
   ...SKIS_METRO_NAME,
+  // HARNO-HOOK (#687): no harno metro master by documented decision
+  // (see layers_p4_harno.ts HARNO_NO_METRO) — the name resolves to an
+  // absent file so windows fall back to county cleanly.
+  harno: "harno-metro",
   // SPORT-HOOK (#607): no sport metro masters (no county masters either
   // — SPORT_NO_RASTER; the names resolve to absent files so windows
   // fall back to the client points-splat distance kernel).

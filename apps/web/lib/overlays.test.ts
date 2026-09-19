@@ -147,7 +147,8 @@ describe("overlay legend + colors", () => {
     // SILLY-HOOK (#711): twelve silly-bundle pins join the registry (142 + 12).
     // GBFS-HOOK (#688): +1 gbfs bike-share layer (154 + 1 = 155).
     // SKIS-HOOK (#692): +1 skis track layer (155 + 1 = 156).
-    expect(ids).toHaveLength(156);
+    // HARNO-HOOK (#687): +1 harno school layer (156 + 1 = 157).
+    expect(ids).toHaveLength(157);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -458,7 +459,8 @@ describe("overlay legend + colors", () => {
     // MERGE (#613+#614+#615): 123 shipped + seveso + stateland + quarry = 126.
     // GBFS-HOOK (#688): +1 gbfs bike-share layer (154 + 1 = 155).
     // SKIS-HOOK (#692): +1 skis track layer (155 + 1 = 156).
-    expect(seen.size).toBe(156); // SILLY (#711): 142 shipped + silly x12 = 154.
+    // HARNO-HOOK (#687): +1 harno school layer (156 + 1 = 157).
+    expect(seen.size).toBe(157); // SILLY (#711): 142 shipped + silly x12 = 154.
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });
