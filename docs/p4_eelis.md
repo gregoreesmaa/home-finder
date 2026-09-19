@@ -109,3 +109,21 @@ sector dim stays scorer-side).
 4. Add the explicitly-flagged live integration test (not a unit run).
 5. True point-in-polygon adapter (listing → containing zone at
    ingest) replaces the nearest-centroid gate.
+
+## Offshore-stray verdict (issue #788, 2026-09-20)
+
+The single `kaadamisalad` row in the Tallinn window (id 546732811,
+"Paljassaare", "Kaadamisala (pinnas)", "Töötav") is genuinely
+offshore: the live WFS re-pull returns the same 1 row / same ring
+(bbox lon 24.647–24.664, lat 59.474–59.486), while the OSM coastline
+puts the northernmost land in that corridor (Paljassaare tip) at lat
+59.47086 with no coastline crossing any ring edge. No CRS/bbox bug —
+the builder, sidecar, route and map all keep [lon, lat] order (pinned
+by `test_batch_eelis_poly.py` + `layers_eelis.test.ts`). The map
+filters the stray and states honest-empty
+(`EELIS_RAIE_OFFSHORE_ZONE_ID`, `eelisRaieOffshoreStatus`); the
+scorer needs no change (offshore centroid is ~1 km from the nearest
+coast, beyond the P4-030 500 m gate, so it stays NULL in practice).
+On the annual re-pull: re-verify the row count/geometry against the
+live WFS — a new zone_id paints normally, a moved on-land Paljassaare
+ring retires the verdict.

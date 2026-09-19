@@ -80,6 +80,7 @@ import { asumediaEmptyStatus, isAsumediaLayerId } from "../../lib/layers_asumedi
 import {
   eelisAreasForKind,
   eelisKindForLayer,
+  eelisRaieOffshoreStatus,
   fetchEelisAreas,
   isEelisPolygonOnlyLayer,
   type EelisArea,
@@ -980,10 +981,14 @@ export default function LayersPage() {
   const isTileband = bonusSpecFor(layer).kind === "tileband";
   // EELIS-HOOK (#488): eelis status counts polygons, never points — the
   // layers serve zero points by design (polygons only).
+  // OFFSHORE-HOOK (#788): eelisraie holds only the documented offshore
+  // kaadamisalad stray (filtered from the paint above) — name the dated
+  // verdict instead of a polygon count.
   const eelisStatus =
     eelisAreas === null || eelisKind === null
       ? "Laadin EELIS tsoone…"
-      : `EELIS ${eelisKind === "kaitse" ? "kaitsealad" : eelisKind === "niit" ? "niiduelupaigad" : "raiealad"} · ${eelisOverlay?.length ?? 0} polügooni (väljaspool = teadmata, mitte puhas)`;
+      : (eelisKind === "raie" ? eelisRaieOffshoreStatus(eelisAreas) : null) ??
+        `EELIS ${eelisKind === "kaitse" ? "kaitsealad" : eelisKind === "niit" ? "niiduelupaigad" : "raiealad"} · ${eelisOverlay?.length ?? 0} polügooni (väljaspool = teadmata, mitte puhas)`;
   // SEVESO-HOOK (#613): seveso status counts danger polygons, never
   // points — the layer serves zero points by design (polygons only).
   const sevesoStatus =
