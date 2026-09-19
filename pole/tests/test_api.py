@@ -50,7 +50,10 @@ def test_datasets_lists_five(tmp_path):
                      "datex-srti", "datex-truckpark", "datex-weather",
                      "delay", "fixit", "medre", "mobile",
                      # OUTAGE-HOOK (#729): live-outage sidecar joins the pole.
-                     "outage", "poi",
+                     "outage",
+                     # OUTAGE-RELIABILITY-HOOK (#780): observed-reliability
+                     # table joins the pole (honest 503 until first build).
+                     "outage-reliability", "poi",
                      # SKIS-HOOK (#692): seasonal ski tracks join the pole.
                      "skis",
                      # VIIRS-HOOK (#719): brightness-proxy grid joins the pole.
@@ -68,6 +71,30 @@ def test_dataset_serves_bytes_and_freshness(tmp_path):
 def test_missing_build_is_honest_503(tmp_path):
     c = _client(tmp_path, missing=("fixit",))
     assert c.get("/v1/fixit").status_code == 503
+
+
+def test_outage_reliability_missing_build_is_honest_503(tmp_path):
+    # Issue #780: no reliability table until the first pole build.
+    c = _client(tmp_path)
+    assert c.get("/health").json()["datasets"]["outage-reliability"] is False
+    assert c.get("/v1/outage-reliability").status_code == 503
+
+
+def test_outage_reliability_serves_table(tmp_path):
+    # Issue #780: the built reliability table serves with freshness.
+    table = {"built_at": "2026-09-20T12:00:00+00:00", "window_days": 28,
+             "metric": "vaadeldud töökindlus", "n_obs_total": 3,
+             "areas": {"Tallinn": {"n_obs": 3, "fault_obs": 1}}}
+    rel_dir = tmp_path / "built" / "outage"
+    rel_dir.mkdir(parents=True)
+    (rel_dir / "reliability.json").write_text(
+        json.dumps(table), encoding="utf-8")
+    c = _client(tmp_path)
+    assert c.get("/health").json()["datasets"]["outage-reliability"] is True
+    r = c.get("/v1/outage-reliability")
+    assert r.status_code == 200
+    assert r.json()["window_days"] == 28
+    assert "X-Pole-Built-At" in r.headers
 
 
 def test_unknown_dataset_is_404(tmp_path):

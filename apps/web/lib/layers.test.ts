@@ -1229,6 +1229,22 @@ describe("layer fetch via the server proxy", () => {
     }
   });
 
+  it("passes the outage reliability payload through untouched (#780)", async () => {
+    const reliability = { windowDays: 28, tallinn: { nObs: 100 } };
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ ...liveBody, reliability }),
+    });
+    const res = await fetchLayerPoints("outage", TALLINN_BBOX, fetchImpl);
+    expect(res.reliability).toEqual(reliability);
+    const bareImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(liveBody),
+    });
+    const plain = await fetchLayerPoints("parks", TALLINN_BBOX, bareImpl);
+    expect(plain.reliability).toBeUndefined();
+  });
+
   it("passes feature tags, weights and areas through, dropping malformed ones", async () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: true,

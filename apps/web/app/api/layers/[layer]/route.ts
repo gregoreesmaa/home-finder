@@ -20,12 +20,19 @@ import {
 // OOKLA-HOOK (#489): ookla tile points come from the Ookla Tallinn
 // extract (never the OSM snapshot, never live).
 import { isOoklaLayerId } from "../../../../lib/layers_p4_ookla";
-// OUTAGE-HOOK (#729): outage city point comes from the operator
-// hetkeseis sidecar (never the OSM snapshot, never live).
-import { OUTAGE_POLE_DATASET, isOutageLayerId } from "../../../../lib/layers_p4_outage";
+// OUTAGE-HOOK (#729; reliability #780): outage city point comes from
+// the operator hetkeseis sidecar (never the OSM snapshot, never live);
+// the 28-day observed-reliability window rides along when the pole has
+// built it (never required: history is a companion, not the point).
+import {
+  OUTAGE_POLE_DATASET,
+  OUTAGE_RELIABILITY_POLE_DATASET,
+  isOutageLayerId,
+} from "../../../../lib/layers_p4_outage";
 import {
   loadOutageSnapshot,
   outagePointsIn,
+  outageReliabilityFromBody,
   outageSnapshotFromBody,
 } from "../../../../lib/server/outage";
 // SHED-HOOK (#763): shed polygons come from the operator cache
@@ -576,10 +583,18 @@ export async function GET(
       return NextResponse.json({ error: "no fresh outage snapshot data" }, { status: 500 });
     }
     const points = outagePointsIn(snap, bbox);
+    // OUTAGE-RELIABILITY-HOOK (#780): the 28-day window rides along
+    // when the pole has built it (pole-first, server-side only; null
+    // until the first build — the hetkeseis point serves without it).
+    const relPole = await fetchPoleTable(OUTAGE_RELIABILITY_POLE_DATASET);
+    const reliability = relPole
+      ? outageReliabilityFromBody(relPole.table, Date.now())
+      : null;
     return NextResponse.json({
       points,
       provenance: points.length > 0 ? "snapshot" : "empty",
       ageMs: Date.now() - Date.parse(snap.pulledAt),
+      reliability,
     });
   }
   // SHED-HOOK (#763): sheds are polygons-only (zero points — the

@@ -84,6 +84,88 @@ export const OUTAGE_POLE_DATASET = "outage";
 /** Capped hetkeseis bands (parity with dim_outage_now). */
 export const OUTAGE_BANDS = { fault: 30, planned: 55, upcoming: 70, clean: 80 } as const;
 
+/**
+ * Pole dataset serving the observed-reliability table (issue #780:
+ * pole/api.py key; the route reads it pole-first, server-side only,
+ * same DATEX #763 precedent as the hetkeseis sidecar).
+ */
+export const OUTAGE_RELIABILITY_POLE_DATASET = "outage-reliability";
+
+/**
+ * Observed-reliability window in days (== RELIABILITY_WINDOW_DAYS in
+ * scripts/build/batch_outage.py; the pole wrapper rebuilds the table
+ * every 5 min from the rolling 90-day observation log).
+ */
+export const OUTAGE_RELIABILITY_WINDOW_DAYS = 28;
+
+/**
+ * Freshness ceiling for the reliability table in seconds (== one day:
+ * the table aggregates a 28-day window and rebuilds every 5 min, so
+ * older than a day means the pole build stopped — a gap, never data).
+ */
+export const OUTAGE_RELIABILITY_TTL_S = 86400;
+
+/**
+ * Documented metric (mirrors RELIABILITY_METRIC in
+ * scripts/build/batch_outage.py): fault/planned observation counts +
+ * affected-customer sums over the window — SAIDI-like thinking, never
+ * a SAIDI guarantee (a clean history is still not a guarantee).
+ */
+export const OUTAGE_RELIABILITY_METRIC =
+  "vaadeldud töökindlus: aktiivsete rikete ja plaaniliste vaatlusarv + mõjutatud klientide summa 28 päeva aknas (SAIDI-sarnane mõtlemine, MITTE garantii)";
+
+/** One per-label aggregate inside the served reliability table. */
+export interface OutageAreaReliability {
+  nObs: number;
+  faultObs: number;
+  plannedObs: number;
+  upcomingObs: number;
+  faultCustomers: number;
+  plannedCustomers: number;
+  coverage: number;
+}
+
+/** Served reliability-table shape (pole `outage-reliability`, #780). */
+export interface OutageReliability {
+  builtAt: string;
+  windowDays: number;
+  tallinn: OutageAreaReliability;
+  nObsTotal: number;
+}
+
+function isFiniteJsonNum(v: unknown): v is number {
+  return typeof v === "number" && Number.isFinite(v);
+}
+
+/**
+ * Defensive client-side history line off the route's `reliability`
+ * field (issue #780): names the window + metric and labels AJALUGU
+ * vs HETKESEIS so the hetkeseis point is never read as reliability.
+ * Null when absent or unshaped — the hetkeseis status then renders
+ * without history (never a faked window). Pure, client-safe.
+ */
+export function outageHistoryStatus(v: unknown): string | null {
+  if (typeof v !== "object" || v === null) return null;
+  const r = v as Record<string, unknown>;
+  if (r.windowDays !== OUTAGE_RELIABILITY_WINDOW_DAYS) return null;
+  const t = r.tallinn as Record<string, unknown> | undefined;
+  if (typeof t !== "object" || t === null) return null;
+  const nObs = t.nObs;
+  const faultObs = t.faultObs;
+  const plannedObs = t.plannedObs;
+  const faultCustomers = t.faultCustomers;
+  if (
+    !isFiniteJsonNum(nObs) || !isFiniteJsonNum(faultObs) ||
+    !isFiniteJsonNum(plannedObs) || !isFiniteJsonNum(faultCustomers)
+  )
+    return null;
+  return (
+    `ajalugu ${OUTAGE_RELIABILITY_WINDOW_DAYS} pv: Tallinn ${faultObs} rikke- + ` +
+    `${plannedObs} plaanilise vaatlust (${nObs} vaatlust, ` +
+    `mõjutatud kliente rikkeil ${faultCustomers}) — vaatlusaken, MITTE garantii`
+  );
+}
+
 /** LayerPoint.tags keys carrying one area row's live counters. */
 export const OUTAGE_TAG_FC = "fc";
 export const OUTAGE_TAG_FCC = "fcc";
@@ -97,13 +179,13 @@ export const OUTAGE_LAYERS: LayerDef[] = [
     id: "outage",
     paramIds: [],
     paramLabel: OUTAGE_PARAM_LABEL,
-    title: "Elektrikatkestused (hetkeseis, hinnang)",
+    title: "Elektrikatkestused (hetkeseis + 28 pv ajalugu, hinnang)",
     goodLabel:
-      "roheline = rikkekaardil aktiivseid katkestusi pole (hetkeseis-hinnang, lagi 80 — vaikne kaart ei ole töökindluse tõend)",
+      "roheline = rikkekaardil aktiivseid katkestusi pole (hetkeseis-hinnang, lagi 80 — vaikne kaart ei ole töökindluse tõend; ajalugu: 28 päeva vaatlusaken allpool)",
     badLabel:
       "punane = aktiivne rikkeline VÕI plaaniline katkestus Tallinnas (hetkeseis) VÕI seis teadmata (EI OLE värsket väljavõtet)",
     source:
-      "Elektrilevi rikkekaart (keyless GetApplicationData, 5-min väljavõte; Tallinna rida: fc/fcc aktiivsed rikked, pc/pcc plaanilised, uc/ucc tulevased — hetkeseis, MITTE fiidri ajalugu SAIDI; ajalugu avaldamata, lähemalt docs/p4_outage.md)",
+      "Elektrilevi rikkekaart (keyless GetApplicationData, 5-min väljavõte; Tallinna rida: fc/fcc aktiivsed rikked, pc/pcc plaanilised, uc/ucc tulevased — punkt on hetkeseis; ajalugu on pooluse 28 päeva vaatlusaken: rikke-/plaaniliste vaatlusarv + mõjutatud kliendid, SAIDI-sarnane mõtlemine, MITTE garantii; lähemalt docs/p4_outage.md)",
     // EMPTY BY HONESTY (load-bearing): no committed snapshot exists
     // (live data goes stale in minutes) — the route serves the fresh
     // sidecar when the operator pull is in TTL, else 500 → demo.
@@ -267,4 +349,4 @@ export function outagePointsIn(points: OutagePoint[], bbox: BBoxLike): LayerPoin
 
 /** Hook marker, pinned by test so the wiring contract stays greppable. */
 export const OUTAGE_HOOK =
-  "OUTAGE-HOOK (#729): outage wired into layers/overlays/snapshot/route/server; P4-009 power leg, city-grain hetkeseis (never reliability).";
+  "OUTAGE-HOOK (#729) + reliability (#780): outage wired into layers/overlays/snapshot/route/server; P4-009 power leg, city-grain hetkeseis point PLUS 28-day observed-reliability window (history vs hetkeseis labelled, never a guarantee).";

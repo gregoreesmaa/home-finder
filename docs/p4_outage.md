@@ -76,7 +76,7 @@ Companion endpoints (`GetObjectsByTiles`, `GetNetworkObjects`,
 so per-outage points would need the tile scheme — out of scope;
 city grain is the honest shape (re-open path).
 
-## §4 Scorer + overlay (capped hetkeseis, never reliability)
+## §4 Scorer + overlay (capped hetkeseis + observed history since #780)
 
 `dim_outage_now`: fault-active → 30 / planned-active → 55 /
 upcoming-only → 70 / clean → 80 (capped — quiet map ≠ reliable
@@ -93,20 +93,18 @@ Wrapper `bin/run-outage.sh` (every 5 min — live TTL):
 
 ```sh
 #!/bin/sh
-# Pole wrapper: Elektrilevi hetkeseis sidecar (5-min pull, keyless).
-set -eu
-POLE="$HOME/hf-pole"
-OUT="$POLE/built/outage/table.json"
-mkdir -p "$POLE/cache/outage" "$(dirname "$OUT")"
-python3 "$POLE/harvesters/batch_outage.py" \
-  --pull --cache-dir "$POLE/cache/outage" --out "$OUT.tmp"
-mv "$OUT.tmp" "$OUT"
+# Pole wrapper: Elektrilevi hetkeseis sidecar (5-min pull, keyless) +
+# observed-reliability build (#780: pull appends to the rolling log on
+# success only, then --build-reliability aggregates the surviving log —
+# same cron line, atomic tmp+mv both steps, honest 503s until built;
+# full text in pole/bin/run-outage.sh).
 ```
 
 Cron (pole crontab, every 5 min):
 `*/5 * * * * $HOME/hf-pole/bin/run-outage.sh >>$HOME/hf-pole/logs/outage.log 2>&1`
 
-Read API: `GET /v1/outage` (honest 503 until the first pull).
+Read API: `GET /v1/outage` (honest 503 until the first pull) +
+`GET /v1/outage-reliability` (#780, honest 503 until the first build).
 Consumers use `POLE_BASE_URL`; the web route reads `OUTAGE_SNAPSHOT_PATH`
 (or its `os.tmpdir()/hf-outage` default — `/tmp/hf-outage` on
 Linux/pole, `$TMPDIR/hf-outage` on macOS dev) with the 5-min TTL
@@ -116,3 +114,31 @@ enforced in `loadOutageSnapshot` — stale sidecars never render.
 
 Jooksev seis rikkekaardilt (kaart näitab minuteid, mitte fiidri
 ajalugu); püsiühenduse TTJA netikaardilt.
+
+## §6 Observed reliability (issue #780 — history + hetkeseis)
+
+Open design questions decided for this slice (documented, reviewable):
+
+- Metric: fault/planned OBSERVATION COUNTS + affected-customer sums
+  over the window (SAIDI-like thinking, never a SAIDI guarantee — a
+  clean history is still not a guarantee).
+- Grain: CITY ROLLUP FIRST — the log keeps the Tallinn + Harju rows
+  only (the 99-area verbatim sidecar would be ~37 MB/day; the compact
+  record is ~300 B/pull, ~86 KB/day, ~8 MB at full retention).
+- Storage: ROLLING LOG — `cache/outage/observations.jsonl` pruned past
+  90 days (pole `cache/` convention; corrupt lines dropped, never data).
+- Relationship: HISTORY LAYER + HETKESEIS OVERLAY side by side — the
+  mapped point stays the capped hetkeseis; the 28-day window rides the
+  route JSON as `reliability` and renders as a labelled history line.
+  Every surface labels history vs hetkeseis.
+
+Pipeline: `run-outage.sh` (same 5-min cron line) pulls (append on
+success only — failures leave sidecar AND log untouched) then builds
+`built/outage/reliability.json` from the surviving log (atomic
+tmp+mv; a failed build keeps the previous table). Read API:
+`GET /v1/outage-reliability` (honest 503 until the first build;
+freshness — 1-day TTL on the 28-day window — enforced by the map
+route, not the registry). Summary line:
+"ajalugu 28 pv: Tallinn F rikke- + P plaanilise vaatlust
+(N vaatlust, mõjutatud kliente rikkeil C) — vaatlusaken,
+MITTE garantii".
