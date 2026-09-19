@@ -1,13 +1,16 @@
 // Elektrilevi hetkeseis sidecar points for the P4-009 outage overlay
-// (issue #729). Serves the operator-pulled sidecar
-// (outage-table.json: {pulled_at, ttl_s, areas, ...}, written by
-// scripts/build/batch_outage.py --pull) to the /api/layers/outage
-// route — no network, ever. A missing, corrupt or STALE (> 5 min)
-// sidecar is never data: loadOutageSnapshot returns null and the
-// route degrades to labeled demo (same honesty contract as
-// SnapshotUnavailable in ./snapshot). Only the Tallinn row arrives
-// here (city grain — the Harju county row is the dims fallback,
-// never averaged in, never a second point).
+// (issue #729; pole-first read issue #775). Serves the operator-pulled
+// sidecar (outage-table.json: {pulled_at, ttl_s, areas, ...}, written
+// by scripts/build/batch_outage.py --pull, mirrored on the pole as
+// built/outage/table.json) to the /api/layers/outage route. The route
+// reads the pole live table first (DATEX #763 precedent, server-side
+// only — never browser-direct) and falls back to the local sidecar;
+// both shapes validate through outageSnapshotFromBody below. A
+// missing, corrupt or STALE (> 5 min) sidecar is never data:
+// loaders return null and the route degrades to labeled demo (same
+// honesty contract as SnapshotUnavailable in ./snapshot). Only the
+// Tallinn row arrives here (city grain — the Harju county row is the
+// dims fallback, never averaged in, never a second point).
 
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
@@ -76,6 +79,27 @@ export function outageRowToArea(row: unknown): OutageAreaRow | null {
 }
 
 /**
+ * Validate one parsed hetkeseis body (local sidecar file OR pole live
+ * table — same sidecar shape, issue #775), or null when it is
+ * Tallinn-less, corrupt, or older than OUTAGE_TTL_S (never throws:
+ * stale data is a gap, not an error to present). nowMs is injectable
+ * so tests stay hermetic (no clock dependence). Pure: no I/O.
+ */
+export function outageSnapshotFromBody(
+  parsed: unknown,
+  nowMs: number = Date.now(),
+): OutageSnapshot | null {
+  if (typeof parsed !== "object" || parsed === null) return null;
+  const { pulled_at, areas } = parsed as { pulled_at?: unknown; areas?: unknown };
+  if (typeof pulled_at !== "string" || !Array.isArray(areas)) return null;
+  const pulledMs = Date.parse(pulled_at);
+  if (!Number.isFinite(pulledMs) || nowMs - pulledMs > OUTAGE_TTL_S * 1000) return null;
+  const tallinn = areas.map(outageRowToArea).find((a) => a?.label === "Tallinn") ?? null;
+  if (!tallinn) return null;
+  return { pulledAt: pulled_at, tallinn };
+}
+
+/**
  * Load + validate the cached hetkeseis sidecar, or null when it is
  * absent, unreadable, Tallinn-less, or older than OUTAGE_TTL_S
  * (never throws: stale data is a gap, not an error to present).
@@ -97,14 +121,7 @@ export async function loadOutageSnapshot(
   } catch {
     return null;
   }
-  if (typeof parsed !== "object" || parsed === null) return null;
-  const { pulled_at, areas } = parsed as { pulled_at?: unknown; areas?: unknown };
-  if (typeof pulled_at !== "string" || !Array.isArray(areas)) return null;
-  const pulledMs = Date.parse(pulled_at);
-  if (!Number.isFinite(pulledMs) || nowMs - pulledMs > OUTAGE_TTL_S * 1000) return null;
-  const tallinn = areas.map(outageRowToArea).find((a) => a?.label === "Tallinn") ?? null;
-  if (!tallinn) return null;
-  return { pulledAt: pulled_at, tallinn };
+  return outageSnapshotFromBody(parsed, nowMs);
 }
 
 /** Tallinn row -> served city-grain point (band + counters in tags). */

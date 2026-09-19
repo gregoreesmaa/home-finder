@@ -14,6 +14,7 @@ import {
   OUTAGE_BANDS,
   OUTAGE_HOOK,
   OUTAGE_LAYER_IDS,
+  OUTAGE_POLE_DATASET,
   OUTAGE_PROBE,
   OUTAGE_RADIUS_M,
   OUTAGE_TALLINN,
@@ -74,6 +75,10 @@ describe("outage registry", () => {
 
   it("keeps the hook marker greppable", () => {
     expect(OUTAGE_HOOK).toContain("OUTAGE-HOOK (#729)");
+  });
+
+  it("names the pole live-table dataset for the route (#775)", () => {
+    expect(OUTAGE_POLE_DATASET).toBe("outage");
   });
 });
 

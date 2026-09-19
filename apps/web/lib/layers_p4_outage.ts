@@ -74,6 +74,13 @@ export const OUTAGE_RADIUS_M = 15000;
 /** Freshness ceiling in seconds (== OUTAGE_TTL_S in dims_p4_outage.py). */
 export const OUTAGE_TTL_S = 300;
 
+/**
+ * Pole dataset serving the same sidecar shape (pole/api.py DATASETS
+ * key, issue #775): the route reads the live table first (DATEX #763
+ * precedent) and falls back to the operator local sidecar.
+ */
+export const OUTAGE_POLE_DATASET = "outage";
+
 /** Capped hetkeseis bands (parity with dim_outage_now). */
 export const OUTAGE_BANDS = { fault: 30, planned: 55, upcoming: 70, clean: 80 } as const;
 
