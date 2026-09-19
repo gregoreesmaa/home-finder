@@ -39,7 +39,7 @@ def test_datasets_lists_five(tmp_path):
     c = _client(tmp_path)
     names = sorted(d["name"] for d in c.get("/v1/datasets").json()["datasets"])
     assert names == ["datex-cameras", "datex-counters", "datex-restrictions",
-                     "datex-srti", "datex-weather",
+                     "datex-srti", "datex-truckpark", "datex-weather",
                      "delay", "fixit", "medre", "mobile", "poi"]
 
 
