@@ -13,6 +13,8 @@ import {
   loadOutageSnapshot,
   outageCacheDir,
   outagePointsIn,
+  outageReliabilityAreaToTallinn,
+  outageReliabilityFromBody,
   outageRowToArea,
   outageSnapshotFromBody,
   outageSnapshotPath,
@@ -114,5 +116,67 @@ describe("outage loader", () => {
     expect(outageSnapshotFromBody([1, 2], NOW)).toBeNull();
     expect(outageSnapshotFromBody("ok: DATEX voog", NOW)).toBeNull();
     expect(outageSnapshotFromBody({ pulled_at: "not-a-date", areas: [] }, NOW)).toBeNull();
+  });
+});
+
+describe("outage reliability (#780)", () => {
+  const REL_NOW = Date.parse("2026-09-20T12:00:00Z");
+
+  /** Served reliability-table shape (pole `outage-reliability`). */
+  function freshReliability(builtAt = "2026-09-20T11:55:00Z", windowDays = 28) {
+    return {
+      built_at: builtAt,
+      window_days: windowDays,
+      metric: "vaadeldud töökindlus",
+      expected_pulls_per_day: 288,
+      n_obs_total: 100,
+      areas: {
+        Tallinn: {
+          n_obs: 100, fault_obs: 3, planned_obs: 5, upcoming_obs: 40,
+          fault_customers: 210, planned_customers: 90, coverage: 0.0124,
+        },
+      },
+    };
+  }
+
+  it("serves the fresh Tallinn window with its aggregates", () => {
+    const rel = outageReliabilityFromBody(freshReliability(), REL_NOW);
+    expect(rel?.windowDays).toBe(28);
+    expect(rel?.tallinn.faultObs).toBe(3);
+    expect(rel?.tallinn.plannedObs).toBe(5);
+    expect(rel?.tallinn.faultCustomers).toBe(210);
+    expect(rel?.nObsTotal).toBe(100);
+  });
+
+  it("falls back to the Tallinn row count when the total is unshaped", () => {
+    const body = freshReliability();
+    delete (body as Record<string, unknown>).n_obs_total;
+    expect(outageReliabilityFromBody(body, REL_NOW)?.nObsTotal).toBe(100);
+  });
+
+  it("returns null when stale, wrong-window, Tallinn-less or corrupt", () => {
+    // Older than the 1-day reliability TTL: a gap, never data.
+    expect(outageReliabilityFromBody(
+      freshReliability("2026-09-19T11:00:00Z"), REL_NOW)).toBeNull();
+    // A build for another window is never served as the 28-day one.
+    expect(outageReliabilityFromBody(freshReliability("2026-09-20T11:55:00Z", 7), REL_NOW)).toBeNull();
+    const noTallinn = freshReliability();
+    (noTallinn as { areas: Record<string, unknown> }).areas = {};
+    expect(outageReliabilityFromBody(noTallinn, REL_NOW)).toBeNull();
+    expect(outageReliabilityFromBody(null, REL_NOW)).toBeNull();
+    expect(outageReliabilityFromBody([1, 2], REL_NOW)).toBeNull();
+    expect(outageReliabilityFromBody({ built_at: "not-a-date" }, REL_NOW)).toBeNull();
+  });
+
+  it("rejects unshaped Tallinn aggregates, never fakes a window", () => {
+    expect(outageReliabilityAreaToTallinn({ n_obs: 1 })).toBeNull();
+    expect(outageReliabilityAreaToTallinn(null)).toBeNull();
+    expect(outageReliabilityAreaToTallinn({
+      n_obs: 100, fault_obs: 3, planned_obs: 5, upcoming_obs: 40,
+      fault_customers: 210, planned_customers: 90, coverage: 0.0124,
+    })).toEqual({
+      nObs: 100, faultObs: 3, plannedObs: 5, upcomingObs: 40,
+      faultCustomers: 210, plannedCustomers: 90, coverage: 0.0124,
+    });
   });
 });

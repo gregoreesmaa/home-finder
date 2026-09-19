@@ -1481,11 +1481,12 @@ export function overlayLegendFor(layer: LayerId): string {
     // layers_p4_viirs.ts).
     case "viirs":
       return "Öötaeva heledus (P4-035 heledusproksi, 2016) · lähim ruut ≤3 km (pimedus-hinnang 90/70/50/30/10 — heleduspilt, MITTE mõõdetud radiomeetria)";
-    // OUTAGE-HOOK (#729): outage (P4-009) — city-grain hetkeseis,
-    // capped bands, labelled estimate on every surface (see
+    // OUTAGE-HOOK (#729; reliability #780): outage (P4-009) —
+    // city-grain hetkeseis point PLUS the 28-day observed-reliability
+    // window, history vs hetkeseis labelled on every surface (see
     // layers_p4_outage.ts).
     case "outage":
-      return "Elektrikatkestused (P4-009 hetkeseis) · Tallinna rida ≤15 km (hinnang 30/55/70/80, lagi 80 — elav kaart, MITTE fiidri töökindlus; seisu näitab rikkekaart)";
+      return "Elektrikatkestused (P4-009 hetkeseis-punkt + 28 pv ajalugu) · Tallinna rida ≤15 km (hinnang 30/55/70/80, lagi 80 — punkt on hetkeseis, ajalugu on 28 päeva vaatlusaken: rikke-/plaaniliste vaatlusarv, MITTE garantii; seisu näitab rikkekaart)";
   }
 }
 

@@ -40,6 +40,11 @@ DATASETS = {
     # the first operator pull; stale sidecars never serve — the map
     # route enforces the TTL, not this registry).
     "outage": "outage/table.json",
+    # OUTAGE-RELIABILITY-HOOK (#780): 28-day observed-reliability
+    # table built from the rolling observation log by the same 5-min
+    # wrapper (honest 503 until the first build; freshness enforced
+    # by the map route, not this registry).
+    "outage-reliability": "outage/reliability.json",
 }
 
 app = FastAPI(title="hf-pole")

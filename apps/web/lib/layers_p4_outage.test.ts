@@ -17,12 +17,17 @@ import {
   OUTAGE_POLE_DATASET,
   OUTAGE_PROBE,
   OUTAGE_RADIUS_M,
+  OUTAGE_RELIABILITY_METRIC,
+  OUTAGE_RELIABILITY_POLE_DATASET,
+  OUTAGE_RELIABILITY_TTL_S,
+  OUTAGE_RELIABILITY_WINDOW_DAYS,
   OUTAGE_TALLINN,
   OUTAGE_TTL_S,
   outageBandAt,
   outageBandForRow,
   outageBonusSpecFor,
   outageCountOf,
+  outageHistoryStatus,
   outageNearby,
   outagePointsIn,
   isOutageLayerId,
@@ -120,5 +125,49 @@ describe("outage kernel (parity with dim_outage_now)", () => {
     const bbox = { minlon: 24.5, maxlon: 25.0, minlat: 59.3, maxlat: 59.6 };
     expect(outagePointsIn([live], bbox)).toHaveLength(1);
     expect(outagePointsIn([{ lat: 58.38, lon: 26.72, q: 30 }], bbox)).toHaveLength(0);
+  });
+});
+
+describe("outage observed reliability (#780)", () => {
+  it("pins the pole dataset, window and freshness ceiling", () => {
+    expect(OUTAGE_RELIABILITY_POLE_DATASET).toBe("outage-reliability");
+    expect(OUTAGE_RELIABILITY_WINDOW_DAYS).toBe(28);
+    expect(OUTAGE_RELIABILITY_TTL_S).toBe(86400);
+    expect(OUTAGE_RELIABILITY_METRIC).toContain("MITTE garantii");
+  });
+
+  it("names the window and labels history vs hetkeseis on every surface", () => {
+    const def = LAYERS.find((l) => l.id === "outage")!;
+    expect(def.title).toContain("28 pv");
+    expect(def.source).toContain("28 päeva");
+    expect(def.source).toContain("punkt on hetkeseis");
+    expect(def.source).toContain("ajalugu on pooluse");
+    expect(def.goodLabel).toContain("hetkeseis-hinnang");
+    expect(def.goodLabel).toContain("ajalugu: 28 päeva");
+    expect(overlayLegendFor("outage")).toContain("28 pv");
+    expect(overlayLegendFor("outage")).toContain("ajalugu");
+    expect(overlayLegendFor("outage")).toContain("hetkeseis");
+    expect(OUTAGE_HOOK).toContain("#780");
+  });
+
+  it("formats the history line off the served window, null otherwise", () => {
+    const rel = {
+      builtAt: "2026-09-20T11:55:00Z",
+      windowDays: 28,
+      tallinn: {
+        nObs: 100, faultObs: 3, plannedObs: 5, upcomingObs: 40,
+        faultCustomers: 210, plannedCustomers: 90, coverage: 0.0124,
+      },
+      nObsTotal: 100,
+    };
+    const line = outageHistoryStatus(rel);
+    expect(line).toContain("ajalugu 28 pv");
+    expect(line).toContain("3 rikke-");
+    expect(line).toContain("MITTE garantii");
+    // Absent/unshaped/wrong-window payloads never fake a window.
+    expect(outageHistoryStatus(null)).toBeNull();
+    expect(outageHistoryStatus(undefined)).toBeNull();
+    expect(outageHistoryStatus({ windowDays: 28 })).toBeNull();
+    expect(outageHistoryStatus({ ...rel, windowDays: 7 })).toBeNull();
   });
 });

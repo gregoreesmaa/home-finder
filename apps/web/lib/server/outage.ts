@@ -16,6 +16,8 @@ import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import {
+  OUTAGE_RELIABILITY_TTL_S,
+  OUTAGE_RELIABILITY_WINDOW_DAYS,
   OUTAGE_TAG_FC,
   OUTAGE_TAG_FCC,
   OUTAGE_TAG_PC,
@@ -25,6 +27,10 @@ import {
   OUTAGE_TALLINN,
   OUTAGE_TTL_S,
   outageBandForRow,
+} from "../layers_p4_outage";
+import type {
+  OutageAreaReliability,
+  OutageReliability,
 } from "../layers_p4_outage";
 import type { BBoxLike, LayerPoint } from "../layers";
 
@@ -150,4 +156,67 @@ export function outagePointsIn(snap: OutageSnapshot, bbox: BBoxLike): LayerPoint
   if (pt.lon < bbox.minlon || pt.lon > bbox.maxlon || pt.lat < bbox.minlat || pt.lat > bbox.maxlat)
     return [];
   return [pt];
+}
+
+function isFiniteNumRecord(v: unknown): number | null {
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
+/** One per-label aggregate -> canonical counters, null when unshaped. */
+export function outageReliabilityAreaToTallinn(row: unknown): OutageAreaReliability | null {
+  if (typeof row !== "object" || row === null) return null;
+  const r = row as Record<string, unknown>;
+  const nObs = isFiniteNumRecord(r.n_obs);
+  const faultObs = isFiniteNumRecord(r.fault_obs);
+  const plannedObs = isFiniteNumRecord(r.planned_obs);
+  const upcomingObs = isFiniteNumRecord(r.upcoming_obs);
+  const faultCustomers = isFiniteNumRecord(r.fault_customers);
+  const plannedCustomers = isFiniteNumRecord(r.planned_customers);
+  const coverage = isFiniteNumRecord(r.coverage);
+  if (
+    nObs === null || faultObs === null || plannedObs === null ||
+    upcomingObs === null || faultCustomers === null ||
+    plannedCustomers === null || coverage === null
+  )
+    return null;
+  return {
+    nObs, faultObs, plannedObs, upcomingObs,
+    faultCustomers, plannedCustomers, coverage,
+  };
+}
+
+/**
+ * Validate one parsed reliability body (pole live table
+ * `outage-reliability`, issue #780), or null when it is corrupt,
+ * Tallinn-less, built for a different window, or older than
+ * OUTAGE_RELIABILITY_TTL_S (never throws: a stale build is a gap,
+ * not an error to present — the hetkeseis point serves without it).
+ * nowMs is injectable so tests stay hermetic. Pure: no I/O.
+ */
+export function outageReliabilityFromBody(
+  parsed: unknown,
+  nowMs: number = Date.now(),
+): OutageReliability | null {
+  if (typeof parsed !== "object" || parsed === null) return null;
+  const { built_at, window_days, areas, n_obs_total } = parsed as {
+    built_at?: unknown; window_days?: unknown; areas?: unknown; n_obs_total?: unknown;
+  };
+  if (typeof built_at !== "string") return null;
+  const builtMs = Date.parse(built_at);
+  if (!Number.isFinite(builtMs) || nowMs - builtMs > OUTAGE_RELIABILITY_TTL_S * 1000)
+    return null;
+  if (window_days !== OUTAGE_RELIABILITY_WINDOW_DAYS) return null;
+  if (typeof areas !== "object" || areas === null) return null;
+  const tallinn = outageReliabilityAreaToTallinn(
+    (areas as Record<string, unknown>).Tallinn,
+  );
+  if (!tallinn) return null;
+  return {
+    builtAt: built_at,
+    windowDays: OUTAGE_RELIABILITY_WINDOW_DAYS,
+    tallinn,
+    nObsTotal: typeof n_obs_total === "number" && Number.isFinite(n_obs_total)
+      ? n_obs_total
+      : tallinn.nObs,
+  };
 }

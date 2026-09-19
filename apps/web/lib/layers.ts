@@ -2567,6 +2567,13 @@ export interface LayerFetchResult {
   /** Walk raster for transit; null for other layers or when degraded. */
   raster: WalkRasterDoc | null;
   distance: TransitDistance;
+  /**
+   * OUTAGE-RELIABILITY-HOOK (#780): raw `reliability` payload off the
+   * outage route (the 28-day window; validated + formatted by
+   * outageHistoryStatus, never trusted blindly). Absent (undefined)
+   * on every other layer and on demo fallback.
+   */
+  reliability?: unknown;
 }
 
 /** Validate a raster doc shape; the payload itself is decoded client-side. */
@@ -2912,6 +2919,7 @@ export async function fetchLayerPoints(
       ageMs?: unknown;
       raster?: unknown;
       distance?: unknown;
+      reliability?: unknown;
     };
     if (!Array.isArray(body?.points)) return toDemo();
     const points: LayerPoint[] = [];
@@ -2937,6 +2945,10 @@ export async function fetchLayerPoints(
       ageMs: typeof body.ageMs === "number" ? body.ageMs : null,
       raster,
       distance: raster && body.distance === "walk" ? "walk" : "euclidean",
+      // OUTAGE-RELIABILITY-HOOK (#780): pass the raw reliability
+      // payload through untouched (validation + formatting live in
+      // outageHistoryStatus; only the outage route ever sends it).
+      reliability: body.reliability,
     };
   } catch {
     return toDemo();
