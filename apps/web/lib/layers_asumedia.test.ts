@@ -13,6 +13,7 @@ import {
   ASUMEDIA_REOPEN,
   ASUMEDIA_TALLINN_ASUMS,
   ASUMEDIA_VERDICT,
+  asumediaEmptyStatus,
   asumediaGatedMedian,
   asumediaMedianEurM2,
   bonusSpecForAsumedia,
@@ -118,6 +119,36 @@ describe("asumedia median kernel (#495)", () => {
     expect(
       asumediaGatedMedian([4000, 4000, 4545.45, 4727.27, 4838.71]),
     ).toEqual({ median: 4545.45, n: 5 });
+  });
+});
+
+describe("asumedia empty state (#786)", () => {
+  it("pins the honest ootel empty-state message", () => {
+    expect(asumediaEmptyStatus()).toBe(
+      "Ootel-hinnang (2026-09-14 loendus: 30 kirjet, 0 asumivõtmega, " +
+        "0/84 asumi MIN_N=5 täis) — taasavab: geokodeeritud " +
+        "snapshotid + Tallinna 84 asumi polügoonid; õhukese N-iga " +
+        "asumeid EI FEIGITA",
+    );
+  });
+
+  it("names the dated tally + reopen path, never bare no-data", () => {
+    const status = asumediaEmptyStatus();
+    // Dated tally: probe date + counts that match ASUMEDIA_VERDICT.
+    expect(status).toContain(ASUMEDIA_VERDICT.date);
+    expect(status).toContain(`${ASUMEDIA_VERDICT.fixtureRecords} kirjet`);
+    expect(status).toContain(
+      `${ASUMEDIA_VERDICT.asumsAtMinN}/${ASUMEDIA_TALLINN_ASUMS}`,
+    );
+    // Reopen path: geocoded snapshots + 84 asum polygons + MIN_N.
+    expect(status).toMatch(/geokodeeritud snapshotid/);
+    expect(status).toMatch(/84 asumi polügoonid/);
+    expect(status).toContain(`MIN_N=${ASUMEDIA_MIN_N}`);
+    // Thin asums stay unfaked, and this is not the generic
+    // no-coverage copy ("...andmed puuduvad").
+    expect(status).toMatch(/EI FEIGITA/);
+    expect(status).not.toContain("andmed puuduvad");
+    expect(status).not.toMatch(/€\/m²/);
   });
 });
 

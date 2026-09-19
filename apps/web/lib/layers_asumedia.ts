@@ -129,6 +129,28 @@ export const ASUMEDIA_DEFS: LayerDef[] = [
 ];
 
 /**
+ * Empty-state status line for the /layers page (issue #786). The
+ * route serves provenance "empty" for asumedia, and the page's
+ * generic empty copy ("Selle piirkonna kohta hetktõmmises andmed
+ * puuduvad") cannot distinguish "pending by design" from "no
+ * viewport coverage" — so this names the dated tally + the reopen
+ * path instead. Built from ASUMEDIA_VERDICT / ASUMEDIA_MIN_N /
+ * ASUMEDIA_TALLINN_ASUMS so the counts cannot drift from the pinned
+ * tally (drift-pinned by test).
+ */
+export function asumediaEmptyStatus(): string {
+  return (
+    `Ootel-hinnang (${ASUMEDIA_VERDICT.date} loendus: ` +
+    `${ASUMEDIA_VERDICT.fixtureRecords} kirjet, ` +
+    `${ASUMEDIA_VERDICT.fixtureWithAsumKey} asumivõtmega, ` +
+    `${ASUMEDIA_VERDICT.asumsAtMinN}/${ASUMEDIA_TALLINN_ASUMS} asumi ` +
+    `MIN_N=${ASUMEDIA_MIN_N} täis) — taasavab: geokodeeritud ` +
+    `snapshotid + Tallinna ${ASUMEDIA_TALLINN_ASUMS} asumi polügoonid; ` +
+    `õhukese N-iga asumeid EI FEIGITA`
+  );
+}
+
+/**
  * Source note for rebuilds. NOT runnable Overpass QL: the future join
  * is geocoded snapshot coords × vendored asum polygons (neither
  * vendored today), never a live Overpass query — overpassQueryFor
