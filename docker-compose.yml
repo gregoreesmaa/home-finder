@@ -38,6 +38,17 @@ services:
       OOKLA_SNAPSHOT_PATH: /root/hf-data/2026-09-12/ookla/ookla-tallinn-2026Q1.json
       # sensor.community daily extract (Tallinn bbox).
       SENSCOM_SNAPSHOT_PATH: /root/hf-data/2026-09-12/senscom/sensor-community-tallinn.json
+      # Pole live tables (DATEX/outage, #776): the Mac ssh tunnel listens
+      # on Mac-loopback 127.0.0.1:18001, which inside a container is the
+      # container itself — so containers reach the Mac via
+      # host.docker.internal (verified 200 from compose web 2026-09-19
+      # against the loopback-bound tunnel). extra_hosts keeps the name
+      # resolving on Linux docker too (Desktop already defines it).
+      # Override per-operator when the tunnel binds a LAN address:
+      # POLE_BASE_URL=http://<mac-lan-ip>:18001 docker compose up.
+      POLE_BASE_URL: ${POLE_BASE_URL:-http://host.docker.internal:18001}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "3000:3000"
     volumes:

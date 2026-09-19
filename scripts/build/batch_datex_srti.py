@@ -279,7 +279,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                   "puhvritatud.", file=sys.stderr)
             return 1
         print("ok: %d SRTI-voogu puhvritatud (%s)"
-              % (pulled, args.cache_dir))
+              % (pulled, args.cache_dir), file=sys.stderr)
     if args.build:
         rows: List[dict] = []
         if args.fixture:
@@ -297,7 +297,11 @@ def main(argv: Optional[List[str]] = None) -> int:
                       "võtmega või anna --fixture.", file=sys.stderr)
                 return 1
         table = build_table(rows)
-        print(json.dumps(table["counts"], ensure_ascii=False))
+        # STDOUT CONTRACT (#776): exactly one JSON doc, the full table —
+        # the pole wrapper redirects stdout into built/<feed>/table.json
+        # and the web route parses it (rows + counts). Human status rides
+        # stderr, never stdout.
+        print(json.dumps(table, ensure_ascii=False))
         return 0
     return 0
 

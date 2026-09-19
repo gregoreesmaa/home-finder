@@ -19,7 +19,11 @@
 import { readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 
-/** Default pole read API (Mac ssh tunnel -> pole:8001). */
+/**
+ * Default pole read API (Mac ssh tunnel -> pole:8001). Native-dev
+ * default only: containers override via POLE_BASE_URL (compose sets
+ * host.docker.internal — loopback inside a container is itself, #776).
+ */
 export const POLE_DEFAULT_URL = "http://127.0.0.1:18001";
 
 /** Pole base URL (operator override for docker/pole-hosted web). */
@@ -38,7 +42,7 @@ export interface PoleTable {
 
 type FetchImpl = (
   url: string,
-  init?: { signal?: AbortSignal },
+  init?: { signal?: AbortSignal; cache?: "no-store" },
 ) => Promise<{
   ok: boolean;
   status?: number;
@@ -64,8 +68,14 @@ export async function fetchPoleTable(
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? 5000);
   try {
+    // NO-STORE is load-bearing, not a hint: Next.js caches server-side
+    // GETs unless told otherwise, so a healed pole table would keep
+    // serving the cached corrupt/stale body (#776: sticky 500s until
+    // container recreate; worse, a cached X-Pole-Built-At would fake
+    // freshness). Live reads always bypass every cache layer.
     const res = await fetchImpl(`${base}/v1/${name}`, {
       signal: ctrl.signal,
+      cache: "no-store",
     });
     if (!res.ok) return null;
     const body = await res.json();

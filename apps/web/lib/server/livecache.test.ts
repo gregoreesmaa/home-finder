@@ -61,6 +61,17 @@ describe("livecache pole reads (#763)", () => {
     };
     expect(await fetchPoleTable("x", { fetchImpl: async () => arr as never })).toBeNull();
   });
+
+  it("bypasses every cache layer on live reads (no-store, #776)", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => null },
+      json: async () => ({}),
+    });
+    await fetchPoleTable("outage", { fetchImpl });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(fetchImpl.mock.calls[0][1]).toMatchObject({ cache: "no-store" });
+  });
 });
 
 describe("livecache operator-cache reads (#763)", () => {

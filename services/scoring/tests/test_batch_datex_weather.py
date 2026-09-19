@@ -205,3 +205,23 @@ def test_keyed_probe_single_feed(tmp_path):
     dest = tmp_path / "probe_weather.xml"
     dest.write_bytes(body)
     assert dest.stat().st_size > 0
+
+
+def test_build_stdout_is_pure_table_json(tmp_path, monkeypatch, capsys):
+    """Stdout contract (#776): the pole wrapper redirects stdout into
+    built/datex-weather/table.json and the web route parses rows+counts,
+    so --build stdout must be exactly one JSON doc (the full table)
+    and the human ok: status must ride stderr."""
+    monkeypatch.setenv("DATEX_API_KEY", "test-key-not-real")
+    calls: list = []
+    _stub_urlopen_factory(monkeypatch, calls)
+    assert main(["--pull", "--feeds", "weather",
+                 "--cache-dir", str(tmp_path)]) == 0
+    pull_out = capsys.readouterr()
+    assert "ok:" in pull_out.err
+    assert "ok:" not in pull_out.out
+    assert main(["--build", "--cache-dir", str(tmp_path)]) == 0
+    build_out = capsys.readouterr()
+    table = json.loads(build_out.out)
+    assert isinstance(table["rows"], list)
+    assert isinstance(table["counts"], dict)
