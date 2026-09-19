@@ -70,6 +70,11 @@ import {
 } from "../../lib/layers_maaparcel";
 
 
+// ASUMEDIA-HOOK (#495, status #786): asumedia rides provenance
+// "empty" by dated decision — the generic empty copy would present
+// pending-by-design as no-viewport-coverage, so the empty branch
+// below names the dated tally + reopen path instead.
+import { asumediaEmptyStatus, isAsumediaLayerId } from "../../lib/layers_asumedia";
 // EELIS-HOOK (#488): eelis layers paint EELIS nature polygons (polygons
 // only, never a gradient) instead of points.
 import {
@@ -1182,7 +1187,12 @@ export default function LayersPage() {
                 : `Kohalik hetktõmmis (2026-09-12) · ${pointCount} punkti`
           : "Kohalik hetktõmmis (2026-09-12) · rasterkiht"
         : provenance === "empty"
-          ? "Selle piirkonna kohta hetktõmmises andmed puuduvad"
+          // ASUMEDIA-HOOK (#495, status #786): pending-by-design
+          // names its dated tally + reopen path; every other empty
+          // layer keeps the generic no-coverage copy.
+          ? isAsumediaLayerId(layer)
+            ? asumediaEmptyStatus()
+            : "Selle piirkonna kohta hetktõmmises andmed puuduvad"
           : provenance === "live"
             ? `LIVE: Overpass serveri kaudu · ${pointCount} punkti`
             : provenance === "cache"
