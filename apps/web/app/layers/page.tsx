@@ -98,6 +98,9 @@ import { isOhuseireLayerId } from "../../lib/layers_p4_ohuseire";
 // extract for kliima layers (see isQbands branch below) — tervise
 // keeps its own label.
 import { isKliimaLayerId } from "../../lib/layers_kliima";
+// VIIRS-HOOK (#719): qbands status names the GIBS extract for viirs
+// (see isQbands branch below) — labelled proxy, never radiometry.
+import { isViirsLayerId } from "../../lib/layers_p4_viirs";
 // POI-HOOK (#612): dbands status names the register extract for poi
 // layers (see isDbands branch below).
 import { isPoiLayerId } from "../../lib/layers_p4_poi";
@@ -1082,7 +1085,9 @@ export default function LayersPage() {
               : isQbands
                 ? isKliimaLayerId(layer)
                   ? `Keskkonnaagentuuri väljavõte (kliimanormatiiv 1991-2020, seis 2026-09-16)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
-                  : `Terviseameti väljavõte (suplusvesi, seis 2026-09-14)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
+                  : isViirsLayerId(layer)
+                    ? `GIBSi väljavõte (VIIRS Black Marble 2016 heledusproksi, 96 ruutu${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""}) · ${pointCount} ruutu`
+                    : `Terviseameti väljavõte (suplusvesi, seis 2026-09-14)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
               : isDbands
                 ? isEhisLayerId(layer)
                   ? `EHISe väljavõte (koolihooned, seis 2026-09-16)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`

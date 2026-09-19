@@ -774,6 +774,15 @@ export function overlayColorFor(layer: LayerId): string {
     // test).
     case "harno":
       return "#f0abfc";
+    // VIIRS-HOOK (#719): viirs marker (sampled brightness cells).
+    // #818cf8: indigo-400 öötaeva kuma (NOT #6366f1 — taken deeper
+    // indigo — and NOT #a5b4fc — 9B skis härmatis — and NOT
+    // #c7d2fe — taken paler lavender; distinct from 9A's #22d3ee
+    // and 9C's #f0abfc by sibling coordination; layers never
+    // co-render). Distinct from every other marker (distinct-color
+    // test).
+    case "viirs":
+      return "#818cf8";
   }
 }
 
@@ -1370,6 +1379,11 @@ export function overlayLegendFor(layer: LayerId): string {
     // layers_p4_harno.ts).
     case "harno":
       return "Koolikvaliteet (P4-harno) · lähim kool ≤1 km (hinnang 80/70/60/45/30, lagi 80 — EI OLE verifitseeritud aastasnapshotti, näitajad Haridussilma kooli-lehelt)";
+    // VIIRS-HOOK (#719): viirs (P4-035) — night-brightness proxy
+    // cells, labelled proxy on every surface (see
+    // layers_p4_viirs.ts).
+    case "viirs":
+      return "Öötaeva heledus (P4-035 heledusproksi, 2016) · lähim ruut ≤3 km (pimedus-hinnang 90/70/50/30/10 — heleduspilt, MITTE mõõdetud radiomeetria)";
   }
 }
 

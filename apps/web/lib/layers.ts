@@ -816,6 +816,17 @@ import {
   harnoBonusSpecFor,
   isHarnoLayerId,
 } from "./layers_p4_harno";
+// VIIRS-HOOK (#719): Black Marble brightness-proxy tables live in
+// ./layers_p4_viirs (P4-035 proxy leg, 96 sampled cells). That module
+// imports layers only as types, so no runtime cycle.
+import type { ViirsLayerId } from "./layers_p4_viirs";
+import {
+  VIIRS_DECAY,
+  VIIRS_LAYERS,
+  VIIRS_TAGS,
+  isViirsLayerId,
+  viirsBonusSpecFor,
+} from "./layers_p4_viirs";
 
 export type LayerId =
   | "parks"
@@ -939,6 +950,9 @@ export type LayerId =
   // HARNO-HOOK (#687): school-quality overlay id (./layers_p4_harno,
   // P4-harno quality leg, honest-empty).
   | HarnoLayerId
+  // VIIRS-HOOK (#719): brightness-proxy overlay id
+  // (./layers_p4_viirs, P4-035 proxy leg, 96 sampled cells).
+  | ViirsLayerId
   // SPORT-HOOK (#607): sport-venue slice ids (./layers_p4_sport,
   // P4-048 pool/hall/field).
   | SportLayerId
@@ -1235,6 +1249,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...SKIS_DECAY,
   // HARNO-HOOK (#687): harno radius (see layers_p4_harno.ts HARNO_DECAY).
   ...HARNO_DECAY,
+  // VIIRS-HOOK (#719): viirs radius (see layers_p4_viirs.ts VIIRS_DECAY).
+  ...VIIRS_DECAY,
   // SPORT-HOOK (#607): sport-venue radii (see layers_p4_sport.ts SPORT_DECAY).
   ...SPORT_DECAY,
   // EHIS-HOOK (#608): school radii (see layers_p4_ehis.ts EHIS_DECAY).
@@ -1535,6 +1551,9 @@ export const LAYERS: LayerDef[] = [
   // HARNO-HOOK (#687): harno def (P4-harno quality leg, no
   // parameters3 id) from ./layers_p4_harno.
   ...HARNO_LAYERS,
+  // VIIRS-HOOK (#719): viirs def (P4-035 proxy leg, no parameters3
+  // id) from ./layers_p4_viirs.
+  ...VIIRS_LAYERS,
   // SPORT-HOOK (#607): sport-venue slice defs (P4-048 pool/hall/field,
   // no parameters3 id) from ./layers_p4_sport.
   ...SPORT_LAYERS,
@@ -1744,6 +1763,9 @@ const TAGS: Record<LayerId, string> = {
   // HARNO-HOOK (#687): harno source note (see layers_p4_harno.ts
   // HARNO_TAGS — prose, NOT an Overpass fragment).
   ...HARNO_TAGS,
+  // VIIRS-HOOK (#719): viirs source note (see layers_p4_viirs.ts
+  // VIIRS_TAGS — prose, NOT an Overpass fragment).
+  ...VIIRS_TAGS,
   // SPORT-HOOK (#607): sport-venue source notes (see layers_p4_sport.ts
   // SPORT_TAGS — prose, NOT an Overpass fragment).
   ...SPORT_TAGS,
@@ -2329,6 +2351,8 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   if (isSkisLayerId(layer)) return skisBonusSpecFor(layer);
   // HARNO-HOOK (#687): harno spec lives in ./layers_p4_harno.
   if (isHarnoLayerId(layer)) return harnoBonusSpecFor(layer);
+  // VIIRS-HOOK (#719): viirs spec lives in ./layers_p4_viirs.
+  if (isViirsLayerId(layer)) return viirsBonusSpecFor(layer);
   throw new Error(`unknown layer: ${layer}`);
 }
 

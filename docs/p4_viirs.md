@@ -59,6 +59,20 @@ signal, not a retry dare (AGENTS.md §§5, 7.4).
 This source feeds only P4-035, so there is no follow-up coverage
 issue (single-param, like #262/#295/#318).
 
+## Overturn (partial, 2026-09-19 — issue #719)
+
+The EOG verdict above STANDS (login-walled, `viirs_radiance` stays
+NULL in `services/scoring/dims_p4_viirs.py`, untouched). What
+changed: keyless VIIRS night-lights TILES exist via NASA GIBS WMTS
+(`VIIRS_Black_Marble`, probe #699 positive) — visualization PNGs,
+not numeric radiance. Issue #719 builds the scoped
+brightness-proxy leg on top: tile sampler
+(`scripts/build/batch_viirs.py`), proxy dim
+(`services/scoring/dims_viirs.py`, distinct `viirs_brightness`
+key), overlay (`apps/web/lib/layers_p4_viirs.ts`, labelled
+BRIGHTNESS PROXY with the 2016 vintage on every surface). Full
+evidence: `docs/p4_viirs_build.md`.
+
 ## What stays open (overturn path, not wired here)
 
 EOG (or a mirror) serves the annual VNL tiles — ideally a
