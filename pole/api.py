@@ -25,6 +25,7 @@ DATASETS = {
     "mobile": "osm/derived-mobile.json",
     "datex-restrictions": "datex-restrictions/table.json",
     "datex-srti": "datex-srti/table.json",
+    "datex-weather": "datex-weather/table.json",
 }
 
 app = FastAPI(title="hf-pole")
