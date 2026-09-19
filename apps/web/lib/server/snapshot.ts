@@ -82,6 +82,16 @@ import { GTFSSTOPS_RASTER_FILE } from "../layers_gtfsstops";
 // layers_busmesh.ts (named but NOT built — overlay-only decision,
 // resolves absent so the layers ride the Euclidean fallback splat).
 import { BUSMESH_RASTER_FILE } from "../layers_busmesh";
+// SHED-HOOK (#763): shed raster files live in
+// layers_p4_tomtom_sheds.ts (named but NOT built — polygons-only,
+// resolves absent so no gradient is ever painted).
+import { SHED_RASTER_FILE } from "../layers_p4_tomtom_sheds";
+// DATEX-HOOK (#763): DATEX raster files live in layers_datex.ts
+// (named but NOT built — markers-only, resolves absent).
+import { DATEX_RASTER_FILE } from "../layers_datex";
+// INCIDENTS-HOOK (#763): incidents raster file lives in
+// layers_p4_incidents.ts (named but NOT built — markers-only).
+import { INCIDENTS_RASTER_FILE } from "../layers_p4_incidents";
 // RSAFE-HOOK (#481): road-safety raster file lives in layers_roadsafety.ts.
 import { RSAFE_RASTER_FILE } from "../layers_roadsafety";
 // P4-031-HOOK (#484): senscom raster filename lives in
@@ -1518,6 +1528,15 @@ const RASTER_FILE: Record<LayerId, string> = {
   // BUSMESH-HOOK (#769): transfer-node raster names only (no masters
   // built — overlay-only; absent files degrade to Euclidean scoring).
   ...BUSMESH_RASTER_FILE,
+  // SHED-HOOK (#763): shed raster names only (no masters built —
+  // polygons-only; absent files stay honestly-empty).
+  ...SHED_RASTER_FILE,
+  // DATEX-HOOK (#763): DATEX raster names only (no masters built —
+  // markers-only; absent files stay honestly-empty).
+  ...DATEX_RASTER_FILE,
+  // INCIDENTS-HOOK (#763): incidents raster name only (no master
+  // built — markers-only; absent file stays honestly-empty).
+  ...INCIDENTS_RASTER_FILE,
   // RSAFE-HOOK (#481): roadsafety raster (scripts/build/batch_rsafety_osm.py).
   ...RSAFE_RASTER_FILE,
   // P4-031-HOOK (#484): senscom raster name (never built by decision —
@@ -2081,6 +2100,23 @@ const METRO_PREFIX: Record<LayerId, string> = {
   busmesh: "busmesh-metro",
   "busmesh-sat": "busmesh-sat-metro",
   "busmesh-sun": "busmesh-sun-metro",
+  // SHED-HOOK (#763): no shed metro masters (polygons-only — the
+  // files are absent, so windows serve county everywhere).
+  "shed-15-peak": "shed-15-peak-metro",
+  "shed-15-offpeak": "shed-15-offpeak-metro",
+  "shed-30-peak": "shed-30-peak-metro",
+  "shed-30-offpeak": "shed-30-offpeak-metro",
+  // DATEX-HOOK (#763): no DATEX metro masters (markers-only — the
+  // files are absent, so windows serve county everywhere).
+  "datex-restrictions": "datex-restrictions-metro",
+  "datex-srti": "datex-srti-metro",
+  "datex-weather": "datex-weather-metro",
+  "datex-counters": "datex-counters-metro",
+  "datex-cameras": "datex-cameras-metro",
+  "datex-truckpark": "datex-truckpark-metro",
+  // INCIDENTS-HOOK (#763): no incidents metro master (markers-only —
+  // the file is absent, so windows serve county everywhere).
+  incidents: "incidents-metro",
   // RSAFE-HOOK (#481): no roadsafety metro master (documented fake
   // precision — the file is absent, so windows serve county
   // everywhere, like G02B/G03/G03D/G08B/G05C/G05E).

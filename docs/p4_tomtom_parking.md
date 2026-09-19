@@ -78,3 +78,11 @@ across tiles and prints counts (incl. `park_and_ride` sub-count).
 Export `TOMTOM_API_KEY` in the operator shell only. Never commit it,
 never put it in repo files, never paste it in chat. No WEIGHTS splice
 here (joint follow-up). 5 new files, zero shared-file edits.
+
+## Kaardikiht (#763 verdict, 2026-09-19)
+
+EI OLE eraldi TomTom-kaardikihti otsusega: TomTomi parkla/P&R on
+staatiline skoorija-jalg (lähim parkla ≤1 km + P&R märkus). Kaardil
+katab parkimise `parking`-kiht (P4-013, OSM bays+lots); TomTomi
+staatika dubleerimine teiseks kihiks oleks topeltkiht sama küsimuse
+pealt.

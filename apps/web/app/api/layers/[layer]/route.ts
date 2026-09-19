@@ -24,6 +24,31 @@ import { isOoklaLayerId } from "../../../../lib/layers_p4_ookla";
 // hetkeseis sidecar (never the OSM snapshot, never live).
 import { isOutageLayerId } from "../../../../lib/layers_p4_outage";
 import { loadOutageSnapshot, outagePointsIn } from "../../../../lib/server/outage";
+// SHED-HOOK (#763): shed polygons come from the operator cache
+// (never committed, never live).
+import { isShedLayerId } from "../../../../lib/layers_p4_tomtom_sheds";
+import { loadShedSnapshot } from "../../../../lib/server/sheds";
+// DATEX-HOOK (#763): DATEX points come from pole live tables
+// (never committed sidecars, never live third-party).
+import {
+  DATEX_POLE_DATASET,
+  DATEX_TTL_S,
+  datexPointsForLayer,
+  isDatexLayerId,
+} from "../../../../lib/layers_datex";
+// INCIDENTS-HOOK (#763): incident points come from the operator
+// cache (never committed, never live).
+import {
+  INCIDENTS_CACHE_FILE,
+  INCIDENTS_TTL_S,
+  incidentPointsForCache,
+  incidentsCacheDir,
+  isIncidentsLayerId,
+} from "../../../../lib/layers_p4_incidents";
+import {
+  fetchPoleTable,
+  readOpCacheFile,
+} from "../../../../lib/server/livecache";
 // ACCBLACK-HOOK (#490): accblack serves honestly-empty (never 500/demo).
 import { isAccBlackLayerId } from "../../../../lib/layers_accblack";
 // ASUMEDIA-HOOK (#495): asumedia serves honestly-empty (never 500/demo).
@@ -538,6 +563,71 @@ export async function GET(
       points,
       provenance: points.length > 0 ? "snapshot" : "empty",
       ageMs: Date.now() - Date.parse(snap.pulledAt),
+    });
+  }
+  // SHED-HOOK (#763): sheds are polygons-only (zero points — the
+  // /sheds/areas operator-cache fills carry the data). Answer
+  // honestly-empty on snapshot provenance when the cache is fresh
+  // (ageMs names the oldest hub served); a missing/stale cache reads
+  // empty with null age (never demo polygons — the def carries no
+  // fallback points, pinned by test).
+  if (isShedLayerId(def.id)) {
+    const snap = await loadShedSnapshot();
+    if (!snap) {
+      return NextResponse.json({ points: [], provenance: "empty", ageMs: null });
+    }
+    return NextResponse.json({
+      points: [],
+      provenance: "snapshot",
+      ageMs: Date.now() - snap.builtAtMs,
+    });
+  }
+  // DATEX-HOOK (#763): DATEX points come from pole live tables with
+  // per-feed TTLs enforced HERE at serve time (stale reads 500 ->
+  // labeled demo, never presented as live when old). Geometry-less
+  // feeds (restrictions/srti) answer liveness-gated empty on snapshot
+  // provenance (pole up = empty+fresh, pole down = demo).
+  if (isDatexLayerId(def.id)) {
+    const pole = await fetchPoleTable(DATEX_POLE_DATASET[def.id]);
+    const ttlMs = DATEX_TTL_S[def.id] * 1000;
+    if (!pole || Date.now() - pole.builtAtMs > ttlMs) {
+      return NextResponse.json({ error: `no fresh ${def.id} pole data` }, { status: 500 });
+    }
+    const inView = datexPointsForLayer(pole.table, def.id).filter(
+      (p) =>
+        p.lon >= bbox.minlon && p.lon <= bbox.maxlon &&
+        p.lat >= bbox.minlat && p.lat <= bbox.maxlat,
+    );
+    return NextResponse.json({
+      points: inView,
+      provenance: inView.length > 0 ? "snapshot" : "empty",
+      ageMs: Date.now() - pole.builtAtMs,
+    });
+  }
+  // INCIDENTS-HOOK (#763): incident points come from the operator 6h
+  // cache. Fresh serves snapshot; STALE serves the "stale" provenance
+  // (visible age — the freshness timestamp is the contract, issue AC)
+  // and never as live; missing/corrupt reads 500 -> labeled demo.
+  if (isIncidentsLayerId(def.id)) {
+    const cached = await readOpCacheFile(
+      incidentsCacheDir(), INCIDENTS_CACHE_FILE,
+    );
+    if (!cached) {
+      return NextResponse.json({ error: "no incidents cache data" }, { status: 500 });
+    }
+    const ageMs = Date.now() - cached.builtAtMs;
+    const stale = ageMs > INCIDENTS_TTL_S * 1000;
+    const inView = incidentPointsForCache(cached.table)
+      .filter(
+        (p) =>
+          p.lon >= bbox.minlon && p.lon <= bbox.maxlon &&
+          p.lat >= bbox.minlat && p.lat <= bbox.maxlat,
+      )
+      .map((p) => ({ lat: p.lat, lon: p.lon }));
+    return NextResponse.json({
+      points: inView,
+      provenance: stale ? "stale" : inView.length > 0 ? "snapshot" : "empty",
+      ageMs,
     });
   }
   // ACCBLACK-HOOK (#490, reopen #522): projected blackspot points come

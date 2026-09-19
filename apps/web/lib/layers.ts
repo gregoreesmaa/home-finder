@@ -370,6 +370,36 @@ import {
   BUSMESH_TAGS,
   bonusSpecForBusmesh,
 } from "./layers_busmesh";
+// SHED-HOOK (#763): shed tables live in ./layers_p4_tomtom_sheds
+// (P4-sõiduulatus polygons, operator cache). That module imports
+// layers only as types, so no runtime cycle.
+import type { ShedLayerId } from "./layers_p4_tomtom_sheds";
+import {
+  SHED_DECAY,
+  SHED_LAYER_DEFS,
+  SHED_TAGS,
+  bonusSpecForSheds,
+} from "./layers_p4_tomtom_sheds";
+// DATEX-HOOK (#763): DATEX tables live in ./layers_datex (pole live
+// tables, markers only). That module imports layers only as types,
+// so no runtime cycle.
+import type { DatexLayerId } from "./layers_datex";
+import {
+  DATEX_DECAY,
+  DATEX_DEFS,
+  DATEX_TAGS,
+  bonusSpecForDatex,
+} from "./layers_datex";
+// INCIDENTS-HOOK (#763): incidents tables live in
+// ./layers_p4_incidents (operator 6h cache, markers only). That module
+// imports layers only as types, so no runtime cycle.
+import type { IncidentsLayerId } from "./layers_p4_incidents";
+import {
+  INCIDENTS_DECAY,
+  INCIDENTS_DEFS,
+  INCIDENTS_TAGS,
+  bonusSpecForIncidents,
+} from "./layers_p4_incidents";
 // RSAFE-HOOK (#481): road-safety tables live in ./layers_roadsafety
 // (P4-012 crossing/calming proxy). That module imports layers only as
 // types, so no runtime cycle.
@@ -925,6 +955,12 @@ export type LayerId =
   | GtfsstopsLayerId
   // BUSMESH-HOOK (#769): transfer-node window ids (./layers_busmesh).
   | BusmeshLayerId
+  // SHED-HOOK (#763): shed window ids (./layers_p4_tomtom_sheds).
+  | ShedLayerId
+  // DATEX-HOOK (#763): DATEX ids (./layers_datex).
+  | DatexLayerId
+  // INCIDENTS-HOOK (#763): incidents id (./layers_p4_incidents).
+  | IncidentsLayerId
   // RSAFE-HOOK (#481): road-safety id (./layers_roadsafety, P4-012 proxy).
   | RsafeLayerId
   // ACCBLACK-HOOK (#490): accident-blackspot id (./layers_accblack,
@@ -1232,6 +1268,12 @@ const DECAY_KM: Record<LayerId, number> = {
   ...GTFSSTOPS_DECAY,
   // BUSMESH-HOOK (#769): transfer-node radii (see layers_busmesh.ts BUSMESH_DECAY).
   ...BUSMESH_DECAY,
+  // SHED-HOOK (#763): shed radii (see layers_p4_tomtom_sheds.ts SHED_DECAY).
+  ...SHED_DECAY,
+  // DATEX-HOOK (#763): DATEX radii (see layers_datex.ts DATEX_DECAY).
+  ...DATEX_DECAY,
+  // INCIDENTS-HOOK (#763): incidents radius (see layers_p4_incidents.ts INCIDENTS_DECAY).
+  ...INCIDENTS_DECAY,
   // RSAFE-HOOK (#481): blackspot kernel radius (see layers_roadsafety.ts RSAFE_DECAY).
   ...RSAFE_DECAY,
   // ACCBLACK-HOOK (#490): blackspot window (see layers_accblack.ts ACCBLACK_DECAY).
@@ -1535,6 +1577,15 @@ export const LAYERS: LayerDef[] = [
   // BUSMESH-HOOK (#769): transfer-node defs (p15 third leg — transfer
   // richness vs departure density) from ./layers_busmesh.
   ...BUSMESH_DEFS,
+  // SHED-HOOK (#763): shed defs (P4-sõiduulatus polygons, operator
+  // cache) from ./layers_p4_tomtom_sheds.
+  ...SHED_LAYER_DEFS,
+  // DATEX-HOOK (#763): DATEX defs (pole live tables, markers only)
+  // from ./layers_datex.
+  ...DATEX_DEFS,
+  // INCIDENTS-HOOK (#763): incidents def (operator 6h cache, markers
+  // only) from ./layers_p4_incidents.
+  ...INCIDENTS_DEFS,
   // RSAFE-HOOK (#481): roadsafety def (p13, P4-012 proxy) from ./layers_roadsafety.
   ...RSAFE_DEFS,
   // P4-031-HOOK (#484): senscom DIY-air def (P4-031 slice, no
@@ -1754,6 +1805,12 @@ const TAGS: Record<LayerId, string> = {
   ...GTFSSTOPS_TAGS,
   // BUSMESH-HOOK (#769): transfer-node queries (see layers_busmesh.ts BUSMESH_TAGS).
   ...BUSMESH_TAGS,
+  // SHED-HOOK (#763): shed queries (see layers_p4_tomtom_sheds.ts SHED_TAGS).
+  ...SHED_TAGS,
+  // DATEX-HOOK (#763): DATEX queries (see layers_datex.ts DATEX_TAGS).
+  ...DATEX_TAGS,
+  // INCIDENTS-HOOK (#763): incidents query (see layers_p4_incidents.ts INCIDENTS_TAGS).
+  ...INCIDENTS_TAGS,
   // RSAFE-HOOK (#481): roadsafety query (see layers_roadsafety.ts RSAFE_TAGS).
   ...RSAFE_TAGS,
   // ACCBLACK-HOOK (#490): accblack source note (see layers_accblack.ts ACCBLACK_TAGS).
@@ -2349,6 +2406,15 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // BUSMESH-HOOK (#769): transfer-node specs live in ./layers_busmesh.
   const busmesh = bonusSpecForBusmesh(layer);
   if (busmesh) return busmesh;
+  // SHED-HOOK (#763): shed specs live in ./layers_p4_tomtom_sheds.
+  const sheds = bonusSpecForSheds(layer);
+  if (sheds) return sheds;
+  // DATEX-HOOK (#763): DATEX specs live in ./layers_datex.
+  const datex = bonusSpecForDatex(layer);
+  if (datex) return datex;
+  // INCIDENTS-HOOK (#763): incidents spec lives in ./layers_p4_incidents.
+  const incidents = bonusSpecForIncidents(layer);
+  if (incidents) return incidents;
   // RSAFE-HOOK (#481): roadsafety spec lives in ./layers_roadsafety.
   const rsafe = bonusSpecForRsafe(layer);
   if (rsafe) return rsafe;

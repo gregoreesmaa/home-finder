@@ -19,6 +19,9 @@ import {
 // FLOOD-HOOK (#487): polygons-only carve-out for the fallback assertion.
 import { isPolygonOnlyLayer } from "./layers_flood";
 
+// SHED-HOOK (#763): polygons-only carve-out for the fallback assertion.
+import { isShedLayerId } from "./layers_p4_tomtom_sheds";
+
 // MAAPARCEL-HOOK (#491): polygons-only carve-out for the fallback assertion.
 import { isPolygonOnlyMaaLayer } from "./layers_maaparcel";
 
@@ -180,6 +183,20 @@ describe("layer registry", () => {
       "busmesh",
       "busmesh-sat",
       "busmesh-sun",
+      // SHED-HOOK (#763): shed window ids (P4-sõiduulatus polygons).
+      "shed-15-peak",
+      "shed-15-offpeak",
+      "shed-30-peak",
+      "shed-30-offpeak",
+      // DATEX-HOOK (#763): DATEX feed ids (pole live tables).
+      "datex-restrictions",
+      "datex-srti",
+      "datex-weather",
+      "datex-counters",
+      "datex-cameras",
+      "datex-truckpark",
+      // INCIDENTS-HOOK (#763): incidents id (operator 6h cache).
+      "incidents",
       // RSAFE-HOOK (#481): road-safety id (p13 roadsafety, P4-012 proxy).
       "roadsafety",
       // P4-031-HOOK (#484): senscom DIY-air id (P4-031 slice, no
@@ -386,6 +403,22 @@ describe("layer registry", () => {
     for (const id of ["busmesh", "busmesh-sat", "busmesh-sun"]) {
       expect(LAYERS.find((l) => l.id === id)?.paramIds).toEqual([15]);
     }
+    // SHED-HOOK (#763): shed windows bind NO parameters3 number
+    // (P4-sõiduulatus slice, scorer leg dim_jobs_within_30min).
+    for (const id of ["shed-15-peak", "shed-15-offpeak", "shed-30-peak", "shed-30-offpeak"]) {
+      expect(LAYERS.find((l) => l.id === id)?.paramIds).toEqual([]);
+      expect(LAYERS.find((l) => l.id === id)?.paramLabel).toBe("P4-sõiduulatus");
+    }
+    // DATEX-HOOK (#763): DATEX feeds bind NO parameters3 number
+    // (per-feed P4 slice labels, pole live tables).
+    for (const id of ["datex-restrictions", "datex-srti", "datex-weather", "datex-counters", "datex-cameras", "datex-truckpark"]) {
+      expect(LAYERS.find((l) => l.id === id)?.paramIds).toEqual([]);
+    }
+    expect(LAYERS.find((l) => l.id === "datex-weather")?.paramLabel).toBe("P4-teeilm");
+    // INCIDENTS-HOOK (#763): incidents binds NO parameters3 number
+    // (P4-intsidendid slice, scorer leg dim_teeolud).
+    expect(LAYERS.find((l) => l.id === "incidents")?.paramIds).toEqual([]);
+    expect(LAYERS.find((l) => l.id === "incidents")?.paramLabel).toBe("P4-intsidendid");
     // STATKOV-HOOK (#485): P4 choropleth layers bind NO parameters3
     // number (namespace lock -- nearest numbers are taken map layers).
     for (const id of ["kovmigr", "kovehit", "kovfisc"]) {
@@ -978,9 +1011,16 @@ describe("layer registry", () => {
         expect(l.fallbackPoints).toEqual([]);
         continue;
       }
+      // SHED-HOOK (#763): sheds are polygons-only — ZERO fallback
+      // points BY HONESTY (fills come from the operator cache; demo
+      // points would paint a fake gradient splat).
+      if (isShedLayerId(l.id)) {
+        expect(l.fallbackPoints).toEqual([]);
+        continue;
+      }
       if (isPolygonOnlyMaaLayer(l.id)) {
         expect(l.fallbackPoints).toEqual([]);
-      } else if (!isPolygonOnlyLayer(l.id) && !isEelisPolygonOnlyLayer(l.id) && !isSevesoPolygonOnlyLayer(l.id) && !isStatelandPolygonOnlyLayer(l.id) && !isQuarryPolygonOnlyLayer(l.id) && !isMaaparandusPolygonOnlyLayer(l.id) && !isSoilPolygonOnlyLayer(l.id) && !isEtakPolygonOnlyLayer(l.id) && !isReliefTasteOnlyLayer(l.id) && !isCanopyTasteOnlyLayer(l.id) && !isBuildingsTasteOnlyLayer(l.id) && !isDensityTasteOnlyLayer(l.id) && !isForestPolygonOnlyLayer(l.id) && !isNoisePolygonOnlyLayer(l.id)) {
+      } else if (!isPolygonOnlyLayer(l.id) && !isEelisPolygonOnlyLayer(l.id) && !isSevesoPolygonOnlyLayer(l.id) && !isStatelandPolygonOnlyLayer(l.id) && !isQuarryPolygonOnlyLayer(l.id) && !isMaaparandusPolygonOnlyLayer(l.id) && !isSoilPolygonOnlyLayer(l.id) && !isEtakPolygonOnlyLayer(l.id) && !isReliefTasteOnlyLayer(l.id) && !isCanopyTasteOnlyLayer(l.id) && !isBuildingsTasteOnlyLayer(l.id) && !isDensityTasteOnlyLayer(l.id) && !isForestPolygonOnlyLayer(l.id) && !isNoisePolygonOnlyLayer(l.id) && !isShedLayerId(l.id)) {
         expect(l.fallbackPoints.length).toBeGreaterThan(0);
       }
     }

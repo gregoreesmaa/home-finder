@@ -1,5 +1,7 @@
 import type { ParkOutline } from "./layers";
 import type { FloodArea } from "./layers_flood";
+// SHED-HOOK (#763): shed-hub fills (reachable range, never a gradient).
+import type { ShedArea } from "./layers_p4_tomtom_sheds";
 import type { EelisArea } from "./layers_eelis";
 import { MAAPARCEL_CLASS_FILL, type MaaParcelArea } from "./layers_maaparcel";
 import { SEVESO_CLASS_FILL, type SevesoArea } from "./layers_p4_seveso";
@@ -49,6 +51,12 @@ const PARK_CORE = "park-outline-core";
 const FLOOD_SRC = "flood-zone-polys";
 const FLOOD_FILL = "flood-zone-fill";
 const FLOOD_CASING = "flood-zone-casing";
+// SHED-HOOK (#763): shed-hub polygon slot (reachable-range fills, never
+// a gradient). Clearing covers these ids too — one overlay slot paints
+// either kind, never stacks (see clearVectorOverlays).
+const SHED_SRC = "shed-hub-polys";
+const SHED_FILL_LYR = "shed-hub-fill";
+const SHED_CASING = "shed-hub-casing";
 // MAAPARCEL-HOOK (#491): kataster parcel-class slot (omandivorm fills,
 // never a gradient). Clearing covers these ids too — one overlay slot
 // paints either kind, never stacks (see clearVectorOverlays).
@@ -170,7 +178,8 @@ export function clearVectorOverlays(mapObj: OutlineMap): void {
   // ETAK-HOOK (#618): etak contour fill + casing join the cleared
   // slot.
   // DELAY-HOOK (#629): delay fill + casing join the cleared slot.
-  for (const id of [PARK_CASING, PARK_CORE, POINT_CASING, POINT_CORE, FLOOD_FILL, FLOOD_CASING, MAAPARCEL_FILL, MAAPARCEL_CASING, EELIS_FILL, EELIS_CASING, USE_FILL, USE_CASING, SEVESO_FILL, SEVESO_CASING, STATELAND_FILL, STATELAND_CASING, QUARRY_FILL, QUARRY_CASING, MAAPARANDUS_FILL, MAAPARANDUS_CASING, MAAPARANDUS_LINES, SOIL_FILL, SOIL_CASING, ETAK_FILL, ETAK_CASING, RELIEF_LYR, CANOPY_LYR, BUILDINGS_LYR, DENSITY_FILL, DENSITY_CASING, FOREST_FILL, FOREST_CASING, NOISE_FILL, NOISE_CASING, HARBOUR_FILL, HARBOUR_CASING, KPO_FILL, KPO_CASING, DELAY_FILL, DELAY_CASING]) {
+  // SHED-HOOK (#763): shed fill + casing join the cleared slot.
+  for (const id of [PARK_CASING, PARK_CORE, POINT_CASING, POINT_CORE, FLOOD_FILL, FLOOD_CASING, MAAPARCEL_FILL, MAAPARCEL_CASING, EELIS_FILL, EELIS_CASING, USE_FILL, USE_CASING, SEVESO_FILL, SEVESO_CASING, STATELAND_FILL, STATELAND_CASING, QUARRY_FILL, QUARRY_CASING, MAAPARANDUS_FILL, MAAPARANDUS_CASING, MAAPARANDUS_LINES, SOIL_FILL, SOIL_CASING, ETAK_FILL, ETAK_CASING, RELIEF_LYR, CANOPY_LYR, BUILDINGS_LYR, DENSITY_FILL, DENSITY_CASING, FOREST_FILL, FOREST_CASING, NOISE_FILL, NOISE_CASING, HARBOUR_FILL, HARBOUR_CASING, KPO_FILL, KPO_CASING, DELAY_FILL, DELAY_CASING, SHED_FILL_LYR, SHED_CASING]) {
     try {
       if (mapObj.getLayer(id)) mapObj.removeLayer(id);
     } catch {
@@ -188,7 +197,8 @@ export function clearVectorOverlays(mapObj: OutlineMap): void {
   // SOIL-HOOK (#617): the contour-fill source joins the same slot.
   // ETAK-HOOK (#618): the etak-contour source joins the same slot.
   // DELAY-HOOK (#629): the delay-band source joins the same slot.
-  for (const id of [PARK_SRC, POINT_SRC, FLOOD_SRC, MAAPARCEL_SRC, EELIS_SRC, USE_SRC, SEVESO_SRC, STATELAND_SRC, QUARRY_SRC, MAAPARANDUS_SRC, MAAPARANDUS_OUTFLOW_SRC, SOIL_SRC, ETAK_SRC, RELIEF_SRC, CANOPY_SRC, BUILDINGS_SRC, DENSITY_SRC, FOREST_SRC, NOISE_SRC, HARBOUR_SRC, KPO_SRC, DELAY_SRC]) {
+  // SHED-HOOK (#763): the shed-hub source joins the same slot.
+  for (const id of [PARK_SRC, POINT_SRC, FLOOD_SRC, MAAPARCEL_SRC, EELIS_SRC, USE_SRC, SEVESO_SRC, STATELAND_SRC, QUARRY_SRC, MAAPARANDUS_SRC, MAAPARANDUS_OUTFLOW_SRC, SOIL_SRC, ETAK_SRC, RELIEF_SRC, CANOPY_SRC, BUILDINGS_SRC, DENSITY_SRC, FOREST_SRC, NOISE_SRC, HARBOUR_SRC, KPO_SRC, DELAY_SRC, SHED_SRC]) {
     try {
       if (mapObj.getSource(id)) mapObj.removeSource(id);
     } catch {
@@ -427,6 +437,79 @@ export function applyFloodPolygons(
       id: FLOOD_CASING,
       type: "line",
       source: FLOOD_SRC,
+      paint: { "line-color": "#ffffff", "line-width": 2, "line-opacity": 0.9 },
+    },
+    before,
+  );
+}
+
+// SHED-HOOK (#763): shed-hub reachable-range fills.
+
+/**
+ * Paint TomTom shed-hub polygons (reachable-range fills + white casing)
+ * so the 15/30-min peak/off-peak work reach reads at a glance. These
+ * are ISOCHRONE fills, never a gradient: inside-hub-reach vs outside/
+ * unknown, and no score field is painted anywhere. Ring order is
+ * [lat, lon] (harvester cache shape) — flipped to GeoJSON [lon, lat]
+ * here. Clears stale overlay layers first; no-op when the style is not
+ * loaded yet or areas is nullish. Malformed rings are skipped, never
+ * faked; unmeasured hubs have no ring and paint nothing (never a dot).
+ */
+export function applyShedPolygons(
+  mapObj: OutlineMap,
+  areas: ShedArea[] | null | undefined,
+  opts: { color: string },
+): void {
+  if (!mapObj.getStyle()) return;
+  clearVectorOverlays(mapObj);
+  if (!areas || areas.length === 0) return;
+  const features = [];
+  for (const a of areas) {
+    if (!a || typeof a.hub !== "string" || !Array.isArray(a.ring)) continue;
+    const pts = a.ring.filter(
+      (pt) =>
+        Array.isArray(pt) &&
+        pt.length === 2 &&
+        pt.every((n) => typeof n === "number" && Number.isFinite(n)),
+    );
+    if (pts.length < 3) continue;
+    const flipped = pts.map(([lat, lon]) => [lon, lat]);
+    const first = flipped[0];
+    const last = flipped[flipped.length - 1];
+    const closed =
+      first[0] === last[0] && first[1] === last[1]
+        ? flipped
+        : [...flipped, [first[0], first[1]]];
+    features.push({
+      type: "Feature",
+      properties: { hub: a.hub },
+      geometry: { type: "MultiPolygon", coordinates: [[closed]] },
+    });
+  }
+  if (features.length === 0) return;
+  mapObj.addSource(SHED_SRC, {
+    type: "geojson",
+    data: { type: "FeatureCollection", features },
+  });
+  const before = abovePaint(mapObj);
+  mapObj.addLayer(
+    {
+      id: SHED_FILL_LYR,
+      type: "fill",
+      source: SHED_SRC,
+      paint: {
+        "fill-color": opts.color,
+        "fill-opacity": 0.25,
+        "fill-outline-color": opts.color,
+      },
+    },
+    before,
+  );
+  mapObj.addLayer(
+    {
+      id: SHED_CASING,
+      type: "line",
+      source: SHED_SRC,
       paint: { "line-color": "#ffffff", "line-width": 2, "line-opacity": 0.9 },
     },
     before,

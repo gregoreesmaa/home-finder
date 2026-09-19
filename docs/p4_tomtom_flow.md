@@ -75,3 +75,11 @@ acceptance item left for the delay-layer follow-up).
 Export `TOMTOM_API_KEY` in the operator shell only. Never commit it,
 never put it in repo files, never paste it in chat. No WEIGHTS splice
 here (joint follow-up). 5 new files, zero shared-file edits.
+
+## Kaardikiht (#763 verdict, 2026-09-19)
+
+EI OLE kaardikihti otsusega: flow on kalibreerimis-märkus
+(`calibrate_vs_delay` delay-koridoride vastu), mitte kaardigeomeetria.
+Kiirusebandi joonistamine teedele ilma segmendijooinita oleks
+hinnangu maalimine mõõtmise pähe. Ostja näeb ummikuid intsidentide
+kihil (`incidents`, #763) ja viivitusi delay-kihtidel.

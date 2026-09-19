@@ -1,12 +1,20 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   SHED_ATTRIBUTION,
+  SHED_BONUS,
+  SHED_DECAY,
   SHED_DEFS,
   SHED_FILL,
   SHED_HOOK,
+  SHED_LAYER_DEFS,
   SHED_LAYER_IDS,
   SHED_LAYER_SPEC,
+  SHED_NO_METRO,
+  SHED_RASTER_FILE,
+  SHED_TAGS,
   SHED_UNMEASURED_FILL,
+  bonusSpecForSheds,
+  fetchShedAreas,
   isShedLayerId,
   isShedPolygon,
   shedCoversPoint,
@@ -56,7 +64,7 @@ describe("shed overlay (#670)", () => {
       budgetS: 1800,
       band: "rush",
     });
-    expect(SHED_HOOK).toMatch(/SHED-HOOK \(#670\)/);
+    expect(SHED_HOOK).toMatch(/SHED-HOOK \(#763\)/);
   });
 
   it("labels every layer short-cache-never-live in Estonian", () => {
@@ -101,5 +109,42 @@ describe("shed overlay (#670)", () => {
     expect(isShedPolygon(FIXTURE_SNAPSHOT.polygons[3])).toBe(false);
     expect(SHED_UNMEASURED_FILL).toBe("#94a3b8");
     expect(Object.keys(SHED_FILL)).toEqual([...SHED_LAYER_IDS]);
+  });
+});
+
+describe("shed wiring (#763)", () => {
+  it("registers polygons-only defs (no demo points, P4 slice label)", () => {
+    expect(SHED_LAYER_DEFS.map((d) => d.id)).toEqual(SHED_LAYER_IDS);
+    for (const d of SHED_LAYER_DEFS) {
+      expect(d.paramIds).toEqual([]);
+      expect(d.paramLabel).toBe("P4-sõiduulatus");
+      expect(d.fallbackPoints).toEqual([]);
+    }
+    expect(SHED_DECAY["shed-15-peak"]).toBe(0.2);
+    expect(SHED_BONUS["shed-30-peak"]).toEqual({ kind: "pins" });
+    expect(bonusSpecForSheds("shed-15-offpeak")).toEqual({ kind: "pins" });
+    expect(bonusSpecForSheds("transit")).toBeUndefined();
+    expect(SHED_TAGS["shed-15-peak"]).toContain("bus_stop");
+    expect(SHED_RASTER_FILE["shed-30-peak"]).toBe(
+      "shed-30-peak-walk-raster.json",
+    );
+    expect(SHED_NO_METRO).toBe(true);
+  });
+
+  it("fetches hub areas per layer, null on failure", async () => {
+    const areas = [
+      { hub: "city-center", ring: [[59.4, 24.7], [59.4, 24.8], [59.47, 24.8]] },
+      { hub: "x", ring: [[1, 2]] },
+      { hub: "y" },
+    ];
+    const ok = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ areas }),
+    });
+    const out = await fetchShedAreas("shed-15-peak", ok as never);
+    expect(out).toEqual([areas[0]]);
+    expect(String(ok.mock.calls[0][0])).toContain("layer=shed-15-peak");
+    const bad = vi.fn().mockResolvedValue({ ok: false });
+    expect(await fetchShedAreas("shed-15-peak", bad as never)).toBeNull();
   });
 });

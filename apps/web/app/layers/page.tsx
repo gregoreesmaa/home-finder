@@ -42,6 +42,23 @@ import {
 } from "../../lib/layers_flood";
 // OOKLA-HOOK (#489): tileband status line + suffix (see below).
 import { OOKLA_QUARTER } from "../../lib/layers_p4_ookla";
+// SHED-HOOK (#763): shed layers paint TomTom hub polygons (polygons
+// only, never a gradient) instead of points.
+import {
+  SHED_FILL,
+  fetchShedAreas,
+  isShedLayerId,
+  type ShedArea,
+} from "../../lib/layers_p4_tomtom_sheds";
+// DATEX-HOOK (#763): DATEX status nouns for the freshness line (pole
+// live tables, markers only).
+import {
+  datexStatusNoun,
+  isDatexLayerId,
+} from "../../lib/layers_datex";
+// INCIDENTS-HOOK (#763): incidents status line (operator 6h cache,
+// markers only).
+import { isIncidentsLayerId } from "../../lib/layers_p4_incidents";
 
 // MAAPARCEL-HOOK (#491): maaparcel paints kataster parcel polygons
 // (polygons only, never a gradient) instead of points.
@@ -758,6 +775,25 @@ export default function LayersPage() {
     };
   }, [layer]);
 
+  // SHED-HOOK (#763): TomTom hub polygons (shed-* layers only, fetched
+  // once per selection): the isochrone fills themselves — inside-hub
+  // reach vs outside/unknown. No points and no score field are painted
+  // for these layers, by design (polygons only, never a gradient).
+  const [shedAreas, setShedAreas] = useState<ShedArea[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!isShedLayerId(layer)) {
+      setShedAreas(null);
+      return;
+    }
+    fetchShedAreas(layer).then((areas) => {
+      if (!cancelled) setShedAreas(areas);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [layer]);
+
   // MAAPARCEL-HOOK (#491): kataster parcel polygons (maaparcel layer
   // only, fetched once per selection): the choropleth itself — registered
   // parcel fabric by omandivorm class vs outside/unknown. No points and
@@ -1077,7 +1113,23 @@ export default function LayersPage() {
       ? "Laadin kihi andmeid…"
       : provenance === "snapshot"
         ? pointCount > 0 || !raster
-          ? isTileband
+          // SHED-HOOK (#763): shed freshness names the 7-day operator
+          // cache (user-visible freshness for pole/cache layers —
+          // issue AC). Missing cache reads honestly-empty (no fills).
+          ? isShedLayerId(layer)
+            ? shedAreas && shedAreas.length > 0
+              ? `TomTomi tööulatus (5 hubi, 7-päeva puhver${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""}) · ${shedAreas.length} polügooni`
+              : "TomTomi tööulatus — operaatoripuhver puudub (tõmmet pole)"
+            // DATEX-HOOK (#763): DATEX freshness names the pole live
+            // table per feed (user-visible freshness — issue AC).
+            // Geometry-less feeds show the format truth, not a count.
+            : isDatexLayerId(layer)
+              ? `TarkTee DATEX ${datexStatusNoun(layer)} (pooli elustabel${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""}) · ${pointCount > 0 ? `${pointCount} punkti` : "olukorrad geomeetriata"}`
+              // INCIDENTS-HOOK (#763): incidents freshness names the
+              // 6h operator cache (user-visible freshness — issue AC).
+              : isIncidentsLayerId(layer)
+                ? `Intsidendid (TomTomi 6 h puhver${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""}) · ${pointCount} punkti`
+                : isTileband
             ? `Ookla Tallinna väljavõte (${OOKLA_QUARTER}) · ${pointCount} ruutu`
             // PAASTE-HOOK (#493): the extract label is senscom-only.
             // isBands alone would mislabel paaste (the other bands layer)
@@ -1184,6 +1236,9 @@ export default function LayersPage() {
         raster={raster}
         outlines={outlines}
         floodAreas={floodAreas}
+        // SHED-HOOK (#763): shed hub fills + per-layer fill color.
+        shedAreas={shedAreas}
+        shedFill={isShedLayerId(layer) ? SHED_FILL[layer] : undefined}
 
         maaParcels={maaAreas}
 

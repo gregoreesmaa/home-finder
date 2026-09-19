@@ -68,3 +68,10 @@ across tiles and prints counts.
 Export `TOMTOM_API_KEY` in the operator shell only. Never commit it,
 never put it in repo files, never paste it in chat. No WEIGHTS splice
 here (joint follow-up). 5 new files, zero shared-file edits.
+
+## Kaardikiht (#763 verdict, 2026-09-19)
+
+EI OLE eraldi TomTom-kaardikihti otsusega: EV on staatiline
+skoorija-jalg (asukohad + pistikutüübid, saadavus EI OLE) — reaalajas
+geomeetriat pole, mida maalida. Staatiline laadimistaristu katvus
+loetakse OSM-kihtidelt; TomTomi jalg toidab ainult skoori.

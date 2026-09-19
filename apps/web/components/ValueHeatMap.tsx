@@ -27,6 +27,8 @@ import type { ForestArea } from "../lib/layers_p4_forest";
 import type { NoiseArea } from "../lib/layers_p4_noise";
 import type { KpoArea } from "../lib/layers_p4_kpo";
 import type { DelayArea } from "../lib/layers_p4_delay";
+// SHED-HOOK (#763): shed-hub fills (reachable range, never a gradient).
+import type { ShedArea } from "../lib/layers_p4_tomtom_sheds";
 import type { HarbourCell, HarbourPort } from "../lib/layers_p4_harbour";
 import {
   applyFloodPolygons,
@@ -48,6 +50,7 @@ import {
   applyHarbourOverlays,
   applyKpoPolygons,
   applyDelayCorridors,
+  applyShedPolygons,
   applyNoisePolygons,
   applyUsePolygons,
   clearVectorOverlays,
@@ -78,7 +81,7 @@ const ESTONIA_CENTER: [number, number] = [25.0, 58.75];
  * class tint, then point markers, then use-fills (page guarantees
  * flood-areas, maa-parcels, eelis-areas, seveso-areas, stateland-areas,
  * quarry-areas, drainage-areas, soil-areas, etak-areas, relief-tint,
- * canopy-tint, buildings-tint, density-squares, forest-changes, outlines and points never coincide — and fills and
+ * canopy-tint, buildings-tint, density-squares, forest-changes, shed-areas, outlines and points never coincide — and fills and
  * points never coincide either), otherwise park outlines; hidden
  * clears the slot. All painters clear stale layers first, so switches
  * never stack.
@@ -109,6 +112,10 @@ function paintOverlay(
     delayAreas?: DelayArea[] | null;
     /** Hour band painted for the selected delay layer. */
     delayBand?: string;
+    /** TomTom shed-hub fills (shed-* layers only). */
+    shedAreas?: ShedArea[] | null;
+    /** Fill color for the selected shed layer (SHED_FILL). */
+    shedFill?: string;
     harbourCells?: HarbourCell[] | null;
     harbourPorts?: HarbourPort[] | null;
     overlayPoints?: OverlayPoint[] | null;
@@ -173,6 +180,14 @@ function paintOverlay(
       opts.delayAreas,
       opts.delayBand ?? "worst",
     );
+    return;
+  }
+  // SHED-HOOK (#763): shed-hub reachable-range fills (weekly keyed
+  // measurement from the operator cache — outside stays unknown).
+  if (opts.shedAreas && opts.shedAreas.length > 0) {
+    applyShedPolygons(mapObj, opts.shedAreas, {
+      color: opts.shedFill ?? "#16a34a",
+    });
     return;
   }
   // HARBOUR-HOOK (#627): AIS pleasure-cell fills (grid as-is) UNDER
@@ -286,6 +301,8 @@ export function ValueHeatMap({
   kpoAreas,
   delayAreas,
   delayBand,
+  shedAreas,
+  shedFill,
   harbourCells,
   harbourPorts,
   overlayPoints,
@@ -346,6 +363,10 @@ export function ValueHeatMap({
   delayAreas?: DelayArea[] | null;
   /** Hour band painted for the selected delay layer. */
   delayBand?: string;
+  /** TomTom shed-hub fills (shed-* layers only). */
+  shedAreas?: ShedArea[] | null;
+  /** Fill color for the selected shed layer (SHED_FILL). */
+  shedFill?: string;
   /** AIS pleasure cells (harbour layer only); recreation fills. */
   harbourCells?: HarbourCell[] | null;
   /** Joined ports (harbour layer only); dots over the cell fills. */
@@ -423,6 +444,10 @@ export function ValueHeatMap({
     // painted effect below).
     harbourCells,
     harbourPorts,
+    // SHED-HOOK (#763): shedAreas + shedFill ride the refresh slot so
+    // pans keep the hub fills (same slot as the painted effect below).
+    shedAreas,
+    shedFill,
     overlayPoints,
     usePolygons,
     overlayColor,
@@ -474,6 +499,10 @@ export function ValueHeatMap({
     // painted effect below).
     harbourCells,
     harbourPorts,
+    // SHED-HOOK (#763): shedAreas + shedFill ride the refresh slot so
+    // pans keep the hub fills (same slot as the painted effect below).
+    shedAreas,
+    shedFill,
     overlayPoints,
     usePolygons,
     overlayColor,
@@ -675,9 +704,10 @@ export function ValueHeatMap({
       // FOREST-HOOK (#624): forestAreas join the painted slot.
       // DELAY-HOOK (#629): delayAreas + delayBand join the painted slot
       // (without both, fetched corridors never repaint — #664).
-      paintOverlay(mapRef.current, { outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, reliefTint, canopyTint, buildingsTint, densityAreas, forestAreas, noiseAreas, kpoAreas, delayAreas, delayBand, harbourCells, harbourPorts, overlayPoints, usePolygons, overlayColor, showOverlay });
+      // SHED-HOOK (#763): shedAreas + shedFill join the painted slot.
+      paintOverlay(mapRef.current, { outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, reliefTint, canopyTint, buildingsTint, densityAreas, forestAreas, noiseAreas, kpoAreas, delayAreas, delayBand, shedAreas, shedFill, harbourCells, harbourPorts, overlayPoints, usePolygons, overlayColor, showOverlay });
     }
-  }, [outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, reliefTint, canopyTint, buildingsTint, densityAreas, forestAreas, noiseAreas, kpoAreas, delayAreas, delayBand, harbourCells, harbourPorts, overlayPoints, usePolygons, overlayColor, showOverlay]);
+  }, [outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, reliefTint, canopyTint, buildingsTint, densityAreas, forestAreas, noiseAreas, kpoAreas, delayAreas, delayBand, shedAreas, shedFill, harbourCells, harbourPorts, overlayPoints, usePolygons, overlayColor, showOverlay]);
 
   return (
     <section aria-label={title}>
