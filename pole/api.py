@@ -35,6 +35,10 @@ DATASETS = {
     # VIIRS-HOOK (#719): annual brightness-proxy grid (honest 503
     # until the first keyless GIBS build).
     "viirs": "viirs/grid.json",
+    # OUTAGE-HOOK (#729): 5-min live-outage sidecar (honest 503 until
+    # the first operator pull; stale sidecars never serve — the map
+    # route enforces the TTL, not this registry).
+    "outage": "outage/table.json",
 }
 
 app = FastAPI(title="hf-pole")

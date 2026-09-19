@@ -783,6 +783,14 @@ export function overlayColorFor(layer: LayerId): string {
     // test).
     case "viirs":
       return "#818cf8";
+    // OUTAGE-HOOK (#729): outage marker (city-grain hetkeseis point).
+    // #e65100: deep-orange-900 hoiatusoranž (NOT #ea580c/#c2410c —
+    // taken burnt oranges — and NOT #f97316/#fb923c — taken bright
+    // oranges; darkest orange of the three, and layers never
+    // co-render). Distinct from every other marker (distinct-color
+    // test).
+    case "outage":
+      return "#e65100";
   }
 }
 
@@ -1384,6 +1392,11 @@ export function overlayLegendFor(layer: LayerId): string {
     // layers_p4_viirs.ts).
     case "viirs":
       return "Öötaeva heledus (P4-035 heledusproksi, 2016) · lähim ruut ≤3 km (pimedus-hinnang 90/70/50/30/10 — heleduspilt, MITTE mõõdetud radiomeetria)";
+    // OUTAGE-HOOK (#729): outage (P4-009) — city-grain hetkeseis,
+    // capped bands, labelled estimate on every surface (see
+    // layers_p4_outage.ts).
+    case "outage":
+      return "Elektrikatkestused (P4-009 hetkeseis) · Tallinna rida ≤15 km (hinnang 30/55/70/80, lagi 80 — elav kaart, MITTE fiidri töökindlus; seisu näitab rikkekaart)";
   }
 }
 

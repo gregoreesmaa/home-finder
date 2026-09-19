@@ -149,7 +149,8 @@ describe("overlay legend + colors", () => {
     // SKIS-HOOK (#692): +1 skis track layer (155 + 1 = 156).
     // HARNO-HOOK (#687): +1 harno school layer (156 + 1 = 157).
     // VIIRS-HOOK (#719): +1 viirs brightness layer (157 + 1 = 158).
-    expect(ids).toHaveLength(158);
+    // OUTAGE-HOOK (#729): +1 outage hetkeseis layer (158 + 1 = 159).
+    expect(ids).toHaveLength(159);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -462,7 +463,8 @@ describe("overlay legend + colors", () => {
     // SKIS-HOOK (#692): +1 skis track layer (155 + 1 = 156).
     // HARNO-HOOK (#687): +1 harno school layer (156 + 1 = 157).
     // VIIRS-HOOK (#719): +1 viirs brightness layer (157 + 1 = 158).
-    expect(seen.size).toBe(158); // SILLY (#711): 142 shipped + silly x12 = 154.
+    // OUTAGE-HOOK (#729): +1 outage hetkeseis layer (158 + 1 = 159).
+    expect(seen.size).toBe(159); // SILLY (#711): 142 shipped + silly x12 = 154.
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

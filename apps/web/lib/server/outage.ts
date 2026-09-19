@@ -1,0 +1,136 @@
+// Elektrilevi hetkeseis sidecar points for the P4-009 outage overlay
+// (issue #729). Serves the operator-pulled sidecar
+// (outage-table.json: {pulled_at, ttl_s, areas, ...}, written by
+// scripts/build/batch_outage.py --pull) to the /api/layers/outage
+// route — no network, ever. A missing, corrupt or STALE (> 5 min)
+// sidecar is never data: loadOutageSnapshot returns null and the
+// route degrades to labeled demo (same honesty contract as
+// SnapshotUnavailable in ./snapshot). Only the Tallinn row arrives
+// here (city grain — the Harju county row is the dims fallback,
+// never averaged in, never a second point).
+
+import * as fs from "node:fs/promises";
+import * as os from "node:os";
+import * as path from "node:path";
+import {
+  OUTAGE_TAG_FC,
+  OUTAGE_TAG_FCC,
+  OUTAGE_TAG_PC,
+  OUTAGE_TAG_PCC,
+  OUTAGE_TAG_UC,
+  OUTAGE_TAG_UCC,
+  OUTAGE_TALLINN,
+  OUTAGE_TTL_S,
+  outageBandForRow,
+} from "../layers_p4_outage";
+import type { BBoxLike, LayerPoint } from "../layers";
+
+/** Sidecar filename (same name the harvester step writes). */
+export const OUTAGE_SNAPSHOT_NAME = "outage-table.json";
+
+/** Default cache dir (same default as batch_outage --cache-dir). */
+export function outageCacheDir(): string {
+  return path.join(os.tmpdir(), "hf-outage");
+}
+
+/**
+ * Sidecar file path. OUTAGE_SNAPSHOT_PATH overrides the default for
+ * operators who keep the 5-min pull outside /tmp (docker: mount the
+ * cron cache here so the map serves the hetkeseis, not demo).
+ */
+export function outageSnapshotPath(): string {
+  return process.env.OUTAGE_SNAPSHOT_PATH ?? path.join(outageCacheDir(), OUTAGE_SNAPSHOT_NAME);
+}
+
+export interface OutageAreaRow {
+  label: string;
+  fc?: number | null;
+  fcc?: number | null;
+  pc?: number | null;
+  pcc?: number | null;
+  uc?: number | null;
+  ucc?: number | null;
+}
+
+export interface OutageSnapshot {
+  /** ISO pull time (UTC) as stamped by the harvester. */
+  pulledAt: string;
+  /** Tallinn area row (city grain — the only row served). */
+  tallinn: OutageAreaRow;
+}
+
+function isFiniteNum(n: unknown): n is number {
+  return typeof n === "number" && Number.isFinite(n);
+}
+
+/** One counters object -> canonical row, null when labelless. */
+export function outageRowToArea(row: unknown): OutageAreaRow | null {
+  if (typeof row !== "object" || row === null) return null;
+  const r = row as Record<string, unknown>;
+  if (typeof r.label !== "string" || r.label.trim().length === 0) return null;
+  const area: OutageAreaRow = { label: r.label.trim() };
+  for (const k of ["fc", "fcc", "pc", "pcc", "uc", "ucc"] as const) {
+    area[k] = isFiniteNum(r[k]) ? (r[k] as number) : null;
+  }
+  return area;
+}
+
+/**
+ * Load + validate the cached hetkeseis sidecar, or null when it is
+ * absent, unreadable, Tallinn-less, or older than OUTAGE_TTL_S
+ * (never throws: stale data is a gap, not an error to present).
+ * nowMs is injectable so tests stay hermetic (no clock dependence).
+ */
+export async function loadOutageSnapshot(
+  file: string = outageSnapshotPath(),
+  nowMs: number = Date.now(),
+): Promise<OutageSnapshot | null> {
+  let raw: string;
+  try {
+    raw = await fs.readFile(file, "utf8");
+  } catch {
+    return null;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (typeof parsed !== "object" || parsed === null) return null;
+  const { pulled_at, areas } = parsed as { pulled_at?: unknown; areas?: unknown };
+  if (typeof pulled_at !== "string" || !Array.isArray(areas)) return null;
+  const pulledMs = Date.parse(pulled_at);
+  if (!Number.isFinite(pulledMs) || nowMs - pulledMs > OUTAGE_TTL_S * 1000) return null;
+  const tallinn = areas.map(outageRowToArea).find((a) => a?.label === "Tallinn") ?? null;
+  if (!tallinn) return null;
+  return { pulledAt: pulled_at, tallinn };
+}
+
+/** Tallinn row -> served city-grain point (band + counters in tags). */
+export function outageSnapshotToPoint(snap: OutageSnapshot): LayerPoint | null {
+  const band = outageBandForRow(snap.tallinn);
+  if (band === null) return null;
+  const tags: Record<string, string> = {};
+  const put = (key: string, v: number | null | undefined) => {
+    if (typeof v === "number" && Number.isFinite(v)) tags[key] = String(v);
+  };
+  put(OUTAGE_TAG_FC, snap.tallinn.fc);
+  put(OUTAGE_TAG_FCC, snap.tallinn.fcc);
+  put(OUTAGE_TAG_PC, snap.tallinn.pc);
+  put(OUTAGE_TAG_PCC, snap.tallinn.pcc);
+  put(OUTAGE_TAG_UC, snap.tallinn.uc);
+  put(OUTAGE_TAG_UCC, snap.tallinn.ucc);
+  const pt: LayerPoint = { lat: OUTAGE_TALLINN.lat, lon: OUTAGE_TALLINN.lon, q: band };
+  if (Object.keys(tags).length > 0) pt.tags = tags;
+  return pt;
+}
+
+/** Served point clipped to the view bbox (empty when out of view). */
+export function outagePointsIn(snap: OutageSnapshot, bbox: BBoxLike): LayerPoint[] {
+  const pt = outageSnapshotToPoint(snap);
+  if (!pt) return [];
+  if (pt.lon < bbox.minlon || pt.lon > bbox.maxlon || pt.lat < bbox.minlat || pt.lat > bbox.maxlat)
+    return [];
+  return [pt];
+}

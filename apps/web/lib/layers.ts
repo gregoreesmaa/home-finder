@@ -827,6 +827,17 @@ import {
   isViirsLayerId,
   viirsBonusSpecFor,
 } from "./layers_p4_viirs";
+// OUTAGE-HOOK (#729): live-outage tables live in
+// ./layers_p4_outage (P4-009 power leg, city-grain hetkeseis). That
+// module imports layers only as types, so no runtime cycle.
+import type { OutageLayerId } from "./layers_p4_outage";
+import {
+  OUTAGE_DECAY,
+  OUTAGE_LAYERS,
+  OUTAGE_TAGS,
+  isOutageLayerId,
+  outageBonusSpecFor,
+} from "./layers_p4_outage";
 
 export type LayerId =
   | "parks"
@@ -953,6 +964,9 @@ export type LayerId =
   // VIIRS-HOOK (#719): brightness-proxy overlay id
   // (./layers_p4_viirs, P4-035 proxy leg, 96 sampled cells).
   | ViirsLayerId
+  // OUTAGE-HOOK (#729): live-outage overlay id
+  // (./layers_p4_outage, P4-009 power leg, city-grain hetkeseis).
+  | OutageLayerId
   // SPORT-HOOK (#607): sport-venue slice ids (./layers_p4_sport,
   // P4-048 pool/hall/field).
   | SportLayerId
@@ -1328,6 +1342,9 @@ const DECAY_KM: Record<LayerId, number> = {
   // layers_p4_quarry.ts QUARRY_DECAY — INERT placeholder, polygons
   // only: zero points, never evaluated).
   ...QUARRY_DECAY,
+  // OUTAGE-HOOK (#729): outage radius (see layers_p4_outage.ts
+  // OUTAGE_DECAY — city-grain window, 15 km).
+  ...OUTAGE_DECAY,
 };
 
 /** Meaningful influence radius in km: drives scoring decay and the map field. */
@@ -1629,6 +1646,10 @@ export const LAYERS: LayerDef[] = [
   // SILLY-HOOK (#711): silly-bundle slice defs (twelve markers-only
   // pins, no parameters3 id) from ./layers_p4_silly.
   ...SILLY_LAYERS,
+  // OUTAGE-HOOK (#729): outage def (P4-009 power leg, no parameters3
+  // id — parameters3 p9 is an inspection-group fact) from
+  // ./layers_p4_outage.
+  ...OUTAGE_LAYERS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -1840,6 +1861,9 @@ const TAGS: Record<LayerId, string> = {
   // QUARRY-HOOK (#614): permit-polygon source note (see
   // layers_p4_quarry.ts QUARRY_TAGS — prose, NOT an Overpass fragment).
   ...QUARRY_TAGS,
+  // OUTAGE-HOOK (#729): outage source note (see
+  // layers_p4_outage.ts OUTAGE_TAGS — prose, NOT an Overpass fragment).
+  ...OUTAGE_TAGS,
 };
 
 /** Overpass QL for the layer inside the bbox (south,west,north,east). */
@@ -2353,6 +2377,8 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   if (isHarnoLayerId(layer)) return harnoBonusSpecFor(layer);
   // VIIRS-HOOK (#719): viirs spec lives in ./layers_p4_viirs.
   if (isViirsLayerId(layer)) return viirsBonusSpecFor(layer);
+  // OUTAGE-HOOK (#729): outage spec lives in ./layers_p4_outage.
+  if (isOutageLayerId(layer)) return outageBonusSpecFor(layer);
   throw new Error(`unknown layer: ${layer}`);
 }
 
