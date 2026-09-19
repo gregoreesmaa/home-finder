@@ -145,6 +145,10 @@ import { SKIS_METRO_NAME, SKIS_RASTER_FILE } from "../layers_p4_skis";
 // the points-splat quality kernel IS the field; the window route
 // serves 500 for this layer and the client falls back to the splat).
 import { HARNO_RASTER_FILE } from "../layers_p4_harno";
+// VIIRS-HOOK (#719): viirs raster filename lives in
+// layers_p4_viirs.ts (intentionally never built — VIIRS_NO_RASTER;
+// the points-splat quality kernel IS the field).
+import { VIIRS_RASTER_FILE } from "../layers_p4_viirs";
 // SPORT-HOOK (#607): sport-venue raster filenames + sidecar point type
 // live in layers_p4_sport.ts (rasters intentionally never built —
 // SPORT_NO_RASTER; the names resolve to absent files so rasters degrade
@@ -1564,6 +1568,10 @@ const RASTER_FILE: Record<LayerId, string> = {
   // decision — HARNO_NO_RASTER; the points-splat quality kernel IS
   // the field).
   ...HARNO_RASTER_FILE,
+  // VIIRS-HOOK (#719): viirs raster name only (no master built by
+  // decision — VIIRS_NO_RASTER; the points-splat quality kernel IS
+  // the field).
+  ...VIIRS_RASTER_FILE,
   // SPORT-HOOK (#607): sport-venue raster names only (no masters built
   // by decision — SPORT_NO_RASTER; the points-splat distance kernel IS
   // the field; absent files degrade windows to null, honestly).
@@ -2132,6 +2140,10 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // (see layers_p4_harno.ts HARNO_NO_METRO) — the name resolves to an
   // absent file so windows fall back to county cleanly.
   harno: "harno-metro",
+  // VIIRS-HOOK (#719): no viirs metro master by documented decision
+  // (see layers_p4_viirs.ts VIIRS_NO_METRO) — the name resolves to an
+  // absent file so windows fall back to county cleanly.
+  viirs: "viirs-metro",
   // SPORT-HOOK (#607): no sport metro masters (no county masters either
   // — SPORT_NO_RASTER; the names resolve to absent files so windows
   // fall back to the client points-splat distance kernel).

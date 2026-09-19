@@ -10,6 +10,13 @@ import {
 } from "../../../../lib/layers_tervise";
 // FLOOD-HOOK (#487): polygons-only branch guard (see below).
 import { isFloodLayerId } from "../../../../lib/layers_flood";
+// VIIRS-HOOK (#719): committed brightness cells (see below).
+import {
+  VIIRS_CELLS,
+  VIIRS_VINTAGE,
+  isViirsLayerId,
+  viirsPointsIn,
+} from "../../../../lib/layers_p4_viirs";
 // OOKLA-HOOK (#489): ookla tile points come from the Ookla Tallinn
 // extract (never the OSM snapshot, never live).
 import { isOoklaLayerId } from "../../../../lib/layers_p4_ookla";
@@ -196,6 +203,21 @@ export async function GET(
       points,
       provenance: points.length > 0 ? "snapshot" : "empty",
       ageMs: Date.now() - Date.parse(`${TERVISE_VINTAGE}T00:00:00`),
+    });
+  }
+  // VIIRS-HOOK (#719): viirs cells come from the committed sampled
+  // extract (VIIRS_CELLS in lib/layers_p4_viirs.ts, built offline by
+  // scripts/build/batch_viirs.py from the keyless GIBS harvest —
+  // never live). Provenance "snapshot" (local static data); the
+  // status line names the 2016 composite vintage instead of the OSM
+  // snapshot date (see app/layers/page.tsx). An empty view bbox is
+  // honestly-empty.
+  if (isViirsLayerId(def.id)) {
+    const points = viirsPointsIn(VIIRS_CELLS, bbox);
+    return NextResponse.json({
+      points,
+      provenance: points.length > 0 ? "snapshot" : "empty",
+      ageMs: Date.now() - Date.parse(`${VIIRS_VINTAGE}-01-01T00:00:00`),
     });
   }
   // FLOOD-HOOK (#487): floodzone is polygons-only (zero points, zero

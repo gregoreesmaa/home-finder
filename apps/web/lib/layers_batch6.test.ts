@@ -71,7 +71,8 @@ describe("batch B6 registry (#133)", () => {
     // GBFS-HOOK (#688): +1 gbfs bike-share layer (154 + 1 = 155).
     // SKIS-HOOK (#692): +1 skis track layer (155 + 1 = 156).
     // HARNO-HOOK (#687): +1 harno school layer (156 + 1 = 157).
-    expect(ids.length).toBe(157); // KPO (#626): 136 shipped + kpo = 137. // HARBOUR (#627): 135 shipped + harbour = 136.
+    // VIIRS-HOOK (#719): +1 viirs brightness layer (157 + 1 = 158).
+    expect(ids.length).toBe(158); // KPO (#626): 136 shipped + kpo = 137. // HARBOUR (#627): 135 shipped + harbour = 136.
     // DELAY-HOOK (#629): + 5 delay band overlays (137 + 5 = 142). // SILLY-HOOK (#711): +12 silly-bundle layers (142 + 12 = 154).
     for (const id of BATCH6_LAYER_IDS) expect(ids).toContain(id);
   });

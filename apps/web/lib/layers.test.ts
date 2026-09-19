@@ -241,6 +241,9 @@ describe("layer registry", () => {
       // HARNO-HOOK (#687): harno quality id (P4-harno slice, no
       // parameters3 id).
       "harno",
+      // VIIRS-HOOK (#719): viirs brightness-proxy id (P4-035 proxy
+      // leg, no parameters3 id).
+      "viirs",
       // SPORT-HOOK (#607): sport-venue slice ids (P4-048 pool/hall/
       // field — paramIds empty, parameters4 namespace).
       "sport_hall",
@@ -429,6 +432,10 @@ describe("layer registry", () => {
     // quality slice, no parameters3 number).
     expect(LAYERS.find((l) => l.id === "harno")?.paramIds).toEqual([]);
     expect(LAYERS.find((l) => l.id === "harno")?.paramLabel).toBe("P4-harno");
+    // VIIRS-HOOK (#719): viirs rides paramLabel, paramIds stays []
+    // (parameters4 P4-035 proxy slice, no parameters3 number).
+    expect(LAYERS.find((l) => l.id === "viirs")?.paramIds).toEqual([]);
+    expect(LAYERS.find((l) => l.id === "viirs")?.paramLabel).toBe("P4-035");
     // SPORT-HOOK (#607): sport slices ride paramLabel, paramIds stays
     // [] (parameters4 P4-048 slices, no parameters3 number).
     for (const id of ["sport_hall", "sport_field", "sport_pool"]) {

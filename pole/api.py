@@ -32,6 +32,9 @@ DATASETS = {
     # SKIS-HOOK (#692): seasonal groomed ski tracks (honest 503
     # off-season until the first in-season operator-verified drop).
     "skis": "skis/table.json",
+    # VIIRS-HOOK (#719): annual brightness-proxy grid (honest 503
+    # until the first keyless GIBS build).
+    "viirs": "viirs/grid.json",
 }
 
 app = FastAPI(title="hf-pole")
