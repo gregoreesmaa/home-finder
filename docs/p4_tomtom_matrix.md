@@ -84,3 +84,11 @@ for the first keyed operator run.
 Export `TOMTOM_API_KEY` in the operator shell only. Never commit it,
 never put it in repo files, never paste it in chat. No WEIGHTS
 splice here (joint follow-up). 5 new files, zero shared-file edits.
+
+## Kaardikiht (#763 verdict, 2026-09-19)
+
+EI OLE kaardikihti otsusega: maatriks on skoorija staatika
+(per-area sõiduajad 5 hubi vahel `dims_tomtom_matrix.py`-s), mitte
+kaardigeomeetria. Ostja näeb ulatust shed-kihtidel (`shed-15/30-peak/
+offpeak`, #763) — maatriksi numbrite joonistamine polügoonideta
+oleks topeltkiht sama allika pealt.

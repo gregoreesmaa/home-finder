@@ -100,7 +100,8 @@ describe("stateland registry (#615)", () => {
     // VIIRS-HOOK (#719): +1 viirs brightness layer (157 + 1 = 158).
     // OUTAGE-HOOK (#729): +1 outage hetkeseis layer (158 + 1 = 159).
     // BUSMESH-HOOK (#769): +3 transfer-node window layers (159 + 3 = 162).
-    expect(ids.length).toBe(162); // KPO (#626): 136 shipped + kpo = 137. // HARBOUR (#627): 135 shipped + harbour = 136.
+    // SHED-HOOK (#763) + DATEX-HOOK (#763) + INCIDENTS-HOOK (#763): +4 sheds +6 datex +1 incidents (162 + 11 = 173).
+    expect(ids.length).toBe(173); // KPO (#626): 136 shipped + kpo = 137. // HARBOUR (#627): 135 shipped + harbour = 136.
     // DELAY-HOOK (#629): + 5 delay band overlays (137 + 5 = 142). // SILLY-HOOK (#711): +12 silly-bundle layers (142 + 12 = 154).
     expect(ids).toContain("stateland");
   });

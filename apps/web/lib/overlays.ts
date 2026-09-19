@@ -41,6 +41,10 @@ export function overlayWeight(p: LayerPoint, layer: LayerId): number {
   // BUSMESH-HOOK (#769): transfer-node markers size by route count at
   // the stop (every shipped node has t >= 2 by construction).
   if (layer === "busmesh" || layer === "busmesh-sat" || layer === "busmesh-sun") return p.t ?? 1;
+  // INCIDENTS-HOOK (#763): incident markers are uniform (magnitude
+  // cannot ride the LayerPoint wire — toPoint strips it — so the
+  // default weight 1 below applies; magnitude stays in the pole
+  // table, never faked onto markers).
   if (typeof p.a === "number") return p.a;
   return 1;
 }
@@ -418,6 +422,38 @@ export function overlayColorFor(layer: LayerId): string {
       return "#ff9e00";
     case "busmesh-sun":
       return "#ffc300";
+    // SHED-HOOK (#763): shed fills paint from SHED_FILL (polygons carry
+    // the data); marker slots still need distinct colors
+    // (distinct-color test): lime family for 15 min, pink/amber for 30.
+    case "shed-15-peak":
+      return "#9ef01a";
+    case "shed-15-offpeak":
+      return "#ccff33";
+    case "shed-30-peak":
+      return "#ff006e";
+    case "shed-30-offpeak":
+      return "#ffaa33";
+    // INCIDENTS-HOOK (#763): #d00000 incident red (NOT #dc2626 — taken
+    // by safety — and NOT #b91c1c — taken). Distinct from every other
+    // marker (distinct-color test).
+    case "incidents":
+      return "#d00000";
+    // DATEX-HOOK (#763): one distinct marker per feed (all verified
+    // free 2026-09-19): restrictions dark red, srti burnt orange,
+    // weather blue, counters purple, cameras dark gray (URL-only,
+    // subdued by design), truckpark brown.
+    case "datex-restrictions":
+      return "#9d0208";
+    case "datex-srti":
+      return "#e85d04";
+    case "datex-weather":
+      return "#3a86ff";
+    case "datex-counters":
+      return "#8338ec";
+    case "datex-cameras":
+      return "#495057";
+    case "datex-truckpark":
+      return "#774936";
     // RSAFE-HOOK (#481): roadsafety marker (point overlay,
     // stride-sampled like grocery). #fde047: yellow-400 zebra-crossing
     // paint (NOT #facc15 — taken — and NOT #fbbf24 — taken by ehitus —
@@ -1086,6 +1122,34 @@ export function overlayLegendFor(layer: LayerId): string {
       return "Ümberistumissõlmed laupäeviti · suurus = marsruutide arv peatuses (küllastus 5, sõiduplaan, täituvus ja töökindlus teadmata — EI OLE loendusandmeid)";
     case "busmesh-sun":
       return "Ümberistumissõlmed pühapäeviti · suurus = marsruutide arv peatuses (küllastus 5, sõiduplaan, täituvus ja töökindlus teadmata — EI OLE loendusandmeid)";
+    // SHED-HOOK (#763): shed hub fills (P4-sõiduulatus) — weekly keyed
+    // measurement from a short-lived operator cache, never realtime.
+    case "shed-15-peak":
+      return "15 min tööulatus tipptunnil · 5 tööhubi polügooni (mõõtmik lühiajalisest puhvrist, mitte reaalajas)";
+    case "shed-15-offpeak":
+      return "15 min tööulatus tipuvälisel ajal · 5 tööhubi polügooni (mõõtmik lühiajalisest puhvrist, mitte reaalajas)";
+    case "shed-30-peak":
+      return "30 min tööulatus tipptunnil · 5 tööhubi polügooni (mõõtmik lühiajalisest puhvrist, mitte reaalajas)";
+    case "shed-30-offpeak":
+      return "30 min tööulatus tipuvälisel ajal · 5 tööhubi polügooni (mõõtmik lühiajalisest puhvrist, mitte reaalajas)";
+    // INCIDENTS-HOOK (#763): incidents (P4-intsidendid) — today's
+    // freshness-dated snapshot from the 6h operator cache.
+    case "incidents":
+      return "Intsidendid täna (ummik/sulgus/teetöö) · 6 h operaatoripuhver (aegunud peitub ajatempli taha, reaalajas pole)";
+    // DATEX-HOOK (#763): DATEX feeds (pole live tables, short-term
+    // cache only — no committed sidecars).
+    case "datex-restrictions":
+      return "Teepiirangud (DATEX) · olukorrad ilma kaardigeomeetriata (pooli elustabel, asukohata)";
+    case "datex-srti":
+      return "Ohuteated (DATEX SRTI) · olukorrad ilma kaardigeomeetriata (pooli elustabel, asukohata)";
+    case "datex-weather":
+      return "Teeilmajaamad (DATEX) · mõõtjaamad pooli elustabelist (mõõtmik, mitte prognoos)";
+    case "datex-counters":
+      return "Liiklusloendurid (DATEX) · voog/kiirus pooli elustabelist (mõõtmik, mitte hinnang)";
+    case "datex-cameras":
+      return "Liikluskaamerad (DATEX) · ainult asukohad (pildid pooli tabelis, binaare kaardil pole)";
+    case "datex-truckpark":
+      return "Veoautoparklad (DATEX) · asukohad + kohad pooli elustabelist";
     // RSAFE-HOOK (#481): roadsafety (p13, P4-012 proxy) — mapped
     // crossings + calming, the raster holds the full count field. The
     // usage-not-safety caveat rides along (P4-032 precedent): dots are

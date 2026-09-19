@@ -53,7 +53,8 @@ describe("busmesh registry (#769)", () => {
     expect(ids).toContain("busmesh-sat");
     expect(ids).toContain("busmesh-sun");
     // BUSMESH-HOOK (#769): +3 transfer-node window layers (159 + 3 = 162).
-    expect(ids.length).toBe(162);
+    // SHED-HOOK (#763) + DATEX-HOOK (#763) + INCIDENTS-HOOK (#763): +4 sheds +6 datex +1 incidents (162 + 11 = 173).
+    expect(ids.length).toBe(173);
   });
 
   it("labels schedules honestly in Estonian (never occupancy)", () => {

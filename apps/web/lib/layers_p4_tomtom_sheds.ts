@@ -1,5 +1,7 @@
-// Commute-shed isochrone overlays (issue #670): TomTom Reachable Range
-// polygons (15/30 min, peak/off-peak) around the 5 job hubs.
+// Commute-shed isochrone overlays (issue #670, wired by #763): TomTom
+// Reachable Range polygons (15/30 min, peak/off-peak) around the 5 job hubs.
+
+import type { BonusSpec, LayerDef } from "./layers";
 //
 // HONESTY (load-bearing): sheds are a WEEKLY keyed measurement served
 // from a short-lived operator cache (ToS 11.4 — never a committed
@@ -8,14 +10,11 @@
 // sheds are reference only. Empty rings paint slate "mõõtmata"
 // (never dropped, never shrunk to a dot).
 //
-// SCOPE (judgment call, for the reviewer): this file is STANDALONE —
-// it does NOT extend the shared LayerId union and adds no hook blocks
-// to lib/layers.ts, lib/overlays.ts or app/layers/page.tsx. Wiring
-// needs a stored snapshot, and the ToS verdict forbids storing one,
-// so the overlay consumes the operator cache at runtime through
-// fetchShedSnapshot (same origin, never committed). Shared-file wiring
-// is a follow-up once a live keyed cache exists to wire against.
-// The per-listing leg is the scorer's job
+// SCOPE (judgment call, for the reviewer): WIRED by #763 — the live
+// keyed cache exists (the harvester's git-ignored operator cache dir,
+// served same-origin through /api/layers/sheds/areas, never committed).
+// Shared files touch this module only through marked `SHED-HOOK (#763)`
+// blocks. The per-listing leg is the scorer's job
 // (services/scoring/dims_tomtom_isochrones.py).
 
 /** Shed polygon layer ids: 15/30 min x peak/off-peak. */
@@ -116,7 +115,127 @@ export const SHED_DEFS: ShedDef[] = SHED_LAYER_IDS.map((id) => {
   };
 });
 
-export const SHED_HOOK = "SHED-HOOK (#670)";
+export const SHED_HOOK = "SHED-HOOK (#763)";
+
+/**
+ * Registry defs (polygons-only, flood #487 precedent): no score field
+ * is painted for these layers — the map paints hub fills only, and
+ * outside every polygon stays unknown. fallbackPoints is EMPTY (demo
+ * points would paint a fake gradient splat); paramIds stays [] with
+ * the P4-sõiduulatus slice label (scorer leg
+ * dim_jobs_within_30min, never a parameters3 number).
+ */
+export const SHED_LAYER_DEFS: LayerDef[] = SHED_DEFS.map((d) => ({
+  id: d.id,
+  paramIds: [],
+  paramLabel: "P4-sõiduulatus",
+  title: d.title,
+  goodLabel: d.goodLabel,
+  badLabel: d.badLabel,
+  source: `${d.source} (Tallinna aken)`,
+  fallbackPoints: [],
+}));
+
+/** Inert placeholders required by the Record<LayerId> tables (never evaluated). */
+export const SHED_DECAY: Record<ShedLayerId, number> = {
+  "shed-15-peak": 0.2,
+  "shed-15-offpeak": 0.2,
+  "shed-30-peak": 0.2,
+  "shed-30-offpeak": 0.2,
+};
+
+/** Inert placeholder (polygons carry the data — pinned by test). */
+export const SHED_BONUS: Record<ShedLayerId, BonusSpec> = {
+  "shed-15-peak": { kind: "pins" },
+  "shed-15-offpeak": { kind: "pins" },
+  "shed-30-peak": { kind: "pins" },
+  "shed-30-offpeak": { kind: "pins" },
+};
+
+export function bonusSpecForSheds(layer: string): BonusSpec | undefined {
+  return (SHED_BONUS as Record<string, BonusSpec>)[layer];
+}
+
+/**
+ * Overpass QL fragment. Snapshot-only serving never queries live (route
+ * comment); documents the hub stop tags for rebuilds.
+ * overpassQueryFor("shed-*") is never called in production (senscom
+ * #484 precedent).
+ */
+export const SHED_TAGS: Record<ShedLayerId, string> = {
+  "shed-15-peak": 'n["highway"="bus_stop"];',
+  "shed-15-offpeak": 'n["highway"="bus_stop"];',
+  "shed-30-peak": 'n["highway"="bus_stop"];',
+  "shed-30-offpeak": 'n["highway"="bus_stop"];',
+};
+
+/**
+ * Raster master filename. NOT BUILT by documented polygons-only
+ * decision: the name resolves to an absent file (honestly-empty
+ * downstream, never a gradient).
+ */
+export const SHED_RASTER_FILE: Record<ShedLayerId, string> = {
+  "shed-15-peak": "shed-15-peak-walk-raster.json",
+  "shed-15-offpeak": "shed-15-offpeak-walk-raster.json",
+  "shed-30-peak": "shed-30-peak-walk-raster.json",
+  "shed-30-offpeak": "shed-30-offpeak-walk-raster.json",
+};
+
+/** NO metro master (documented): polygons-only, windows serve county. */
+export const SHED_NO_METRO = true;
+
+/** One hub shed polygon for map fills (ring = [lat, lon] pairs). */
+export interface ShedArea {
+  hub: string;
+  ring: Array<[number, number]>;
+}
+
+function isShedArea(v: unknown): v is ShedArea {
+  if (typeof v !== "object" || v === null) return false;
+  const p = v as Record<string, unknown>;
+  return (
+    typeof p.hub === "string" &&
+    Array.isArray(p.ring) &&
+    p.ring.length >= 3 &&
+    p.ring.every(
+      (pt) =>
+        Array.isArray(pt) &&
+        pt.length === 2 &&
+        pt.every((n) => typeof n === "number" && Number.isFinite(n)),
+    )
+  );
+}
+
+/**
+ * Hub shed polygons for painting fills on one shed layer. Null on any
+ * failure: fills are a visual aid — a missing/stale operator cache
+ * draws nothing (honestly-empty, never demo polygons).
+ */
+export async function fetchShedAreas(
+  layer: ShedLayerId,
+  fetchImpl: typeof fetch = fetch,
+): Promise<ShedArea[] | null> {
+  try {
+    const res = await fetchImpl(
+      `/api/layers/sheds/areas?layer=${encodeURIComponent(layer)}`,
+    );
+    if (!res.ok) return null;
+    const body: unknown = await res.json();
+    if (
+      !body ||
+      typeof body !== "object" ||
+      !Array.isArray((body as { areas: unknown }).areas)
+    ) {
+      return null;
+    }
+    return (body as { areas: unknown[] }).areas.filter(isShedArea).map((p) => {
+      const o = p as ShedArea;
+      return { hub: o.hub, ring: o.ring };
+    });
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Shed polygons for one layer from a snapshot table
