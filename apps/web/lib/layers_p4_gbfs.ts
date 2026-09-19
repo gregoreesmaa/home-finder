@@ -147,6 +147,23 @@ export function isGbfsLayerId(layer: LayerId): layer is GbfsLayerId {
   return (GBFS_LAYER_IDS as string[]).includes(layer);
 }
 
+/**
+ * Honest-empty status line (issue #785). Gbfs ships ZERO points BY
+ * DECISION (no keyless feed verified, GBFS_PROBE) and always renders
+ * through the demo fallback — so the generic "live ebaõnnestus"
+ * (live failed) label reads as breakage. This names the dated
+ * verdict instead: EI OLE + source + buyer-side check, never a count
+ * claim beyond the served points, never a failure. Pure (pinned by
+ * test, silly #774 precedent).
+ */
+export function gbfsDemoStatus(pointCount: number): string {
+  return (
+    "EI OLE keyless jaama-voogu (GBFS-register, 2026-09-19: Eestit " +
+    `pole) · ${pointCount} punkti — seisu näitab ratas.tartu.ee kaart ` +
+    "ja operaatori äpp"
+  );
+}
+
 /** Band spec for the gbfs layer (called from the bonusSpecFor hook). */
 export function gbfsBonusSpecFor(layer: GbfsLayerId): BonusSpec {
   void layer;

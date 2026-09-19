@@ -129,6 +129,23 @@ export function isSkisLayerId(layer: LayerId): layer is SkisLayerId {
   return (SKIS_LAYER_IDS as string[]).includes(layer);
 }
 
+/**
+ * Honest-empty status line (issue #785). Skis ships ZERO points BY
+ * DECISION (off-season confirmed live, SKIS_PROBE) and always renders
+ * through the demo fallback — so the generic "live ebaõnnestus"
+ * (live failed) label reads as breakage. This names the dated
+ * verdict instead: ootel + source + buyer-side check, never a count
+ * claim beyond the served points, never a failure. Pure (pinned by
+ * test, silly #774 precedent).
+ */
+export function skisDemoStatus(pointCount: number): string {
+  return (
+    "Hooaeg läbi, ootel (tallinn.ee Pirita Spordikeskus, 2026-09-19: " +
+    `2025/26 hooaeg läbi) · ${pointCount} punkti — olekut näitab ` +
+    "tallinn.ee leht, tel 600 8333"
+  );
+}
+
 /** Marker spec for the skis layer (called from the bonusSpecFor hook). */
 export function skisBonusSpecFor(layer: SkisLayerId): BonusSpec {
   void layer;
