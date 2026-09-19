@@ -45,6 +45,13 @@ DATASETS = {
     # wrapper (honest 503 until the first build; freshness enforced
     # by the map route, not this registry).
     "outage-reliability": "outage/reliability.json",
+    # TOMTOM-HOOK (#782): weekly commute-shed table (polygons +
+    # counts, 7-day TTL) + 6-hourly incident table (incidents +
+    # fetched_at + counts, 6-hour TTL), both keyed pulls served from
+    # the built tables (honest 503s until the first keyed builds;
+    # freshness enforced by the map routes, not this registry).
+    "sheds": "tomtom-sheds/table.json",
+    "incidents": "tomtom-incidents/table.json",
 }
 
 app = FastAPI(title="hf-pole")

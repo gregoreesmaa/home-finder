@@ -1132,10 +1132,11 @@ export function overlayLegendFor(layer: LayerId): string {
       return "30 min tööulatus tipptunnil · 5 tööhubi polügooni (mõõtmik lühiajalisest puhvrist, mitte reaalajas)";
     case "shed-30-offpeak":
       return "30 min tööulatus tipuvälisel ajal · 5 tööhubi polügooni (mõõtmik lühiajalisest puhvrist, mitte reaalajas)";
-    // INCIDENTS-HOOK (#763): incidents (P4-intsidendid) — today's
-    // freshness-dated snapshot from the 6h operator cache.
+    // INCIDENTS-HOOK (#763; pole-first #782): incidents
+    // (P4-intsidendid) — today's freshness-dated snapshot from the
+    // pole live table (6 h TTL), local operator cache as fallback.
     case "incidents":
-      return "Intsidendid täna (ummik/sulgus/teetöö) · 6 h operaatoripuhver (aegunud peitub ajatempli taha, reaalajas pole)";
+      return "Intsidendid täna (ummik/sulgus/teetöö) · pooli elustabel 6 h puhvrist (kohalik varu, aegunud peitub ajatempli taha, reaalajas pole)";
     // DATEX-HOOK (#763): DATEX feeds (pole live tables, short-term
     // cache only — no committed sidecars).
     case "datex-restrictions":

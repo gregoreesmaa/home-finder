@@ -63,3 +63,12 @@ key never printed/written (pinned by test). `--build` prints counts
 Export `TOMTOM_API_KEY` in the operator shell only. Never commit it,
 never put it in repo files, never paste it in chat. No WEIGHTS splice
 here (joint follow-up). 5 new files, zero shared-file edits.
+
+Refresh runs on the pole (`pole/bin/run-tomtom-incidents.sh`, every
+6 h at :17, key from pole `state/tomtom.key`; the harvester
+self-skips while the 6 h cache is fresh and quota-caps at 2 pulls /
+6 h). The wrapper writes the servable table
+(`built/tomtom-incidents/table.json`, `--build` stdout contract
+#776), exposed as pole dataset `incidents` and read pole-first by
+the `[layer]` route (local cache fallback, 6 h TTL both legs, 200
+names `source: pole|cache`) — #782.

@@ -134,6 +134,26 @@ def test_fresh_cache_skips_request(tmp_path, monkeypatch):
     assert len(calls) == n_first  # fresh cache: no new requests
 
 
+def test_build_stdout_is_pure_table_json(tmp_path, monkeypatch, capsys):
+    """Stdout contract (#776/#782): the pole wrapper redirects stdout
+    into built/tomtom-sheds/table.json and the web route parses
+    polygons+counts, so --build stdout must be exactly one JSON doc
+    (the full table) and the human ok: status must ride stderr."""
+    monkeypatch.setenv("TOMTOM_API_KEY", "test-key-not-real")
+    calls: list = []
+    _stub_urlopen_factory(monkeypatch, calls)
+    assert main(["--pull", "--cache-dir", str(tmp_path)]) == 0
+    pull_out = capsys.readouterr()
+    assert "ok:" in pull_out.err
+    assert "ok:" not in pull_out.out
+    assert main(["--build", "--cache-dir", str(tmp_path)]) == 0
+    build_out = capsys.readouterr()
+    table = json.loads(build_out.out)
+    assert isinstance(table["polygons"], list)
+    assert len(table["polygons"]) == 20  # 5 hubs x 2 budgets x 2 bands
+    assert isinstance(table["counts"], dict)
+
+
 def test_quota_cap_refuses(tmp_path, monkeypatch):
     monkeypatch.setenv("TOMTOM_API_KEY", "test-key-not-real")
     calls: list = []

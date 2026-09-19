@@ -24,6 +24,9 @@ export const INCIDENTS_LAYER_IDS: IncidentsLayerId[] = ["incidents"];
 /** 6-hour short-term cache (parity with INCIDENTS_TTL_S, pinned). */
 export const INCIDENTS_TTL_S = 6 * 3600;
 
+/** Pole live-table dataset (pole/api.py TOMTOM-HOOK, issue #782). */
+export const INCIDENTS_POLE_DATASET = "incidents";
+
 /** Harvester cache filename (batch_tomtom_incidents.py). */
 export const INCIDENTS_CACHE_FILE = "tomtom_incidents.json";
 
@@ -128,6 +131,47 @@ export function incidentPointsForCache(body: unknown): IncidentPoint[] {
     }
     if (!first) continue;
     const mag = Number(rec.properties?.magnitudeOfDelay);
+    out.push({
+      ...first,
+      magnitude:
+        Number.isInteger(mag) && mag >= 0 && mag <= 4 ? mag : null,
+    });
+  }
+  return out;
+}
+
+/**
+ * Pole live-table body ({ incidents: [{ magnitude, points }] },
+ * dims_tomtom_incidents.build_table shape served from
+ * built/tomtom-incidents/table.json) -> map points. One marker per
+ * row at its FIRST finite [lat, lon] pair (dims points are
+ * lat-first, unlike the GeoJSON lon-first raw cache shape);
+ * coordless rows never plot; magnitude outside 0-4 reads null
+ * (unknown, never clamped into a color). Junk bodies read empty.
+ */
+export function incidentPointsForPoleTable(body: unknown): IncidentPoint[] {
+  if (typeof body !== "object" || body === null) return [];
+  const incidents = (body as { incidents?: unknown }).incidents;
+  if (!Array.isArray(incidents)) return [];
+  const out: IncidentPoint[] = [];
+  for (const inc of incidents) {
+    if (typeof inc !== "object" || inc === null) continue;
+    const rec = inc as { magnitude?: unknown; points?: unknown };
+    let first: { lon: number; lat: number } | null = null;
+    if (Array.isArray(rec.points)) {
+      for (const c of rec.points) {
+        if (!Array.isArray(c) || c.length < 2) continue;
+        if (typeof c[0] === "boolean" || typeof c[1] === "boolean") continue;
+        const lat = Number(c[0]);
+        const lon = Number(c[1]);
+        if (Number.isFinite(lon) && Number.isFinite(lat)) {
+          first = { lon, lat };
+          break;
+        }
+      }
+    }
+    if (!first) continue;
+    const mag = Number(rec.magnitude);
     out.push({
       ...first,
       magnitude:

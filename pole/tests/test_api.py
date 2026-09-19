@@ -48,12 +48,15 @@ def test_datasets_lists_five(tmp_path):
     names = sorted(d["name"] for d in c.get("/v1/datasets").json()["datasets"])
     assert names == ["datex-cameras", "datex-counters", "datex-restrictions",
                      "datex-srti", "datex-truckpark", "datex-weather",
-                     "delay", "fixit", "medre", "mobile",
+                     "delay", "fixit", "incidents", "medre", "mobile",
                      # OUTAGE-HOOK (#729): live-outage sidecar joins the pole.
                      "outage",
                      # OUTAGE-RELIABILITY-HOOK (#780): observed-reliability
                      # table joins the pole (honest 503 until first build).
                      "outage-reliability", "poi",
+                     # TOMTOM-HOOK (#782): sheds + incidents join the pole
+                     # (honest 503s until the first keyed builds).
+                     "sheds",
                      # SKIS-HOOK (#692): seasonal ski tracks join the pole.
                      "skis",
                      # VIIRS-HOOK (#719): brightness-proxy grid joins the pole.
@@ -121,3 +124,49 @@ def test_unlisted_empty_points_still_serve(tmp_path):
     # Honest-empty scope guard: fixit points [] keeps serving 200.
     c = _client(tmp_path)
     assert c.get("/v1/fixit").status_code == 200
+
+
+def _write_built(tmp_path, rel, body):
+    target = tmp_path / "built" / rel
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(body), encoding="utf-8")
+
+
+def test_tomtom_tables_missing_builds_are_honest_503(tmp_path):
+    # Issue #782: no sheds/incidents tables until the first keyed
+    # pole builds (key from pole state/, operator-verified).
+    c = _client(tmp_path)
+    health = c.get("/health").json()["datasets"]
+    assert health["sheds"] is False
+    assert health["incidents"] is False
+    assert c.get("/v1/sheds").status_code == 503
+    assert c.get("/v1/incidents").status_code == 503
+
+
+def test_tomtom_tables_serve_with_freshness(tmp_path):
+    # Issue #782: built tables serve with the X-Pole-Built-At
+    # freshness header the map routes enforce TTLs against.
+    sheds = {"polygons": [{"hub": "city-center", "budget_s": 900,
+                           "band": "rush", "n_points": 3,
+                           "ring": [[59.44, 24.75], [59.45, 24.76],
+                                    [59.46, 24.75]]}],
+             "counts": {"total": 1, "measured": 1, "unmeasured": 0}}
+    incidents = {"incidents": [{"incident_id": "i1", "category": 8,
+                                "magnitude": 3, "description": "Ummik",
+                                "points": [[59.428, 24.78]]}],
+                 "fetched_at": 1758326400.0,
+                 "counts": {"total": 1, "by_magnitude": {"3": 1}}}
+    _write_built(tmp_path, "tomtom-sheds/table.json", sheds)
+    _write_built(tmp_path, "tomtom-incidents/table.json", incidents)
+    c = _client(tmp_path)
+    health = c.get("/health").json()["datasets"]
+    assert health["sheds"] is True
+    assert health["incidents"] is True
+    r = c.get("/v1/sheds")
+    assert r.status_code == 200
+    assert r.json()["counts"]["measured"] == 1
+    assert "X-Pole-Built-At" in r.headers
+    r = c.get("/v1/incidents")
+    assert r.status_code == 200
+    assert r.json()["counts"]["total"] == 1
+    assert "X-Pole-Built-At" in r.headers

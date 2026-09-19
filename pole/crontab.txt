@@ -16,3 +16,4 @@
 */5 * * * * $HOME/hf-pole/bin/run-outage.sh >>$HOME/hf-pole/logs/outage.log 2>&1
 23 4 15 1 * $HOME/hf-pole/bin/run-viirs.sh >>$HOME/hf-pole/logs/viirs.log 2>&1
 20 5 * * 0 $HOME/hf-pole/bin/run-tomtom-sheds.sh >>$HOME/hf-pole/logs/tomtom-sheds.log 2>&1
+17 */6 * * * $HOME/hf-pole/bin/run-tomtom-incidents.sh >>$HOME/hf-pole/logs/tomtom-incidents.log 2>&1

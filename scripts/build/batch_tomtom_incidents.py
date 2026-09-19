@@ -43,7 +43,6 @@ from dims_tomtom_incidents import (  # noqa: E402
     _quota_used,
     build_table,
     fetch_incidents,
-    is_fresh,
     parse_incidents_response,
 )
 
@@ -73,8 +72,12 @@ def main(argv: Optional[List[str]] = None) -> int:
             p = os.path.join(args.cache_dir, dest_name)
             if os.path.exists(p) and time.time() - os.path.getmtime(p) \
                     < INCIDENTS_TTL_S:
+                # STDOUT CONTRACT (#776/#782): stdout is the servable
+                # table only (the pole wrapper redirects it into
+                # built/tomtom-incidents/table.json); human status rides
+                # stderr, never stdout.
                 print("ok: värske puhver, uusi päringuid ei tehtud (%s)"
-                      % args.cache_dir)
+                      % args.cache_dir, file=sys.stderr)
                 if not args.build:
                     return 0
                 args.pull = False
@@ -92,7 +95,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                   "puhver, täis kvoot või transport/429) - midagi uut "
                   "ei puhvritatud.", file=sys.stderr)
             return 1
-        print("ok: intsidentide päring puhvritatud (%s)" % dest)
+        print("ok: intsidentide päring puhvritatud (%s)" % dest,
+              file=sys.stderr)
     if args.build:
         rows: List[dict] = []
         fetched_at: Optional[float] = None
@@ -108,8 +112,11 @@ def main(argv: Optional[List[str]] = None) -> int:
                 except OSError:
                     fetched_at = None
         table = build_table(rows, fetched_at)
-        print(json.dumps({"counts": table["counts"],
-                          "fresh": is_fresh(table)}, ensure_ascii=False))
+        # STDOUT CONTRACT (#776/#782): exactly one JSON doc, the full
+        # table — the pole wrapper redirects stdout into
+        # built/tomtom-incidents/table.json and the web route parses it
+        # (incidents + fetched_at + counts). Human status rides stderr.
+        print(json.dumps(table, ensure_ascii=False))
     return 0
 
 

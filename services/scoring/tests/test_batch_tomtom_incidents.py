@@ -125,8 +125,33 @@ def test_fixture_pull_then_build_labels_fresh(tmp_path, monkeypatch, capsys):
     capsys.readouterr()  # drain pull output
     assert main(["--build", "--cache-dir", str(tmp_path)]) == 0
     out, err = capsys.readouterr().out, capsys.readouterr().err
-    assert json.loads(out.strip().splitlines()[-1])["fresh"] is True
+    # STDOUT CONTRACT (#776/#782): --build prints the full servable
+    # table (incidents + fetched_at + counts), not a counts summary.
+    table = json.loads(out)
+    assert isinstance(table["incidents"], list)
+    assert table["counts"]["total"] == 2
+    assert table["fetched_at"] > 0
     assert "test-key-not-real" not in out + err
+
+
+def test_build_stdout_is_pure_table_json(tmp_path, monkeypatch, capsys):
+    """Stdout contract (#776/#782): the pole wrapper redirects stdout
+    into built/tomtom-incidents/table.json and the web route parses
+    incidents+fetched_at+counts, so --build stdout must be exactly one
+    JSON doc (the full table) and the human ok: status must ride
+    stderr."""
+    monkeypatch.setenv("TOMTOM_API_KEY", "test-key-not-real")
+    calls: list = []
+    _stub_urlopen_factory(monkeypatch, calls)
+    assert main(["--pull", "--cache-dir", str(tmp_path)]) == 0
+    pull_out = capsys.readouterr()
+    assert "ok:" in pull_out.err
+    assert "ok:" not in pull_out.out
+    assert main(["--build", "--cache-dir", str(tmp_path)]) == 0
+    build_out = capsys.readouterr()
+    table = json.loads(build_out.out)
+    assert isinstance(table["incidents"], list)
+    assert isinstance(table["counts"], dict)
 
 
 def test_fresh_cache_skips_request(tmp_path, monkeypatch):
