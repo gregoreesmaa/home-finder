@@ -78,6 +78,10 @@ import { OSMDAILY_RASTER_FILE } from "../layers_osmdaily";
 // (named but NOT built — overlay-only decision, resolves absent so the
 // layer rides the Euclidean fallback splat, honestly labeled).
 import { GTFSSTOPS_RASTER_FILE } from "../layers_gtfsstops";
+// BUSMESH-HOOK (#769): transfer-node raster files live in
+// layers_busmesh.ts (named but NOT built — overlay-only decision,
+// resolves absent so the layers ride the Euclidean fallback splat).
+import { BUSMESH_RASTER_FILE } from "../layers_busmesh";
 // RSAFE-HOOK (#481): road-safety raster file lives in layers_roadsafety.ts.
 import { RSAFE_RASTER_FILE } from "../layers_roadsafety";
 // P4-031-HOOK (#484): senscom raster filename lives in
@@ -1511,6 +1515,9 @@ const RASTER_FILE: Record<LayerId, string> = {
   // GTFS-HOOK (#483): gtfsstops raster name only (no master built —
   // overlay-only; absent file degrades to Euclidean points scoring).
   ...GTFSSTOPS_RASTER_FILE,
+  // BUSMESH-HOOK (#769): transfer-node raster names only (no masters
+  // built — overlay-only; absent files degrade to Euclidean scoring).
+  ...BUSMESH_RASTER_FILE,
   // RSAFE-HOOK (#481): roadsafety raster (scripts/build/batch_rsafety_osm.py).
   ...RSAFE_RASTER_FILE,
   // P4-031-HOOK (#484): senscom raster name (never built by decision —
@@ -2069,6 +2076,11 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // GTFS-HOOK (#483): no gtfsstops metro master (overlay-only — the file
   // is absent, so windows serve county everywhere, like G02B/G03/B10C).
   gtfsstops: "gtfsstops-metro",
+  // BUSMESH-HOOK (#769): no busmesh metro masters (overlay-only — the
+  // files are absent, so windows serve county everywhere).
+  busmesh: "busmesh-metro",
+  "busmesh-sat": "busmesh-sat-metro",
+  "busmesh-sun": "busmesh-sun-metro",
   // RSAFE-HOOK (#481): no roadsafety metro master (documented fake
   // precision — the file is absent, so windows serve county
   // everywhere, like G02B/G03/G03D/G08B/G05C/G05E).

@@ -65,6 +65,39 @@ Uue GTFS-vintage'iga: jooksuta probe-runner, võrdle sõlmede arvu
 Peatus.ee national GTFS on endiselt suletud (vt `docs/p4_gtfsstops.md`)
 — regionaalset võrku see probe ei hinda.
 
+## Build #769 (mis ehitatud probe peale)
+
+Kood: `services/scoring/dims_p4_busmesh.py` (laiendatud:
+`window_shape_routes`, `collapse_chains`, `snap_to_stops`,
+`node_score`, `busmesh_points`); ehitaja:
+`scripts/build/batch_busmesh_nodes.py --snap <snapshot>`; kiht:
+`apps/web/lib/layers_busmesh.ts` (`busmesh` / `busmesh-sat` /
+`busmesh-sun`, jagatud hooking-muster `BUSMESH-HOOK (#769)`).
+
+Mõõdetud ehitus-etapid vintage'l (iga aken oma teenustest —
+kolmapäeva sõlmi EI kopeeritud nädalavahetusele):
+
+| Aken | Toor-ristumised | Sõlmed 60 m | Kette kokku (300 m) | Peatusega | Peatusteta (plotimata) |
+|---|---|---|---|---|---|
+| E–R (wd) | 253 396 | 1922 | 1180 | 437 | 252 |
+| Laupäev | 209 227 | 1823 | 1095 | 426 | 247 |
+| Pühapäev | 203 685 | 1807 | 1085 | 423 | 244 |
+
+(Kettide kokkutõmme mõõdetud issue AC: ~60% 60 m sõlmedest olid
+sama marsruudikomplekti koridoriketid. Peatus-snap ühendas lisaks
+~50 sõlme jagatud peatustesse üheks kirjeks.)
+
+Ümberistumis-skoor: `t` = marsruutide arv peatuses, klient-loogika
+`{ kind: "trips", half: 5 }` (2 liini → ~29, 5 → 50, 10 → ~67,
+30 → ~86; ankrud testis). Kalibreerimine ehitaja väljundist (E–R):
+Balti jaam 83 / Raekoja plats 96 / Õismäe 70 / Viimsi 4 / rural
+teadmata — hubid eristuvad, ääred vaikivad ausalt.
+
+429 peatust (1120-st) on tarnitud E–R sõlmedest 100 m kaugemal ja
+loevad ausalt teadmata ("üksikteenus", naabersõlme ei laenatud);
+õhtune täituvus on EI OLE (sõiduplaan pole reisijaloendus — sama
+reegel mis gtfsstops #483).
+
 ## Reopening (millal verdict aegub)
 
 * TLT avaldab uue snapshot-vintage → arvud uuenevad, meetod sama.

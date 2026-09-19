@@ -360,6 +360,16 @@ import {
   GTFSSTOPS_TAGS,
   bonusSpecForGtfsstops,
 } from "./layers_gtfsstops";
+// BUSMESH-HOOK (#769): transfer-node tables live in ./layers_busmesh
+// (p15 third leg: transfer richness). That module imports layers only
+// as types, so no runtime cycle.
+import type { BusmeshLayerId } from "./layers_busmesh";
+import {
+  BUSMESH_DECAY,
+  BUSMESH_DEFS,
+  BUSMESH_TAGS,
+  bonusSpecForBusmesh,
+} from "./layers_busmesh";
 // RSAFE-HOOK (#481): road-safety tables live in ./layers_roadsafety
 // (P4-012 crossing/calming proxy). That module imports layers only as
 // types, so no runtime cycle.
@@ -913,6 +923,8 @@ export type LayerId =
   | OsmdailyLayerId
   // GTFS-HOOK (#483): GTFS stop overlay id (./layers_gtfsstops).
   | GtfsstopsLayerId
+  // BUSMESH-HOOK (#769): transfer-node window ids (./layers_busmesh).
+  | BusmeshLayerId
   // RSAFE-HOOK (#481): road-safety id (./layers_roadsafety, P4-012 proxy).
   | RsafeLayerId
   // ACCBLACK-HOOK (#490): accident-blackspot id (./layers_accblack,
@@ -1218,6 +1230,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...OSMDAILY_DECAY,
   // GTFS-HOOK (#483): gtfsstops radius (see layers_gtfsstops.ts GTFSSTOPS_DECAY).
   ...GTFSSTOPS_DECAY,
+  // BUSMESH-HOOK (#769): transfer-node radii (see layers_busmesh.ts BUSMESH_DECAY).
+  ...BUSMESH_DECAY,
   // RSAFE-HOOK (#481): blackspot kernel radius (see layers_roadsafety.ts RSAFE_DECAY).
   ...RSAFE_DECAY,
   // ACCBLACK-HOOK (#490): blackspot window (see layers_accblack.ts ACCBLACK_DECAY).
@@ -1518,6 +1532,9 @@ export const LAYERS: LayerDef[] = [
   // GTFS-HOOK (#483): gtfsstops def (p15, shared with transit — measured-only
   // point set vs default-filled set) from ./layers_gtfsstops.
   ...GTFSSTOPS_DEFS,
+  // BUSMESH-HOOK (#769): transfer-node defs (p15 third leg — transfer
+  // richness vs departure density) from ./layers_busmesh.
+  ...BUSMESH_DEFS,
   // RSAFE-HOOK (#481): roadsafety def (p13, P4-012 proxy) from ./layers_roadsafety.
   ...RSAFE_DEFS,
   // P4-031-HOOK (#484): senscom DIY-air def (P4-031 slice, no
@@ -1735,6 +1752,8 @@ const TAGS: Record<LayerId, string> = {
   ...OSMDAILY_TAGS,
   // GTFS-HOOK (#483): gtfsstops query (see layers_gtfsstops.ts GTFSSTOPS_TAGS).
   ...GTFSSTOPS_TAGS,
+  // BUSMESH-HOOK (#769): transfer-node queries (see layers_busmesh.ts BUSMESH_TAGS).
+  ...BUSMESH_TAGS,
   // RSAFE-HOOK (#481): roadsafety query (see layers_roadsafety.ts RSAFE_TAGS).
   ...RSAFE_TAGS,
   // ACCBLACK-HOOK (#490): accblack source note (see layers_accblack.ts ACCBLACK_TAGS).
@@ -2327,6 +2346,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // GTFS-HOOK (#483): gtfsstops spec lives in ./layers_gtfsstops.
   const gtfs = bonusSpecForGtfsstops(layer);
   if (gtfs) return gtfs;
+  // BUSMESH-HOOK (#769): transfer-node specs live in ./layers_busmesh.
+  const busmesh = bonusSpecForBusmesh(layer);
+  if (busmesh) return busmesh;
   // RSAFE-HOOK (#481): roadsafety spec lives in ./layers_roadsafety.
   const rsafe = bonusSpecForRsafe(layer);
   if (rsafe) return rsafe;
