@@ -17,6 +17,7 @@ import {
   SILLY_PROBE,
   isSillyLayerId,
   sillyBonusSpecFor,
+  sillyDemoStatus,
   sillyNearby,
   sillyPointsIn,
 } from "./layers_p4_silly";
@@ -87,6 +88,20 @@ describe("silly bundle registry", () => {
 
   it("keeps the wiring contract greppable", () => {
     expect(SILLY_HOOK).toContain("SILLY-HOOK (#711)");
+  });
+
+  it("labels demo-by-design as sample, never as failure (#774)", () => {
+    for (const id of SILLY_LAYER_IDS) {
+      const status = sillyDemoStatus(
+        LAYERS.find((l) => l.id === id)!.fallbackPoints.length,
+      );
+      expect(status).toContain("DEMO-näidis");
+      expect(status).toContain("mitte loendus");
+      expect(status).not.toContain("ebaõnnestus");
+    }
+    expect(sillyDemoStatus(2)).toBe(
+      "DEMO-näidis (näidispunktid, mitte loendus) · 2 punkti",
+    );
   });
 });
 

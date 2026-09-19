@@ -386,3 +386,15 @@ export function sillyPointsIn(
 /** Hook marker, pinned by test so the wiring contract stays greppable. */
 export const SILLY_HOOK =
   "SILLY-HOOK (#711): silly bundle wired into layers/overlays/snapshot; twelve markers-only pins layers from the held OSM extract, zero new pulls.";
+
+/**
+ * Demo-by-design status line (issue #774). Silly layers have no
+ * points sidecar BY DECISION (docs/p4_silly.md) and always render
+ * through the demo fallback — so the generic "live ebaõnnestus"
+ * (live failed) label reads as breakage. This names the state
+ * honestly instead: mapped sample points, never a count, never a
+ * failure. Pure (pinned by test).
+ */
+export function sillyDemoStatus(pointCount: number): string {
+  return `DEMO-näidis (näidispunktid, mitte loendus) · ${pointCount} punkti`;
+}
