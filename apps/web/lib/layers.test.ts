@@ -315,6 +315,21 @@ describe("layer registry", () => {
       "delay-evening",
       "delay-offpeak",
       "delay-worst",
+      // SILLY-HOOK (#711): silly-bundle slice ids (twelve markers-only
+      // pins from the held OSM extract — paramIds empty, parameters4
+      // namespace, real demo points, zero new pulls).
+      "kirikukellad",
+      "kajakad",
+      "manguvaljakud",
+      "koertepargid",
+      "saunad",
+      "talisuplus",
+      "tanavasport",
+      "vesi",
+      "wc",
+      "aed",
+      "raamatukapid",
+      "kalmistu",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);

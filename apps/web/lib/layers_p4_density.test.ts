@@ -85,8 +85,8 @@ describe("density registry (#622)", () => {
     // etak + relief + canopy + buildings + 1 density overlay
     // (DENSITY-HOOK #622, 132 + 1) + 1 forest overlay
     // (FOREST-HOOK #624, 133 + 1 = 134)..
-    expect(ids.length).toBe(142); // KPO (#626): 136 shipped + kpo = 137. // HARBOUR (#627): 135 shipped + harbour = 136.
-    // DELAY-HOOK (#629): + 5 delay band overlays (137 + 5 = 142).
+    expect(ids.length).toBe(154); // KPO (#626): 136 shipped + kpo = 137. // HARBOUR (#627): 135 shipped + harbour = 136.
+    // DELAY-HOOK (#629): + 5 delay band overlays (137 + 5 = 142). // SILLY-HOOK (#711): +12 silly-bundle layers (142 + 12 = 154).
     expect(ids).toContain("density");
   });
   it("rides paramLabel with empty paramIds (tint only, no parameters3 number)", () => {

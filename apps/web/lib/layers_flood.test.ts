@@ -65,8 +65,8 @@ describe("floodzone registry (#487)", () => {
     // 3 eelis (EELIS-HOOK #488, 101 + 3) + 1 planktpr (PLANKTPR-HOOK #492, 104 + 1).
     // TERVISE-HOOK (#494): +1 tervise bathing-water layer (105 + 1).
     // PAASTE-HOOK (#493): +1 komando overlay (107 + 1).
-    expect(ids.length).toBe(142); // KPO (#626): 136 shipped + kpo = 137. // HARBOUR (#627): 135 shipped + harbour = 136.
-    // DELAY-HOOK (#629): + 5 delay band overlays (137 + 5 = 142).
+    expect(ids.length).toBe(154); // KPO (#626): 136 shipped + kpo = 137. // HARBOUR (#627): 135 shipped + harbour = 136.
+    // DELAY-HOOK (#629): + 5 delay band overlays (137 + 5 = 142). // SILLY-HOOK (#711): +12 silly-bundle layers (142 + 12 = 154).
     expect(ids).toContain("floodzone");
   });
 

@@ -761,6 +761,17 @@ import {
   fixitBonusSpecFor,
   isFixitLayerId,
 } from "./layers_p4_fixit";
+// SILLY-HOOK (#711): silly-bundle tables live in ./layers_p4_silly
+// (twelve markers-only pins layers, held OSM extract). That module
+// imports layers only as types, so no runtime cycle.
+import type { SillyLayerId } from "./layers_p4_silly";
+import {
+  SILLY_DECAY,
+  SILLY_LAYERS,
+  SILLY_TAGS,
+  isSillyLayerId,
+  sillyBonusSpecFor,
+} from "./layers_p4_silly";
 import type { PaasteLayerId } from "./layers_paaste";
 import {
   PAASTE_DECAY,
@@ -904,6 +915,9 @@ export type LayerId =
   // FIXIT-HOOK (#623): report-pin id (./layers_p4_fixit, markers
   // only, no parameters3 id).
   | FixitLayerId
+  // SILLY-HOOK (#711): silly-bundle slice ids (./layers_p4_silly,
+  // twelve markers-only pins, no parameters3 id).
+  | SillyLayerId
   // STATELAND-HOOK (#615): state/auction polygon id
   // (./layers_p4_stateland, KATRI + maaoksjon, polygons only, no
   // parameters3 id).
@@ -1184,6 +1198,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...POI_DECAY,
   // FIXIT-HOOK (#623): report-pin radius (see layers_p4_fixit.ts FIXIT_DECAY).
   ...FIXIT_DECAY,
+  // SILLY-HOOK (#711): silly-bundle radii (see layers_p4_silly.ts SILLY_DECAY).
+  ...SILLY_DECAY,
   // STATELAND-HOOK (#615): state/auction polygon radius (see
   // layers_p4_stateland.ts STATELAND_DECAY — INERT placeholder,
   // polygons only: zero points, never evaluated).
@@ -1531,6 +1547,9 @@ export const LAYERS: LayerDef[] = [
   // corridors, polygons-only, no parameters3 id) from
   // ./layers_p4_delay.
   ...DELAY_DEFS,
+  // SILLY-HOOK (#711): silly-bundle slice defs (twelve markers-only
+  // pins, no parameters3 id) from ./layers_p4_silly.
+  ...SILLY_LAYERS,
 ];
 
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
@@ -1678,6 +1697,10 @@ const TAGS: Record<LayerId, string> = {
   // FIXIT-HOOK (#623): report-pin source note (see
   // layers_p4_fixit.ts FIXIT_TAGS — prose, NOT an Overpass fragment).
   ...FIXIT_TAGS,
+  // SILLY-HOOK (#711): silly-bundle source notes (see
+  // layers_p4_silly.ts SILLY_TAGS — runnable Overpass fragments; the
+  // app serves the frozen snapshot, never live Overpass).
+  ...SILLY_TAGS,
   // STATELAND-HOOK (#615): state/auction source note (see
   // layers_p4_stateland.ts STATELAND_TAGS — prose, NOT an Overpass
   // fragment).
@@ -1984,6 +2007,9 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // FIXIT-HOOK (#623): report-pin marker spec lives in
   // layers_p4_fixit.ts (markers only — no scorer table to mirror).
   if (isFixitLayerId(layer)) return fixitBonusSpecFor(layer);
+  // SILLY-HOOK (#711): silly-bundle marker specs live in
+  // layers_p4_silly.ts (markers only — no scorer table to mirror).
+  if (isSillyLayerId(layer)) return sillyBonusSpecFor(layer);
   // STATELAND-HOOK (#615): state/auction polygon spec lives in
   // ./layers_p4_stateland (INERT — polygons only, never evaluated).
   const stateland = bonusSpecForStateland(layer);

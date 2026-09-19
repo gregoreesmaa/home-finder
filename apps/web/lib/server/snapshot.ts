@@ -159,6 +159,11 @@ import type { MedrePoint } from "../layers_p4_medre";
 // degrade to null; the sidecar is honestly empty when unharvested).
 import { FIXIT_RASTER_FILE } from "../layers_p4_fixit";
 import type { FixitPoint } from "../layers_p4_fixit";
+// SILLY-HOOK (#711): silly-bundle raster filenames live in
+// layers_p4_silly.ts (rasters intentionally never built —
+// SILLY_NO_RASTER; names resolve to absent files so windows degrade
+// to null; pins layers have no sidecar — demo points ride the defs).
+import { SILLY_METRO_PREFIX, SILLY_RASTER_FILE } from "../layers_p4_silly";
 // SEVESO-HOOK (#613): danger-polygon raster filename + sidecar area
 // type live in layers_p4_seveso.ts (raster intentionally never built —
 // SEVESO_NO_RASTER, CC BY-NC-ND forbids derivatives; the name resolves
@@ -1559,6 +1564,10 @@ const RASTER_FILE: Record<LayerId, string> = {
   // by decision — FIXIT_NO_RASTER; markers only, no field to stamp;
   // the absent file degrades windows to null).
   ...FIXIT_RASTER_FILE,
+  // SILLY-HOOK (#711): silly-bundle raster names only (no masters
+  // built by decision — SILLY_NO_RASTER; markers only, no field to
+  // stamp; absent files degrade windows to null).
+  ...SILLY_RASTER_FILE,
   // DRAINAGE-HOOK (#616): network/outflow raster name only (no
   // master built — MAAPARANDUS_NO_RASTER; shapes ARE the field; absent
   // file degrades to null, honestly).
@@ -2121,6 +2130,10 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // either — FIXIT_NO_RASTER; the name resolves to an absent file so
   // windows fall back to the markers-only path).
   fixit: "fixit-metro",
+  // SILLY-HOOK (#711): no silly metro masters (no county masters
+  // either — SILLY_NO_METRO; names resolve to absent files so windows
+  // fall back to the markers-only path).
+  ...SILLY_METRO_PREFIX,
   // DRAINAGE-HOOK (#616): no drainage metro master by documented
   // decision (see layers_p4_maaparandus.ts MAAPARANDUS_NO_METRO) — the name
   // resolves to an absent file so windows fall back to county cleanly.
