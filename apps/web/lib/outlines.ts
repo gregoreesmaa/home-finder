@@ -63,6 +63,12 @@ const SHED_CASING = "shed-hub-casing";
 const MAAPARCEL_SRC = "maaparcel-polys";
 const MAAPARCEL_FILL = "maaparcel-fill";
 const MAAPARCEL_CASING = "maaparcel-casing";
+// ISSUE-789: sample-window boundary slot (dashed rect around the
+// harvested Kesklinn window — outside is teadmata, never empty).
+// Separate source so the rect survives parcel clears and paints even
+// when the sidecar is honestly empty.
+export const MAAPARCEL_WINDOW_SRC = "maaparcel-sample-window";
+export const MAAPARCEL_WINDOW_LYR = "maaparcel-sample-window-line";
 // EELIS-HOOK (#488): nature-polygon slot (choropleth fills, never a
 // gradient). Clearing covers these ids too — one overlay slot paints
 // either kind, never stacks (see clearVectorOverlays).
@@ -179,7 +185,7 @@ export function clearVectorOverlays(mapObj: OutlineMap): void {
   // slot.
   // DELAY-HOOK (#629): delay fill + casing join the cleared slot.
   // SHED-HOOK (#763): shed fill + casing join the cleared slot.
-  for (const id of [PARK_CASING, PARK_CORE, POINT_CASING, POINT_CORE, FLOOD_FILL, FLOOD_CASING, MAAPARCEL_FILL, MAAPARCEL_CASING, EELIS_FILL, EELIS_CASING, USE_FILL, USE_CASING, SEVESO_FILL, SEVESO_CASING, STATELAND_FILL, STATELAND_CASING, QUARRY_FILL, QUARRY_CASING, MAAPARANDUS_FILL, MAAPARANDUS_CASING, MAAPARANDUS_LINES, SOIL_FILL, SOIL_CASING, ETAK_FILL, ETAK_CASING, RELIEF_LYR, CANOPY_LYR, BUILDINGS_LYR, DENSITY_FILL, DENSITY_CASING, FOREST_FILL, FOREST_CASING, NOISE_FILL, NOISE_CASING, HARBOUR_FILL, HARBOUR_CASING, KPO_FILL, KPO_CASING, DELAY_FILL, DELAY_CASING, SHED_FILL_LYR, SHED_CASING]) {
+  for (const id of [PARK_CASING, PARK_CORE, POINT_CASING, POINT_CORE, FLOOD_FILL, FLOOD_CASING, MAAPARCEL_FILL, MAAPARCEL_CASING, MAAPARCEL_WINDOW_LYR, EELIS_FILL, EELIS_CASING, USE_FILL, USE_CASING, SEVESO_FILL, SEVESO_CASING, STATELAND_FILL, STATELAND_CASING, QUARRY_FILL, QUARRY_CASING, MAAPARANDUS_FILL, MAAPARANDUS_CASING, MAAPARANDUS_LINES, SOIL_FILL, SOIL_CASING, ETAK_FILL, ETAK_CASING, RELIEF_LYR, CANOPY_LYR, BUILDINGS_LYR, DENSITY_FILL, DENSITY_CASING, FOREST_FILL, FOREST_CASING, NOISE_FILL, NOISE_CASING, HARBOUR_FILL, HARBOUR_CASING, KPO_FILL, KPO_CASING, DELAY_FILL, DELAY_CASING, SHED_FILL_LYR, SHED_CASING]) {
     try {
       if (mapObj.getLayer(id)) mapObj.removeLayer(id);
     } catch {
@@ -198,7 +204,7 @@ export function clearVectorOverlays(mapObj: OutlineMap): void {
   // ETAK-HOOK (#618): the etak-contour source joins the same slot.
   // DELAY-HOOK (#629): the delay-band source joins the same slot.
   // SHED-HOOK (#763): the shed-hub source joins the same slot.
-  for (const id of [PARK_SRC, POINT_SRC, FLOOD_SRC, MAAPARCEL_SRC, EELIS_SRC, USE_SRC, SEVESO_SRC, STATELAND_SRC, QUARRY_SRC, MAAPARANDUS_SRC, MAAPARANDUS_OUTFLOW_SRC, SOIL_SRC, ETAK_SRC, RELIEF_SRC, CANOPY_SRC, BUILDINGS_SRC, DENSITY_SRC, FOREST_SRC, NOISE_SRC, HARBOUR_SRC, KPO_SRC, DELAY_SRC, SHED_SRC]) {
+  for (const id of [PARK_SRC, POINT_SRC, FLOOD_SRC, MAAPARCEL_SRC, MAAPARCEL_WINDOW_SRC, EELIS_SRC, USE_SRC, SEVESO_SRC, STATELAND_SRC, QUARRY_SRC, MAAPARANDUS_SRC, MAAPARANDUS_OUTFLOW_SRC, SOIL_SRC, ETAK_SRC, RELIEF_SRC, CANOPY_SRC, BUILDINGS_SRC, DENSITY_SRC, FOREST_SRC, NOISE_SRC, HARBOUR_SRC, KPO_SRC, DELAY_SRC, SHED_SRC]) {
     try {
       if (mapObj.getSource(id)) mapObj.removeSource(id);
     } catch {
@@ -527,13 +533,108 @@ export function applyShedPolygons(
  * not loaded yet or parcels is nullish. Malformed rings are skipped,
  * never faked; unknown classes fall back to muu (never dropped).
  */
-export function applyMaaParcelPolygons(
+/**
+ * Closed [lon, lat] ring for a [minlon, minlat, maxlon, maxlat] sample
+ * window (issue #789). Null when the bbox is malformed — never faked.
+ */
+export function maaparcelSampleWindowRing(
+  bbox: readonly [number, number, number, number] | null | undefined,
+): number[][] | null {
+  if (
+    !Array.isArray(bbox) ||
+    bbox.length !== 4 ||
+    !bbox.every((n) => typeof n === "number" && Number.isFinite(n))
+  ) {
+    return null;
+  }
+  const [minlon, minlat, maxlon, maxlat] = bbox;
+  if (!(minlon < maxlon && minlat < maxlat)) return null;
+  return [
+    [minlon, minlat],
+    [maxlon, minlat],
+    [maxlon, maxlat],
+    [minlon, maxlat],
+    [minlon, minlat],
+  ];
+}
+
+/**
+ * Paint ONLY the dashed sample-window boundary rect (issue #789): the
+ * harvested Kesklinn window edge so outside-window unknown reads as a
+ * coverage limit, never as empty map. No parcels are painted here — the
+ * rect is the coverage fact. Clears stale overlays first; no-op when
+ * the style is not loaded or the bbox is malformed. Idempotent: an
+ * existing window layer is replaced, never stacked.
+ */
+export function applyMaaParcelSampleWindow(
   mapObj: OutlineMap,
-  parcels: MaaParcelArea[] | null | undefined,
-  opts: { casing: string },
+  bbox: readonly [number, number, number, number] | null | undefined,
+  opts: { color?: string } = {},
 ): void {
   if (!mapObj.getStyle()) return;
   clearVectorOverlays(mapObj);
+  paintMaaParcelSampleWindow(mapObj, bbox, opts);
+}
+
+/**
+ * Add the dashed sample-window rect WITHOUT clearing (issue #789):
+ * called by applyMaaParcelPolygons after the fills so parcels +
+ * boundary paint as one overlay slot. No-op on malformed bbox.
+ */
+export function paintMaaParcelSampleWindow(
+  mapObj: OutlineMap,
+  bbox: readonly [number, number, number, number] | null | undefined,
+  opts: { color?: string } = {},
+): void {
+  const ring = maaparcelSampleWindowRing(bbox);
+  if (!ring) return;
+  try {
+    if (mapObj.getLayer(MAAPARCEL_WINDOW_LYR)) mapObj.removeLayer(MAAPARCEL_WINDOW_LYR);
+  } catch {
+    /* already gone */
+  }
+  try {
+    if (mapObj.getSource(MAAPARCEL_WINDOW_SRC)) mapObj.removeSource(MAAPARCEL_WINDOW_SRC);
+  } catch {
+    /* already gone */
+  }
+  mapObj.addSource(MAAPARCEL_WINDOW_SRC, {
+    type: "geojson",
+    data: {
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          properties: { kind: "maaparcel-sample-window" },
+          geometry: { type: "Polygon", coordinates: [ring] },
+        },
+      ],
+    },
+  });
+  mapObj.addLayer(
+    {
+      id: MAAPARCEL_WINDOW_LYR,
+      type: "line",
+      source: MAAPARCEL_WINDOW_SRC,
+      paint: {
+        "line-color": opts.color ?? "#701a75",
+        "line-width": 2,
+        "line-opacity": 0.95,
+        "line-dasharray": [2, 1.5],
+      },
+    },
+    abovePaint(mapObj),
+  );
+}
+
+export function applyMaaParcelPolygons(
+  mapObj: OutlineMap,
+  parcels: MaaParcelArea[] | null | undefined,
+  opts: { casing: string; window?: readonly [number, number, number, number] | null },
+): void {
+  if (!mapObj.getStyle()) return;
+  clearVectorOverlays(mapObj);
+  if (opts.window) paintMaaParcelSampleWindow(mapObj, opts.window, { color: opts.casing });
   if (!parcels || parcels.length === 0) return;
   const features = [];
   for (const a of parcels) {

@@ -64,7 +64,9 @@ import { isIncidentsLayerId } from "../../lib/layers_p4_incidents";
 // MAAPARCEL-HOOK (#491): maaparcel paints kataster parcel polygons
 // (polygons only, never a gradient) instead of points.
 import {
+  MAAPARCEL_SAMPLE_BBOX,
   fetchMaaParcelAreas,
+  fetchMaaParcelCoverage,
   isPolygonOnlyMaaLayer,
   type MaaParcelArea,
 } from "../../lib/layers_maaparcel";
@@ -817,15 +819,29 @@ export default function LayersPage() {
   // no score field are painted for this layer, by design (polygons only,
   // never a gradient).
   const [maaAreas, setMaaAreas] = useState<MaaParcelArea[] | null>(null);
+  // ISSUE-789: sample-window bbox for the drawn boundary rect (outside
+  // = teadmata). Served by the route, falls back to the baked window.
+  const [maaWindow, setMaaWindow] = useState<readonly [number, number, number, number] | null>(null);
   useEffect(() => {
     let cancelled = false;
     if (!isPolygonOnlyMaaLayer(layer)) {
       setMaaAreas(null);
+      setMaaWindow(null);
       return;
     }
-    fetchMaaParcelAreas().then((areas) => {
-      if (!cancelled) setMaaAreas(areas);
-
+    fetchMaaParcelCoverage().then((coverage) => {
+      if (cancelled) return;
+      if (!coverage) {
+        // Honest fallback: parcels unknown, boundary still drawn from
+        // the baked window (never faked parcels).
+        fetchMaaParcelAreas().then((areas) => {
+          if (!cancelled) setMaaAreas(areas);
+        });
+        setMaaWindow([...MAAPARCEL_SAMPLE_BBOX]);
+        return;
+      }
+      setMaaAreas(coverage.parcels);
+      setMaaWindow(coverage.bbox ?? [...MAAPARCEL_SAMPLE_BBOX]);
     });
     return () => {
       cancelled = true;
@@ -1300,6 +1316,7 @@ export default function LayersPage() {
         shedFill={isShedLayerId(layer) ? SHED_FILL[layer] : undefined}
 
         maaParcels={maaAreas}
+        maaWindow={isPolygonOnlyMaaLayer(layer) ? maaWindow : null}
 
 
         eelisAreas={eelisOverlay}

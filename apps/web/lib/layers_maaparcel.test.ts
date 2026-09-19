@@ -7,14 +7,18 @@ import {
   MAAPARCEL_CLASS_FILL,
   MAAPARCEL_DECAY,
   MAAPARCEL_DEFS,
+  MAAPARCEL_HARVEST_DATE,
   MAAPARCEL_HOOK,
   MAAPARCEL_LAYER_IDS,
   MAAPARCEL_NO_METRO,
   MAAPARCEL_PARAMS,
   MAAPARCEL_RASTER_FILE,
+  MAAPARCEL_SAMPLE_BBOX,
+  MAAPARCEL_SAMPLE_LABEL,
   MAAPARCEL_TAGS,
   bonusSpecForMaaParcel,
   fetchMaaParcelAreas,
+  fetchMaaParcelCoverage,
   isMaaParcelLayerId,
   isPolygonOnlyMaaLayer,
 } from "./layers_maaparcel";
@@ -116,6 +120,13 @@ describe("maaparcel honesty (#491)", () => {
     expect(overlayLegendFor("maaparcel").length).toBeGreaterThan(10);
   });
 
+  it("names the drawn sample-boundary rect in the legend (issue #789)", () => {
+    // The dashed rect on the map is the coverage limit: the legend must
+    // say the rect IS the window edge, so outside reads unknown.
+    expect(overlayLegendFor("maaparcel")).toContain("katkendlik piir kaardil = valimi aken");
+    expect(overlayLegendFor("maaparcel")).toContain("24.74–24.76/59.428–59.438");
+  });
+
   it("paints a distinct polygon color (distinct-color registry covers it)", () => {
     expect(overlayColorFor("maaparcel")).toBe("#701a75");
   });
@@ -182,6 +193,52 @@ describe("maaparcel source and sidecar (#491)", () => {
     expect(areas?.[0].tunnus).toBe("78401:107:0760");
     expect(areas?.[0].cls).toBe("era");
     expect(areas?.[0].kkis).toBe(1);
+  });
+
+  it("pins the sample window + label (issue #789: boundary rect source)", () => {
+    // Drawn-boundary choice: the rect comes from this window, which must
+    // stay in lockstep with the builder SAMPLE_BBOX (never drifted).
+    expect([...MAAPARCEL_SAMPLE_BBOX]).toEqual([24.74, 59.428, 24.76, 59.438]);
+    expect(MAAPARCEL_HARVEST_DATE).toBe("2026-09-13");
+    expect(MAAPARCEL_SAMPLE_LABEL).toContain("24.74–24.76 / 59.428–59.438");
+    expect(MAAPARCEL_SAMPLE_LABEL).toContain("väljas = teadmata, mitte tühi");
+  });
+
+  it("fetches coverage: parcels + bbox + harvest date (issue #789)", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          parcels: [PARCEL],
+          bbox: [24.74, 59.428, 24.76, 59.438],
+          harvest_date: "2026-09-13",
+          count: 1,
+        }),
+    });
+    const coverage = await fetchMaaParcelCoverage(fetchImpl);
+    expect(String(fetchImpl.mock.calls[0][0])).toBe("/api/layers/maaparcel/areas");
+    expect(coverage?.parcels).toHaveLength(1);
+    expect(coverage?.bbox).toEqual([24.74, 59.428, 24.76, 59.438]);
+    expect(coverage?.harvest_date).toBe("2026-09-13");
+    expect(coverage?.count).toBe(1);
+  });
+
+  it("coverage degrades bbox to null on malformed window (never faked)", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ parcels: [PARCEL], bbox: "Kesklinn", harvest_date: 7 }),
+    });
+    const coverage = await fetchMaaParcelCoverage(fetchImpl);
+    expect(coverage?.parcels).toHaveLength(1);
+    expect(coverage?.bbox).toBeNull();
+    expect(coverage?.harvest_date).toBeNull();
+    const failImpl = vi.fn().mockResolvedValue({ ok: false });
+    expect(await fetchMaaParcelCoverage(failImpl)).toBeNull();
+    const shapeImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ parcels: "nope" }),
+    });
+    expect(await fetchMaaParcelCoverage(shapeImpl)).toBeNull();
   });
 
   it("drops malformed parcels and fails null (never faked)", async () => {

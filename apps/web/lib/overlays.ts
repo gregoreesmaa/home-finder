@@ -1224,7 +1224,7 @@ export function overlayLegendFor(layer: LayerId): string {
     // and municipal/state land needs the RIK hoonestus-check, never a
     // verdict off the fill color.
     case "maaparcel":
-      return "Katastritunnused omandivormi järgi · roheline = era, oranž = munitsipaal, roosa = riigi, hall = muu/teadmata (fakt, mitte hinnang; munitsipaal/riigi → RIK hoonestuse kontroll) · väljaspool = teadmata, mitte tühi (proovivalim: 100 tunnust Kesklinna aknas)";
+      return "Katastritunnused omandivormi järgi · roheline = era, oranž = munitsipaal, roosa = riigi, hall = muu/teadmata (fakt, mitte hinnang; munitsipaal/riigi → RIK hoonestuse kontroll) · väljaspool = teadmata, mitte tühi (proovivalim: 100 tunnust Kesklinna aknas 24.74–24.76/59.428–59.438; katkendlik piir kaardil = valimi aken)";
 
     // EELIS-HOOK (#488): nature polygons (P4-015/024/030 slices) — named
     // zone fills, never a gradient. The outside-unknown caveat rides

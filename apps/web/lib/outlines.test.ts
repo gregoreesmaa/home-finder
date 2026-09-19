@@ -5,6 +5,10 @@ import {
   applyHarbourOverlays,
 
   applyMaaParcelPolygons,
+  applyMaaParcelSampleWindow,
+  maaparcelSampleWindowRing,
+  MAAPARCEL_WINDOW_LYR,
+  MAAPARCEL_WINDOW_SRC,
   applyEelisPolygons,
   applyOutlines,
   applyPointOverlay,
@@ -673,6 +677,60 @@ describe("applyMaaParcelPolygons (#491)", () => {
     applyMaaParcelPolygons(map, [], { casing: "#701a75" });
     expect(map.sources.size).toBe(0);
     expect(map.layers.size).toBe(0);
+  });
+
+  it("draws the dashed sample-window rect with the fills (issue #789)", () => {
+    const map = mockMap();
+    applyMaaParcelPolygons(map, [PARCEL], {
+      casing: "#701a75",
+      window: [24.74, 59.428, 24.76, 59.438],
+    });
+    // Parcels + the boundary rect paint as one overlay slot.
+    expect(map.sources.has("maaparcel-polys")).toBe(true);
+    expect(map.sources.has(MAAPARCEL_WINDOW_SRC)).toBe(true);
+    expect(map.layers.has("maaparcel-fill")).toBe(true);
+    expect(map.layers.has(MAAPARCEL_WINDOW_LYR)).toBe(true);
+    const win = map.added.find(
+      (l) => (l as { id?: string }).id === MAAPARCEL_WINDOW_LYR,
+    ) as { paint: Record<string, unknown> };
+    expect(win.paint["line-dasharray"]).toEqual([2, 1.5]);
+    expect(win.paint["line-color"]).toBe("#701a75");
+  });
+
+  it("paints the window rect alone on honestly-empty input (issue #789)", () => {
+    const map = mockMap();
+    applyMaaParcelSampleWindow(map, [24.74, 59.428, 24.76, 59.438]);
+    // No parcels, but the coverage limit still reads on the map.
+    expect(map.sources.has(MAAPARCEL_WINDOW_SRC)).toBe(true);
+    expect(map.layers.has(MAAPARCEL_WINDOW_LYR)).toBe(true);
+    expect(map.sources.has("maaparcel-polys")).toBe(false);
+  });
+
+  it("pins the window ring geometry (never faked, never drifted)", () => {
+    expect(maaparcelSampleWindowRing([24.74, 59.428, 24.76, 59.438])).toEqual([
+      [24.74, 59.428],
+      [24.76, 59.428],
+      [24.76, 59.438],
+      [24.74, 59.438],
+      [24.74, 59.428],
+    ]);
+    // Malformed bboxes paint nothing, never a guessed rect.
+    expect(maaparcelSampleWindowRing(null)).toBeNull();
+    expect(maaparcelSampleWindowRing([24.76, 59.438, 24.74, 59.428])).toBeNull();
+    expect(maaparcelSampleWindowRing([24.74, 59.428, 24.76, NaN])).toBeNull();
+    const map = mockMap();
+    applyMaaParcelSampleWindow(map, null);
+    expect(map.sources.size).toBe(0);
+    expect(map.layers.size).toBe(0);
+  });
+
+  it("clears the window rect on overlay switch (never stacked)", () => {
+    const map = mockMap();
+    applyMaaParcelSampleWindow(map, [24.74, 59.428, 24.76, 59.438]);
+    expect(map.layers.has(MAAPARCEL_WINDOW_LYR)).toBe(true);
+    clearVectorOverlays(map);
+    expect(map.layers.has(MAAPARCEL_WINDOW_LYR)).toBe(false);
+    expect(map.sources.has(MAAPARCEL_WINDOW_SRC)).toBe(false);
   });
 });
 

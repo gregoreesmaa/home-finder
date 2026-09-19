@@ -4,16 +4,21 @@ Hermetic: synthetic inline fixtures only, no network, no snapshot files.
 The live #491 harvest is join-proven separately (5/100 parcels touched by
 the real KKIS sample, omvorm 54/42/2/2 -- see docs/overturn_maa.md).
 """
+import json
 import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
 
 from batch_maaparcel_kataster import (  # noqa: E402
+    HARVEST_DATE,
+    SAMPLE_BBOX,
+    SIDECAR_PATH,
     bbox_lonlat,
     build_sidecar,
     classify,
     clean_ring,
+    main,
     touches,
 )
 
@@ -114,3 +119,28 @@ def test_build_sidecar_unparseable_doc_yields_no_rows():
 def test_bbox_lonlat_prefilter_box():
     assert bbox_lonlat([[(24.7, 59.4), (24.8, 59.42)]]) == \
         [24.7, 59.4, 24.8, 59.42]
+
+
+def test_sample_window_matches_frontend_boundary_issue_789():
+    # Drawn-boundary choice (#789): the map rect comes from SAMPLE_BBOX,
+    # which must stay in lockstep with MAAPARCEL_SAMPLE_BBOX in
+    # apps/web/lib/layers_maaparcel.ts (never drifted, never expanded
+    # without a harvest to back it).
+    assert SAMPLE_BBOX == [24.74, 59.428, 24.76, 59.438]
+    assert HARVEST_DATE == "2026-09-13"
+    assert SIDECAR_PATH == os.path.join("maa", "parcel-areas.json")
+
+
+def test_main_writes_bbox_provenance_issue_789(tmp_path):
+    # The route draws the boundary from the sidecar bbox: main() must
+    # stamp it on every rebuild (fixtures only, hermetic).
+    parcels = os.path.join(str(tmp_path), "parcels.geojson")
+    with open(parcels, "w", encoding="utf-8") as fh:
+        json.dump({"features": [parcel()]}, fh)
+    snap = os.path.join(str(tmp_path), "snap")
+    assert main(["--parcels", parcels, "--snap", snap]) == 0
+    with open(os.path.join(snap, SIDECAR_PATH), encoding="utf-8") as fh:
+        payload = json.load(fh)
+    assert payload["bbox"] == [24.74, 59.428, 24.76, 59.438]
+    assert payload["harvest_date"] == "2026-09-13"
+    assert len(payload["parcels"]) == 1

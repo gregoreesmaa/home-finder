@@ -33,6 +33,7 @@ import type { HarbourCell, HarbourPort } from "../lib/layers_p4_harbour";
 import {
   applyFloodPolygons,
   applyMaaParcelPolygons,
+  applyMaaParcelSampleWindow,
   applyEelisPolygons,
   applyOutlines,
   applyPointOverlay,
@@ -93,6 +94,8 @@ function paintOverlay(
     floodAreas?: FloodArea[] | null;
 
     maaParcels?: MaaParcelArea[] | null;
+    /** Sample-window bbox for the maaparcel boundary rect (issue #789). */
+    maaWindow?: readonly [number, number, number, number] | null;
 
     eelisAreas?: EelisArea[] | null;
     sevesoAreas?: SevesoArea[] | null;
@@ -137,9 +140,19 @@ function paintOverlay(
   }
   // MAAPARCEL-HOOK (#491): maaparcel class fills (polygons only — no
   // score field is painted for this layer, by design).
-  if (opts.maaParcels && opts.maaParcels.length > 0) {
-    applyMaaParcelPolygons(mapObj, opts.maaParcels, { casing: opts.overlayColor ?? "#701a75" });
-
+  // ISSUE-789: the dashed sample-window rect paints with the fills AND
+  // alone (honestly-empty sidecar still shows the coverage limit).
+  if ((opts.maaParcels && opts.maaParcels.length > 0) || opts.maaWindow) {
+    if (opts.maaParcels && opts.maaParcels.length > 0) {
+      applyMaaParcelPolygons(mapObj, opts.maaParcels, {
+        casing: opts.overlayColor ?? "#701a75",
+        window: opts.maaWindow ?? null,
+      });
+    } else {
+      applyMaaParcelSampleWindow(mapObj, opts.maaWindow, {
+        color: opts.overlayColor ?? "#701a75",
+      });
+    }
     return;
   }
   // EELIS-HOOK (#488): eelis choropleth fills (polygons only — no score
@@ -284,6 +297,7 @@ export function ValueHeatMap({
   floodAreas,
 
   maaParcels,
+  maaWindow,
 
   eelisAreas,
   sevesoAreas,
@@ -330,6 +344,8 @@ export function ValueHeatMap({
 
   /** Kataster parcel fills (maaparcel layer only); class choropleth. */
   maaParcels?: MaaParcelArea[] | null;
+  /** Sample-window bbox for the maaparcel boundary rect (issue #789). */
+  maaWindow?: readonly [number, number, number, number] | null;
 
   /** EELIS nature fills (eelis layers only); choropleth overlay. */
   eelisAreas?: EelisArea[] | null;
@@ -407,6 +423,7 @@ export function ValueHeatMap({
     floodAreas,
 
     maaParcels,
+    maaWindow,
 
     eelisAreas,
     sevesoAreas,
@@ -462,6 +479,7 @@ export function ValueHeatMap({
     floodAreas,
 
     maaParcels,
+    maaWindow,
 
     eelisAreas,
     sevesoAreas,
@@ -705,9 +723,9 @@ export function ValueHeatMap({
       // DELAY-HOOK (#629): delayAreas + delayBand join the painted slot
       // (without both, fetched corridors never repaint — #664).
       // SHED-HOOK (#763): shedAreas + shedFill join the painted slot.
-      paintOverlay(mapRef.current, { outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, reliefTint, canopyTint, buildingsTint, densityAreas, forestAreas, noiseAreas, kpoAreas, delayAreas, delayBand, shedAreas, shedFill, harbourCells, harbourPorts, overlayPoints, usePolygons, overlayColor, showOverlay });
+      paintOverlay(mapRef.current, { outlines, floodAreas, maaParcels, maaWindow, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, reliefTint, canopyTint, buildingsTint, densityAreas, forestAreas, noiseAreas, kpoAreas, delayAreas, delayBand, shedAreas, shedFill, harbourCells, harbourPorts, overlayPoints, usePolygons, overlayColor, showOverlay });
     }
-  }, [outlines, floodAreas, maaParcels, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, reliefTint, canopyTint, buildingsTint, densityAreas, forestAreas, noiseAreas, kpoAreas, delayAreas, delayBand, shedAreas, shedFill, harbourCells, harbourPorts, overlayPoints, usePolygons, overlayColor, showOverlay]);
+  }, [outlines, floodAreas, maaParcels, maaWindow, eelisAreas, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, reliefTint, canopyTint, buildingsTint, densityAreas, forestAreas, noiseAreas, kpoAreas, delayAreas, delayBand, shedAreas, shedFill, harbourCells, harbourPorts, overlayPoints, usePolygons, overlayColor, showOverlay]);
 
   return (
     <section aria-label={title}>

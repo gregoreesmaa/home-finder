@@ -59,6 +59,29 @@ export type MaaParcelLayerId = "maaparcel";
 export const MAAPARCEL_LAYER_IDS: MaaParcelLayerId[] = ["maaparcel"];
 
 /**
+ * Harvested sample window [minlon, minlat, maxlon, maxlat] (issue #789):
+ * the Kesklinn 100-parcel window baked into the sidecar provenance by
+ * scripts/build/batch_maaparcel_kataster.py (SAMPLE_BBOX). Exported so
+ * the map can DRAW the boundary: outside this rect is teadmata, never
+ * empty — and the rect on the map makes that unmistakable. Values must
+ * stay in lockstep with the builder (pinned by test).
+ */
+export const MAAPARCEL_SAMPLE_BBOX: readonly [number, number, number, number] = [
+  24.74, 59.428, 24.76, 59.438,
+];
+
+/** Harvest date of the sample window (sidecar provenance, pinned). */
+export const MAAPARCEL_HARVEST_DATE = "2026-09-13";
+
+/**
+ * Map label for the drawn sample boundary (issue #789): names the
+ * window + the outside-unknown rule so the rect reads as a coverage
+ * limit, never as a parcel.
+ */
+export const MAAPARCEL_SAMPLE_LABEL =
+  "Kesklinna proovivalimi piir (24.74–24.76 / 59.428–59.438): sees 100 katastritunnust, väljas = teadmata, mitte tühi";
+
+/**
  * parameters3.md number for the parcel layer. p364 is SHARED with the
  * overturn scorer hint (same parameter, per-listing hint vs parcel-fabric
  * overlay — the p13 roadsafety/B5-safety and p15 transit/gtfsstops
@@ -244,6 +267,66 @@ export async function fetchMaaParcelAreas(
         r: o.r,
       };
     });
+  } catch {
+    return null;
+  }
+}
+
+/** Coverage served with the parcel sidecar (issue #789). */
+export interface MaaParcelCoverage {
+  parcels: MaaParcelArea[];
+  /** Sample window bbox, or null when the route served none. */
+  bbox: [number, number, number, number] | null;
+  harvest_date: string | null;
+  count: number;
+}
+
+function isMaaParcelBbox(v: unknown): v is [number, number, number, number] {
+  return (
+    Array.isArray(v) &&
+    v.length === 4 &&
+    v.every((n) => typeof n === "number" && Number.isFinite(n))
+  );
+}
+
+/**
+ * Parcel polygons + sample-window coverage for the map sidecar route
+ * (issue #789: the boundary rect is drawn from `bbox` so
+ * outside-window unknown is unmistakable). Null on any failure: never
+ * faked — callers fall back to MAAPARCEL_SAMPLE_BBOX.
+ */
+export async function fetchMaaParcelCoverage(
+  fetchImpl: typeof fetch = fetch,
+): Promise<MaaParcelCoverage | null> {
+  try {
+    const res = await fetchImpl("/api/layers/maaparcel/areas");
+    if (!res.ok) return null;
+    const body: unknown = await res.json();
+    if (!body || typeof body !== "object") return null;
+    const raw = (body as { parcels?: unknown; bbox?: unknown; harvest_date?: unknown }).parcels;
+    if (!Array.isArray(raw)) return null;
+    const parcels = raw.filter(isMaaParcelArea).map((p) => {
+      const o = p as MaaParcelArea;
+      return {
+        tunnus: o.tunnus,
+        cls: o.cls,
+        omvorm: o.omvorm,
+        siht1: o.siht1,
+        pindala: o.pindala,
+        aadress: o.aadress,
+        kkis: o.kkis,
+        b: o.b,
+        r: o.r,
+      };
+    });
+    const b = (body as { bbox?: unknown }).bbox;
+    const hd = (body as { harvest_date?: unknown }).harvest_date;
+    return {
+      parcels,
+      bbox: isMaaParcelBbox(b) ? [b[0], b[1], b[2], b[3]] : null,
+      harvest_date: typeof hd === "string" ? hd : null,
+      count: parcels.length,
+    };
   } catch {
     return null;
   }
