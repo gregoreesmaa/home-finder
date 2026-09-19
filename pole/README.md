@@ -75,3 +75,11 @@ an ssh tunnel `127.0.0.1:18001 -> pole:8001` (LaunchAgent
 `ee.homefinder.pole-tunnel`, KeepAlive); consumers use `http://127.0.0.1:18001`
 (`POLE_BASE_URL`). Endpoints: `GET /v1/<dataset>`, `/health`, `/v1/datasets`
 — freshness via `X-Pole-Built-At`, honest 503s, never faked data.
+
+Containerized consumers (`docker compose` web, issue #776) cannot use the
+loopback URL — inside a container `127.0.0.1` is the container itself — so
+`docker-compose.yml` sets
+`POLE_BASE_URL=http://host.docker.internal:18001` (verified 200 from compose
+web 2026-09-19 against the loopback-bound tunnel, plus `extra_hosts` for
+Linux docker). Native dev keeps the `127.0.0.1` default in
+`apps/web/lib/server/livecache.ts`.
