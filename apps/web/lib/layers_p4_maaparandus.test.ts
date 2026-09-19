@@ -86,7 +86,8 @@ describe("drainage registry (#616)", () => {
     // (DENSITY-HOOK #622, 132 + 1) + 1 forest overlay
     // (FOREST-HOOK #624, 133 + 1 = 134).....
     // GBFS-HOOK (#688): +1 gbfs bike-share layer (154 + 1 = 155).
-    expect(ids.length).toBe(155); // KPO (#626): 136 shipped + kpo = 137. // HARBOUR (#627): 135 shipped + harbour = 136.
+    // SKIS-HOOK (#692): +1 skis track layer (155 + 1 = 156).
+    expect(ids.length).toBe(156); // KPO (#626): 136 shipped + kpo = 137. // HARBOUR (#627): 135 shipped + harbour = 136.
     // DELAY-HOOK (#629): + 5 delay band overlays (137 + 5 = 142). // SILLY-HOOK (#711): +12 silly-bundle layers (142 + 12 = 154).
     expect(ids).toContain("maaparandus");
   });

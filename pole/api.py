@@ -29,6 +29,9 @@ DATASETS = {
     "datex-counters": "datex-counters/table.json",
     "datex-cameras": "datex-cameras/table.json",
     "datex-truckpark": "datex-truckpark/table.json",
+    # SKIS-HOOK (#692): seasonal groomed ski tracks (honest 503
+    # off-season until the first in-season operator-verified drop).
+    "skis": "skis/table.json",
 }
 
 app = FastAPI(title="hf-pole")
