@@ -10,6 +10,7 @@ Run on the pole (see ~/hf-pole/README.md):
 """
 
 import datetime
+import json
 import os
 
 from fastapi import FastAPI, HTTPException
@@ -43,11 +44,35 @@ DATASETS = {
 
 app = FastAPI(title="hf-pole")
 
+#: Point-table datasets where an empty payload is a linkage report, not
+#: servable data (issue #765: medre Step-1 writes points [] with
+#: linkage 0 until the Step-2 ADS join fills it). Listed datasets are
+#: not-ready until the named key holds a non-empty list. Unlisted
+#: datasets keep file-existence readiness (honest-empty serves, e.g.
+#: outage with zero live rows, fixit paaste precedent).
+NONEMPTY_JSON_KEYS = {"medre": "points"}
+
+
+def _has_payload(name: str, path: str) -> bool:
+    """True unless the dataset needs a non-empty JSON key it lacks."""
+    key = NONEMPTY_JSON_KEYS.get(name)
+    if key is None:
+        return True
+    try:
+        with open(path, encoding="utf-8") as f:
+            body = json.load(f)
+    except (OSError, ValueError):
+        return False
+    return isinstance(body.get(key), list) and len(body[key]) > 0
+
 
 def _info(name: str, rel: str) -> dict:
     path = os.path.join(BUILT_DIR, rel)
     if not os.path.isfile(path):
         return {"name": name, "ready": False, "path": rel}
+    if not _has_payload(name, path):
+        return {"name": name, "ready": False, "path": rel,
+                "reason": "empty payload, harvester pending"}
     st = os.stat(path)
     return {
         "name": name,

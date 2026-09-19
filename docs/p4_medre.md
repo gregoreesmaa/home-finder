@@ -104,3 +104,38 @@ coordinates are per-address ADS viitepunkt lookups (facts, no bulk
 redistribution); fixtures use synthetic names; reasons never name a
 doctor. The Step-2 harvester re-runs monthly at most (ADS TTL 30 d);
 raw ADS bodies live in `/tmp` caches only.
+
+## § Pole wiring (#765 — pole files, recorded here per AGENTS.md §9)
+
+Wrapper `bin/run-medre.sh` chains Step 1 then Step 2 in one run, so the
+daily Step-1 sidecar (points [], linkage 0) can never clobber a joined
+sidecar — Step 2 re-joins from its TTL cache immediately (warm runs do
+no ADS network; cold first run ≈ 915 paced GETs ≈ 16 min at 04:30):
+
+```sh
+#!/bin/bash
+# Pole wrapper: TEHIK medre Step 1 (register) + Step 2 (ADS join, #660).
+set -eu
+POLE="$HOME/hf-pole"
+export HF_MEDRE_CACHE="$POLE/cache/medre" HF_MEDRE_OUT="$POLE/built"
+mkdir -p "$POLE/cache/medre" "$POLE/cache/medre-ads" "$POLE/built"
+cd "$POLE/harvesters" && PYTHONPATH="$POLE/dims" "$POLE/venv/bin/python" -c \
+  "import os; from batch_medre import main; raise SystemExit(main(os.environ['HF_MEDRE_CACHE'], os.environ['HF_MEDRE_OUT']))"
+cd "$POLE/harvesters" && PYTHONPATH="$POLE/dims" "$POLE/venv/bin/python" \
+  batch_medre_ads.py --cache-dir "$POLE/cache/medre-ads" \
+  --medre-cache-dir "$POLE/cache/medre" --out-dir "$POLE/built"
+```
+
+Cron (pole crontab, daily — unchanged line, now chained):
+`30 4 * * * $HOME/hf-pole/bin/run-medre.sh >>$HOME/hf-pole/logs/medre.log 2>&1`
+
+Deliberate deviation (reviewable): the ADS response cache lives in
+`$POLE/cache/medre-ads`, not `/tmp` — a reboot-cold `/tmp` would force
+a full ~915-GET re-resolve every time, impolite to the keyless Maa-amet
+endpoint. Pole `cache/` is rolling raw and never committed, same
+guarantee as `/tmp` plus persistence.
+
+Read API: `GET /v1/medre` serves the joined sidecar; a Step-1-only
+sidecar (points []) reports not-ready (honest 503) via the
+`NONEMPTY_JSON_KEYS` rule in `pole/api.py` — empty is a linkage
+report, never served data.
