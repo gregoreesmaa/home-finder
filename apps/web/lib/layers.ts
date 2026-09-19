@@ -1720,6 +1720,20 @@ export const LAYERS: LayerDef[] = [
   ...OUTAGE_LAYERS,
 ];
 
+/**
+ * Dropdown/prev-next stepping over the LAYERS registry order (wraps
+ * around at both ends; unknown ids restart at the first layer).
+ * Pure — the /layers dropdown and its Eelmine/Järgmine buttons share
+ * this so keyboard, select, and buttons can never disagree. Pinned
+ * by test.
+ */
+export function stepLayerId(current: LayerId, delta: -1 | 1): LayerId {
+  const idx = LAYERS.findIndex((l) => l.id === current);
+  const next =
+    idx === -1 ? 0 : (idx + delta + LAYERS.length) % LAYERS.length;
+  return LAYERS[next].id;
+}
+
 // G02-HOOK (#136): Group 2 EHR batch-A params (p21/p30/p33/p35/p48) are
 // deliberately NOT layers -- building attributes, not place fields
 // (per-param verdicts in ./layers_group02). Locked by test: none of
