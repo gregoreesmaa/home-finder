@@ -47,6 +47,7 @@ from dims_p4_typical_delay import (  # noqa: E402
     build_delay_table,
     corridor_midpoint,
     corridor_of,
+    coverage_report,
     fetch_gps_snapshot,
     load_shape_corridors,
     muu_baselines,
@@ -161,6 +162,18 @@ def build(cache_dir, snap, vintage=None):
     segments = track_segments(fixes, hour_of=tallinn_hour,
                               corridors=index)
     table = build_delay_table(segments)
+    # #666 coverage: per-(corridor, band) tracked-segment counts ride
+    # the sidecar (JSON-safe) so thin cells are auditable downstream.
+    # thin_reason stays None here (no documented reason at build time
+    # -- undocumented gap, investigate); the cron operator stamps the
+    # reason in the pole README / run log when it is understood.
+    _cov = coverage_report(segments, index)
+    coverage = {
+        "n": [{"corridor": c, "hour_band": b, "n": _cov["n"][(c, b)]}
+              for (c, b) in sorted(_cov["n"])],
+        "thin": [{"corridor": c, "hour_band": b} for (c, b) in _cov["thin"]],
+        "thin_reason": None,
+    }
     baselines = muu_baselines(segments)
     validation = _gtfs_validation(snap, vintage, index)
     by_corridor = {}
@@ -199,6 +212,7 @@ def build(cache_dir, snap, vintage=None):
            "cells": [{"corridor": c, "hour_band": band,
                       "factor": cell["factor"], "n": cell["n"]}
                      for (c, band), cell in sorted(table.items())],
+           "coverage": coverage,
            "pois": table_to_pois(table, index),
            "areas": areas,
            "stats": {"fixes": len(fixes), "segments": len(segments),
