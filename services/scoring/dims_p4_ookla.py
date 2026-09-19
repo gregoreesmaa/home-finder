@@ -204,6 +204,30 @@ def ookla_url(service: str, year: int, quarter: int) -> str:
             % (OOKLA_S3_BASE, service, year, quarter, day, service))
 
 
+def ookla_shapefile_url(service: str, year: int, quarter: int) -> str:
+    """HTTPS URL of one quarterly global tile SHAPEFILE zip (#725).
+
+    Same S3 bucket, ``shapefiles/`` tree instead of ``parquet/`` —
+    the probe-#693-verified 2026-Q2 fixed path
+    (``2026-04-01_performance_fixed_tiles.zip``, ~343 MB, HEAD 200
+    2026-09-19, Last-Modified 2026-08-19). Same ValueError contract
+    as ookla_url (validates before any I/O). The zip body is for the
+    operator's /tmp-or-pole pull only — never CI, never tests (see
+    the LICENCE note in docs/p4_ookla_build_q2.md: CC BY-NC-SA 4.0
+    forbids committing the derived extract).
+    """
+    if service not in ("fixed", "mobile"):
+        raise ValueError("service must be 'fixed' or 'mobile': %r" % (service,))
+    if quarter not in _QUARTER_START:
+        raise ValueError("quarter must be 1..4: %r" % (quarter,))
+    if year < 2019:
+        raise ValueError("Ookla tiles start at Q1 2019: %r" % (year,))
+    day = "%d-%s" % (year, _QUARTER_START[quarter])
+    return ("%s/shapefiles/performance/type=%s/year=%d/quarter=%d/"
+            "%s_performance_%s_tiles.zip"
+            % (OOKLA_S3_BASE, service, year, quarter, day, service))
+
+
 def quarter_label(year: int, quarter: int) -> str:
     """Short 'YYYY-QN' label as echoed in scored reasons."""
     return "%d-Q%d" % (year, quarter)
@@ -248,6 +272,44 @@ def fetch_ookla_parquet(service: str, year: int, quarter: int,
     url = ookla_url(service, year, quarter)  # validates first
     os.makedirs(cache_dir, exist_ok=True)
     path = _cache_path(cache_dir, service, year, quarter)
+    if cache_is_fresh(path, ttl_days):
+        return path
+    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    with urllib.request.urlopen(req, timeout=300) as resp:  # noqa: S310
+        with open(path, "wb") as f:
+            while True:
+                chunk = resp.read(1024 * 1024)
+                if not chunk:
+                    break
+                f.write(chunk)
+    return path
+
+
+def _shapefile_cache_path(cache_dir: str, service: str,
+                           year: int, quarter: int) -> str:
+    """Single quarterly-layer shapefile-zip cache file (#725)."""
+    return os.path.join(cache_dir, "ookla-%s-%dQ%d-tiles.zip"
+                        % (service, year, quarter))
+
+
+def fetch_ookla_shapefile(service: str, year: int, quarter: int,
+                          cache_dir: str = "/tmp/hf-ookla",
+                          ttl_days: int = OOKLA_TTL_DAYS) -> str:
+    """Fetch one quarterly global tile SHAPEFILE zip politely (#725).
+
+    Same contract as fetch_ookla_parquet (cache-first single GET,
+    polite User-Agent, 300 s timeout, transport errors raise, HTTP
+    429 stops, error bodies never cached). Operator / pole use only:
+    the ~343 MB zip is pulled to cache, then the documented
+    Tallinn-bbox extraction (docs/p4_ookla_build_q2.md) reduces it to
+    the small JSON extract — the zip and the derived extract are
+    never committed (CC BY-NC-SA 4.0, see the licence verdict there).
+    Tests never call this (cache-hit path is pinned via
+    cache_is_fresh + the validation test, same as the parquet leg).
+    """
+    url = ookla_shapefile_url(service, year, quarter)  # validates first
+    os.makedirs(cache_dir, exist_ok=True)
+    path = _shapefile_cache_path(cache_dir, service, year, quarter)
     if cache_is_fresh(path, ttl_days):
         return path
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
