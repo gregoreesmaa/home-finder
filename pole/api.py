@@ -27,6 +27,7 @@ DATASETS = {
     "datex-srti": "datex-srti/table.json",
     "datex-weather": "datex-weather/table.json",
     "datex-counters": "datex-counters/table.json",
+    "datex-cameras": "datex-cameras/table.json",
 }
 
 app = FastAPI(title="hf-pole")
