@@ -951,6 +951,13 @@ function isMaaParcelSidecar(v: unknown): v is MaaParcelSidecar {
   );
 }
 
+/** Sample-window coverage served with the parcel sidecar (issue #789). */
+export interface MaaParcelCoverageDoc {
+  parcels: MaaParcelSidecar[];
+  bbox: [number, number, number, number] | null;
+  harvest_date: string | null;
+}
+
 const maaParcelCache = new Map<string, MaaParcelSidecar[]>();
 
 /**
@@ -977,6 +984,35 @@ export async function loadMaaParcelAreas(dir: string): Promise<MaaParcelSidecar[
   maaParcelCache.set(dir, areas);
 
   return areas;
+}
+
+/**
+ * Parcel sidecar + sample-window coverage (issue #789): the drawn
+ * boundary rect comes from the sidecar `bbox` (builder SAMPLE_BBOX),
+ * never hardcoded at the route — a missing/malformed bbox degrades to
+ * null (caller falls back to the baked window constant, never faked).
+ */
+export async function loadMaaParcelCoverage(dir: string): Promise<MaaParcelCoverageDoc> {
+  const parcels = await loadMaaParcelAreas(dir);
+  let bbox: [number, number, number, number] | null = null;
+  let harvest_date: string | null = null;
+  try {
+    const raw = await fs.readFile(path.join(dir, "maa", "parcel-areas.json"), "utf8");
+    const parsed: unknown = JSON.parse(raw);
+    const b = (parsed as { bbox?: unknown } | null)?.bbox;
+    if (
+      Array.isArray(b) &&
+      b.length === 4 &&
+      b.every((n) => typeof n === "number" && Number.isFinite(n))
+    ) {
+      bbox = [b[0], b[1], b[2], b[3]];
+    }
+    const hd = (parsed as { harvest_date?: unknown } | null)?.harvest_date;
+    if (typeof hd === "string") harvest_date = hd;
+  } catch {
+    // Optional provenance: honestly null.
+  }
+  return { parcels, bbox, harvest_date };
 }
 // PLANKTPR-HOOK (#492): designated-use polygon sidecar
 // (`plank/areas.json`, written by scripts/build/batch_planktpr_wfs.py):
