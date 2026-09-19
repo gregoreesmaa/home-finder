@@ -120,6 +120,23 @@ export function isPaasteLayerId(layer: LayerId): layer is PaasteLayerId {
   return (PAASTE_LAYER_IDS as string[]).includes(layer);
 }
 
+/**
+ * Honest-empty status line (issue #785). Paaste ships ZERO points BY
+ * DECISION (addresses are not points — no machine feed, header
+ * verdict) and always renders through the demo fallback — so the
+ * generic "live ebaõnnestus" (live failed) label reads as breakage.
+ * This names the dated verdict instead: EI OLE + source +
+ * buyer-side check, never a count claim beyond the served points,
+ * never a failure. Pure (pinned by test, silly #774 precedent).
+ */
+export function paasteDemoStatus(pointCount: number): string {
+  return (
+    "EI OLE masinloetavat komando-voogu (Päästeamet, 2026-09-13: nimed " +
+    `+ aadressid, koordinaate pole) · ${pointCount} punkti — lähim ` +
+    "komando selgub rescue.ee kontaktidest"
+  );
+}
+
 /** Band spec for the paaste layer (called from the bonusSpecFor hook). */
 export function paasteBonusSpecFor(layer: PaasteLayerId): BonusSpec {
   void layer;

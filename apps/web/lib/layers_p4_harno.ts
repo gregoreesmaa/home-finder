@@ -142,6 +142,23 @@ export function isHarnoLayerId(layer: LayerId): layer is HarnoLayerId {
   return (HARNO_LAYER_IDS as string[]).includes(layer);
 }
 
+/**
+ * Honest-empty status line (issue #785). Harno ships ZERO points BY
+ * DECISION (no verified annual snapshot, HARNO_PROBE) and always
+ * renders through the demo fallback — so the generic "live
+ * ebaõnnestus" (live failed) label reads as breakage. This names the
+ * dated verdict instead: EI OLE + source + buyer-side check, never a
+ * count claim beyond the served points, never a failure. Pure
+ * (pinned by test, silly #774 precedent).
+ */
+export function harnoDemoStatus(pointCount: number): string {
+  return (
+    "EI OLE verifitseeritud aastasnapshotti (Haridussilm/EIS, 2026-09-19: " +
+    `per-kooli masin-eksporti pole) · ${pointCount} punkti — kvaliteeti ` +
+    "näitab Haridussilma kooli-leht"
+  );
+}
+
 /** Quality-band spec for the harno layer (called from the bonusSpecFor hook). */
 export function harnoBonusSpecFor(layer: HarnoLayerId): BonusSpec {
   void layer;

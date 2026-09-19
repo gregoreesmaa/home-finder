@@ -242,6 +242,23 @@ export function isPlanktprLayerId(layer: string): layer is PlanktprLayerId {
 }
 
 /**
+ * Honest-empty status line (issue #785). Planktpr ships ZERO points
+ * BY DECISION (PLANK WFS gone, TPR bulk absent — header verdict) and
+ * always renders through the demo fallback — so the generic "live
+ * ebaõnnestus" (live failed) label reads as breakage. This names the
+ * dated verdict instead: EI OLE + source + buyer-side check, never a
+ * count claim beyond the served points, never a failure. Pure
+ * (pinned by test, silly #774 precedent).
+ */
+export function planktprDemoStatus(pointCount: number): string {
+  return (
+    "EI OLE elusaid polügoone (PLANK-WFS/TPR, 2026-09-13: WFS-liides " +
+    `puudub, korje ootel) · ${pointCount} punkti — kehtestatud ` +
+    "sihtotstarve selgub TPR veebivaatest"
+  );
+}
+
+/**
  * Planktpr bonus lookup for the bonusSpecFor() hook in ./layers.
  * Undefined for other layers (their switch/hooks handle them).
  */

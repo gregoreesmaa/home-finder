@@ -85,6 +85,7 @@ import {
   fetchPlanktprAreas,
   isPlanktprLayerId,
   planktprColorForUse,
+  planktprDemoStatus,
   planktprFold,
   planktprIsTallinn,
   PLANKTPR_DECREE_STAGE,
@@ -94,15 +95,19 @@ import type { UseFillPolygon } from "../../lib/outlines";
 // below) — paaste rides the generic snapshot branch. Honest-empty
 // fetch handling (see effect below) needs the paaste guard.
 import { isSenscomLayerId } from "../../lib/layers_p4_senscom";
-import { isPaasteLayerId } from "../../lib/layers_paaste";
+import { isPaasteLayerId, paasteDemoStatus } from "../../lib/layers_paaste";
 // GBFS-HOOK (#688): honest-empty fetch handling (see guards below)
 // needs the gbfs guard — same stale-points leak, same honest state.
-import { isGbfsLayerId } from "../../lib/layers_p4_gbfs";
+import { gbfsDemoStatus, isGbfsLayerId } from "../../lib/layers_p4_gbfs";
 // HARNO-HOOK (#687): honest-empty fetch handling (see guards below)
 // needs the harno guard — same stale-points leak, same honest state
 // (and the qbands label chain would otherwise misname harno as the
 // Terviseamet extract).
-import { isHarnoLayerId } from "../../lib/layers_p4_harno";
+import { harnoDemoStatus, isHarnoLayerId } from "../../lib/layers_p4_harno";
+// SKIS-HOOK (#692, status #785): honest-empty fetch handling needs
+// the skis guard below — same "live ebaõnnestus" mislabel, same
+// honest state (off-season, no machine feed).
+import { isSkisLayerId, skisDemoStatus } from "../../lib/layers_p4_skis";
 // EHIS-HOOK (#608): dbands status names the EHIS extract for ehis
 // layers (see isDbands branch below) — sport keeps its own label.
 import { isEhisLayerId } from "../../lib/layers_p4_ehis";
@@ -1188,9 +1193,24 @@ export default function LayersPage() {
                 // demo BY DESIGN (no points sidecar, docs/p4_silly.md)
                 // — name the sample state instead of the generic
                 // "live ebaõnnestus" load-failure label.
+                // HONEST-EMPTY-HOOK (#785): harno/skis/gbfs/paaste/
+                // planktpr are honest-empty BY DATED DECISION (no
+                // verified snapshot/feed) — name each dated verdict
+                // instead of the generic load-failure label. Zero
+                // markers stay zero; only the status line changes.
                 : isSillyLayerId(layer)
                   ? sillyDemoStatus(pointCount)
-                  : `DEMO-varu (live ebaõnnestus) · ${pointCount} punkti`;
+                  : isHarnoLayerId(layer)
+                    ? harnoDemoStatus(pointCount)
+                    : isSkisLayerId(layer)
+                      ? skisDemoStatus(pointCount)
+                      : isGbfsLayerId(layer)
+                        ? gbfsDemoStatus(pointCount)
+                        : isPaasteLayerId(layer)
+                          ? paasteDemoStatus(pointCount)
+                          : isPlanktprLayerId(layer)
+                            ? planktprDemoStatus(pointCount)
+                            : `DEMO-varu (live ebaõnnestus) · ${pointCount} punkti`;
   // PLANKTPR-HOOK (#492): the DEMO base already names the failed
   // refresh, so the suffix would repeat it — it rides only on real
   // (non-demo) provenances.
