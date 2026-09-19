@@ -23,6 +23,7 @@ DATASETS = {
     "medre": "medre/medre-points.json",
     "poi": "poi/poi-points.json",
     "mobile": "osm/derived-mobile.json",
+    "datex-restrictions": "datex-restrictions/table.json",
 }
 
 app = FastAPI(title="hf-pole")
