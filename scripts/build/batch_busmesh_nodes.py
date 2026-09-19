@@ -20,7 +20,8 @@ What lands in the sidecars (per window):
 
 Deliberately NOT built: no walk raster, no metro master — the layers
 ride the Euclidean fallback splat with the transfer spec (route-count
-semantics, half 5). 199 off-node stops read honestly unknown instead
+semantics, half 5). 429 off-node stops (1120 - 691 within 100 m of a
+shipped E-R node, measured 2026-09-19) read honestly unknown instead
 of borrowing a neighbour ("üksikteenus", never faked).
 """
 

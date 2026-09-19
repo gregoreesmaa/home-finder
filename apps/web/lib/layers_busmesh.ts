@@ -12,8 +12,9 @@
 // or reliability — marker size is the route count at the stop and the
 // legend says so. 252 Wednesday clusters have no stop within 100 m and
 // are NOT plotted (geometry, not usable transfers — diagnostic count in
-// the builder printout). 199 off-node stops read honestly unknown
-// ("üksikteenus") instead of borrowing a neighbour. Vintage-capped:
+// the builder printout). 429 off-node stops (measured 2026-09-19) read
+// honestly unknown ("üksikteenus") instead of borrowing a neighbour.
+// Vintage-capped:
 // TLT GTFS-vints 2026-09-11; re-verify counts with a new vintage
 // (scripts/build/batch_busmesh_nodes.py).
 //
