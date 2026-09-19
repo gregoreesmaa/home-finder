@@ -31,8 +31,10 @@ verified 200-empty 2026-09-18) — never faked.
 
 ## Quota math (pinned in code)
 
-7 feeds × 4 pulls/day = 28 → `QUOTA_MAX_CALLS = 32` per 24 h window;
-TTL 6 h; 429 = stop; transport errors never cached. Only
+7 feeds × 4 pulls/day = 28/day in practice (cron-bounded) →
+`QUOTA_MAX_CALLS = 32` per TTL window (6 h) as backstop (code counts
+keyed calls per `TTL_S` window; up to 4 × 32 = 128/day theoretical);
+429 = stop; transport errors never cached. Only
 `temporarySlipperyRoad` is live-verified — `--feeds` confirms the
 rest at the first keyed run; non-200 feeds skip honestly.
 
