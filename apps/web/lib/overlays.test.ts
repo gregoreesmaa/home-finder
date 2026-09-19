@@ -142,8 +142,10 @@ describe("overlay legend + colors", () => {
     // NOISE-HOOK (#625) is in; HARBOUR-HOOK (#627): harbour joins the registry (135 + 1).
     // HARBOUR-HOOK (#627) is in; KPO-HOOK (#626): kpo joins the registry (136 + 1).
     // KPO-HOOK (#626) is in; DELAY-HOOK (#629): delay-morning/midday/evening/offpeak/worst join the registry (137 + 5).
+    // SILLY-HOOK (#711): silly-bundle x12 join the registry (142 + 12).
     // MERGE (#613+#614+#615+#616+#617+#618+#619+#620+#621+#622+#624+#625+#627+#626+#629): 123 shipped + seveso + stateland + quarry + maaparandus + soil + etak + relief + canopy + buildings + density + forest + noise + harbour + kpo + delay x5 = 142.
-    expect(ids).toHaveLength(142);
+    // SILLY-HOOK (#711): twelve silly-bundle pins join the registry (142 + 12).
+    expect(ids).toHaveLength(154);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -452,7 +454,7 @@ describe("overlay legend + colors", () => {
     // ETAK-HOOK (#618): etak joins the registry (128 + 1).
     // RELIEF-HOOK (#619): relief joins the registry (129 + 1).
     // MERGE (#613+#614+#615): 123 shipped + seveso + stateland + quarry = 126.
-    expect(seen.size).toBe(142); // DELAY (#629): 137 shipped + delay x5 = 142.
+    expect(seen.size).toBe(154); // SILLY (#711): 142 shipped + silly x12 = 154.
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

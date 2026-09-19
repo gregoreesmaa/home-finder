@@ -563,6 +563,33 @@ export function overlayColorFor(layer: LayerId): string {
     // (distinct-color test).
     case "fixit":
       return "#fdba74";
+    // SILLY-HOOK (#711): silly-bundle markers (point overlays,
+    // stride-sampled like grocery). Twelve playful but registry-unique
+    // colors (each verified free 2026-09-19 — distinct-color test).
+    case "kirikukellad":
+      return "#ffd166";
+    case "kajakad":
+      return "#06d6a0";
+    case "manguvaljakud":
+      return "#ef476f";
+    case "koertepargid":
+      return "#118ab2";
+    case "saunad":
+      return "#f15bb5";
+    case "talisuplus":
+      return "#00bbf9";
+    case "tanavasport":
+      return "#80ed99";
+    case "vesi":
+      return "#00f5d4";
+    case "wc":
+      return "#ff9770";
+    case "aed":
+      return "#e63946";
+    case "raamatukapid":
+      return "#9b5de5";
+    case "kalmistu":
+      return "#577590";
     // SEVESO-HOOK (#613): seveso marker (polygon layer — the point
     // overlay stays empty live, so this colors only the toggle dot).
     // #3b0764: purple-950 hazard violet (NOT #4c1d95 — taken by
@@ -1160,6 +1187,32 @@ export function overlayLegendFor(layer: LayerId): string {
     // window — expired pins never render as current.
     case "fixit":
       return "Teated lähedal (annateada väljavõte: 300 teadet, sh 120 lahendatud) · IGA täpp ÜKS teade (libisev 19 päeva aken; tihedus = teatamine, MITTE elukvaliteet — tühi kaart pole kiitus)";
+    // SILLY-HOOK (#711): silly-bundle legends — mapped dots
+    // (hinnang), never quality, never completeness.
+    case "kirikukellad":
+      return "Kirikukellad (OSM hetktõmmis: 97 kirikut Tallinnas) · täpp = kaardistatud kirik (kellamüra-hinnang läheduse järgi; helitugevus teadmata — kohapeal kuulata)";
+    case "kajakad":
+      return "Kajakad (OSM hetktõmmis: 5 sadamat + 27 turgu + 4 prügilat) · täpp = kajakate toidupaik (hinnang; kajakaid endid ei kaardistata — prügikast kinni)";
+    case "manguvaljakud":
+      return "Mänguväljakud (OSM hetktõmmis: 1874 väljakut) · täpp = kaardistatud väljak (päevakära-hinnang; kellaajad teadmata)";
+    case "koertepargid":
+      return "Koertepargid (OSM hetktõmmis: 89 parki) · täpp = kaardistatud koertepark (haukumis-hinnang; koormus teadmata)";
+    case "saunad":
+      return "Avalikud saunad (OSM hetktõmmis: 34 sauna) · täpp = kaardistatud saun (leili-hinnang; hinnad-ajad teadmata)";
+    case "talisuplus":
+      return "Talisupluskohad (OSM hetktõmmis: 19 suplusala + 53 ujumist) · täpp = kaardistatud supluskoht (talvine auguhooldus TEADMATA — küsi kohapeal)";
+    case "tanavasport":
+      return "Tänavasport (OSM hetktõmmis: 319 välijõusaali + 53 rulat + 6 discgolfi) · täpp = tänavaspordipunkt (hinnang; registri saalid on sport-kihis)";
+    case "vesi":
+      return "Suvevesi (OSM hetktõmmis: 88 purskkaevu + 74 joogivett) · täpp = kaardistatud vesi (jahutus-hinnang; töökord teadmata)";
+    case "wc":
+      return "Avalikud WC-d (OSM hetktõmmis: 205 WC-d) · täpp = kaardistatud WC (hädahinnang; avatus teadmata)";
+    case "aed":
+      return "AED defibrillaatorid (OSM hetktõmmis: AINULT 11 — hõre kaardistus, mitte tegelikkus) · täpp = kaardistatud AED (hinnang; hädaolukorras 112)";
+    case "raamatukapid":
+      return "Raamatukapid (OSM hetktõmmis: 18 kappi) · täpp = kaardistatud raamatukapp (lugemis-hinnang; valik teadmata)";
+    case "kalmistu":
+      return "Kalmistu-vaikus (OSM hetktõmmis: 30 kalmistut) · täpp = kaardistatud kalmistu (roheline vaikus-hinnang; dB mõõtmata)";
     // SEVESO-HOOK (#613): seveso danger-class fills (Päästeamet
     // ohualad) — inside a named polygon reads by class color, outside
     // every polygon is unknown (never safe): an unregistered hazard is
