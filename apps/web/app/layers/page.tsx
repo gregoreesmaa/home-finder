@@ -51,10 +51,11 @@ import {
   isShedLayerId,
   type ShedArea,
 } from "../../lib/layers_p4_tomtom_sheds";
-// DATEX-HOOK (#763): DATEX status nouns for the freshness line (pole
-// live tables, markers only).
+// DATEX-HOOK (#763) + WINDOWED-HOOK (#783): DATEX windowed status
+// line (pole window tables, markers only — window + vintage, never
+// momentary state).
 import {
-  datexStatusNoun,
+  datexStatusLine,
   isDatexLayerId,
 } from "../../lib/layers_datex";
 // INCIDENTS-HOOK (#763): incidents status line (operator 6h cache,
@@ -1178,7 +1179,7 @@ export default function LayersPage() {
             // table per feed (user-visible freshness — issue AC).
             // Geometry-less feeds show the format truth, not a count.
             : isDatexLayerId(layer)
-              ? `TarkTee DATEX ${datexStatusNoun(layer)} (pooli elustabel${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""}) · ${pointCount > 0 ? `${pointCount} punkti` : "olukorrad geomeetriata"}`
+              ? datexStatusLine(layer, pointCount, ageMs !== null ? ageEt(ageMs) : null)
               // INCIDENTS-HOOK (#763): incidents freshness names the
               // 6h operator cache (user-visible freshness — issue AC).
               : isIncidentsLayerId(layer)
@@ -1234,9 +1235,12 @@ export default function LayersPage() {
           ? isAsumediaLayerId(layer)
             ? asumediaEmptyStatus()
             : "Selle piirkonna kohta hetktõmmises andmed puuduvad"
-          : provenance === "live"
-            ? `LIVE: Overpass serveri kaudu · ${pointCount} punkti`
-            : provenance === "cache"
+          // WINDOWED-HOOK (#783): the dead live-provenance branch is
+          // gone — verified no route emits it anymore (all routes
+          // serve snapshot|empty|stale; grep-pinned by
+          // layers_datex_window.test.ts). An unknown provenance now
+          // falls through to the cache/stale/demo chain below.
+          : provenance === "cache"
               ? `Vahemälust (vanus ${ageEt(ageMs)}) · ${pointCount} punkti`
               : provenance === "stale"
                 ? `Aegunud vahemälu — upstream maas (vanus ${ageEt(ageMs)}) · ${pointCount} punkti`

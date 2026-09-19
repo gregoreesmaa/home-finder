@@ -1137,20 +1137,22 @@ export function overlayLegendFor(layer: LayerId): string {
     // pole live table (6 h TTL), local operator cache as fallback.
     case "incidents":
       return "Intsidendid täna (ummik/sulgus/teetöö) · pooli elustabel 6 h puhvrist (kohalik varu, aegunud peitub ajatempli taha, reaalajas pole)";
-    // DATEX-HOOK (#763): DATEX feeds (pole live tables, short-term
-    // cache only — no committed sidecars).
+    // DATEX-HOOK (#763) + WINDOWED-HOOK (#783): DATEX feeds name
+    // their observation window + vintage (pole window tables,
+    // short-term cache only — no committed sidecars, never
+    // momentary state).
     case "datex-restrictions":
-      return "Teepiirangud (DATEX) · olukorrad ilma kaardigeomeetriata (pooli elustabel, asukohata)";
+      return "Teepiirangud (DATEX) · olukorrad ilma kaardigeomeetriata (24 h aken, öine tõmme; asukohata)";
     case "datex-srti":
-      return "Ohuteated (DATEX SRTI) · olukorrad ilma kaardigeomeetriata (pooli elustabel, asukohata)";
+      return "Ohuteated (DATEX SRTI) · olukorrad ilma kaardigeomeetriata (6 h aken; asukohata)";
     case "datex-weather":
-      return "Teeilmajaamad (DATEX) · mõõtjaamad pooli elustabelist (mõõtmik, mitte prognoos)";
+      return "Teeilmajaamad (DATEX) · mõõtjaamad (1 h aken, tunni tõmme; mõõtmik, mitte prognoos)";
     case "datex-counters":
-      return "Liiklusloendurid (DATEX) · voog/kiirus pooli elustabelist (mõõtmik, mitte hinnang)";
+      return "Liiklusloendurid (DATEX) · voog/kiirus (1 h aken, tunni tõmme; mõõtmik, mitte hinnang)";
     case "datex-cameras":
-      return "Liikluskaamerad (DATEX) · ainult asukohad (pildid pooli tabelis, binaare kaardil pole)";
+      return "Liikluskaamerad (DATEX) · ainult asukohad (1 h aken, tunni tõmme; binaare kaardil pole)";
     case "datex-truckpark":
-      return "Veoautoparklad (DATEX) · asukohad + kohad pooli elustabelist";
+      return "Veoautoparklad (DATEX) · asukohad + kohad (30-päeva aken, kuutõmme)";
     // RSAFE-HOOK (#481): roadsafety (p13, P4-012 proxy) — mapped
     // crossings + calming, the raster holds the full count field. The
     // usage-not-safety caveat rides along (P4-032 precedent): dots are

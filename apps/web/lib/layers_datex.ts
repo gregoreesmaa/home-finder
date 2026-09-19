@@ -1,12 +1,14 @@
 // TarkTee DATEX overlays (issue #763, harvesters #681–#686): road
 // restrictions, SRTI, weather stations, counters, cameras, truck parks.
 //
-// Data reads POLE LIVE TABLES (/v1/datex-*, never committed sidecars —
-// the SHORT-TERM CACHE ONLY verdict gates all DATEX work, see
-// docs/datex_restrictions.md section 0). Freshness is the contract:
-// the route enforces per-feed TTLs against X-Pole-Built-At and degrades
-// past them (labeled demo for point layers, honestly-empty for the
-// geometry-less feeds).
+// Data reads POLE AGGREGATE-WINDOW TABLES (/v1/datex-*, never committed
+// sidecars — the SHORT-TERM CACHE ONLY verdict gates all DATEX work,
+// see docs/datex_restrictions.md section 0). The window is the
+// contract (issue #783: no momentary state — every live-descended layer
+// names its window + vintage): the route enforces per-feed TTLs against
+// X-Pole-Built-At and degrades past them (labeled demo for point
+// layers, honestly-empty for the geometry-less feeds). Pulls stay
+// pole-only (server-side fetchPoleTable; never browser-direct).
 //
 // GEOMETRY HONESTY (load-bearing): only feeds whose rows carry
 // measured lat/lon plot points (weather/counters/cameras/truckpark).
@@ -65,6 +67,23 @@ export const DATEX_TTL_S: Record<DatexLayerId, number> = {
   "datex-truckpark": 30 * 24 * 3600,
 };
 
+/**
+ * Observation window per feed, user-visible (issue #783: each
+ * live-descended layer names its window + vintage). The window is the
+ * pull cadence + serve TTL in parity: restrictions pulled daily (04:17
+ * cron) served 24h; srti pulled every 6h served 6h; weather/counters/
+ * cameras pulled hourly served 1h; truckpark pulled monthly (3rd 05:23
+ * cron) served 30d. Keys mirror DATEX_TTL_S (pinned by test).
+ */
+export const DATEX_WINDOW_ET: Record<DatexLayerId, string> = {
+  "datex-restrictions": "24 h aken, öine tõmme",
+  "datex-srti": "6 h aken",
+  "datex-weather": "1 h aken, tunni tõmme",
+  "datex-counters": "1 h aken, tunni tõmme",
+  "datex-cameras": "1 h aken, tunni tõmme",
+  "datex-truckpark": "30-päeva aken, kuutõmme",
+};
+
 const DATEX_ET: Record<
   DatexLayerId,
   { title: string; label: string; good: string; bad: string; source: string }
@@ -72,32 +91,34 @@ const DATEX_ET: Record<
   "datex-restrictions": {
     title: "Teepiirangud (DATEX)",
     label: "P4-piirangud",
-    good: "roheline = piiranguid hetkel pole (olukorrad geomeetriata)",
-    bad: "punane = piiranguolukord pooli tabelis (asukohta pole)",
+    good: "roheline = piiranguid aknas pole (olukorrad geomeetriata)",
+    bad: "punane = piiranguolukord akna tabelis (asukohta pole)",
     source:
-      "TarkTee DATEX piiranguvoog pooli elustabelist (olukorra-ID + liik, kaardigeomeetriat voos pole — asukohata)",
+      "TarkTee DATEX piiranguvoog pooli vaatlusakna tabelist (24 h aken, öine tõmme; olukorra-ID + liik, kaardigeomeetriat voos pole — asukohata)",
   },
   "datex-srti": {
     title: "Ohuteated (DATEX SRTI)",
     label: "P4-ohuteated",
-    good: "roheline = ohuteateid hetkel pole (olukorrad geomeetriata)",
-    bad: "punane = ohuteateolukord pooli tabelis (asukohta pole)",
+    good: "roheline = ohuteateid aknas pole (olukorrad geomeetriata)",
+    bad: "punane = ohuteateolukord akna tabelis (asukohta pole)",
     source:
-      "TarkTee DATEX SRTI pooli elustabelist (olukorra-ID + liik, kaardigeomeetriat voos pole — asukohata)",
+      "TarkTee DATEX SRTI pooli vaatlusakna tabelist (6 h aken; olukorra-ID + liik, kaardigeomeetriat voos pole — asukohata)",
   },
   "datex-weather": {
     title: "Teeilmajaamad (DATEX)",
     label: "P4-teeilm",
-    good: "roheline = ilmajaam lähedal (mõõtmik, mitte prognoos)",
+    good: "roheline = ilmajaam lähedal (mõõtmik 1 h aknast, mitte prognoos)",
     bad: "punane = jaamu lähedal pole (teadmata)",
-    source: "TarkTee DATEX ilmajaamade pooli elustabel (mõõtjaamad, lühiajalisest puhvrist)",
+    source:
+      "TarkTee DATEX ilmajaamade pooli vaatlusakna tabel (1 h aken, tunni tõmme; mõõtjaamad)",
   },
   "datex-counters": {
     title: "Liiklusloendurid (DATEX)",
     label: "P4-loendurid",
-    good: "roheline = loendur lähedal (mõõtmik, mitte hinnang)",
+    good: "roheline = loendur lähedal (mõõtmik 1 h aknast, mitte hinnang)",
     bad: "punane = loendureid lähedal pole (teadmata)",
-    source: "TarkTee DATEX loendurite pooli elustabel (voog/kiirus, lühiajalisest puhvrist)",
+    source:
+      "TarkTee DATEX loendurite pooli vaatlusakna tabel (1 h aken, tunni tõmme; voog/kiirus)",
   },
   "datex-cameras": {
     title: "Liikluskaamerad (DATEX)",
@@ -105,14 +126,15 @@ const DATEX_ET: Record<
     good: "roheline = kaamera lähedal (ainult asukoht, pilti kaardil pole)",
     bad: "punane = kaameraid lähedal pole (teadmata)",
     source:
-      "TarkTee DATEX kaamerate pooli elustabel (asukoht + URL pooli tabelis; binaare kaardile ei tooda kunagi)",
+      "TarkTee DATEX kaamerate pooli vaatlusakna tabel (1 h aken, tunni tõmme; asukoht + URL pooli tabelis; binaare kaardile ei tooda kunagi)",
   },
   "datex-truckpark": {
     title: "Veoautoparklad (DATEX)",
     label: "P4-veoautoparklad",
-    good: "roheline = parkla lähedal (asukoht + kohad, 30-päeva puhver)",
+    good: "roheline = parkla lähedal (asukoht + kohad, 30-päeva aknast)",
     bad: "punane = parklaid lähedal pole (teadmata)",
-    source: "TarkTee DATEX veoautoparklate pooli elustabel (asukoht + kohad, lühiajalisest puhvrist)",
+    source:
+      "TarkTee DATEX veoautoparklate pooli vaatlusakna tabel (30-päeva aken, kuutõmme; asukoht + kohad)",
   },
 };
 
@@ -252,6 +274,23 @@ export function datexStatusNoun(layer: DatexLayerId): string {
   }
 }
 
+/**
+ * Windowed status line for /layers (issue #783: window + vintage on
+ * the surface, never momentary state). `age` is the preformatted
+ * vintage ("3 h", null when unknown) — formatting lives with the
+ * page's ageEt, this helper owns the window wording only.
+ */
+export function datexStatusLine(
+  layer: DatexLayerId,
+  pointCount: number,
+  age: string | null,
+): string {
+  const vintage = age !== null ? `; vanus ${age}` : "";
+  const tail =
+    pointCount > 0 ? `${pointCount} punkti` : "olukorrad geomeetriata";
+  return `TarkTee DATEX ${datexStatusNoun(layer)} (${DATEX_WINDOW_ET[layer]}${vintage}) · ${tail}`;
+}
+
 /** Hook marker, pinned by test so the wiring contract stays greppable. */
 export const DATEX_HOOK =
-  "DATEX-HOOK (#763): datex overlays wired into layers/overlays/snapshot; pole live tables only, restrictions/srti honestly-empty, cameras URL-only.";
+  "DATEX-HOOK (#763): datex overlays wired into layers/overlays/snapshot; pole live tables only, restrictions/srti honestly-empty, cameras URL-only. WINDOWED-HOOK (#783): every feed names its observation window + vintage, never momentary state.";
