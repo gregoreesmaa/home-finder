@@ -70,4 +70,8 @@ here (joint follow-up). 6 new files, zero shared-file edits.
 Weekly refresh runs on the pole (`pole/bin/run-tomtom-sheds.sh`,
 Sundays 05:20, key from pole `state/tomtom.key`); without a fresh
 pull the shed layers stay honestly-empty 503 + slate "mõõtmata"
-(#787). Serving the pole cache to web clients is the #782 slice.
+(#787). The wrapper also writes the servable table
+(`built/tomtom-sheds/table.json`, `--build` stdout contract #776),
+exposed as pole dataset `sheds` and read pole-first by
+`/api/layers/sheds/areas` (local cache fallback, 7-day TTL both
+legs, 200 names `source: pole|cache`) — #782.

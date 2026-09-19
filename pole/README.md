@@ -9,8 +9,8 @@ AGENTS.md §9 states the split; this directory is its executable record.
 | Lives here (repo, reviewed) | Lives on the Pi only |
 |---|---|
 | `api.py` — read API | `cache/` — rolling raw pulls (never pruned; gather-only) |
-| `bin/` — 18 cron wrappers + guard/start | `built/` — latest sidecars served by the API |
-| `crontab.txt` — exact cadence (18 lines) | `state/` — keys, tokens, static vintages (NEVER committed) |
+| `bin/` — 19 cron wrappers + guard/start | `built/` — latest sidecars served by the API |
+| `crontab.txt` — exact cadence (19 lines) | `state/` — keys, tokens, static vintages (NEVER committed) |
 | `requirements.txt` — API venv pin | `logs/` — per-job logs (trimmed >10 MB) |
 | `bootstrap.sh` — new-Pi setup | `venv/` — built by bootstrap |
 | `tests/` — API + replica drift tests | |
@@ -29,7 +29,7 @@ git clone <repo> ~/home-finder        # or scp an export
 scp old-pole:hf-pole/state/datex.key old-pole:hf-pole/state/tomtom.key \
     old-pole:hf-pole/state/opencellid.token old-pole:hf-pole/state/*.zip \
     ~/hf-pole/state/
-crontab -l                            # verify 18 lines
+crontab -l                            # verify 19 lines
 sudo reboot                           # @reboot starts the API
 curl 127.0.0.1:8001/health           # honest 503s until first pulls land
 ```

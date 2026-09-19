@@ -98,8 +98,12 @@ def main(argv: Optional[List[str]] = None) -> int:
                     and time.time() - os.path.getmtime(
                         os.path.join(args.cache_dir, f)) < SHED_TTL_S
                     for f in expected):
+                # STDOUT CONTRACT (#776/#782): stdout is the servable
+                # table only (the pole wrapper redirects it into
+                # built/tomtom-sheds/table.json); human status rides
+                # stderr, never stdout.
                 print("ok: värske puhver, uusi päringuid ei tehtud (%s)"
-                      % args.cache_dir)
+                      % args.cache_dir, file=sys.stderr)
                 if not args.build:
                     return 0
                 args.pull = False
@@ -128,7 +132,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                   "ei puhvritatud.", file=sys.stderr)
             return 1
         print("ok: %d ulatuspäringut puhvritatud (%s)" % (pulled,
-                                                         args.cache_dir))
+                                                         args.cache_dir),
+              file=sys.stderr)
     if args.build:
         rows: List[dict] = []
         if args.fixture:
@@ -150,7 +155,11 @@ def main(argv: Optional[List[str]] = None) -> int:
                                      "band": band,
                                      "ring": parse_shed_response(p)})
         table = build_table(rows)
-        print(json.dumps(table["counts"], ensure_ascii=False))
+        # STDOUT CONTRACT (#776/#782): exactly one JSON doc, the full
+        # table — the pole wrapper redirects stdout into
+        # built/tomtom-sheds/table.json and the web route parses it
+        # (polygons + counts). Human status rides stderr, never stdout.
+        print(json.dumps(table, ensure_ascii=False))
     return 0
 
 

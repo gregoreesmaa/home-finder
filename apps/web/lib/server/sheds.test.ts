@@ -6,11 +6,13 @@ import {
   SHED_CACHE_FILE,
   SHED_EMPTY_REASON,
   SHED_HUBS,
+  SHED_POLE_DATASET,
   SHED_TTL_S,
   isShedCacheFresh,
   loadShedSnapshot,
   shedAreasForLayer,
   shedAreasResult,
+  shedSnapshotFromPoleTable,
 } from "./sheds";
 
 const HUB = SHED_HUBS[0];
@@ -185,5 +187,66 @@ describe("shed empty-cache honesty (#787)", () => {
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe("sheds pole-first read (#782)", () => {
+  const NOW = 1_758_326_400_000;
+  const RING: Array<[number, number]> = [
+    [59.44, 24.75],
+    [59.45, 24.76],
+    [59.46, 24.75],
+  ];
+
+  function poleBody() {
+    return {
+      polygons: [
+        { hub: "city-center", budget_s: 900, band: "rush", ring: RING },
+        { hub: "port", budget_s: 1800, band: "offpeak", ring: RING },
+        // Unmeasured / junk rows never paint, never throw.
+        { hub: "port", budget_s: 900, band: "rush", ring: [] },
+        { hub: "port", budget_s: 900, band: "rush" },
+        "junk",
+      ],
+      counts: { total: 4, measured: 2, unmeasured: 2 },
+    };
+  }
+
+  it("pins the pole dataset name", () => {
+    expect(SHED_POLE_DATASET).toBe("sheds");
+  });
+
+  it("parses the python table shape (budget_s -> budgetS)", () => {
+    const snap = shedSnapshotFromPoleTable(poleBody(), NOW - 1000, NOW);
+    expect(snap).not.toBeNull();
+    expect(snap?.polygons).toEqual([
+      { hub: "city-center", budgetS: 900, band: "rush", ring: RING },
+      { hub: "port", budgetS: 1800, band: "offpeak", ring: RING },
+    ]);
+    expect(snap?.builtAtMs).toBe(NOW - 1000);
+  });
+
+  it("stale pole tables read null (never served as fresh)", () => {
+    expect(
+      shedSnapshotFromPoleTable(poleBody(), NOW - SHED_TTL_S * 1000 - 1, NOW),
+    ).toBeNull();
+  });
+
+  it("junk pole bodies read null (never faked sheds)", () => {
+    expect(shedSnapshotFromPoleTable(null, NOW, NOW)).toBeNull();
+    expect(shedSnapshotFromPoleTable({ polygons: [] }, NOW, NOW)).toBeNull();
+    expect(
+      shedSnapshotFromPoleTable({ polygons: "nope" }, NOW, NOW),
+    ).toBeNull();
+    expect(shedSnapshotFromPoleTable(poleBody(), NaN, NOW)).toBeNull();
+  });
+
+  it("200 body names the serving leg (pole vs cache provenance)", () => {
+    const snap = shedSnapshotFromPoleTable(poleBody(), NOW - 1000, NOW);
+    const poleRes = shedAreasResult(snap, "shed-15-peak", "pole");
+    expect(poleRes.status).toBe(200);
+    expect((poleRes.body as { source: string }).source).toBe("pole");
+    const cacheRes = shedAreasResult(snap, "shed-15-peak");
+    expect((cacheRes.body as { source: string }).source).toBe("cache");
   });
 });

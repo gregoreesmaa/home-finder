@@ -47,12 +47,15 @@ import {
   datexPointsForLayer,
   isDatexLayerId,
 } from "../../../../lib/layers_datex";
-// INCIDENTS-HOOK (#763): incident points come from the operator
-// cache (never committed, never live).
+// INCIDENTS-HOOK (#763; pole-first #782): incident points come from
+// the pole live table first, the operator cache as fallback (never
+// committed, never live).
 import {
   INCIDENTS_CACHE_FILE,
+  INCIDENTS_POLE_DATASET,
   INCIDENTS_TTL_S,
   incidentPointsForCache,
+  incidentPointsForPoleTable,
   incidentsCacheDir,
   isIncidentsLayerId,
 } from "../../../../lib/layers_p4_incidents";
@@ -636,20 +639,33 @@ export async function GET(
       ageMs: Date.now() - pole.builtAtMs,
     });
   }
-  // INCIDENTS-HOOK (#763): incident points come from the operator 6h
-  // cache. Fresh serves snapshot; STALE serves the "stale" provenance
-  // (visible age — the freshness timestamp is the contract, issue AC)
-  // and never as live; missing/corrupt reads 500 -> labeled demo.
+  // INCIDENTS-HOOK (#763; pole-first #782): incident points come
+  // from the pole live table first (server-side, no-store, 6h TTL
+  // enforced here at serve time — outage #775 shape), the local
+  // operator 6h cache as fallback. Fresh serves snapshot; STALE
+  // serves the "stale" provenance (visible age — the freshness
+  // timestamp is the contract, issue AC) and never as live;
+  // missing/corrupt on both reads 500 -> labeled demo. source names
+  // which leg served (pole provenance for the compose bar, #782).
   if (isIncidentsLayerId(def.id)) {
-    const cached = await readOpCacheFile(
-      incidentsCacheDir(), INCIDENTS_CACHE_FILE,
-    );
-    if (!cached) {
+    const pole = await fetchPoleTable(INCIDENTS_POLE_DATASET);
+    const poleFresh =
+      pole && Date.now() - pole.builtAtMs <= INCIDENTS_TTL_S * 1000
+        ? pole
+        : null;
+    const cached = poleFresh
+      ? null
+      : await readOpCacheFile(incidentsCacheDir(), INCIDENTS_CACHE_FILE);
+    const table = poleFresh ? poleFresh.table : cached?.table;
+    const builtAtMs = poleFresh
+      ? poleFresh.builtAtMs
+      : (cached?.builtAtMs ?? null);
+    if (!table || builtAtMs === null) {
       return NextResponse.json({ error: "no incidents cache data" }, { status: 500 });
     }
-    const ageMs = Date.now() - cached.builtAtMs;
+    const ageMs = Date.now() - builtAtMs;
     const stale = ageMs > INCIDENTS_TTL_S * 1000;
-    const inView = incidentPointsForCache(cached.table)
+    const inView = (poleFresh ? incidentPointsForPoleTable : incidentPointsForCache)(table)
       .filter(
         (p) =>
           p.lon >= bbox.minlon && p.lon <= bbox.maxlon &&
@@ -660,6 +676,7 @@ export async function GET(
       points: inView,
       provenance: stale ? "stale" : inView.length > 0 ? "snapshot" : "empty",
       ageMs,
+      source: poleFresh ? "pole" : "cache",
     });
   }
   // ACCBLACK-HOOK (#490, reopen #522): projected blackspot points come

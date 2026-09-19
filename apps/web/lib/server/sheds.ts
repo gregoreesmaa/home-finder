@@ -16,6 +16,9 @@ import { readOpCacheTable } from "./livecache";
 /** 7-day short-term cache (parity with SHED_TTL_S in Python, pinned). */
 export const SHED_TTL_S = 7 * 24 * 3600;
 
+/** Pole live-table dataset (pole/api.py TOMTOM-HOOK, issue #782). */
+export const SHED_POLE_DATASET = "sheds";
+
 /** The 5 job hubs the keyed harvester pulls (batch_tomtom_isochrones). */
 export const SHED_HUBS = [
   "city-center",
@@ -105,6 +108,51 @@ export async function loadShedSnapshot(
   return { polygons, builtAtMs: oldest };
 }
 
+/**
+ * Pole live-table body ({ polygons: [{ hub, budget_s, band, ring }] },
+ * dims_tomtom_isochrones.build_table shape served from
+ * built/tomtom-sheds/table.json) -> snapshot. Null when malformed,
+ * empty, or stale past the 7-day TTL against builtAtMs (the pole
+ * file mtime via X-Pole-Built-At — never throws, never serves old
+ * sheds as fresh). Note the snake_case budget_s: the Python table
+ * speaks budget_s, this module speaks budgetS. Rings with <3 finite
+ * [lat, lon] pairs never paint (same rule as the cache path).
+ * nowMs is injectable so tests stay hermetic.
+ */
+export function shedSnapshotFromPoleTable(
+  body: unknown,
+  builtAtMs: number,
+  nowMs: number = Date.now(),
+): ShedSnapshot | null {
+  if (!Number.isFinite(builtAtMs)) return null;
+  if (nowMs - builtAtMs > SHED_TTL_S * 1000) return null;
+  if (typeof body !== "object" || body === null) return null;
+  const polys = (body as { polygons?: unknown }).polygons;
+  if (!Array.isArray(polys)) return null;
+  const polygons: ShedPolygon[] = [];
+  for (const p of polys) {
+    if (typeof p !== "object" || p === null) continue;
+    const rec = p as Record<string, unknown>;
+    if (typeof rec.hub !== "string" || typeof rec.band !== "string") continue;
+    const budgetS = Number(rec.budget_s);
+    if (!Number.isFinite(budgetS)) continue;
+    const ringRaw = rec.ring;
+    if (!Array.isArray(ringRaw)) continue;
+    const ring: Array<[number, number]> = [];
+    for (const pt of ringRaw) {
+      if (!Array.isArray(pt) || pt.length < 2) continue;
+      if (typeof pt[0] === "boolean" || typeof pt[1] === "boolean") continue;
+      const lat = Number(pt[0]);
+      const lon = Number(pt[1]);
+      if (Number.isFinite(lat) && Number.isFinite(lon)) ring.push([lat, lon]);
+    }
+    if (ring.length < 3) continue;
+    polygons.push({ hub: rec.hub, budgetS, band: rec.band, ring });
+  }
+  if (polygons.length === 0) return null;
+  return { polygons, builtAtMs };
+}
+
 /** Paint areas for one shed layer (rings with <3 points never paint). */
 export function shedAreasForLayer(
   snap: ShedSnapshot | null,
@@ -132,14 +180,16 @@ export const SHED_EMPTY_REASON =
   "Tühja puhvrit ei asendata väljamõeldud polügoonidega.";
 
 /**
- * Route payload for one shed layer. 200 { areas, builtAtMs } when the
- * cache serves; 503 { error, reason } when it is missing or fully
+ * Route payload for one shed layer. 200 { areas, builtAtMs, source }
+ * when the cache serves (source names pole-first vs local fallback,
+ * issue #782); 503 { error, reason } when both are missing or fully
  * stale — never 200-empty, never demo polygons. Pure (hermetic
  * tests); the Next route is a thin wrapper around this.
  */
 export function shedAreasResult(
   snap: ShedSnapshot | null,
   layer: ShedLayerId,
+  source: "pole" | "cache" = "cache",
 ): { status: number; body: unknown } {
   if (!snap) {
     return {
@@ -149,6 +199,10 @@ export function shedAreasResult(
   }
   return {
     status: 200,
-    body: { areas: shedAreasForLayer(snap, layer), builtAtMs: snap.builtAtMs },
+    body: {
+      areas: shedAreasForLayer(snap, layer),
+      builtAtMs: snap.builtAtMs,
+      source,
+    },
   };
 }
