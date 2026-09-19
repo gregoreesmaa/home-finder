@@ -28,8 +28,10 @@ the TomTom flow leg.
 
 ## Quota math (pinned in code)
 
-2 feeds × 24 pulls/day = 48 → `QUOTA_MAX_CALLS = 50` per 24 h
-window; TTL 1 h; 429 = stop; transport errors never cached. Feed
+2 feeds × 24 pulls/day = 48/day in practice (cron-bounded) →
+`QUOTA_MAX_CALLS = 50` per TTL window (1 h) as backstop (code counts
+keyed calls per `TTL_S` window; up to 24 × 50 = 1200/day theoretical);
+429 = stop; transport errors never cached. Feed
 slugs confirmed at the first keyed run via `--feeds`; non-200 feeds
 skip honestly.
 
