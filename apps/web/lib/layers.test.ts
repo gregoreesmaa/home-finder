@@ -238,6 +238,9 @@ describe("layer registry", () => {
       // SKIS-HOOK (#692): skis track id (P4-skis leisure pins, no
       // parameters3 id).
       "skis",
+      // HARNO-HOOK (#687): harno quality id (P4-harno slice, no
+      // parameters3 id).
+      "harno",
       // SPORT-HOOK (#607): sport-venue slice ids (P4-048 pool/hall/
       // field — paramIds empty, parameters4 namespace).
       "sport_hall",
@@ -422,6 +425,10 @@ describe("layer registry", () => {
     // leisure pins, no parameters3 number).
     expect(LAYERS.find((l) => l.id === "skis")?.paramIds).toEqual([]);
     expect(LAYERS.find((l) => l.id === "skis")?.paramLabel).toBe("P4-skis");
+    // HARNO-HOOK (#687): harno binds NO parameters3 number (P4-harno
+    // quality slice, no parameters3 number).
+    expect(LAYERS.find((l) => l.id === "harno")?.paramIds).toEqual([]);
+    expect(LAYERS.find((l) => l.id === "harno")?.paramLabel).toBe("P4-harno");
     // SPORT-HOOK (#607): sport slices ride paramLabel, paramIds stays
     // [] (parameters4 P4-048 slices, no parameters3 number).
     for (const id of ["sport_hall", "sport_field", "sport_pool"]) {
@@ -894,6 +901,14 @@ describe("layer registry", () => {
       // tracks are never carried over — stale groomed dots would be
       // fake snow). Pinned in layers_p4_skis.test.ts.
       if (l.id === "skis") {
+        expect(l.fallbackPoints).toEqual([]);
+        continue;
+      }
+      // HARNO-HOOK (#687): harno is the same honest-empty shape —
+      // ZERO fallback points BY HONESTY (no annual snapshot;
+      // invented fallback dots would be fake schools). Pinned in
+      // layers_p4_harno.test.ts.
+      if (l.id === "harno") {
         expect(l.fallbackPoints).toEqual([]);
         continue;
       }

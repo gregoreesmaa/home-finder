@@ -765,6 +765,15 @@ export function overlayColorFor(layer: LayerId): string {
     // test).
     case "skis":
       return "#a5b4fc";
+    // HARNO-HOOK (#687): harno marker (honest-empty quality overlay —
+    // today zero markers). #f0abfc: fuchsia-300 koolivihiku roosa
+    // (NOT #f9a8d4/#fbcfe8 — taken paler pinks — and NOT
+    // #e879f9/#d946ef — taken deeper fuchsias; distinct from 9A's
+    // #22d3ee and 9B's #a5b4fc by sibling coordination; layers never
+    // co-render). Distinct from every other marker (distinct-color
+    // test).
+    case "harno":
+      return "#f0abfc";
   }
 }
 
@@ -1356,6 +1365,11 @@ export function overlayLegendFor(layer: LayerId): string {
     // honestly empty off-season (see layers_p4_skis.ts).
     case "skis":
       return "Suusarajad (P4-skis) · hooldatud sissepääs ≤1 km (hooaja-hinnang — EI OLE masinloetavat rajaoleku-voogu, olek tallinn.ee lehelt + tel 600 8333)";
+    // HARNO-HOOK (#687): harno (P4-harno) — school quality bands,
+    // honestly empty until the first annual snapshot (see
+    // layers_p4_harno.ts).
+    case "harno":
+      return "Koolikvaliteet (P4-harno) · lähim kool ≤1 km (hinnang 80/70/60/45/30, lagi 80 — EI OLE verifitseeritud aastasnapshotti, näitajad Haridussilma kooli-lehelt)";
   }
 }
 

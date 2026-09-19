@@ -80,6 +80,11 @@ import { isPaasteLayerId } from "../../lib/layers_paaste";
 // GBFS-HOOK (#688): honest-empty fetch handling (see guards below)
 // needs the gbfs guard — same stale-points leak, same honest state.
 import { isGbfsLayerId } from "../../lib/layers_p4_gbfs";
+// HARNO-HOOK (#687): honest-empty fetch handling (see guards below)
+// needs the harno guard — same stale-points leak, same honest state
+// (and the qbands label chain would otherwise misname harno as the
+// Terviseamet extract).
+import { isHarnoLayerId } from "../../lib/layers_p4_harno";
 // EHIS-HOOK (#608): dbands status names the EHIS extract for ehis
 // layers (see isDbands branch below) — sport keeps its own label.
 import { isEhisLayerId } from "../../lib/layers_p4_ehis";
@@ -300,7 +305,11 @@ export default function LayersPage() {
         // (no keyless feed verified — never another layer's stale
         // points under the gbfs bands kernel, never invented
         // markers).
-        if (isPaasteLayerId(layer) || isGbfsLayerId(layer)) {
+        // HARNO-HOOK (#687): harno rides the same honest-empty
+        // state (no annual snapshot — never another layer's stale
+        // points under the harno qbands kernel, never invented
+        // schools).
+        if (isPaasteLayerId(layer) || isGbfsLayerId(layer) || isHarnoLayerId(layer)) {
           setProvenance("demo");
           setAgeMs(null);
           setPointCount(0);
@@ -335,7 +344,9 @@ export default function LayersPage() {
         // never demo markers (fallbackPoints is [] by honesty).
         // GBFS-HOOK (#688): gbfs rides along (same honest-empty
         // shape, no keyless feed).
-        if (isPaasteLayerId(layer) || isGbfsLayerId(layer)) {
+        // HARNO-HOOK (#687): harno rides along (same honest-empty
+        // shape, no annual snapshot).
+        if (isPaasteLayerId(layer) || isGbfsLayerId(layer) || isHarnoLayerId(layer)) {
           setProvenance("demo");
           setAgeMs(null);
           setPointCount(0);
