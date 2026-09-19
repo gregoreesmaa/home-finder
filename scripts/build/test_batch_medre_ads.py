@@ -51,3 +51,34 @@ def test_sidecar_shape_matches_loader(tmp_path):
     assert len(doc["points"]) == len(out["points"])
     assert doc["linkage_rate"] == out["linkage_rate"]
     assert doc["counts"]["total"] == len(out["points"])
+
+
+def test_429_aborts_unwritten_other_errors_unjoin(tmp_path, monkeypatch):
+    """#660 review: urlopen RAISES HTTPError (never returns 429), so a
+    429 must surface as AdsStop (run aborts unwritten, loop stops
+    hammering); any other HTTP error marks just that row unjoined."""
+    import urllib.error
+
+    from batch_medre_ads import AdsStop, ads_search
+
+    def _boom_429(req, timeout=None):
+        raise urllib.error.HTTPError(req.full_url, 429,
+                                     "Too Many Requests", {}, None)
+
+    monkeypatch.setattr("urllib.request.urlopen", _boom_429)
+    try:
+        ads_search("Harju maakond, Tallinn, Pärnu mnt 113",
+                   str(tmp_path), {})
+    except AdsStop:
+        pass
+    else:
+        raise AssertionError("429 did not abort")
+    assert os.listdir(str(tmp_path)) == []  # nothing cached, nothing built
+
+    def _boom_500(req, timeout=None):
+        raise urllib.error.HTTPError(req.full_url, 500,
+                                     "Internal Server Error", {}, None)
+
+    monkeypatch.setattr("urllib.request.urlopen", _boom_500)
+    assert ads_search("Harju maakond, Tallinn, Pärnu mnt 113",
+                      str(tmp_path), {}) is None

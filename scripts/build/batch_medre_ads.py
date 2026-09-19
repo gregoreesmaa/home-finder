@@ -28,6 +28,7 @@ import json
 import os
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from typing import Dict, List, Optional, Tuple
@@ -212,14 +213,19 @@ def ads_search(address: str, cache_dir: str,
     req = urllib.request.Request(url, headers={"User-Agent": MEDRE_ADS_UA})
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
-            if resp.status == 429:
-                raise AdsStop("ADS answered 429 (stop, not retry)")
             if resp.status != 200:
                 memo[address] = None
                 return None
             body = resp.read()
-    except AdsStop:
-        raise
+    except urllib.error.HTTPError as e:
+        # urlopen RAISES on HTTP errors (never returns a 429 response,
+        # so status-sniffing above cannot see one): a 429 is the stop
+        # signal (abort the run unwritten); any other HTTP error marks
+        # just this row unresolvable (counted-unjoined downstream).
+        if e.code == 429:
+            raise AdsStop("ADS answered 429 (stop, not retry)")
+        memo[address] = None
+        return None
     except Exception:
         memo[address] = None
         return None
