@@ -15,7 +15,7 @@ sidecars, NO stored tables: the cache lives in a git-ignored operator
 cache dir, max-age honored when present.
 
 Quota math: trickle - at most GEOCODE_MAX_CALLS = 100 keyed calls per
-1 d window (only coord-less listings miss the cache); 429 = stop.
+30 d window (only coord-less listings miss the cache); 429 = stop.
 
 Unresolvable addresses are LOGGED, the listing is KEPT (NULL coords,
 surfaced in QA) - never dropped silently. Pinned by test.
@@ -215,6 +215,7 @@ def fetch_geocode(address: str, cache_dir: str,
             if status != 200:
                 return None
             body = resp.read()
+            max_age = _max_age_s(resp)
         if len(body) < GEOCODE_MIN_BYTES:
             return None
         data = json.loads(body.decode("utf-8"))
@@ -226,7 +227,12 @@ def fetch_geocode(address: str, cache_dir: str,
         lat, lon = float(pos["lat"]), float(pos["lon"])
         if not (math.isfinite(lat) and math.isfinite(lon)):
             return None
-        cache[h] = {"lat": lat, "lon": lon, "fetched_at": time.time()}
+        fetched_at = time.time()
+        if max_age is not None and max_age < ttl_s:
+            # ToS 11.4: never keep Results longer than max-age -
+            # backdate fetched_at so the TTL expires on time.
+            fetched_at -= ttl_s - max_age
+        cache[h] = {"lat": lat, "lon": lon, "fetched_at": fetched_at}
         _cache_save(cache_dir, cache)
         _quota_spend(cache_dir)
         return lat, lon

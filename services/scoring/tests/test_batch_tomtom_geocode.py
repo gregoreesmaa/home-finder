@@ -3,8 +3,10 @@
 Hermetic: urlopen is stubbed, env key is faked per-test - no network,
 no real key material anywhere. Pins the hard refusal without a key on
 BOTH paths (--repair and --report), the address-hash cache (ZERO
-re-calls for known addresses - urlopen call counts), the
-before/after coord-less counts, and quota enforcement. Unresolvable
+re-calls for known addresses - urlopen call counts), response
+max-age backdating fetched_at (ToS 11.4), --report with a key making
+zero requests, the before/after coord-less counts, and quota
+enforcement. Unresolvable
 addresses are kept (NULL, logged), never dropped. The one keyed probe
 at the end is explicitly flagged: skipped without TOMTOM_API_KEY,
 single polite call, writes to /tmp only, never runs in CI.
@@ -61,12 +63,15 @@ class _Resp:
         return False
 
 
-def _stub_urlopen_factory(monkeypatch, calls, bodies=None, status=200):
+def _stub_urlopen_factory(monkeypatch, calls, bodies=None, status=200,
+                         headers=None):
     bodies = bodies if bodies is not None else [FIXTURE_GEOCODE]
 
     class _R(_Resp):
         pass
     _R.status = status
+    if headers is not None:
+        _R.headers = _Headers(headers)
     state = {"n": 0}
 
     def _fake(req, timeout=30):
@@ -183,6 +188,49 @@ def test_quota_cap_refuses(tmp_path, monkeypatch):
                "--cache-dir", str(tmp_path)])
     assert rc == 2
     assert calls == []
+
+
+def test_max_age_backdates_fetched_at(tmp_path, monkeypatch):
+    """I1: a response max-age below TTL caps the effective TTL.
+
+    Stubbed max-age=3600 (< 30 d TTL): the stored fetched_at is
+    backdated by (TTL - max-age), so the entry expires ~3600 s after
+    the fetch instead of being over-retained for 30 d (ToS 11.4).
+    """
+    import time
+
+    import dims_tomtom_geocode as d
+    monkeypatch.setenv("TOMTOM_API_KEY", "test-key-not-real")
+    calls: list = []
+    _stub_urlopen_factory(monkeypatch, calls,
+                          bodies=[FIXTURE_GEOCODE, "EMPTY"],
+                          headers={"Cache-Control": "max-age=3600"})
+    before = time.time()
+    rc = main(["--repair", "--listings-file", _write_listings(tmp_path),
+               "--cache-dir", str(tmp_path)])
+    assert rc == 0
+    cache = json.loads((tmp_path / "tomtom_geocode_cache.json")
+                       .read_text(encoding="utf-8"))
+    assert len(cache) == 1  # L3 EMPTY never cached; L2 hash-hits L1
+    entry = next(iter(cache.values()))
+    assert entry["lat"] == 59.437
+    expected = before - (d.GEOCODE_TTL_S - 3600)
+    assert abs(entry["fetched_at"] - expected) < 120
+
+
+def test_report_with_key_makes_zero_requests(tmp_path, monkeypatch, capsys):
+    """M8: --report with a key costs nothing - no requests, no quota."""
+    monkeypatch.setenv("TOMTOM_API_KEY", "test-key-not-real")
+    calls: list = []
+    _stub_urlopen_factory(monkeypatch, calls)
+    rc = main(["--report", "--listings-file", _write_listings(tmp_path),
+               "--cache-dir", str(tmp_path)])
+    assert rc == 0
+    assert calls == []
+    assert not (tmp_path / "tomtom_geocode_quota.json").exists()
+    counts = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+    assert counts == {"coord_less_before": 3, "repaired": 0,
+                      "coord_less_after": 3}
 
 
 def test_transport_error_never_cached(tmp_path, monkeypatch):
