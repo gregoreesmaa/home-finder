@@ -30,6 +30,7 @@ import argparse
 import json
 import os
 import sys
+import time
 from typing import Any, Dict, List, Optional
 
 #: Identifying user agent (used only if a machine feed ever
@@ -128,6 +129,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--cache-dir", required=True)
     ap.add_argument("--status", default=None,
                     help="Operator-verified status JSON (in-season drop).")
+    ap.add_argument("--out", default=None,
+                    help="Write built/skis/table.json here (pole wrapper).")
     args = ap.parse_args(argv)
     if not args.pull and not args.build:
         args.pull = args.build = True
@@ -145,6 +148,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         print(json.dumps({"total": table["counts"]["total"],
                           "season": table["season"]},
                          ensure_ascii=False))
+        if args.out:
+            payload = dict(table)
+            payload["built_at"] = time.strftime("%Y-%m-%dT%H:%M:%S+00:00",
+                                                time.gmtime())
+            tmp = args.out + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as fh:
+                json.dump(payload, fh, ensure_ascii=False)
+            os.replace(tmp, args.out)
         return 0
     return 0
 

@@ -57,6 +57,17 @@ Or re-run `bootstrap.sh` (idempotent; keeps cache/built/state/logs).
 4. `python3 -m pytest pole/tests/ -q` — the drift test covers the new references.
 5. Deploy per Re-sync above; smoke-run once; document cadence in the Pi README.
 
+## Seasonal datasets (no cron)
+
+`skis` is the seasonal exception: `pole/api.py` already exposes
+`skis/table.json` and `pole/bin/run-skis.sh` builds it, but there is
+deliberately NO cron line (off-season the cron does not run at all —
+docs/p4_skis.md). In season the operator drops a verified
+`state/skis-status.json` and runs `bin/run-skis.sh` by hand; absent
+drop = honest off-season empty. GBFS has no wrapper at all by the
+2026-09-19 verdict (no verified keyless feed — docs/p4_gbfs.md);
+add one only after a live re-verification.
+
 ## Consuming the data
 
 Direct LAN HTTP to the Pi is upstream-filtered (port 22 only). The Mac holds
