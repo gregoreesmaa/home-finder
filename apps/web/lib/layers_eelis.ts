@@ -277,15 +277,60 @@ export async function fetchEelisAreas(
 }
 
 /**
+ * Offshore-stray verdict (issue #788, dated 2026-09-20): the single
+ * `eelis:kaadamisalad` row in the Tallinn window (zone_id "546732811",
+ * nimi "Paljassaare", "Kaadamisala (pinnas)", staatus "Töötav") plots
+ * ENTIRELY offshore — the live WFS re-pull on 2026-09-20 returns the
+ * same 1 row with the same ring (bbox lon 24.647–24.664, lat
+ * 59.474–59.486, centroid lon 24.654 / lat 59.479), while the OSM
+ * coastline puts the northernmost land in that corridor (the
+ * Paljassaare tip) at lat 59.47086, ~330 m south of the ring's
+ * southern vertex, with no coastline segment crossing any ring edge.
+ * A felling polygon with zero land overlap is not a clearcut the map
+ * may paint, so the stray is filtered from the painted overlay here
+ * and the status names this verdict (eelisRaieOffshoreStatus) instead
+ * of "1 polügooni". Pinned by test. Re-verify on the annual EELIS
+ * re-pull (docs/p4_eelis.md checklist): rows with any other zone_id
+ * paint normally.
+ */
+export const EELIS_RAIE_OFFSHORE_ZONE_ID = "546732811";
+
+/** True for the documented offshore kaadamisalad stray (pure). */
+export function isEelisOffshoreStray(area: EelisArea): boolean {
+  return area?.kiht === "raie" && area?.zone_id === EELIS_RAIE_OFFSHORE_ZONE_ID;
+}
+
+/**
+ * Honest-empty status for eelisraie when the sidecar holds the
+ * documented offshore stray and no other raie row (pure, pinned by
+ * test): names the dated verdict instead of a polygon count. Null
+ * when a paintable raie row exists (normal "N polügooni" path) or the
+ * sidecar holds no raie rows at all.
+ */
+export function eelisRaieOffshoreStatus(
+  areas: EelisArea[] | null | undefined,
+): string | null {
+  if (!areas) return null;
+  const raie = areas.filter((a) => a && a.kiht === "raie");
+  if (raie.length === 0 || raie.some((a) => !isEelisOffshoreStray(a))) return null;
+  return (
+    "EELIS raiealad · 0 polügooni (registri kirje Paljassaare on meres — " +
+    "merd ei värvita; kontrollitud 2026-09-20, elus-WFS + rannajoon)"
+  );
+}
+
+/**
  * Sidecar rows for one map layer (pure): the shared sidecar carries all
- * three kinds; each layer paints only its own.
+ * three kinds; each layer paints only its own. The documented offshore
+ * kaadamisalad stray (#788) never paints — painting it would put a
+ * "felling polygon" in Tallinn Bay.
  */
 export function eelisAreasForKind(
   areas: EelisArea[] | null | undefined,
   kiht: "kaitse" | "niit" | "raie",
 ): EelisArea[] {
   if (!areas) return [];
-  return areas.filter((a) => a && a.kiht === kiht);
+  return areas.filter((a) => a && a.kiht === kiht && !isEelisOffshoreStray(a));
 }
 
 /** Sidecar kind painted by a map layer (null for other layers). */

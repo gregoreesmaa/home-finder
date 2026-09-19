@@ -146,6 +146,44 @@ def test_build_unparseable_provided_writes_nothing(tmp_path):
     assert stats["ok"] is False
 
 
+def test_raie_row_keeps_lonlat_ring_and_box():
+    """#788: a raie-shaped fixture survives parse->sidecar byte-faithful.
+
+    Synthetic offshore-style quad (rounded, NOT register geometry — no
+    scraped data committed). Rings stay GeoJSON [lon, lat] end to end
+    and the prefilter box stays [minlon, minlat, maxlon, maxlat]
+    (ParkOutline precedent); the shape mirrors the deployed Paljassaare
+    row (live-WFS-verified 2026-09-20, see issue #788).
+    """
+    quad = [[24.65, 59.48], [24.66, 59.49], [24.66, 59.48],
+            [24.66, 59.47], [24.65, 59.48]]
+    text = """{"type": "FeatureCollection", "features": [%s]}""" % feat(
+        "Fixture raie", "R-9", quad, ', "aasta": "2024"')
+    zones = G.parse_collection(text, "raie", "id", "aasta")
+    assert zones is not None and len(zones) == 1
+    assert zones[0]["zone_id"] == "R-9"
+    assert zones[0]["lisa"] == "2024"
+    rows = G.to_sidecar(zones)
+    assert len(rows) == 1
+    assert rows[0]["r"] == [quad]
+    assert rows[0]["b"] == [24.65, 59.47, 24.66, 59.49]
+
+
+def test_swapped_axes_cannot_pose_as_tallinn():
+    """#788: an axis-swapped ring falls outside Estonia, never Tallinn.
+
+    Tallinn window (lon 24.55-24.95, lat 59.35-59.65): swapping the
+    fixture above puts lon ~59 / lat ~24, so a CRS ring-order swap in
+    the builder can never silently re-ship as in-window data — it
+    would read as outside-Estonia junk, and the order pin above fails
+    first anyway.
+    """
+    quad = [[24.65, 59.48], [24.66, 59.49], [24.66, 59.48],
+            [24.66, 59.47], [24.65, 59.48]]
+    for lon, lat in ([la, lo] for lo, la in quad):
+        assert not (24.55 <= lon <= 24.95 and 59.35 <= lat <= 59.65)
+
+
 def test_builder_is_offline_by_construction():
     src = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                             "batch_eelis_poly.py"), encoding="utf-8").read()

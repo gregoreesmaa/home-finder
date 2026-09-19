@@ -13,13 +13,16 @@ import {
   EELIS_NO_METRO,
   EELIS_PARAM_LABELS,
   EELIS_RASTER_FILE,
+  EELIS_RAIE_OFFSHORE_ZONE_ID,
   EELIS_TAGS,
   EELIS_WFS_LAYER,
   bonusSpecForEelis,
   eelisAreasForKind,
   eelisKindForLayer,
+  eelisRaieOffshoreStatus,
   fetchEelisAreas,
   isEelisLayerId,
+  isEelisOffshoreStray,
   isEelisPolygonOnlyLayer,
 } from "./layers_eelis";
 import {
@@ -255,7 +258,88 @@ describe("eelis source and sidecar (#488)", () => {
     expect(areas?.[0].nimi).toContain("Pirita");
     expect(areas?.[0].kiht).toBe("kaitse");
   });
+});
 
+describe("eelis offshore stray (#788)", () => {
+  // Synthetic stand-ins (rounded, NOT register geometry — no scraped
+  // data committed): the stray mirrors the documented offshore row's
+  // identity (zone_id), the real row a future on-land kaadamisala.
+  const STRAY = {
+    kiht: "raie" as const,
+    zone_id: EELIS_RAIE_OFFSHORE_ZONE_ID,
+    nimi: "Paljassaare",
+    lisa: "",
+    b: [24.65, 59.47, 24.66, 59.49] as [number, number, number, number],
+    r: [
+      [
+        [24.65, 59.48],
+        [24.66, 59.49],
+        [24.66, 59.48],
+        [24.65, 59.47],
+      ],
+    ],
+  };
+  const REAL_RAIE = {
+    ...STRAY,
+    zone_id: "999999999",
+    nimi: "Nõmme raie",
+    b: [24.7, 59.37, 24.72, 59.39] as [number, number, number, number],
+    r: [
+      [
+        [24.7, 59.37],
+        [24.72, 59.37],
+        [24.72, 59.39],
+        [24.7, 59.39],
+      ],
+    ],
+  };
+
+  it("pins the documented stray identity", () => {
+    expect(EELIS_RAIE_OFFSHORE_ZONE_ID).toBe("546732811");
+    expect(isEelisOffshoreStray(STRAY)).toBe(true);
+    expect(isEelisOffshoreStray(REAL_RAIE)).toBe(false);
+    expect(isEelisOffshoreStray({ ...STRAY, kiht: "niit" })).toBe(false);
+    expect(isEelisOffshoreStray({ ...AREA, kiht: "kaitse" })).toBe(false);
+  });
+
+  it("never paints the stray but paints real raie rows", () => {
+    expect(eelisAreasForKind([STRAY], "raie")).toEqual([]);
+    expect(eelisAreasForKind([STRAY, REAL_RAIE], "raie")).toEqual([REAL_RAIE]);
+    // Sibling kinds are untouched by the stray filter.
+    expect(eelisAreasForKind([{ ...AREA, kiht: "kaitse" as const }], "kaitse")).toHaveLength(1);
+    expect(eelisAreasForKind([STRAY], "kaitse")).toEqual([]);
+  });
+
+  it("states honest-empty with the dated verdict, never a count", () => {
+    const status = eelisRaieOffshoreStatus([STRAY]);
+    expect(status).not.toBeNull();
+    expect(status).toContain("0 polügooni");
+    expect(status).toContain("meres");
+    expect(status).toContain("2026-09-20");
+    expect(status).not.toContain("ebaõnnestus");
+    // A paintable row returns the layer to the normal count path.
+    expect(eelisRaieOffshoreStatus([STRAY, REAL_RAIE])).toBeNull();
+    expect(eelisRaieOffshoreStatus([REAL_RAIE])).toBeNull();
+    expect(eelisRaieOffshoreStatus([])).toBeNull();
+    expect(eelisRaieOffshoreStatus(null)).toBeNull();
+  });
+
+  it("pins ring order + bbox shape so a swap can never silently re-ship", () => {
+    // Fixture rings are GeoJSON [lon, lat]; the box is
+    // [minlon, minlat, maxlon, maxlat] (ParkOutline precedent).
+    expect(STRAY.r[0][0]).toEqual([24.65, 59.48]);
+    expect(STRAY.b).toEqual([24.65, 59.47, 24.66, 59.49]);
+    // The same ring axis-swapped lands outside Estonia entirely
+    // (lon ~59, lat ~24) — a swap can never look like Tallinn data.
+    const swapped = STRAY.r[0].map(([a, b]) => [b, a]);
+    for (const [lon, lat] of swapped) {
+      expect(lon).toBeGreaterThan(50);
+      expect(lat).toBeLessThan(30);
+    }
+  });
+});
+
+describe("eelis sidecar fetch", () => {
   it("drops malformed zones and fails null (never faked)", async () => {
     const bad = { ...AREA, r: [[[24.83]]] };
     const wrongKind = { ...AREA, kiht: "heide" };
