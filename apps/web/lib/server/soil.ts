@@ -85,8 +85,20 @@ export type SoilViewportResult =
       cached: boolean;
       undecoded: number;
       urbanDropped: number;
+      /** Human Estonian note, present only when areas is empty but
+       * urbanDropped > 0 (#662) — the service answered, every contour
+       * was urban/water. The too-wide branch keeps its own note. */
+      note?: string;
     }
   | { ok: false; reason: "bad-bbox" | "too-wide" | "upstream" };
+
+/**
+ * Human note when the service answered but every contour dropped as
+ * urban/water (#662): unknown ground, not good soil. Exact string —
+ * pinned by test, shown verbatim on the layers page.
+ */
+export const SOIL_URBAN_NOTE =
+  "Asustatud/veekogu alal mullakaarti pole (teadmata, mitte hea pinnas)";
 
 function num(v: unknown): number | null {
   return typeof v === "number" && Number.isFinite(v) ? v : null;
@@ -198,7 +210,12 @@ export async function fetchSoilViewport(
   try {
     const hit = await deps.readCache(key);
     if (hit) {
-      const parsed = JSON.parse(hit) as { areas?: unknown; atMs?: unknown };
+      const parsed = JSON.parse(hit) as {
+        areas?: unknown;
+        atMs?: unknown;
+        undecoded?: unknown;
+        urbanDropped?: unknown;
+      };
       // Entries must prove freshness: ageless or expired entries are
       // refetched (fail closed — never serve ageless data as current).
       if (
@@ -206,12 +223,16 @@ export async function fetchSoilViewport(
         typeof parsed.atMs === "number" &&
         now - parsed.atMs <= SOIL_TTL_MS
       ) {
+        const areas = parsed.areas as SoilArea[];
+        const urbanDropped =
+          typeof parsed.urbanDropped === "number" ? parsed.urbanDropped : 0;
         return {
           ok: true,
-          areas: parsed.areas as SoilArea[],
+          areas,
           cached: true,
-          undecoded: 0,
-          urbanDropped: 0,
+          undecoded: typeof parsed.undecoded === "number" ? parsed.undecoded : 0,
+          urbanDropped,
+          ...(areas.length === 0 && urbanDropped > 0 ? { note: SOIL_URBAN_NOTE } : {}),
         };
       }
     }
@@ -282,12 +303,19 @@ export async function fetchSoilViewport(
     else urbanDropped++;
   }
   try {
-    await deps.writeCache(key, JSON.stringify({ areas, atMs: now }));
+    await deps.writeCache(key, JSON.stringify({ areas, atMs: now, undecoded, urbanDropped }));
   } catch {
     // Cache write failure: serve the fresh areas anyway (cache is an
     // optimization, never load-bearing).
   }
-  return { ok: true, areas, cached: false, undecoded, urbanDropped };
+  return {
+    ok: true,
+    areas,
+    cached: false,
+    undecoded,
+    urbanDropped,
+    ...(areas.length === 0 && urbanDropped > 0 ? { note: SOIL_URBAN_NOTE } : {}),
+  };
 }
 
 /** Hook marker, pinned by test so the wiring contract stays greppable. */
