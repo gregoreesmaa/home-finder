@@ -116,3 +116,39 @@ export function shedAreasForLayer(
     (p) => p.budgetS === spec.budgetS && p.band === spec.band && p.ring.length >= 3,
   );
 }
+
+/**
+ * Honest-empty reason served with the 503 when the weekly operator
+ * cache is missing or fully stale (issue #787): names the weekly
+ * keyed cache + 7-day TTL + the refill path, and states that no
+ * polygons are invented. Pinned by test (never faked sheds).
+ */
+export const SHED_EMPTY_REASON =
+  "TomTomi nädalapuhver puudub või on aegunud " +
+  "(7-päeva TTL; 5 hubi x 15/30 min x tipptund/tipuväline). " +
+  "Värskenda võtmega tõmbega: pole iganädalane töö " +
+  "(pole/bin/run-tomtom-sheds.sh) või " +
+  "batch_tomtom_isochrones.py --pull --cache-dir. " +
+  "Tühja puhvrit ei asendata väljamõeldud polügoonidega.";
+
+/**
+ * Route payload for one shed layer. 200 { areas, builtAtMs } when the
+ * cache serves; 503 { error, reason } when it is missing or fully
+ * stale — never 200-empty, never demo polygons. Pure (hermetic
+ * tests); the Next route is a thin wrapper around this.
+ */
+export function shedAreasResult(
+  snap: ShedSnapshot | null,
+  layer: ShedLayerId,
+): { status: number; body: unknown } {
+  if (!snap) {
+    return {
+      status: 503,
+      body: { error: "shed cache empty", reason: SHED_EMPTY_REASON },
+    };
+  }
+  return {
+    status: 200,
+    body: { areas: shedAreasForLayer(snap, layer), builtAtMs: snap.builtAtMs },
+  };
+}

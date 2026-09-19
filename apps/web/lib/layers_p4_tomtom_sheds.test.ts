@@ -147,4 +147,25 @@ describe("shed wiring (#763)", () => {
     const bad = vi.fn().mockResolvedValue({ ok: false });
     expect(await fetchShedAreas("shed-15-peak", bad as never)).toBeNull();
   });
+
+  it("maps the honest-empty 503-with-reason to null (never faked, #787)", async () => {
+    const gone = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => ({
+        error: "shed cache empty",
+        reason: "TomTomi nädalapuhver puudub või on aegunud",
+      }),
+    });
+    for (const layer of SHED_LAYER_IDS) {
+      expect(await fetchShedAreas(layer, gone as never)).toBeNull();
+    }
+    const empty200 = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ areas: [], builtAtMs: null }),
+    });
+    expect(await fetchShedAreas("shed-30-peak", empty200 as never)).toEqual(
+      [],
+    );
+  });
 });
