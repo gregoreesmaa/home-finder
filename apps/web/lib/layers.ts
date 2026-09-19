@@ -780,6 +780,18 @@ import {
   isPaasteLayerId,
   paasteBonusSpecFor,
 } from "./layers_paaste";
+// GBFS-HOOK (#688): micromobility bike-share tables live in
+// ./layers_p4_gbfs (P4-GBFS station leg, honest-empty — no keyless
+// feed). That module imports layers only as types, so no runtime
+// cycle.
+import type { GbfsLayerId } from "./layers_p4_gbfs";
+import {
+  GBFS_DECAY,
+  GBFS_LAYERS,
+  GBFS_TAGS,
+  gbfsBonusSpecFor,
+  isGbfsLayerId,
+} from "./layers_p4_gbfs";
 
 export type LayerId =
   | "parks"
@@ -894,6 +906,9 @@ export type LayerId =
   // PAASTE-HOOK (#493): komando overlay id (./layers_paaste, P4-012
   // station half, honest-empty).
   | PaasteLayerId
+  // GBFS-HOOK (#688): bike-share overlay id (./layers_p4_gbfs,
+  // P4-GBFS station leg, honest-empty).
+  | GbfsLayerId
   // SPORT-HOOK (#607): sport-venue slice ids (./layers_p4_sport,
   // P4-048 pool/hall/field).
   | SportLayerId
@@ -1184,6 +1199,8 @@ const DECAY_KM: Record<LayerId, number> = {
   ...ASUMEDIA_DECAY,
   // PAASTE-HOOK (#493): paaste radius (see layers_paaste.ts PAASTE_DECAY).
   ...PAASTE_DECAY,
+  // GBFS-HOOK (#688): gbfs radius (see layers_p4_gbfs.ts GBFS_DECAY).
+  ...GBFS_DECAY,
   // SPORT-HOOK (#607): sport-venue radii (see layers_p4_sport.ts SPORT_DECAY).
   ...SPORT_DECAY,
   // EHIS-HOOK (#608): school radii (see layers_p4_ehis.ts EHIS_DECAY).
@@ -1475,6 +1492,9 @@ export const LAYERS: LayerDef[] = [
   // PAASTE-HOOK (#493): paaste def (P4-012 slice, no parameters3 id —
   // parameters3 p12 is schools) from ./layers_paaste.
   ...PAASTE_LAYERS,
+  // GBFS-HOOK (#688): gbfs def (P4-GBFS station leg, no parameters3
+  // id) from ./layers_p4_gbfs.
+  ...GBFS_LAYERS,
   // SPORT-HOOK (#607): sport-venue slice defs (P4-048 pool/hall/field,
   // no parameters3 id) from ./layers_p4_sport.
   ...SPORT_LAYERS,
@@ -1675,6 +1695,9 @@ const TAGS: Record<LayerId, string> = {
   // PAASTE-HOOK (#493): paaste source note (see layers_paaste.ts
   // PAASTE_TAGS — prose, NOT an Overpass fragment).
   ...PAASTE_TAGS,
+  // GBFS-HOOK (#688): gbfs source note (see layers_p4_gbfs.ts
+  // GBFS_TAGS — prose, NOT an Overpass fragment).
+  ...GBFS_TAGS,
   // SPORT-HOOK (#607): sport-venue source notes (see layers_p4_sport.ts
   // SPORT_TAGS — prose, NOT an Overpass fragment).
   ...SPORT_TAGS,
@@ -2254,6 +2277,8 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   if (asumedia) return asumedia;
   // PAASTE-HOOK (#493): paaste spec lives in ./layers_paaste.
   if (isPaasteLayerId(layer)) return paasteBonusSpecFor(layer);
+  // GBFS-HOOK (#688): gbfs spec lives in ./layers_p4_gbfs.
+  if (isGbfsLayerId(layer)) return gbfsBonusSpecFor(layer);
   throw new Error(`unknown layer: ${layer}`);
 }
 

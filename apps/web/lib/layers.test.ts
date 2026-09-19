@@ -232,6 +232,9 @@ describe("layer registry", () => {
       // PAASTE-HOOK (#493): paaste komando id (P4-012 slice, no
       // parameters3 id — parameters3 p12 stays schools).
       "paaste",
+      // GBFS-HOOK (#688): gbfs bike-share id (P4-GBFS station leg,
+      // no parameters3 id).
+      "gbfs",
       // SPORT-HOOK (#607): sport-venue slice ids (P4-048 pool/hall/
       // field — paramIds empty, parameters4 namespace).
       "sport_hall",
@@ -408,6 +411,10 @@ describe("layer registry", () => {
     // PAASTE-HOOK (#493): paaste binds NO parameters3 number
     // (namespace lock — 12 is schools).
     expect(LAYERS.find((l) => l.id === "paaste")?.paramIds).toEqual([]);
+    // GBFS-HOOK (#688): gbfs binds NO parameters3 number (P4-GBFS
+    // micromobility slice, no parameters3 number).
+    expect(LAYERS.find((l) => l.id === "gbfs")?.paramIds).toEqual([]);
+    expect(LAYERS.find((l) => l.id === "gbfs")?.paramLabel).toBe("P4-GBFS");
     // SPORT-HOOK (#607): sport slices ride paramLabel, paramIds stays
     // [] (parameters4 P4-048 slices, no parameters3 number).
     for (const id of ["sport_hall", "sport_field", "sport_pool"]) {
@@ -864,6 +871,14 @@ describe("layer registry", () => {
       // surfaced for the reviewer (AGENTS.md §7.5): approve by merging,
       // or reject by demanding a verified anchor point.
       if (l.id === "paaste") {
+        expect(l.fallbackPoints).toEqual([]);
+        continue;
+      }
+      // GBFS-HOOK (#688): gbfs is the same honest-empty shape —
+      // ZERO fallback points BY HONESTY (no keyless feed verified;
+      // invented fallback dots would be fake stations). Pinned in
+      // layers_p4_gbfs.test.ts.
+      if (l.id === "gbfs") {
         expect(l.fallbackPoints).toEqual([]);
         continue;
       }

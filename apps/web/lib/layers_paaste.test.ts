@@ -135,7 +135,8 @@ describe("paaste registry wiring (#493)", () => {
     expect(ids).toContain("paaste");
     // PAASTE-HOOK (#493): +1 honest-empty komando overlay (107 + 1).
     // (Rebased onto main at #513: 107 shipped layers + paaste.)
-    expect(ids.length).toBe(154); // KPO (#626): 136 shipped + kpo = 137. // HARBOUR (#627): 135 shipped + harbour = 136.
+    // GBFS-HOOK (#688): +1 gbfs bike-share layer (154 + 1 = 155).
+    expect(ids.length).toBe(155); // KPO (#626): 136 shipped + kpo = 137. // HARBOUR (#627): 135 shipped + harbour = 136.
     // DELAY-HOOK (#629): + 5 delay band overlays (137 + 5 = 142). // SILLY-HOOK (#711): +12 silly-bundle layers (142 + 12 = 154).
   });
 

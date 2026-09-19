@@ -748,6 +748,14 @@ export function overlayColorFor(layer: LayerId): string {
     // marker (distinct-color test).
     case "paaste":
       return "#450a0a";
+    // GBFS-HOOK (#688): gbfs marker (honest-empty point overlay —
+    // today zero markers). #22d3ee: cyan-400 bike-lane cyan (NOT
+    // #67e8f9/#7dd3fc/#a5f3fc — taken by paler cyans — and NOT
+    // #06b6d4/#0ea5e9/#0284c7 — taken by deeper cyans; layers never
+    // co-render). Distinct from every other marker (distinct-color
+    // test).
+    case "gbfs":
+      return "#22d3ee";
   }
 }
 
@@ -1330,6 +1338,11 @@ export function overlayLegendFor(layer: LayerId): string {
     // empty until a machine feed exists (see layers_paaste.ts).
     case "paaste":
       return "Päästekomandod (P4-012) · kaetud ≤5 km (hinnang 60, sõiduaeg mõõtmata — EI OLE masinloetavat komandode asukoha-voogu, asukohad rescue.ee kontaktidest)";
+    // GBFS-HOOK (#688): gbfs (P4-GBFS) — bike-share amenity,
+    // honestly empty until a keyless feed verifies (see
+    // layers_p4_gbfs.ts).
+    case "gbfs":
+      return "Rattaringlus (P4-GBFS) · jaam ≤500 m (hinnang 60/70/80 — EI OLE keyless masinvoogu, seisu näitab ratas.tartu.ee kaart ja operaatori äpp)";
   }
 }
 
