@@ -901,6 +901,9 @@ describe("layer registry", () => {
       // tracks are never carried over — stale groomed dots would be
       // fake snow). Pinned in layers_p4_skis.test.ts.
       if (l.id === "skis") {
+        expect(l.fallbackPoints).toEqual([]);
+        continue;
+      }
       // HARNO-HOOK (#687): harno is the same honest-empty shape —
       // ZERO fallback points BY HONESTY (no annual snapshot;
       // invented fallback dots would be fake schools). Pinned in
