@@ -22,8 +22,12 @@ import {
 import { isOoklaLayerId } from "../../../../lib/layers_p4_ookla";
 // OUTAGE-HOOK (#729): outage city point comes from the operator
 // hetkeseis sidecar (never the OSM snapshot, never live).
-import { isOutageLayerId } from "../../../../lib/layers_p4_outage";
-import { loadOutageSnapshot, outagePointsIn } from "../../../../lib/server/outage";
+import { OUTAGE_POLE_DATASET, isOutageLayerId } from "../../../../lib/layers_p4_outage";
+import {
+  loadOutageSnapshot,
+  outagePointsIn,
+  outageSnapshotFromBody,
+} from "../../../../lib/server/outage";
 // SHED-HOOK (#763): shed polygons come from the operator cache
 // (never committed, never live).
 import { isShedLayerId } from "../../../../lib/layers_p4_tomtom_sheds";
@@ -548,13 +552,19 @@ export async function GET(
       ageMs: null,
     });
   }
-  // OUTAGE-HOOK (#729): outage city point comes from the fresh
-  // operator sidecar (5-min TTL enforced in loadOutageSnapshot). A
-  // missing or stale sidecar is a 500 (client shows labeled demo);
-  // a fresh sidecar with the city out of view is honestly-empty.
-  // ageMs names the pull age (user-visible freshness, live data).
+  // OUTAGE-HOOK (#729; pole-first #775): outage city point comes from
+  // the fresh operator sidecar — pole live table first (DATEX #763
+  // precedent, same sidecar shape, server-side only), local sidecar
+  // fallback. The 5-min pulled_at TTL is enforced on BOTH (never
+  // served stale, never faked). Missing/stale on both is a 500
+  // (client shows labeled demo); a fresh sidecar with the city out
+  // of view is honestly-empty. ageMs names the pull age
+  // (user-visible freshness, live data).
   if (isOutageLayerId(def.id)) {
-    const snap = await loadOutageSnapshot();
+    const pole = await fetchPoleTable(OUTAGE_POLE_DATASET);
+    const snap =
+      (pole ? outageSnapshotFromBody(pole.table, Date.now()) : null) ??
+      (await loadOutageSnapshot());
     if (!snap) {
       return NextResponse.json({ error: "no fresh outage snapshot data" }, { status: 500 });
     }

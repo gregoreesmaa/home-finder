@@ -14,6 +14,7 @@ import {
   outageCacheDir,
   outagePointsIn,
   outageRowToArea,
+  outageSnapshotFromBody,
   outageSnapshotPath,
   outageSnapshotToPoint,
 } from "./outage";
@@ -89,5 +90,29 @@ describe("outage loader", () => {
     expect(outageCacheDir()).toContain("hf-outage");
     expect(OUTAGE_SNAPSHOT_NAME).toBe("outage-table.json");
     expect(outageSnapshotPath()).toContain(OUTAGE_SNAPSHOT_NAME);
+  });
+
+  it("validates pole-table bodies through the same pure parser (#775)", () => {
+    // The pole serves the same sidecar shape plus envelope extras;
+    // extras ride along ignored, the Tallinn row still resolves.
+    const poleBody = {
+      ...freshSidecar(),
+      source: "https://rikkekaart.elektrilevi.ee/geoserver-api/GetApplicationData",
+    };
+    const snap = outageSnapshotFromBody(poleBody, NOW);
+    expect(snap?.tallinn.label).toBe("Tallinn");
+    expect(outageSnapshotToPoint(snap!)?.q).toBe(70);
+    expect(outagePointsIn(snap!, TALLINN_BBOX)).toHaveLength(1);
+  });
+
+  it("rejects stale, Tallinn-less and non-object pole bodies (#775)", () => {
+    expect(outageSnapshotFromBody(freshSidecar("2026-09-19T15:20:00Z"), NOW)).toBeNull();
+    const noTallinn = freshSidecar();
+    noTallinn.areas = [];
+    expect(outageSnapshotFromBody(noTallinn, NOW)).toBeNull();
+    expect(outageSnapshotFromBody(null, NOW)).toBeNull();
+    expect(outageSnapshotFromBody([1, 2], NOW)).toBeNull();
+    expect(outageSnapshotFromBody("ok: DATEX voog", NOW)).toBeNull();
+    expect(outageSnapshotFromBody({ pulled_at: "not-a-date", areas: [] }, NOW)).toBeNull();
   });
 });
