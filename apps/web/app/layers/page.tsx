@@ -12,6 +12,7 @@ import {
   fetchWindow,
   layerParamTag,
   radiusKmFor,
+  stepLayerId,
   type BBoxLike,
   type LayerDef,
   type LayerId,
@@ -1208,29 +1209,33 @@ export default function LayersPage() {
         pärinevad kohalikust 2026-09-12 hetktõmmisest (Harjumaa); väljaspool
         selle katvust andmeid ei kuvata.
       </p>
-      <div role="group" aria-label="Parameetrikiht">
-        {LAYERS.map((l) => (
-          <button
-            key={l.id}
-            type="button"
-            aria-pressed={layer === l.id}
-            onClick={() => setLayer(l.id)}
+      <div>
+        <button type="button" onClick={() => setLayer(stepLayerId(layer, -1))}>
+          ← Eelmine
+        </button>{" "}
+        <label>
+          Parameetrikiht{" "}
+          <select
+            value={layer}
+            onChange={(e) => setLayer(e.target.value as LayerId)}
           >
-            {l.title}
-            {/* OSMDAILY-HOOK (#482) + P4-031-HOOK (#484): P4 layers carry
-                an empty paramIds (parameters4 namespace — see
-                layers_osmdaily.ts); layerParamTag returns "" for them
-                (and "(P4-031)" for paramLabel slices like senscom), so
-                skip the trailing space when the tag is empty instead of
-                rendering "(p)" on all six osmdaily buttons. */}
-            {/* STATKOV-HOOK (#485): P4 layers carry an empty paramIds
-                (parameters4 namespace -- see layers_statkov.ts), so
-                layerParamTag returns "" for them too -- no suffix. */}
-            {layerParamTag(l) === "" ? "" : ` ${layerParamTag(l)}`}
-            {/* P4OSM-HOOK (#480): blockwalk + darkness carry empty
-                paramIds too -- the generic empty-tag skip covers them. */}
-          </button>
-        ))}
+            {LAYERS.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.title}
+                {/* OSMDAILY-HOOK (#482) + P4-031-HOOK (#484) +
+                    STATKOV-HOOK (#485) + P4OSM-HOOK (#480): P4 layers
+                    carry an empty paramIds (parameters4 namespace), so
+                    layerParamTag returns "" for them — skip the trailing
+                    space instead of rendering "(p)" (same skip the old
+                    buttons used). */}
+                {layerParamTag(l) === "" ? "" : ` ${layerParamTag(l)}`}
+              </option>
+            ))}
+          </select>
+        </label>{" "}
+        <button type="button" onClick={() => setLayer(stepLayerId(layer, 1))}>
+          Järgmine →
+        </button>
       </div>
       <p aria-live="polite">{status}</p>
       <label style={{ display: "block", margin: "8px 0" }}>

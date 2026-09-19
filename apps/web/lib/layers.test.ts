@@ -12,6 +12,7 @@ import {
   parseOverpassElements,
   bonusSpecFor,
   snapBBoxForCache,
+  stepLayerId,
   stopMode,
   tileForView,
   type BBoxLike,
@@ -1424,5 +1425,20 @@ describe("fetchParkAreas", () => {
     await expect(fetchParkAreas(shape)).resolves.toBeNull();
     const boom = vi.fn().mockRejectedValue(new Error("down"));
     await expect(fetchParkAreas(boom)).resolves.toBeNull();
+  });
+});
+
+describe("layer dropdown stepping", () => {
+  it("steps through LAYERS order with wrap-around", () => {
+    const first = LAYERS[0].id;
+    const last = LAYERS[LAYERS.length - 1].id;
+    expect(stepLayerId(first, 1)).toBe(LAYERS[1].id);
+    expect(stepLayerId(last, 1)).toBe(first);
+    expect(stepLayerId(first, -1)).toBe(last);
+    expect(stepLayerId(last, -1)).toBe(LAYERS[LAYERS.length - 2].id);
+  });
+
+  it("falls back to the first layer for unknown ids", () => {
+    expect(stepLayerId("nope" as never, 1)).toBe(LAYERS[0].id);
   });
 });
