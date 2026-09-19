@@ -51,7 +51,6 @@ synthetic names; reasons never name a doctor.
 
 ## What stays open (not wired here)
 
-- AKS join adapter (monthly) — proximity legs score caller POIs meanwhile.
 - Eriarstiabi/specialist proximity — future source issue, not scored here.
 - Terviseamet water/bathing verdicts (`p4_tervise.md`) — untouched.
 - OSM health amenities (group 11) stay the fallback cousins.
@@ -74,3 +73,34 @@ Step 2 (ADS adr_id→AKS join) fills joined points into the same
 sidecar shape and bumps linkage_rate; the loader/kernel/route need no
 changes. P4-011 is shared with the EHIS school slices (#608) by
 scorer design — distinct slices, distinct dim keys, no double-score.
+
+## Map graduation Step 2 (#660, 2026-09-19)
+
+Adapter `scripts/build/batch_medre_ads.py` (stdlib only; network only
+in the paced ADS fetch + `main`) joins both legs via the keyless
+Maa-amet ADS gazetteer (single polite GETs, 1 s pace, 429 = abort
+unwritten, 30 d TTL file cache): reception rows accept only the
+exact-`adr_id` hit with `kaugus == 0`; clinic rows (plain-text
+addresses, no id) accept only `kvaliteet == "tapne_taisaadress"` with
+`kaugus == 0`. Hermetic fixture test
+`scripts/build/test_batch_medre_ads.py` pins the 378/537 counts
+(`python3 -m pytest scripts/build/test_batch_medre_ads.py -q` — the
+`build/` dir is outside the default pytest recursion, explicit path).
+
+Measured linkage on the 2026-09-16 bulks: **901/915 joined
+(linkage_rate 0.9847)** — reception 378/378, clinic 523/537; the 14
+unjoined clinic rows are counted in the sidecar note, never placed
+(exact-text criterion refused, no fallback geocoding). Sidecar
+`medre/medre-points.json` stays snapshot-only, never committed; the
+wire still carries lat/lon/slice only (no GP names, no ADS codes).
+Live proof: `medre_gp` serves 342 + `medre_clinic` 139 real points over
+the Harjumaa window with provenance `snapshot`.
+
+Share-alike scope (reviewable): the TEHIK register content stays
+CC BY-NC-SA 3.0 — attribution + share-alike + non-commercial ride the
+legends and this note, so any derived extract (including this
+sidecar) inherits the NC-SA scope and is never commercialised;
+coordinates are per-address ADS viitepunkt lookups (facts, no bulk
+redistribution); fixtures use synthetic names; reasons never name a
+doctor. The Step-2 harvester re-runs monthly at most (ADS TTL 30 d);
+raw ADS bodies live in `/tmp` caches only.
