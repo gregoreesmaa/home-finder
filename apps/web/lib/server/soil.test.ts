@@ -139,6 +139,37 @@ describe("soil viewport proxy (#617)", () => {
     expect(res).toEqual({ ok: false, reason: "too-wide" });
     expect(written).toHaveLength(0);
   });
+});
+
+describe("soil urban note (#662)", () => {
+  it("adds a human-readable note when areas are empty but urbanDropped > 0", async () => {
+    const seen: string[] = [];
+    const payload = {
+      numberMatched: 1,
+      features: [feature("l", "LIIg", CITY_RING)],
+    };
+    const res = await fetchSoilViewport(BBOX, depsWith(payload, seen));
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.areas).toEqual([]);
+    expect(res.urbanDropped).toBeGreaterThan(0);
+    expect(res.note ?? "").toMatch(/Asustatud\/veekogu alal mullakaarti pole/);
+  });
+  it("adds no note when areas are non-empty", async () => {
+    const seen: string[] = [];
+    const payload = {
+      numberMatched: 1,
+      features: [feature("ls₂;l50-100/s", "Go", RING)],
+    };
+    const res = await fetchSoilViewport(BBOX, depsWith(payload, seen));
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.areas.length).toBeGreaterThan(0);
+    expect(res.note ?? "").not.toMatch(/mullakaarti pole/);
+  });
+});
+
+describe("soil transport honesty", () => {
   it("never caches transport errors as data", async () => {
     const written: string[] = [];
     const res = await fetchSoilViewport(BBOX, {

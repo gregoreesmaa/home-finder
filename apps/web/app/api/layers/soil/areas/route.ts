@@ -59,10 +59,14 @@ export async function GET(req: Request): Promise<NextResponse> {
   if (!res.ok) {
     return NextResponse.json({ areas: [], note: "Mullakaardi teenus hetkel kättesaamatu." });
   }
+  // #662: the client renders `note` verbatim in the soil status line —
+  // forward the urban/water note (empty areas + urbanDropped > 0 on a
+  // live answer). The too-wide 'suumi sisse' branch above is untouched.
   return NextResponse.json({
     areas: res.areas,
     cached: res.cached,
     undecoded: res.undecoded,
     urbanDropped: res.urbanDropped,
+    ...(res.note ? { note: res.note } : {}),
   });
 }
