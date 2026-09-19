@@ -197,11 +197,13 @@ import type { MedrePoint } from "../layers_p4_medre";
 // degrade to null; the sidecar is honestly empty when unharvested).
 import { FIXIT_RASTER_FILE } from "../layers_p4_fixit";
 import type { FixitPoint } from "../layers_p4_fixit";
-// SILLY-HOOK (#711): silly-bundle raster filenames live in
-// layers_p4_silly.ts (rasters intentionally never built —
-// SILLY_NO_RASTER; names resolve to absent files so windows degrade
-// to null; pins layers have no sidecar — demo points ride the defs).
+// SILLY-HOOK (#711; sidecar #774): silly-bundle raster filenames +
+// sidecar point type live in layers_p4_silly.ts (rasters intentionally
+// never built — SILLY_NO_RASTER; names resolve to absent files so
+// windows degrade to null; the pins sidecar is honestly empty when
+// unbuilt).
 import { SILLY_METRO_PREFIX, SILLY_RASTER_FILE } from "../layers_p4_silly";
+import type { SillyPoint } from "../layers_p4_silly";
 // SEVESO-HOOK (#613): danger-polygon raster filename + sidecar area
 // type live in layers_p4_seveso.ts (raster intentionally never built —
 // SEVESO_NO_RASTER, CC BY-NC-ND forbids derivatives; the name resolves
@@ -651,6 +653,62 @@ export async function loadEhisPoints(dir: string): Promise<EhisPoint[]> {
     // Optional sidecar: honestly no points.
   }
   ehisPointCache.set(dir, points);
+  return points;
+}
+
+// SILLY-HOOK (#711; sidecar #774): silly pins sidecar cache (same
+// discipline).
+const sillyPointCache = new Map<string, SillyPoint[]>();
+
+/** Silly slice tags the harvester writes (lat/lon/slice only). */
+const SILLY_SLICES = new Set([
+  "kirikukellad",
+  "kajakad",
+  "manguvaljakud",
+  "koertepargid",
+  "saunad",
+  "talisuplus",
+  "tanavasport",
+  "vesi",
+  "wc",
+  "aed",
+  "raamatukapid",
+  "kalmistu",
+]);
+
+function isSillyPoint(v: unknown): v is SillyPoint {
+  const p = v as Partial<SillyPoint>;
+  return (
+    typeof p?.lon === "number" && Number.isFinite(p.lon) &&
+    typeof p?.lat === "number" && Number.isFinite(p.lat) &&
+    typeof p?.slice === "string" && SILLY_SLICES.has(p.slice)
+  );
+}
+
+/**
+ * Silly pins sidecar (`silly/silly-points.json`): sliced Estonia
+ * OSM-node points for the twelve pins overlays (issue #774 option A,
+ * built offline by scripts/build/batch_silly.py from the held
+ * extract — never live). Missing or malformed sidecar degrades to []
+ * (honestly no points — the map renders "no data", never a faked
+ * zero), never an error.
+ */
+export async function loadSillyPoints(dir: string): Promise<SillyPoint[]> {
+  const hit = sillyPointCache.get(dir);
+  if (hit) return hit;
+  let points: SillyPoint[] = [];
+  try {
+    const raw = await fs.readFile(path.join(dir, "silly", "silly-points.json"), "utf8");
+    const parsed: unknown = JSON.parse(raw);
+    const list = typeof parsed === "object" && parsed !== null && Array.isArray((parsed as { points?: unknown }).points)
+      ? (parsed as { points: unknown[] }).points
+      : [];
+    points = list.filter(isSillyPoint);
+    if (!Array.isArray((parsed as { points?: unknown }).points)) console.warn(`snapshot: ignoring malformed silly-points.json in ${dir}`);
+  } catch {
+    // Optional sidecar: honestly no points.
+  }
+  sillyPointCache.set(dir, points);
   return points;
 }
 

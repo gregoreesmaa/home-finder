@@ -12,6 +12,7 @@ import {
   loadEhisPoints,
   loadMedrePoints,
   loadOhuseirePoints,
+  loadSillyPoints,
   loadSnapshotPoints,
   loadSportPoints,
   loadWindowRaster,
@@ -90,6 +91,44 @@ describe("snapshot loader", () => {
     await rm(dir, { recursive: true, force: true });
     const second = await loadSnapshotPoints("parks", bbox, dir);
     expect(second).toEqual(first);
+  });
+});
+
+describe("silly pins sidecar (#774, real points)", () => {
+  async function sillyDir(doc: unknown): Promise<string> {
+    const dir = await mkdtemp(join(tmpdir(), "hf-silly-"));
+    await mkdir(join(dir, "silly"), { recursive: true });
+    await writeFile(join(dir, "silly", "silly-points.json"), JSON.stringify(doc));
+    return dir;
+  }
+
+  it("loads sliced points, skipping junk rows", async () => {
+    const dir = await sillyDir({
+      vintage: "2026-09-14",
+      points: [
+        { lat: 59.44618, lon: 24.69656, slice: "manguvaljakud" },
+        { lat: 59.44, lon: 24.75, slice: "nope" },
+        { lat: "x", lon: 24.75, slice: "wc" },
+        { lat: 59.44, lon: 24.75 },
+      ],
+    });
+    try {
+      await expect(loadSillyPoints(dir)).resolves.toEqual([
+        { lat: 59.44618, lon: 24.69656, slice: "manguvaljakud" },
+      ]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("reads honestly-empty when the sidecar is missing or malformed", async () => {
+    await expect(loadSillyPoints("/nonexistent-dir-xyz")).resolves.toEqual([]);
+    const bad = await sillyDir("{nope");
+    try {
+      await expect(loadSillyPoints(bad)).resolves.toEqual([]);
+    } finally {
+      await rm(bad, { recursive: true, force: true });
+    }
   });
 });
 

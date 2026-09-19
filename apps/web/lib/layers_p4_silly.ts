@@ -76,6 +76,20 @@ export const SILLY_LAYER_IDS: SillyLayerId[] = [
  * Held-extract Tallinn counts per layer (see header probe). Pinned by
  * test so the "non-empty in Tallinn" verdict cannot silently rot.
  */
+/**
+ * Held-extract vintage the servable pins sidecar is built from
+ * (estonia-260914.osm.pbf, scripts/build/batch_silly.py — nodes
+ * only, issue #774 option A). Pinned by test.
+ */
+export const SILLY_VINTAGE = "2026-09-14";
+
+/** Servable sidecar point (lat/lon/slice only, sport #607 precedent). */
+export interface SillyPoint {
+  lat: number;
+  lon: number;
+  slice: SillyLayerId;
+}
+
 export const SILLY_PROBE = {
   date: "2026-09-19",
   kirikukellad: 97,
@@ -365,22 +379,38 @@ export function sillyNearby(
   return out;
 }
 
-/** BBox filter for demo/serve points (pure, fixit fixitPointsIn shape). */
+/**
+ * BBox filter for demo/serve points (pure, fixit fixitPointsIn
+ * shape). The optional slice serves one layer from the shared
+ * sidecar (sport sportPointsIn shape); omitted keeps every slice
+ * (demo fallback path). Wire shape stays lat/lon only.
+ */
 export function sillyPointsIn(
-  points: { lat: number; lon: number }[],
+  points: ({ lat: number; lon: number } & { slice?: string })[],
   bbox: BBoxLike,
+  slice?: string,
 ): { lat: number; lon: number }[] {
   return points
     .filter(
       (p) =>
         Number.isFinite(p.lat) &&
         Number.isFinite(p.lon) &&
+        (slice === undefined || p.slice === slice) &&
         p.lon >= bbox.minlon &&
         p.lon <= bbox.maxlon &&
         p.lat >= bbox.minlat &&
         p.lat <= bbox.maxlat,
     )
     .map((p) => ({ lat: p.lat, lon: p.lon }));
+}
+
+/**
+ * Snapshot status line for served silly points (issue #774 option
+ * A): names the open-mapping extract + vintage, never a count claim
+ * beyond the served points, never a failure. Pure (pinned by test).
+ */
+export function sillySnapshotStatus(pointCount: number): string {
+  return `OSM väljavõte (Eesti ${SILLY_VINTAGE}, hinnang) · ${pointCount} punkti`;
 }
 
 /** Hook marker, pinned by test so the wiring contract stays greppable. */

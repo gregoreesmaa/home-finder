@@ -15,11 +15,13 @@ import {
   SILLY_HOOK,
   SILLY_LAYER_IDS,
   SILLY_PROBE,
+  SILLY_VINTAGE,
   isSillyLayerId,
   sillyBonusSpecFor,
   sillyDemoStatus,
   sillyNearby,
   sillyPointsIn,
+  sillySnapshotStatus,
 } from "./layers_p4_silly";
 
 describe("silly bundle registry", () => {
@@ -102,6 +104,25 @@ describe("silly bundle registry", () => {
     expect(sillyDemoStatus(2)).toBe(
       "DEMO-näidis (näidispunktid, mitte loendus) · 2 punkti",
     );
+  });
+
+  it("names the served extract vintage, never live state (#774)", () => {
+    expect(SILLY_VINTAGE).toBe("2026-09-14");
+    expect(sillySnapshotStatus(1874)).toBe(
+      "OSM väljavõte (Eesti 2026-09-14, hinnang) · 1874 punkti",
+    );
+    expect(sillySnapshotStatus(1874)).not.toContain("hetkeseis");
+    expect(sillySnapshotStatus(1874)).not.toContain("hetktõmmis");
+  });
+
+  it("serves one layer slice from the shared sidecar (#774)", () => {
+    const pts = [
+      { lat: 59.44, lon: 24.75, slice: "wc" },
+      { lat: 59.45, lon: 24.76, slice: "vesi" },
+    ];
+    const bbox = { minlon: 24.5, minlat: 59.35, maxlon: 25.0, maxlat: 59.5 };
+    expect(sillyPointsIn(pts, bbox, "wc")).toEqual([{ lat: 59.44, lon: 24.75 }]);
+    expect(sillyPointsIn(pts, bbox)).toHaveLength(2);
   });
 });
 

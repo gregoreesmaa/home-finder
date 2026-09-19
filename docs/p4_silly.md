@@ -39,22 +39,36 @@ blocks: `lib/layers.ts` (import, id union, decay, defs, tags,
 bonusSpecFor), `lib/overlays.ts` (12 registry-unique marker colors +
 Estonian legends), `lib/server/snapshot.ts` (raster names + metro
 prefixes, all intentionally never built — `SILLY_NO_RASTER` /
-`SILLY_NO_METRO`). No route hook: layers with neither points sidecar
-nor raster take the designed 500 → honestly-labeled demo path
-(paaste #493 precedent). `paramIds` stays `[]` everywhere (P4
-namespace — the layers.md 1..500 audit untouched).
+`SILLY_NO_METRO` — plus the pins sidecar loader), `app/api/layers`
+(route serves the sidecar, 200 snapshot / honestly-empty) and
+`app/layers/page.tsx` (status names the extract, never the fixit
+default). `paramIds` stays `[]` everywhere (P4 namespace — the
+layers.md 1..500 audit untouched).
 
-Status (issue #774): the generic demo label read as a load failure
-("live ebaõnnestus"), so the `/layers` status line names the
-demo-by-design state for silly layers instead —
-`sillyDemoStatus()` (`DEMO-näidis (näidispunktid, mitte loendus)`),
-wired through a `SILLY-HOOK` branch in `app/layers/page.tsx`.
-Genuine load failures keep the `DEMO-varu (live ebaõnnestus)` label.
+Serving (issue #774 option A — the "no sidecar by decision" verdict
+is REVERSED: sample markers misrepresent layers with thousands of
+mapped objects, so all twelve serve real points):
+`scripts/build/batch_silly.py` builds `silly/silly-points.json`
+(10 617 points, vintage 2026-09-14) from the held
+`estonia-260914.osm.pbf` via `osmium tags-filter` (18 vocabularies,
+all object types) + `osmium export`. Nodes serve directly, ways
+serve their bbox-centre centroid (one marker per mapped object);
+relations are outside the export. Dual-tagged objects classify once
+— the probe's talisuplus 72 double-counted 19 swim spots tagged both
+ways, the sidecar correctly serves 53 distinct points. OSM relations
+and unmapped export artefacts never become points.
+
+Status: served points ride `sillySnapshotStatus()` (`OSM väljavõte
+(Eesti 2026-09-14, hinnang)`); transport failures still fall back to
+the defs' real sample markers under `sillyDemoStatus()`
+(`DEMO-näidis (näidispunktid, mitte loendus)`). Genuine load failures
+keep the `DEMO-varu (live ebaõnnestus)` label.
 
 ## Screenshot
 
 `docs/p4_silly_tallinn.png`: `/layers` page with the `kajakad` layer
 active in central Tallinn (Vanasadam + Keskturg + Pärnamäe markers),
 the layer-button group showing the bundle's checkboxes, legend entry
-visible. Markers render through the demo fallback (no points sidecar
-by decision — the badge says so).
+visible. (Screenshot predates option A — markers now render from the
+served sidecar: 36 real kajakad points in the Tallinn view, status
+`OSM väljavõte (Eesti 2026-09-14, hinnang)`.)

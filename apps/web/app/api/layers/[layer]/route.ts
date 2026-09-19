@@ -106,6 +106,7 @@ import {
   loadMedrePoints,
   loadOhuseirePoints,
   loadPoiPoints,
+  loadSillyPoints,
   loadSnapshotPoints,
   loadSportPoints,
   SNAPSHOT_AS_OF_MS,
@@ -160,6 +161,12 @@ import {
   fixitPointsIn,
   isFixitLayerId,
 } from "../../../../lib/layers_p4_fixit";
+// SILLY-HOOK (#711; serve #774): silly pins sidecar points (see below).
+import {
+  SILLY_VINTAGE,
+  isSillyLayerId,
+  sillyPointsIn,
+} from "../../../../lib/layers_p4_silly";
 import { loadSenscomSnapshot, senscomPointsIn } from "../../../../lib/server/senscom";
 import { loadOoklaSnapshot, ooklaPointsIn } from "../../../../lib/server/ookla";
 
@@ -771,6 +778,22 @@ export async function GET(
       points,
       provenance: points.length > 0 ? "snapshot" : "empty",
       ageMs: Date.now() - Date.parse(`${FIXIT_VINTAGE}T00:00:00`),
+    });
+  }
+  // SILLY-HOOK (#711; serve #774): silly pins come from the snapshot
+  // sidecar (silly/silly-points.json, built offline by
+  // scripts/build/batch_silly.py from the held Estonia extract —
+  // never the OSM snapshot, never live). A missing sidecar stays
+  // honestly-empty: the map renders "no data", never faked markers.
+  // Vintage rides SILLY_VINTAGE (the extract date), not the OSM
+  // snapshot date.
+  if (isSillyLayerId(def.id)) {
+    const all = await loadSillyPoints(snapshotDir());
+    const points: LayerPoint[] = sillyPointsIn(all, bbox, def.id);
+    return NextResponse.json({
+      points,
+      provenance: points.length > 0 ? "snapshot" : "empty",
+      ageMs: Date.now() - Date.parse(`${SILLY_VINTAGE}T00:00:00`),
     });
   }
   try {
