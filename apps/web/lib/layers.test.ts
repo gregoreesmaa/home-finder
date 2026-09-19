@@ -176,6 +176,10 @@ describe("layer registry", () => {
       "lastshop",
       // GTFS-HOOK (#483): GTFS stop overlay id (p15, measured-only set).
       "gtfsstops",
+      // BUSMESH-HOOK (#769): transfer-node window ids (p15 third leg).
+      "busmesh",
+      "busmesh-sat",
+      "busmesh-sun",
       // RSAFE-HOOK (#481): road-safety id (p13 roadsafety, P4-012 proxy).
       "roadsafety",
       // P4-031-HOOK (#484): senscom DIY-air id (P4-031 slice, no
@@ -377,6 +381,11 @@ describe("layer registry", () => {
     // GTFS-HOOK (#483): gtfsstops shares p15 with transit (fiber/mobile
     // share p51 — same precedent).
     expect(LAYERS.find((l) => l.id === "gtfsstops")?.paramIds).toEqual([15]);
+    // BUSMESH-HOOK (#769): transfer-node windows share p15 (third leg —
+    // transfer richness vs departure density, never double-scored).
+    for (const id of ["busmesh", "busmesh-sat", "busmesh-sun"]) {
+      expect(LAYERS.find((l) => l.id === id)?.paramIds).toEqual([15]);
+    }
     // STATKOV-HOOK (#485): P4 choropleth layers bind NO parameters3
     // number (namespace lock -- nearest numbers are taken map layers).
     for (const id of ["kovmigr", "kovehit", "kovfisc"]) {

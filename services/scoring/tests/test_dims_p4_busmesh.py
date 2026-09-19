@@ -109,3 +109,72 @@ def test_collinear_overlap_is_not_a_crossing():
     assert bm.seg_intersection((0, 0), (10, 0), (0, 5), (10, 5)) is None
     pt = bm.seg_intersection((0, 0), (10, 0), (5, -5), (5, 5))
     assert pt is not None and abs(pt[0] - 5.0) < 1e-6
+
+
+# -- Build #769: chains, snap, windows, transfer score. ----------------------
+
+def _node(x, y, routes, hits=1):
+    return {"x": x, "y": y, "routes": set(routes), "hits": hits}
+
+
+def test_collapse_chains_merges_identical_route_sets():
+    nodes = [_node(0, 0, {"A", "B"}), _node(200, 0, {"A", "B"}),
+             _node(1000, 0, {"A", "B"}), _node(100, 0, {"A", "C"})]
+    kept, collapsed = bm.collapse_chains(nodes, radius_m=300.0)
+    assert collapsed == 1
+    assert len(kept) == 3
+    assert kept[0]["hits"] == 2
+    # Different route sets never merge, however close.
+    assert {len(n["routes"]) for n in kept} == {2}
+
+
+def test_snap_to_stops_merges_same_stop_and_drops_stopless():
+    proj = bm.project(59.44, 24.75)
+    stops = [{"stop_id": "s1", "stop_lat": "59.4400", "stop_lon": "24.7500"},
+             {"stop_id": "bad", "stop_lat": "NaN", "stop_lon": "24.75"}]
+    nodes = [_node(proj[0] + 20, proj[1], {"A", "B"}),
+             _node(proj[0] - 20, proj[1], {"B", "C"}),
+             _node(proj[0] + 5000, proj[1], {"D", "E"})]
+    snapped, dropped = bm.snap_to_stops(nodes, stops)
+    assert dropped == 1
+    assert len(snapped) == 1
+    assert snapped[0]["stop_id"] == "s1"
+    assert snapped[0]["routes"] == {"A", "B", "C"}
+    assert snapped[0]["lat"] == 59.44 and snapped[0]["lon"] == 24.75
+
+
+def test_window_routes_use_all_day_semantics():
+    cal = [{"service_id": "WD", "monday": "1", "tuesday": "1",
+            "wednesday": "1", "thursday": "1", "friday": "1",
+            "saturday": "0", "sunday": "0"},
+           {"service_id": "FRI", "monday": "0", "tuesday": "0",
+            "wednesday": "0", "thursday": "0", "friday": "1",
+            "saturday": "0", "sunday": "0"},
+           {"service_id": "SAT", "monday": "0", "tuesday": "0",
+            "wednesday": "0", "thursday": "0", "friday": "0",
+            "saturday": "1", "sunday": "0"}]
+    trips = [{"trip_id": "a", "route_id": "A", "service_id": "WD",
+              "shape_id": "s"},
+             {"trip_id": "b", "route_id": "B", "service_id": "FRI",
+              "shape_id": "s"},
+             {"trip_id": "c", "route_id": "C", "service_id": "SAT",
+              "shape_id": "s"}]
+    wd = bm.window_shape_routes(trips, cal, bm.WINDOWS["wd"])
+    assert wd == {"s": {"A"}}
+    assert bm.window_shape_routes(trips, cal, ("wednesday",)) == {"s": {"A"}}
+    assert bm.window_shape_routes(trips, cal, bm.WINDOWS["sat"]) == {"s": {"C"}}
+    assert bm.wed_shape_routes(trips, cal) == {"s": {"A"}}
+
+
+def test_node_score_anchors():
+    assert bm.node_score(0) == 0.0
+    assert round(bm.node_score(2), 1) == 28.6
+    assert bm.node_score(5) == 50.0
+    assert round(bm.node_score(10), 1) == 66.7
+    assert round(bm.node_score(30), 1) == 85.7
+
+
+def test_busmesh_points_carry_route_counts_classless():
+    pts = bm.busmesh_points([{"stop_id": "s", "lat": 59.44, "lon": 24.75,
+                              "routes": {"A", "B", "C"}, "hits": 4}])
+    assert pts == [{"lon": 24.75, "lat": 59.44, "t": 3}]

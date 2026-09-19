@@ -150,7 +150,8 @@ describe("overlay legend + colors", () => {
     // HARNO-HOOK (#687): +1 harno school layer (156 + 1 = 157).
     // VIIRS-HOOK (#719): +1 viirs brightness layer (157 + 1 = 158).
     // OUTAGE-HOOK (#729): +1 outage hetkeseis layer (158 + 1 = 159).
-    expect(ids).toHaveLength(159);
+    // BUSMESH-HOOK (#769): +3 transfer-node window layers (159 + 3 = 162).
+    expect(ids).toHaveLength(162);
     for (const id of ids) {
       const legend = overlayLegendFor(id);
       expect(legend.length).toBeGreaterThan(10);
@@ -464,7 +465,8 @@ describe("overlay legend + colors", () => {
     // HARNO-HOOK (#687): +1 harno school layer (156 + 1 = 157).
     // VIIRS-HOOK (#719): +1 viirs brightness layer (157 + 1 = 158).
     // OUTAGE-HOOK (#729): +1 outage hetkeseis layer (158 + 1 = 159).
-    expect(seen.size).toBe(159); // SILLY (#711): 142 shipped + silly x12 = 154.
+    // BUSMESH-HOOK (#769): +3 window-graded transfer-node colors (159 + 3 = 162).
+    expect(seen.size).toBe(162); // SILLY (#711): 142 shipped + silly x12 = 154.
     for (const c of seen) expect(c).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

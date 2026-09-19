@@ -38,6 +38,9 @@ export function overlayWeight(p: LayerPoint, layer: LayerId): number {
   // GTFS-HOOK (#483): gtfsstops markers size by scheduled Wednesday
   // departures; mapped-only Elron stations (no t) read 1, never 0.
   if (layer === "gtfsstops") return p.t ?? 1;
+  // BUSMESH-HOOK (#769): transfer-node markers size by route count at
+  // the stop (every shipped node has t >= 2 by construction).
+  if (layer === "busmesh" || layer === "busmesh-sat" || layer === "busmesh-sun") return p.t ?? 1;
   if (typeof p.a === "number") return p.a;
   return 1;
 }
@@ -402,6 +405,19 @@ export function overlayColorFor(layer: LayerId): string {
     // other marker (distinct-color test).
     case "gtfsstops":
       return "#8b5cf6";
+    // BUSMESH-HOOK (#769): transfer-node markers (point overlay,
+    // stride-sampled like grocery). Window-graded interchange orange
+    // (shed #670 precedent: peak stronger, off-peak washed):
+    // #ff6d00 workdays (NOT #f97316 — taken by emergency — and NOT
+    // #ea580c — taken by pets — and NOT #e65100 — taken), #ff9e00
+    // Saturday, #ffc300 Sunday. Distinct from every other marker
+    // (distinct-color test).
+    case "busmesh":
+      return "#ff6d00";
+    case "busmesh-sat":
+      return "#ff9e00";
+    case "busmesh-sun":
+      return "#ffc300";
     // RSAFE-HOOK (#481): roadsafety marker (point overlay,
     // stride-sampled like grocery). #fde047: yellow-400 zebra-crossing
     // paint (NOT #facc15 — taken — and NOT #fbbf24 — taken by ehitus —
@@ -1061,6 +1077,15 @@ export function overlayLegendFor(layer: LayerId): string {
     // Euclidean fallback holds the scheduled-service density field.
     case "gtfsstops":
       return "GTFS peatused (buss/tramm/troll + kaardistatud Elroni jaamad) · suurus = sõiduplaanilised väljumised kolmapäevas (küllastus 1500, õhtune täituvus teadmata — EI OLE loendusandmeid)";
+    // BUSMESH-HOOK (#769): busmesh (p15 third leg) — stop-snapped
+    // transfer nodes with the window route count; the Euclidean
+    // fallback holds the transfer-richness field.
+    case "busmesh":
+      return "Ümberistumissõlmed tööpäeviti (E–R) · suurus = marsruutide arv peatuses (küllastus 5, sõiduplaan, täituvus ja töökindlus teadmata — EI OLE loendusandmeid)";
+    case "busmesh-sat":
+      return "Ümberistumissõlmed laupäeviti · suurus = marsruutide arv peatuses (küllastus 5, sõiduplaan, täituvus ja töökindlus teadmata — EI OLE loendusandmeid)";
+    case "busmesh-sun":
+      return "Ümberistumissõlmed pühapäeviti · suurus = marsruutide arv peatuses (küllastus 5, sõiduplaan, täituvus ja töökindlus teadmata — EI OLE loendusandmeid)";
     // RSAFE-HOOK (#481): roadsafety (p13, P4-012 proxy) — mapped
     // crossings + calming, the raster holds the full count field. The
     // usage-not-safety caveat rides along (P4-032 precedent): dots are

@@ -77,7 +77,8 @@ describe("eelis registry (#488)", () => {
     // HARNO-HOOK (#687): +1 harno school layer (156 + 1 = 157).
     // VIIRS-HOOK (#719): +1 viirs brightness layer (157 + 1 = 158).
     // OUTAGE-HOOK (#729): +1 outage hetkeseis layer (158 + 1 = 159).
-    expect(ids.length).toBe(159); // KPO (#626): 136 shipped + kpo = 137. // HARBOUR (#627): 135 shipped + harbour = 136.
+    // BUSMESH-HOOK (#769): +3 transfer-node window layers (159 + 3 = 162).
+    expect(ids.length).toBe(162); // KPO (#626): 136 shipped + kpo = 137. // HARBOUR (#627): 135 shipped + harbour = 136.
     // DELAY-HOOK (#629): + 5 delay band overlays (137 + 5 = 142). // SILLY-HOOK (#711): +12 silly-bundle layers (142 + 12 = 154).
     for (const id of EELIS_LAYER_IDS) expect(ids).toContain(id);
   });
