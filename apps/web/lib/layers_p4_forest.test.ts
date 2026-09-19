@@ -86,7 +86,8 @@ describe("forest registry (#624)", () => {
     // 124 shipped + seveso + stateland + quarry + maaparandus + soil +
     // etak + relief + canopy + buildings + density + 1 forest overlay
     // (FOREST-HOOK #624, 133 + 1 = 134).
-    expect(ids.length).toBe(154); // KPO (#626): 136 shipped + kpo = 137. // HARBOUR (#627): 135 shipped + harbour = 136.
+    // GBFS-HOOK (#688): +1 gbfs bike-share layer (154 + 1 = 155).
+    expect(ids.length).toBe(155); // KPO (#626): 136 shipped + kpo = 137. // HARBOUR (#627): 135 shipped + harbour = 136.
     // DELAY-HOOK (#629): + 5 delay band overlays (137 + 5 = 142). // SILLY-HOOK (#711): +12 silly-bundle layers (142 + 12 = 154).
     expect(ids).toContain("forest");
   });

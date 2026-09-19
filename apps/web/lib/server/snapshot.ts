@@ -130,6 +130,11 @@ import { ASUMEDIA_RASTER_FILE } from "../layers_asumedia";
 // (named but NOT built — honest-empty decision, resolves absent so the
 // layer degrades to the designed 500 → demo-empty path, honestly labeled).
 import { PAASTE_RASTER_FILE } from "../layers_paaste";
+// GBFS-HOOK (#688): gbfs raster file + metro name live in
+// layers_p4_gbfs.ts (named but NOT built — honest-empty decision,
+// resolves absent so the layer degrades to the designed 500 →
+// demo-empty path, honestly labeled).
+import { GBFS_METRO_NAME, GBFS_RASTER_FILE } from "../layers_p4_gbfs";
 // SPORT-HOOK (#607): sport-venue raster filenames + sidecar point type
 // live in layers_p4_sport.ts (rasters intentionally never built —
 // SPORT_NO_RASTER; the names resolve to absent files so rasters degrade
@@ -1538,6 +1543,9 @@ const RASTER_FILE: Record<LayerId, string> = {
   // PAASTE-HOOK (#493): paaste raster name only (no master built —
   // honest-empty; absent file degrades to the designed 500 path).
   ...PAASTE_RASTER_FILE,
+  // GBFS-HOOK (#688): gbfs raster name only (no master built —
+  // honest-empty; absent file degrades to the designed 500 path).
+  ...GBFS_RASTER_FILE,
   // SPORT-HOOK (#607): sport-venue raster names only (no masters built
   // by decision — SPORT_NO_RASTER; the points-splat distance kernel IS
   // the field; absent files degrade windows to null, honestly).
@@ -2095,6 +2103,9 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // PAASTE-HOOK (#493): no paaste metro master (honest-empty — the file
   // is absent, so windows serve county everywhere, like G02B/G03/B10C).
   paaste: "paaste-metro",
+  // GBFS-HOOK (#688): no gbfs metro master (honest-empty — the name
+  // resolves absent so windows fall back to county cleanly).
+  ...GBFS_METRO_NAME,
   // SPORT-HOOK (#607): no sport metro masters (no county masters either
   // — SPORT_NO_RASTER; the names resolve to absent files so windows
   // fall back to the client points-splat distance kernel).

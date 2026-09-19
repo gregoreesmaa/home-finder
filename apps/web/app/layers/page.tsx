@@ -77,6 +77,9 @@ import type { UseFillPolygon } from "../../lib/outlines";
 // fetch handling (see effect below) needs the paaste guard.
 import { isSenscomLayerId } from "../../lib/layers_p4_senscom";
 import { isPaasteLayerId } from "../../lib/layers_paaste";
+// GBFS-HOOK (#688): honest-empty fetch handling (see guards below)
+// needs the gbfs guard — same stale-points leak, same honest state.
+import { isGbfsLayerId } from "../../lib/layers_p4_gbfs";
 // EHIS-HOOK (#608): dbands status names the EHIS extract for ehis
 // layers (see isDbands branch below) — sport keeps its own label.
 import { isEhisLayerId } from "../../lib/layers_p4_ehis";
@@ -293,7 +296,11 @@ export default function LayersPage() {
         // fabricated "komando coverage". Demo-empty (zero markers +
         // "DEMO-varu · 0 punkti") IS the honest state: take it even
         // when older layers already put data on screen.
-        if (isPaasteLayerId(layer)) {
+        // GBFS-HOOK (#688): gbfs rides the same honest-empty state
+        // (no keyless feed verified — never another layer's stale
+        // points under the gbfs bands kernel, never invented
+        // markers).
+        if (isPaasteLayerId(layer) || isGbfsLayerId(layer)) {
           setProvenance("demo");
           setAgeMs(null);
           setPointCount(0);
@@ -326,7 +333,9 @@ export default function LayersPage() {
         // PAASTE-HOOK (#493): same honest-empty state on transport
         // error (see above) — never another layer's stale points,
         // never demo markers (fallbackPoints is [] by honesty).
-        if (isPaasteLayerId(layer)) {
+        // GBFS-HOOK (#688): gbfs rides along (same honest-empty
+        // shape, no keyless feed).
+        if (isPaasteLayerId(layer) || isGbfsLayerId(layer)) {
           setProvenance("demo");
           setAgeMs(null);
           setPointCount(0);

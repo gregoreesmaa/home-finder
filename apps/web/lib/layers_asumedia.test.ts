@@ -39,7 +39,8 @@ describe("asumedia registry (#495)", () => {
     // 106 shipped layers on main (#511 tervise) + 1 asumedia layer (106 + 1).
     // ASUMEDIA-HOOK (#495): asumedia joins the registry (106 + 1).
     // PAASTE-HOOK (#493): +1 komando overlay (107 + 1).
-    expect(ids.length).toBe(154); // KPO (#626): 136 shipped + kpo = 137. // HARBOUR (#627): 135 shipped + harbour = 136.
+    // GBFS-HOOK (#688): +1 gbfs bike-share layer (154 + 1 = 155).
+    expect(ids.length).toBe(155); // KPO (#626): 136 shipped + kpo = 137. // HARBOUR (#627): 135 shipped + harbour = 136.
     // DELAY-HOOK (#629): + 5 delay band overlays (137 + 5 = 142). // SILLY-HOOK (#711): +12 silly-bundle layers (142 + 12 = 154).
     expect(ids).toContain("asumedia");
   });
