@@ -235,6 +235,9 @@ describe("layer registry", () => {
       // GBFS-HOOK (#688): gbfs bike-share id (P4-GBFS station leg,
       // no parameters3 id).
       "gbfs",
+      // SKIS-HOOK (#692): skis track id (P4-skis leisure pins, no
+      // parameters3 id).
+      "skis",
       // SPORT-HOOK (#607): sport-venue slice ids (P4-048 pool/hall/
       // field — paramIds empty, parameters4 namespace).
       "sport_hall",
@@ -415,6 +418,10 @@ describe("layer registry", () => {
     // micromobility slice, no parameters3 number).
     expect(LAYERS.find((l) => l.id === "gbfs")?.paramIds).toEqual([]);
     expect(LAYERS.find((l) => l.id === "gbfs")?.paramLabel).toBe("P4-GBFS");
+    // SKIS-HOOK (#692): skis binds NO parameters3 number (P4-skis
+    // leisure pins, no parameters3 number).
+    expect(LAYERS.find((l) => l.id === "skis")?.paramIds).toEqual([]);
+    expect(LAYERS.find((l) => l.id === "skis")?.paramLabel).toBe("P4-skis");
     // SPORT-HOOK (#607): sport slices ride paramLabel, paramIds stays
     // [] (parameters4 P4-048 slices, no parameters3 number).
     for (const id of ["sport_hall", "sport_field", "sport_pool"]) {
@@ -879,6 +886,14 @@ describe("layer registry", () => {
       // invented fallback dots would be fake stations). Pinned in
       // layers_p4_gbfs.test.ts.
       if (l.id === "gbfs") {
+        expect(l.fallbackPoints).toEqual([]);
+        continue;
+      }
+      // SKIS-HOOK (#692): skis is the same honest-empty shape —
+      // ZERO fallback points off-season BY HONESTY (last winter's
+      // tracks are never carried over — stale groomed dots would be
+      // fake snow). Pinned in layers_p4_skis.test.ts.
+      if (l.id === "skis") {
         expect(l.fallbackPoints).toEqual([]);
         continue;
       }

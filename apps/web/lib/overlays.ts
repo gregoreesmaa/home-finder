@@ -756,6 +756,15 @@ export function overlayColorFor(layer: LayerId): string {
     // test).
     case "gbfs":
       return "#22d3ee";
+    // SKIS-HOOK (#692): skis marker (honest off-season pins — today
+    // zero markers). #a5b4fc: indigo-200 talvine härmatis (NOT
+    // #c7d2fe/#c4b5fd — taken paler lavenders — and NOT
+    // #6366f1/#4f46e5 — taken deeper indigos; distinct from 9A's
+    // #22d3ee cyan by sibling coordination; layers never
+    // co-render). Distinct from every other marker (distinct-color
+    // test).
+    case "skis":
+      return "#a5b4fc";
   }
 }
 
@@ -1343,6 +1352,10 @@ export function overlayLegendFor(layer: LayerId): string {
     // layers_p4_gbfs.ts).
     case "gbfs":
       return "Rattaringlus (P4-GBFS) · jaam ≤500 m (hinnang 60/70/80 — EI OLE keyless masinvoogu, seisu näitab ratas.tartu.ee kaart ja operaatori äpp)";
+    // SKIS-HOOK (#692): skis (P4-skis) — groomed entries in season,
+    // honestly empty off-season (see layers_p4_skis.ts).
+    case "skis":
+      return "Suusarajad (P4-skis) · hooldatud sissepääs ≤1 km (hooaja-hinnang — EI OLE masinloetavat rajaoleku-voogu, olek tallinn.ee lehelt + tel 600 8333)";
   }
 }
 

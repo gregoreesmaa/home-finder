@@ -135,6 +135,11 @@ import { PAASTE_RASTER_FILE } from "../layers_paaste";
 // resolves absent so the layer degrades to the designed 500 →
 // demo-empty path, honestly labeled).
 import { GBFS_METRO_NAME, GBFS_RASTER_FILE } from "../layers_p4_gbfs";
+// SKIS-HOOK (#692): skis raster file + metro name live in
+// layers_p4_skis.ts (named but NOT built off-season — honest-empty
+// decision, resolves absent so the layer degrades to the designed
+// 500 → demo-empty path, honestly labeled).
+import { SKIS_METRO_NAME, SKIS_RASTER_FILE } from "../layers_p4_skis";
 // SPORT-HOOK (#607): sport-venue raster filenames + sidecar point type
 // live in layers_p4_sport.ts (rasters intentionally never built —
 // SPORT_NO_RASTER; the names resolve to absent files so rasters degrade
@@ -1546,6 +1551,10 @@ const RASTER_FILE: Record<LayerId, string> = {
   // GBFS-HOOK (#688): gbfs raster name only (no master built —
   // honest-empty; absent file degrades to the designed 500 path).
   ...GBFS_RASTER_FILE,
+  // SKIS-HOOK (#692): skis raster name only (no master built
+  // off-season — honest-empty; absent file degrades to the designed
+  // 500 path).
+  ...SKIS_RASTER_FILE,
   // SPORT-HOOK (#607): sport-venue raster names only (no masters built
   // by decision — SPORT_NO_RASTER; the points-splat distance kernel IS
   // the field; absent files degrade windows to null, honestly).
@@ -2106,6 +2115,10 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // GBFS-HOOK (#688): no gbfs metro master (honest-empty — the name
   // resolves absent so windows fall back to county cleanly).
   ...GBFS_METRO_NAME,
+  // SKIS-HOOK (#692): no skis metro master (honest-empty off-season
+  // — the name resolves absent so windows fall back to county
+  // cleanly).
+  ...SKIS_METRO_NAME,
   // SPORT-HOOK (#607): no sport metro masters (no county masters either
   // — SPORT_NO_RASTER; the names resolve to absent files so windows
   // fall back to the client points-splat distance kernel).
