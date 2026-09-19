@@ -101,6 +101,10 @@ import { isKliimaLayerId } from "../../lib/layers_kliima";
 // VIIRS-HOOK (#719): qbands status names the GIBS extract for viirs
 // (see isQbands branch below) — labelled proxy, never radiometry.
 import { isViirsLayerId } from "../../lib/layers_p4_viirs";
+// OUTAGE-HOOK (#729): qbands status names the hetkeseis sidecar for
+// outage (see isQbands branch below) — the Terviseamet default would
+// otherwise misname it (harno #687 rule).
+import { isOutageLayerId } from "../../lib/layers_p4_outage";
 // POI-HOOK (#612): dbands status names the register extract for poi
 // layers (see isDbands branch below).
 import { isPoiLayerId } from "../../lib/layers_p4_poi";
@@ -1087,7 +1091,13 @@ export default function LayersPage() {
                   ? `Keskkonnaagentuuri väljavõte (kliimanormatiiv 1991-2020, seis 2026-09-16)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
                   : isViirsLayerId(layer)
                     ? `GIBSi väljavõte (VIIRS Black Marble 2016 heledusproksi, 96 ruutu${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""}) · ${pointCount} ruutu`
-                    : `Terviseameti väljavõte (suplusvesi, seis 2026-09-14)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
+                    // OUTAGE-HOOK (#729): outage names the hetkeseis
+                    // sidecar (the Terviseamet default below would
+                    // otherwise misname the outage qbands kernel as
+                    // the bathing-water extract — harno #687 rule).
+                    : isOutageLayerId(layer)
+                      ? `Elektrilevi hetkeseis (rikkekaart, 5-min väljavõte${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""}) · ${pointCount} punkti`
+                      : `Terviseameti väljavõte (suplusvesi, seis 2026-09-14)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
               : isDbands
                 ? isEhisLayerId(layer)
                   ? `EHISe väljavõte (koolihooned, seis 2026-09-16)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`

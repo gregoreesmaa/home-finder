@@ -20,6 +20,10 @@ import {
 // OOKLA-HOOK (#489): ookla tile points come from the Ookla Tallinn
 // extract (never the OSM snapshot, never live).
 import { isOoklaLayerId } from "../../../../lib/layers_p4_ookla";
+// OUTAGE-HOOK (#729): outage city point comes from the operator
+// hetkeseis sidecar (never the OSM snapshot, never live).
+import { isOutageLayerId } from "../../../../lib/layers_p4_outage";
+import { loadOutageSnapshot, outagePointsIn } from "../../../../lib/server/outage";
 // ACCBLACK-HOOK (#490): accblack serves honestly-empty (never 500/demo).
 import { isAccBlackLayerId } from "../../../../lib/layers_accblack";
 // ASUMEDIA-HOOK (#495): asumedia serves honestly-empty (never 500/demo).
@@ -517,6 +521,23 @@ export async function GET(
       points,
       provenance: points.length > 0 ? "snapshot" : "empty",
       ageMs: null,
+    });
+  }
+  // OUTAGE-HOOK (#729): outage city point comes from the fresh
+  // operator sidecar (5-min TTL enforced in loadOutageSnapshot). A
+  // missing or stale sidecar is a 500 (client shows labeled demo);
+  // a fresh sidecar with the city out of view is honestly-empty.
+  // ageMs names the pull age (user-visible freshness, live data).
+  if (isOutageLayerId(def.id)) {
+    const snap = await loadOutageSnapshot();
+    if (!snap) {
+      return NextResponse.json({ error: "no fresh outage snapshot data" }, { status: 500 });
+    }
+    const points = outagePointsIn(snap, bbox);
+    return NextResponse.json({
+      points,
+      provenance: points.length > 0 ? "snapshot" : "empty",
+      ageMs: Date.now() - Date.parse(snap.pulledAt),
     });
   }
   // ACCBLACK-HOOK (#490, reopen #522): projected blackspot points come

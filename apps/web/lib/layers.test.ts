@@ -342,6 +342,10 @@ describe("layer registry", () => {
       "aed",
       "raamatukapid",
       "kalmistu",
+      // OUTAGE-HOOK (#729): outage hetkeseis id (P4-009 power leg —
+      // paramIds empty, parameters4 namespace, honest-empty until
+      // the operator pull).
+      "outage",
     ]);
     expect(LAYERS.find((l) => l.id === "parks")?.paramIds).toEqual([19]);
     expect(LAYERS.find((l) => l.id === "transit")?.paramIds).toEqual([15]);
@@ -436,6 +440,11 @@ describe("layer registry", () => {
     // (parameters4 P4-035 proxy slice, no parameters3 number).
     expect(LAYERS.find((l) => l.id === "viirs")?.paramIds).toEqual([]);
     expect(LAYERS.find((l) => l.id === "viirs")?.paramLabel).toBe("P4-035");
+    // OUTAGE-HOOK (#729): outage rides paramLabel, paramIds stays []
+    // (parameters4 P4-009 power slice shared with the ookla throughput
+    // slices BY DESIGN — different legs, never double-scored).
+    expect(LAYERS.find((l) => l.id === "outage")?.paramIds).toEqual([]);
+    expect(LAYERS.find((l) => l.id === "outage")?.paramLabel).toBe("P4-009");
     // SPORT-HOOK (#607): sport slices ride paramLabel, paramIds stays
     // [] (parameters4 P4-048 slices, no parameters3 number).
     for (const id of ["sport_hall", "sport_field", "sport_pool"]) {
@@ -916,6 +925,15 @@ describe("layer registry", () => {
       // invented fallback dots would be fake schools). Pinned in
       // layers_p4_harno.test.ts.
       if (l.id === "harno") {
+        expect(l.fallbackPoints).toEqual([]);
+        continue;
+      }
+      // OUTAGE-HOOK (#729): outage is the same honest-empty shape —
+      // ZERO fallback points BY HONESTY (no committed snapshot: live
+      // data goes stale in minutes; the route serves the fresh
+      // operator sidecar, never a hand-placed calm point). Pinned in
+      // layers_p4_outage.test.ts.
+      if (l.id === "outage") {
         expect(l.fallbackPoints).toEqual([]);
         continue;
       }
