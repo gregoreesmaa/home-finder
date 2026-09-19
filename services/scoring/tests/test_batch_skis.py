@@ -78,3 +78,17 @@ def test_build_without_status_is_honestly_empty(tmp_path, capsys):
     assert rc == 0
     out = json.loads(capsys.readouterr().out)
     assert out == {"total": 0, "season": "off"}
+
+
+def test_build_out_writes_table_file(tmp_path, capsys):
+    status = tmp_path / "status.json"
+    status.write_text(json.dumps(FIXTURE_STATUS), encoding="utf-8")
+    out_path = str(tmp_path / "table.json")
+    rc = main(["--build", "--cache-dir", str(tmp_path),
+               "--status", str(status), "--out", out_path])
+    assert rc == 0
+    table = json.loads((tmp_path / "table.json").read_text(encoding="utf-8"))
+    assert table["season"] == "on"
+    assert table["counts"] == {"total": 1}
+    assert table["points"][0]["track_id"] == "pirita-velodroom"
+    assert "built_at" in table

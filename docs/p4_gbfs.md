@@ -60,3 +60,11 @@ Tartu: vaata jaamade seisu `ratas.tartu.ee` kaardilt või Tartu
 Smart Bike äpist ja käi lähim jaam kohapeal läbi. Tallinn:
 operaatori (Bolt/Tuul) äpp + kohapealne jalutuskäik lähima
 rendipunktini.
+
+## Pooli wrapper (#762 verdict, 2026-09-19)
+
+Wrapperit POLE otsusega: pole midagi ajastada (FEEDS on tühi,
+`--pull` keeldub) — tühi cron, mis väljub 2-ga, oleks müra, mitte
+automaatika. Wrapper (`pole/bin/run-gbfs.sh`) lisatakse alles pärast
+elusat re-verifitseerimist (viisakas GET, /tmp only, dokumenteeritud
+siin); seni jääb kiht ausalt tühjaks (500 → sildistatud demo).
