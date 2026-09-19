@@ -126,7 +126,7 @@ import { isOutageLayerId } from "../../lib/layers_p4_outage";
 // sample state for silly layers (see demo branch below) — the generic
 // "live ebaõnnestus" would otherwise present designed demo as a load
 // failure.
-import { isSillyLayerId, sillyDemoStatus } from "../../lib/layers_p4_silly";
+import { isSillyLayerId, sillyDemoStatus, sillySnapshotStatus } from "../../lib/layers_p4_silly";
 // POI-HOOK (#612): dbands status names the register extract for poi
 // layers (see isDbands branch below).
 import { isPoiLayerId } from "../../lib/layers_p4_poi";
@@ -1166,7 +1166,13 @@ export default function LayersPage() {
                         ? `Huvipunktide väljavõte (register, seis 2026-09-16)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
                         : `Spordiregistri + ujulate väljavõte (seis 2026-09-16)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
               : isPins
-                ? `annateada väljavõte (libisev 19 päeva aken, seis 2026-09-17)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} teadet`
+                // SILLY-HOOK (#711; serve #774): served silly points
+                // name the open-mapping extract (the fixit default
+                // below would otherwise mislabel all twelve pins
+                // layers as annatada reports).
+                ? isSillyLayerId(layer)
+                  ? sillySnapshotStatus(pointCount)
+                  : `annateada väljavõte (libisev 19 päeva aken, seis 2026-09-17)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} teadet`
                 : `Kohalik hetktõmmis (2026-09-12) · ${pointCount} punkti`
           : "Kohalik hetktõmmis (2026-09-12) · rasterkiht"
         : provenance === "empty"
