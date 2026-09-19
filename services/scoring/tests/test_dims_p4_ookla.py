@@ -39,7 +39,9 @@ from dims_p4_ookla import (
     dim_ookla_fixed,
     dim_ookla_mobile,
     fetch_ookla_parquet,
+    fetch_ookla_shapefile,
     load_ookla_snapshot,
+    ookla_shapefile_url,
     ookla_url,
     quarter_label,
     score_p4_ookla,
@@ -161,6 +163,47 @@ def test_fetch_returns_fresh_cache_without_network(tmp_path):
 def test_fetch_validates_before_any_io(tmp_path):
     with pytest.raises(ValueError):
         fetch_ookla_parquet("wifi", 2026, 1, cache_dir=str(tmp_path))
+
+
+# ---------------------------------------------------------------------------
+# Shapefile-zip leg (#725): Q2 fixed-tile path, hermetic (no network —
+# the zip body is operator/pull only; the live HEAD record lives in
+# docs/p4_ookla_build_q2.md, never in a test).
+# ---------------------------------------------------------------------------
+
+def test_shapefile_url_builds_q2_fixed_path():
+    # Byte-pins the probe-#693-verified 2026-Q2 fixed zip (HEAD 200,
+    # 342651784 B, Last-Modified 2026-08-19 — see the build doc).
+    assert ookla_shapefile_url("fixed", 2026, 2) == (
+        "https://ookla-open-data.s3.amazonaws.com/shapefiles/performance/"
+        "type=fixed/year=2026/quarter=2/"
+        "2026-04-01_performance_fixed_tiles.zip")
+    assert ookla_shapefile_url("mobile", 2024, 4) == (
+        "https://ookla-open-data.s3.amazonaws.com/shapefiles/performance/"
+        "type=mobile/year=2024/quarter=4/"
+        "2024-10-01_performance_mobile_tiles.zip")
+
+
+def test_shapefile_url_rejects_bad_layer_quarter_year():
+    with pytest.raises(ValueError):
+        ookla_shapefile_url("wifi", 2026, 2)
+    with pytest.raises(ValueError):
+        ookla_shapefile_url("fixed", 2026, 5)
+    with pytest.raises(ValueError):
+        ookla_shapefile_url("fixed", 2018, 2)
+
+
+def test_shapefile_fetch_validates_before_any_io(tmp_path):
+    with pytest.raises(ValueError):
+        fetch_ookla_shapefile("wifi", 2026, 2, cache_dir=str(tmp_path))
+
+
+def test_served_quarter_stays_q1_until_operator_pulls_q2():
+    # The map + scorer serve the Q1 extract until the operator runs
+    # the Q2 pull (docs/p4_ookla_build_q2.md): bumping LATEST without
+    # the extract would degrade live layers to demo — pinned.
+    assert (OOKLA_LATEST_YEAR, OOKLA_LATEST_QUARTER) == (2026, 1)
+    assert OOKLA_LATEST_LABEL == "2026-Q1"
 
 
 def test_snapshot_cache_path_and_load_roundtrip(tmp_path):
