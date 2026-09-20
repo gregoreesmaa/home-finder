@@ -73,7 +73,7 @@ describe("noise registry (#625)", () => {
 
   it("pins inert placeholders + attribution + hook marker", () => {
     expect(NOISE_DECAY.noise).toBe(0.5);
-    expect(NOISE_BONUS.noise.kind).toBe("area");
+    expect(NOISE_BONUS.noise).toEqual({ kind: "zones" });
     expect(NOISE_NO_RASTER).toBe(true);
     expect(NOISE_NO_METRO).toBe(true);
     expect(NOISE_LEGS).toEqual(["Lden", "Lnight"]);

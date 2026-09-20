@@ -133,12 +133,12 @@ export const MAAPARANDUS_NO_RASTER = true;
 export const MAAPARANDUS_NO_METRO = true;
 
 /**
- * Bonus spec. INERT placeholder (never evaluated: zero points, null
- * raster — pinned by the polygons-only test). Shape mirrors the area
- * kind so the type contract holds without inventing a calibration.
+ * Bonus spec. Membership zones (issue #807): polygons carry the
+ * verdict — inside reads the leaf band table (see zones807.ts), outside
+ * stays unknown. Zero points, null raster (still polygons-only).
  */
 export const MAAPARANDUS_BONUS: Record<MaaparandusLayerId, BonusSpec> = {
-  maaparandus: { kind: "area", half: 60 },
+  maaparandus: { kind: "zones" },
 };
 
 /**

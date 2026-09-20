@@ -208,15 +208,29 @@ export const PLANKTPR_DECAY: Record<PlanktprLayerId, number> = {
 };
 
 /**
- * Self-scaling cover spec (mobile precedent): measured footprints carry
- * their own value (the polygon bands ARE the calibration, no half);
- * sigma is the Euclidean fallback kernel width. Contract-checked
- * against the wire (half null, sigma 0.5) by loadLayerRaster. The live
- * path serves no points, so the splat degrades to honestly unknown —
- * the polygon fills ARE the field.
+/**
+ * Band for a fill color (issue #807) — the reverse of
+ * planktprColorForUse, derived from the same two tables (no fork: an
+ * unknown color reads null, never a guessed band). Lets the zone
+ * field agree with the fills byte-for-byte.
+ */
+export function planktprBandForColor(color: unknown): number | null {
+  if (typeof color !== "string") return null;
+  const hex = color.toLowerCase();
+  for (const cls of Object.keys(PLANKTPR_USE_COLORS) as PlanktprUseClass[]) {
+    if (PLANKTPR_USE_COLORS[cls].toLowerCase() === hex) return PLANKTPR_USE_BANDS[cls];
+  }
+  return null;
+}
+
+/**
+ * Membership-zone spec (issue #807): the designated-use fills ARE the
+ * field — inside reads the band back off the fill color (see
+ * zones807.ts), outside stays unknown. Still zero fallback points
+ * (honest-empty until the harvest holds polygons).
  */
 export const PLANKTPR_BONUS: Record<PlanktprLayerId, BonusSpec> = {
-  planktpr: { kind: "cover", sigma: 0.5 },
+  planktpr: { kind: "zones" },
 };
 
 /** Raster master filename (intentionally never built — see below). */

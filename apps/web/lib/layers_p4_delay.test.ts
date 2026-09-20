@@ -103,12 +103,12 @@ describe("delay scoring contract (#629)", () => {
     }
   });
 
-  it("locks the inert bonus placeholder + id guards", () => {
+  it("locks the zones bonus specs + id guards (#807)", () => {
     for (const id of DELAY_LAYER_IDS) {
-      expect(DELAY_BONUS[id]).toEqual({ kind: "area", half: 60 });
+      expect(DELAY_BONUS[id]).toEqual({ kind: "zones" });
       expect(isDelayLayerId(id)).toBe(true);
       expect(isDelayPolygonOnlyLayer(id)).toBe(true);
-      expect(bonusSpecForDelay(id)).toEqual({ kind: "area", half: 60 });
+      expect(bonusSpecForDelay(id)).toEqual({ kind: "zones" });
     }
     expect(isDelayLayerId("seveso")).toBe(false);
     expect(bonusSpecForDelay("seveso")).toBeUndefined();

@@ -101,8 +101,8 @@ describe("planktpr registry (#492)", () => {
     expect(d.fallbackPoints).toEqual([]);
   });
 
-  it("uses the cover fallback spec with the wire sigma", () => {
-    expect(PLANKTPR_BONUS).toEqual({ planktpr: { kind: "cover", sigma: 0.5 } });
+  it("uses the zones spec (fills ARE the field, #807)", () => {
+    expect(PLANKTPR_BONUS).toEqual({ planktpr: { kind: "zones" } });
     expect(bonusSpecForPlanktpr("planktpr")).toEqual(PLANKTPR_BONUS.planktpr);
     expect(bonusSpecForPlanktpr("parks")).toBeUndefined();
     expect(bonusSpecFor("planktpr")).toEqual(PLANKTPR_BONUS.planktpr);

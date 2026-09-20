@@ -124,8 +124,8 @@ describe("shed wiring (#763)", () => {
       expect(d.fallbackPoints).toEqual([]);
     }
     expect(SHED_DECAY["shed-15-peak"]).toBe(0.2);
-    expect(SHED_BONUS["shed-30-peak"]).toEqual({ kind: "pins" });
-    expect(bonusSpecForSheds("shed-15-offpeak")).toEqual({ kind: "pins" });
+    expect(SHED_BONUS["shed-30-peak"]).toEqual({ kind: "zones" });
+    expect(bonusSpecForSheds("shed-15-offpeak")).toEqual({ kind: "zones" });
     expect(bonusSpecForSheds("transit")).toBeUndefined();
     expect(SHED_TAGS["shed-15-peak"]).toContain("bus_stop");
     expect(SHED_RASTER_FILE["shed-30-peak"]).toBe(

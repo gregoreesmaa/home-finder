@@ -108,7 +108,7 @@ describe("harbour registry (#627)", () => {
 
   it("pins inert placeholders + vintage + hook marker", () => {
     expect(HARBOUR_DECAY.harbour).toBe(1.5);
-    expect(HARBOUR_BONUS.harbour.kind).toBe("area");
+    expect(HARBOUR_BONUS.harbour).toEqual({ kind: "zones" });
     expect(HARBOUR_NO_RASTER).toBe(true);
     expect(HARBOUR_NO_METRO).toBe(true);
     expect(HARBOUR_HOOK).toContain("HARBOUR-HOOK (#627)");

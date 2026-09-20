@@ -54,6 +54,10 @@
 // * NO bands, NO calibration: with zero qualifying asums any band
 //   table would be fixture fiction. The reopen PR calibrates bands
 //   off the real accumulated store, not off these fixtures.
+// * #807 DORMANT verdict (2026-09-20): the cover kernel is the RIGHT
+//   kernel (exact-fill choropleth when data lands) but the set is
+//   empty, so the whole field stays unknown — dormant, not unscorable.
+//   Revisit at reopen; no spec change needed then.
 //
 // Overlap (documented, same grain different question):
 // dims_p4_maa_tehingud.py already joins per-ASUM off Maa-amet CLOSED

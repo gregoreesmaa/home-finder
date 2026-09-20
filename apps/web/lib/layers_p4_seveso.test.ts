@@ -154,13 +154,13 @@ describe("seveso scoring contract (#613)", () => {
     expect(radiusKmFor("seveso")).toBeCloseTo(0.5, 5);
   });
 
-  it("locks the inert bonus placeholder (zero points + null raster)", () => {
-    expect(SEVESO_BONUS).toEqual({ seveso: { kind: "area", half: 60 } });
-    expect(bonusSpecFor("seveso")).toEqual({ kind: "area", half: 60 });
+  it("locks the zones bonus spec (polygons carry the danger bands, #807)", () => {
+    expect(SEVESO_BONUS).toEqual({ seveso: { kind: "zones" } });
+    expect(bonusSpecFor("seveso")).toEqual({ kind: "zones" });
   });
 
   it("bonusSpecForSeveso answers seveso and ignores other layers", () => {
-    expect(bonusSpecForSeveso("seveso")).toEqual({ kind: "area", half: 60 });
+    expect(bonusSpecForSeveso("seveso")).toEqual({ kind: "zones" });
     expect(bonusSpecForSeveso("parks")).toBeUndefined();
     expect(isSevesoLayerId("seveso")).toBe(true);
     expect(isSevesoLayerId("parks")).toBe(false);

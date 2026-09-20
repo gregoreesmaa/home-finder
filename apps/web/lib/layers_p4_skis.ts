@@ -146,10 +146,29 @@ export function skisDemoStatus(pointCount: number): string {
   );
 }
 
-/** Marker spec for the skis layer (called from the bonusSpecFor hook). */
+/**
+ * Goodness spec for the skis layer (issue #807; called from the
+ * bonusSpecFor hook). A groomed entry within the 1 km entry radius
+ * (SKIS_RADIUS_M) reads 75; past it the tracks say nothing about the
+ * backyard (unknown, never zero). Dormant off-season: zero points
+ * still score null everywhere (SKIS_PROBE), markers + field honest.
+ */
+export const SKIS_DBANDS: { radiusM: number; edges: Array<[number, number]> } = {
+  radiusM: 1000,
+  edges: [[1000, 75]],
+};
+
 export function skisBonusSpecFor(layer: SkisLayerId): BonusSpec {
   void layer;
-  return { kind: "pins" };
+  return { kind: "dbands", radiusM: SKIS_DBANDS.radiusM, edges: SKIS_DBANDS.edges };
+}
+
+/**
+ * Served-points status line (issue #807): the in-season operator
+ * extract names its source (demo/off-season keeps skisDemoStatus).
+ */
+export function skisSnapshotStatus(pointCount: number): string {
+  return `operaatori hooaja-väljavõte (Pirita Spordikeskus, hooaeg) · ${pointCount} punkti`;
 }
 
 /** Equirectangular km (same 57.29/110.57 constants as walk_graph.hav_km). */

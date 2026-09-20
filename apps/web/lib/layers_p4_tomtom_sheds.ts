@@ -119,8 +119,8 @@ export const SHED_DEFS: ShedDef[] = SHED_LAYER_IDS.map((id) => {
   return {
     id,
     title: `${mins} min tööulatus (${estBand(spec.band)})`,
-    goodLabel: "hubi ulatuses — 30 min autosõit tööle",
-    badLabel: "ulatust väljas — pikk autosõit",
+    goodLabel: `hubi ulatuses — ${mins} min autosõit tööle (${estBand(spec.band)}, mõõtmik)`,
+    badLabel: "ulatust väljas — pikk autosõit või mõõtmata (tõmmet pole)",
     source: `${SHED_ATTRIBUTION}: 5 tööhubi polügooni (${mins} min, ${estBand(spec.band)})`,
     hubCount: 5,
   };
@@ -170,12 +170,27 @@ export const SHED_DECAY: Record<ShedLayerId, number> = {
   "shed-30-offpeak": 0.2,
 };
 
-/** Inert placeholder (polygons carry the data — pinned by test). */
+/**
+ * Inside-shed scores by drive-time budget (issue #807 judgment: a
+ * 15-minute hub reach reads 80, a 30-minute reach 70 — congestion is
+ * baked into the polygon SHAPE, so peak/offpeak share the score).
+ * Outside every hub polygon stays unknown (unmeasured slate, never a
+ * long-drive penalty — the cache may simply lack that hub).
+ */
+export const SHED_BUDGET_SCORE: Record<number, number> = {
+  900: 80,
+  1800: 70,
+};
+
+/**
+ * Membership-zone specs (issue #807): hub polygons carry the verdict
+ * (see zones807.ts). Still polygons-only (zero fallback points).
+ */
 export const SHED_BONUS: Record<ShedLayerId, BonusSpec> = {
-  "shed-15-peak": { kind: "pins" },
-  "shed-15-offpeak": { kind: "pins" },
-  "shed-30-peak": { kind: "pins" },
-  "shed-30-offpeak": { kind: "pins" },
+  "shed-15-peak": { kind: "zones" },
+  "shed-15-offpeak": { kind: "zones" },
+  "shed-30-peak": { kind: "zones" },
+  "shed-30-offpeak": { kind: "zones" },
 };
 
 export function bonusSpecForSheds(layer: string): BonusSpec | undefined {

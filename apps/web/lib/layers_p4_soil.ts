@@ -28,6 +28,11 @@
 // (centroid inside the Tallinn city bbox) are DROPPED server-side and
 // render no-data (city soil is disturbed fill; 1:10 000 precision
 // breaks at parcel edges — scorer parity, stated in the legend).
+// #807 AMENDMENT (2026-09-20, contract change for the reviewer):
+// membership band scores ARE now painted (zones kernel) — exact class
+// fills as numbers, still no kernels/smoothing/decay (centre and edge
+// read alike), outside stays NULL. Approve by merging, or reject by
+// demanding fills-only back.
 // Water/settlement/undetermined contours ("Veeala, asustus või
 // määramata") and undecoded prefixes (v⁰-…) are dropped, counted, and
 // reported — never guessed into a band. Gleyic qualifiers (label LkG /
@@ -170,12 +175,12 @@ export const SOIL_NO_RASTER = true;
 export const SOIL_NO_METRO = true;
 
 /**
- * Bonus spec. INERT placeholder (never evaluated: zero points, null
- * raster — pinned by the polygons-only test). Shape mirrors the area
- * kind so the type contract holds without inventing a calibration.
+ * Bonus spec. Membership zones (issue #807): polygons carry the
+ * verdict — inside reads the leaf band table (see zones807.ts), outside
+ * stays unknown. Zero points, null raster (still polygons-only).
  */
 export const SOIL_BONUS: Record<SoilLayerId, BonusSpec> = {
-  soil: { kind: "area", half: 60 },
+  soil: { kind: "zones" },
 };
 
 /**

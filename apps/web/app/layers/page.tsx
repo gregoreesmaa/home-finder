@@ -53,6 +53,8 @@ import {
   shedStatusLine,
   type ShedArea,
 } from "../../lib/layers_p4_tomtom_sheds";
+// 807-HOOK (#807): scored membership zones for the zones field (zones807.ts owns the shapes).
+import { zonesForLayer } from "../../lib/zones807";
 // DATEX-HOOK (#763) + WINDOWED-HOOK (#783): DATEX windowed status
 // line (pole window tables, markers only — window + vintage, never
 // momentary state).
@@ -123,6 +125,8 @@ import { harnoDemoStatus, isHarnoLayerId } from "../../lib/layers_p4_harno";
 // the skis guard below — same "live ebaõnnestus" mislabel, same
 // honest state (off-season, no machine feed).
 import { isSkisLayerId, skisDemoStatus } from "../../lib/layers_p4_skis";
+// 807-HOOK (#807): served-points status for the skis dbands kernel (see the status carve-out below).
+import { skisSnapshotStatus } from "../../lib/layers_p4_skis";
 // EHIS-HOOK (#608): dbands status names the EHIS extract for ehis
 // layers (see isDbands branch below) — sport keeps its own label.
 import { isEhisLayerId } from "../../lib/layers_p4_ehis";
@@ -1198,7 +1202,12 @@ export default function LayersPage() {
               // (user-visible freshness — issue AC).
               : isIncidentsLayerId(layer)
                 ? incidentsStatusLine(pointCount, ageMs !== null ? ageEt(ageMs) : null)
-                : isTileband
+              // 807-HOOK (#807): silly/skis name their own extract (dbands/quiet kernels would mislabel them).
+              : isSillyLayerId(layer)
+                ? sillySnapshotStatus(pointCount)
+                : isSkisLayerId(layer)
+                  ? skisSnapshotStatus(pointCount)
+                  : isTileband
             ? `Ookla Tallinna väljavõte (${OOKLA_QUARTER}) · ${pointCount} ruutu`
             // PAASTE-HOOK (#493): the extract label is senscom-only.
             // isBands alone would mislabel paaste (the other bands layer)
@@ -1347,6 +1356,8 @@ export default function LayersPage() {
         points={isHarbourLayerId(layer) ? [] : (featurePoints ?? [])}
         radiusKm={radiusKmFor(layer)}
         bonus={bonusSpecFor(layer)}
+        // 807-HOOK (#807): scored membership zones for the zones field (page-held sidecars, mapped in zones807.ts).
+        zones={zonesForLayer(layer, { floodAreas, eelisAreas: eelisOverlay, sevesoAreas, statelandAreas, quarryAreas, maaparandusAreas, soilAreas, etakAreas, forestAreas, noiseAreas, kpoAreas, delayAreas, shedAreas, harbourCells, harbourPorts: harbourAreas?.ports ?? null, usePolygons })}
         raster={raster}
         outlines={outlines}
         floodAreas={floodAreas}

@@ -19,6 +19,11 @@
 // window — unknown, never clear). No faked precision: no kernels, no
 // smoothing, no distance decay (centre and edge of a polygon read
 // alike — the scorer pins that its LABEL scores, distance only gates).
+// #807 AMENDMENT (2026-09-20, contract change for the reviewer):
+// membership band scores ARE now painted (zones kernel) — exact class
+// fills as numbers, still no kernels/smoothing/decay (centre and edge
+// read alike), outside stays NULL. Approve by merging, or reject by
+// demanding fills-only back.
 //
 // POLYGONS-ONLY plumbing (documented divergence from every other
 // layer, FLOOD #487 precedent): fallbackPoints is EMPTY (demo points
@@ -176,14 +181,27 @@ export const EELIS_RASTER_FILE: Record<EelisLayerId, string> = {
 export const EELIS_NO_METRO = true;
 
 /**
- * Bonus specs. INERT placeholders (never evaluated: zero points, null
- * raster — pinned by the polygons-only test). Shape mirrors the area
- * kind so the type contract holds without inventing a calibration.
+ * Inside-zone scores by kind (issue #807) — scorer parity with
+ * services/scoring/dims_p4_eelis.py (KAITSE_SCORE 55, HABITAT_NEAR_SCORE
+ * 55, FELLING_SCORE 45). Nuance: the scorer joins nearest-zone within
+ * its window (300/500 m); the map scores strict polygon membership —
+ * same bands, tighter geometry. Outside stays unknown.
+ */
+export const EELIS_KIND_SCORE: Record<"kaitse" | "niit" | "raie", number> = {
+  kaitse: 55,
+  niit: 55,
+  raie: 45,
+};
+
+/**
+ * Bonus specs. Membership zones (issue #807): polygons carry the
+ * verdict — inside reads EELIS_KIND_SCORE (see zones807.ts), outside
+ * stays unknown. Zero points, null raster (still polygons-only).
  */
 export const EELIS_BONUS: Record<EelisLayerId, BonusSpec> = {
-  eeliskaitse: { kind: "area", half: 60 },
-  eelisniit: { kind: "area", half: 60 },
-  eelisraie: { kind: "area", half: 60 },
+  eeliskaitse: { kind: "zones" },
+  eelisniit: { kind: "zones" },
+  eelisraie: { kind: "zones" },
 };
 
 /** Type guard for the bonusSpecFor hook in layers.ts. */

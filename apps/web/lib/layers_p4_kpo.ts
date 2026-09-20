@@ -102,14 +102,45 @@ export const KPO_NO_RASTER = true;
 export const KPO_NO_METRO = true;
 
 /**
- * Bonus spec. INERT placeholder (never evaluated: zero points, null
- * raster — pinned by test). The live scorer legs are
- * services/scoring/dims_p4_kitsendus.py (registry entry point, not
- * this bonus). Shape mirrors the area kind so the type contract holds
- * without inventing a calibration.
+/**
+ * Zone-type -> band score (issue #807) — mirrors _band_for_zone in
+ * services/scoring/dims_p4_kitsendus.py (ban words first, then the
+ * conditioned set; heritage zones condition whatever the wording;
+ * unknown types stay NULL, never a guess).
+ */
+export function kpoScoreForZone(voond: string, family = ""): number | null {
+  const raw = (voond || "").toLowerCase();
+  const banWords: Array<[string, number]> = [
+    ["ehituskeeld", 20],
+    ["ehituskeeluvöönd", 20],
+    ["tagasilöök", 35],
+  ];
+  for (const [word, score] of banWords) {
+    if (raw.includes(word)) return score;
+  }
+  const conditionedWords: Array<[string, number]> = [
+    ["tingimuslik", 50],
+    ["kooskõlastus", 50],
+    ["teavitus", 65],
+    ["kaitsevöönd", 50],
+    ["asjaõigus", 50],
+  ];
+  for (const [word, score] of conditionedWords) {
+    if (raw.includes(word)) return score;
+  }
+  if ((family || "").toLowerCase() === "muinsuskaitse") return 50;
+  return null;
+}
+
+/**
+ * Bonus spec. Membership zones (issue #807): zones carry the verdict
+ * — inside reads kpoScoreForZone (see zones807.ts), outside stays
+ * unknown (unmapped is unmeasured, never clean title). Zero points,
+ * null raster (still polygons-only). The live scorer legs are
+ * services/scoring/dims_p4_kitsendus.py.
  */
 export const KPO_BONUS: Record<KpoLayerId, BonusSpec> = {
-  kpo: { kind: "area", half: 60 },
+  kpo: { kind: "zones" },
 };
 
 /** Type guard for the bonusSpecFor hook in layers.ts. */

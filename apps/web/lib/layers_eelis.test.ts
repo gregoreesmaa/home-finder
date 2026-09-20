@@ -187,15 +187,15 @@ describe("eelis scoring contract (#488)", () => {
     for (const id of EELIS_LAYER_IDS) expect(radiusKmFor(id)).toBeCloseTo(0.5, 5);
   });
 
-  it("locks the inert bonus placeholders (zero points + null raster)", () => {
+  it("locks the zones bonus specs (polygons carry the kind bands, #807)", () => {
     expect(EELIS_BONUS).toEqual({
-      eeliskaitse: { kind: "area", half: 60 },
-      eelisniit: { kind: "area", half: 60 },
-      eelisraie: { kind: "area", half: 60 },
+      eeliskaitse: { kind: "zones" },
+      eelisniit: { kind: "zones" },
+      eelisraie: { kind: "zones" },
     });
     for (const id of EELIS_LAYER_IDS) {
-      expect(bonusSpecFor(id)).toEqual({ kind: "area", half: 60 });
-      expect(bonusSpecForEelis(id)).toEqual({ kind: "area", half: 60 });
+      expect(bonusSpecFor(id)).toEqual({ kind: "zones" });
+      expect(bonusSpecForEelis(id)).toEqual({ kind: "zones" });
     }
     expect(bonusSpecForEelis("parks")).toBeUndefined();
     expect(isEelisLayerId("eeliskaitse")).toBe(true);
@@ -205,10 +205,10 @@ describe("eelis scoring contract (#488)", () => {
     expect(isEelisPolygonOnlyLayer("senscom")).toBe(false);
   });
 
-  it("matches the inert wire contract shape (half 60, sigma 0.5)", () => {
+  it("matches the zones wire contract shape (no raster master, #807)", () => {
     for (const id of EELIS_LAYER_IDS) {
-      expect(matchesContract({ half: 60, sigma: 0.5, per: 0, cap: 0 }, id)).toBe(true);
-      expect(matchesContract({ half: 61, sigma: 0.5, per: 0, cap: 0 }, id)).toBe(false);
+      expect(matchesContract({ half: 60, sigma: 0.5, per: 0, cap: 0 }, id)).toBe(false);
+      expect(matchesContract({ half: null, sigma: 0.5, per: 0, cap: 0 }, id)).toBe(false);
     }
   });
 });

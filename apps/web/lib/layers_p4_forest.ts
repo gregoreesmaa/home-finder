@@ -82,14 +82,28 @@ export const FOREST_NO_RASTER = true;
 export const FOREST_NO_METRO = true;
 
 /**
- * Bonus spec. INERT placeholder (never evaluated: zero points, null
- * raster — pinned by test). The live scorer leg is
- * services/scoring/dims_p4_forestchange.py (registry entry point, not
- * this bonus). Shape mirrors the area kind so the type contract holds
- * without inventing a calibration.
+/**
+ * Inside-polygon scores by detection-age class (issue #807) — scorer
+ * parity with _score_change in services/scoring/dims_p4_forestchange.py
+ * (recent&near 30, 4-10y&near 60, older 70). Nuance: the scorer's 55
+ * near-halo (recent change 500-1500 m out) has no membership
+ * equivalent — scorer-side only. Outside every polygon stays unknown
+ * (no detected change is not protection).
+ */
+export const FOREST_CLASS_SCORE: Record<number, number> = {
+  1: 70,
+  2: 60,
+  3: 30,
+};
+
+/**
+ * Bonus spec. Membership zones (issue #807): polygons carry the
+ * verdict — inside reads FOREST_CLASS_SCORE (see zones807.ts), outside
+ * stays unknown. Zero points, null raster (still polygons-only). The
+ * live scorer leg is services/scoring/dims_p4_forestchange.py.
  */
 export const FOREST_BONUS: Record<ForestLayerId, BonusSpec> = {
-  forest: { kind: "area", half: 60 },
+  forest: { kind: "zones" },
 };
 
 /** Type guard for the bonusSpecFor hook in layers.ts. */

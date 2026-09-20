@@ -112,9 +112,9 @@ describe("etak registry (#618)", () => {
 });
 
 describe("etak wiring (#618)", () => {
-  it("locks the inert decay/bonus placeholders through layers.ts (never evaluated)", () => {
+  it("locks the zones bonus spec through layers.ts (polygons carry contour scores, #807)", () => {
     expect(radiusKmFor("etak")).toBeCloseTo(0.5, 5);
-    expect(bonusSpecFor("etak")).toEqual({ kind: "area", half: 60 });
+    expect(bonusSpecFor("etak")).toEqual({ kind: "zones" });
   });
   it("carries the outside-unknown caveat in the legend (OTA PR #131 precedent)", () => {
     expect(overlayLegendFor("etak")).toContain("väljaspool = teadmata, mitte kuiv maa");

@@ -13,6 +13,8 @@ import { stopMode, type BBoxLike, type BonusSpec } from "./layers";
 // module owns the tile payload tags; this import is values-only one
 // way — layers_p4_ookla imports ./layers as types, so no cycle).
 import { ooklaDirectField } from "./layers_p4_ookla";
+// 807-HOOK (#807): membership-zone grid builder + Zone type (zones807.ts owns the shapes).
+import { buildZoneField, type Zone } from "./zones807";
 import { colorForValue } from "./valueScale";
 import { splatValues, splatWeights } from "./valueGrid";
 
@@ -179,9 +181,17 @@ export function buildScoredField(
   rows: number,
   sigmaKm: number,
   spec: BonusSpec,
+  // 807-HOOK (#807): scored membership zones for the zones kernel (ignored by every other kind).
+  zones: Zone[] = [],
 ): ScoredField {
   const field = buildDistanceField(points, bbox, cols, rows);
   const bonus = new Float64Array(cols * rows);
+  // 807-HOOK (#807): membership zones paint the band grid directly — inside = band score (min-wins),
+  // outside = NaN (unknown, never zero); empty zones stay all-NaN so the caller clears the field.
+  if (spec.kind === "zones") {
+    const direct = buildZoneField(zones, bbox, cols, rows);
+    return { field, bonus, sigmaKm, direct };
+  }
   if (spec.kind === "area") {
     // Total nearby hectares, saturating: score = 100·S/(S+half), linear in
     // area (two 10-ha parks equal one 20-ha park) with Gaussian falloff.

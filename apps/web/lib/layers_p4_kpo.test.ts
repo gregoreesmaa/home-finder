@@ -90,12 +90,12 @@ describe("kpo registry (#626)", () => {
     expect(KPO_DEFS[0].fallbackPoints).toEqual([]);
   });
 
-  it("pins inert placeholders + vintage + families + hook marker", () => {
+  it("pins zones spec + vintage + families + hook marker (#807)", () => {
     expect(KPO_NO_RASTER).toBe(true);
     expect(KPO_NO_METRO).toBe(true);
     expect(KPO_VINTAGE).toBe("2026-09");
     expect(KPO_FAMILIES).toHaveLength(18);
-    expect(bonusSpecForKpo("kpo")?.kind).toBe("area");
+    expect(bonusSpecForKpo("kpo")).toEqual({ kind: "zones" });
     expect(bonusSpecForKpo("nope")).toBeUndefined();
     expect(KPO_HOOK).toContain("KPO-HOOK (#626)");
   });

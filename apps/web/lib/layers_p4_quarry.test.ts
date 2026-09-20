@@ -145,13 +145,13 @@ describe("quarry scoring contract (#614)", () => {
     expect(radiusKmFor("quarry")).toBeCloseTo(0.5, 5);
   });
 
-  it("locks the inert bonus placeholder (zero points + null raster)", () => {
-    expect(QUARRY_BONUS).toEqual({ quarry: { kind: "area", half: 60 } });
-    expect(bonusSpecFor("quarry")).toEqual({ kind: "area", half: 60 });
+  it("locks the zones bonus spec (polygons carry the permit bands, #807)", () => {
+    expect(QUARRY_BONUS).toEqual({ quarry: { kind: "zones" } });
+    expect(bonusSpecFor("quarry")).toEqual({ kind: "zones" });
   });
 
   it("bonusSpecForQuarry answers quarry and ignores other layers", () => {
-    expect(bonusSpecForQuarry("quarry")).toEqual({ kind: "area", half: 60 });
+    expect(bonusSpecForQuarry("quarry")).toEqual({ kind: "zones" });
     expect(bonusSpecForQuarry("parks")).toBeUndefined();
     expect(isQuarryLayerId("quarry")).toBe(true);
     expect(isQuarryLayerId("parks")).toBe(false);

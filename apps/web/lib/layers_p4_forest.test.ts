@@ -122,9 +122,9 @@ describe("forest registry (#624)", () => {
 });
 
 describe("forest wiring (#624)", () => {
-  it("locks the inert decay/bonus placeholders through layers.ts (never evaluated)", () => {
+  it("locks the zones bonus spec through layers.ts (polygons carry age bands, #807)", () => {
     expect(radiusKmFor("forest")).toBeCloseTo(0.5, 5);
-    expect(bonusSpecFor("forest")).toEqual({ kind: "area", half: 60 });
+    expect(bonusSpecFor("forest")).toEqual({ kind: "zones" });
   });
   it("states bands + vintage + caveat in the legend (warning, never safe)", () => {
     expect(overlayLegendFor("forest")).toContain("2024");

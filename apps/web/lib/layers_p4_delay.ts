@@ -202,15 +202,18 @@ export const DELAY_NO_RASTER = true;
 export const DELAY_NO_METRO = true;
 
 /**
- * Inert bonus placeholder (Record<LayerId> requires an entry):
- * polygons only, never evaluated — mirrors the seveso placeholder.
+ * Membership-zone specs (issue #807): corridor ribbons carry the
+ * verdict — inside reads DELAY_BAND_SCORE for the layer's hour band
+ * (see zones807.ts); thin/missing cells emit no zone (the scorer reads
+ * the same gap as NULL, never free-flow). Zero points, null raster
+ * (still polygons-only).
  */
 export const DELAY_BONUS: Record<DelayLayerId, BonusSpec> = {
-  "delay-morning": { kind: "area", half: 60 },
-  "delay-midday": { kind: "area", half: 60 },
-  "delay-evening": { kind: "area", half: 60 },
-  "delay-offpeak": { kind: "area", half: 60 },
-  "delay-worst": { kind: "area", half: 60 },
+  "delay-morning": { kind: "zones" },
+  "delay-midday": { kind: "zones" },
+  "delay-evening": { kind: "zones" },
+  "delay-offpeak": { kind: "zones" },
+  "delay-worst": { kind: "zones" },
 };
 
 export function isDelayLayerId(layer: string): layer is DelayLayerId {

@@ -2116,7 +2116,9 @@ export type BonusSpec =
   // ONLY, never a score. The field stays unknown everywhere BY
   // DECISION (pins measure reporting activity, not place quality), so
   // there is no scorer table to mirror and no radius/bands to tune.
-  | PinsSpec;
+  | PinsSpec
+  // 807-HOOK (#807): polygon-membership zones — values ride leaf band tables (see zones807.ts).
+  | ZonesSpec;
 
 /**
  * Hard-radius witness-count band spec (P4-031-HOOK #484 — senscom DIY
@@ -2187,6 +2189,11 @@ export interface DbandsSpec {
  */
 export interface PinsSpec {
   kind: "pins";
+}
+
+// 807-HOOK (#807): polygon-membership zone spec — the scored shapes live in zones807.ts, not here.
+export interface ZonesSpec {
+  kind: "zones";
 }
 
 export function bonusSpecFor(layer: LayerId): BonusSpec {
@@ -2744,6 +2751,8 @@ export async function fetchWindow(
   // window fetch so the map goes straight to the markers instead of
   // a designed 500 (which only litters the console).
   if (bonusSpecFor(layer).kind === "pins") return null;
+  // 807-HOOK (#807): zones layers have no raster master by decision (sidecar/viewport polygons carry the data).
+  if (bonusSpecFor(layer).kind === "zones") return null;
   try {
     const spanM = (view.maxlon - view.minlon) * 57300;
     const latM = (view.maxlat - view.minlat) * 110570;

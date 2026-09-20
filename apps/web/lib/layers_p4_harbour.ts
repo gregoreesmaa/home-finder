@@ -37,9 +37,9 @@ export const HARBOUR_DEFS: LayerDef[] = [
     paramLabel: "P4-sadam",
     title: "Sadamad + väikelaevaliiklus (2024)",
     goodLabel:
-      "läheduses sadamat/AIS-tihedust pole (mitte 'rahulik' — kaardistamata on teadmata)",
+      "jahtsadam lähedal või elav väikelaevaliiklus (rekreatsioon, hinnang — aastakokku, hooajajaotust pole)",
     badLabel:
-      "töösadam lähedal (fn1) või tihe väikelaevaliiklus (Pleasure ≥50)",
+      "töösadam lähedal (fn1 — müra/raskeliiklus, hinnang) või väljaspool = teadmata (kaardistamata on teadmata, mitte rahulik)",
     source: `${HARBOUR_ATTRIBUTION}: Harju sadamad (liitunud punktid) + Tallinna lahe väikelaevaruudud (hooajajaotuseta, aastakokku)`,
     // Points ARE the data for ports (served on the point path);
     // cells paint as fills. No demo points ever (empty fallback,
@@ -80,13 +80,55 @@ export const HARBOUR_NO_RASTER = true;
 export const HARBOUR_NO_METRO = true;
 
 /**
- * Bonus spec. INERT placeholder (never evaluated: ports score in
- * dims_p4_harbour.py, cells paint fills — pinned by test). Shape
- * mirrors the area kind so the type contract holds without inventing
- * a calibration.
+/**
+ * Port-function proximity bands (issue #807) — byte parity with
+ * FUNCTION_BANDS in services/scoring/dims_p4_harbour.py: (within_m,
+ * score) per function. The map nests the discs (500 m inside 1500 m)
+ * and min-wins, so the ring reads the outer band (inner < outer for
+ * every function). fn1 working ports read industrial; fn2/fn3 marinas
+ * read amenity.
+ */
+export const HARBOUR_FUNCTION_BANDS: Record<number, Array<[number, number]>> = {
+  1: [
+    [500, 45],
+    [1500, 65],
+  ],
+  2: [
+    [500, 70],
+    [1500, 80],
+  ],
+  3: [
+    [500, 75],
+    [1500, 85],
+  ],
+};
+
+/** Proximity bands for one port function (null when unknown). */
+export function harbourPortBands(fn: number): Array<[number, number]> | null {
+  return HARBOUR_FUNCTION_BANDS[fn] ?? null;
+}
+
+/**
+ * Pleasure-cell score for one annual count (issue #807) — parity with
+ * PLEASURE_BANDS in services/scoring/dims_p4_harbour.py (busy sailing
+ * water = recreation amenity, mild leg). Below 1 (or non-finite)
+ * returns null: outside influence is NULL, never a far-away score.
+ */
+export function harbourCellScoreFor(pleasure: number): number | null {
+  if (!Number.isFinite(pleasure) || pleasure < 1) return null;
+  if (pleasure >= 50) return 70;
+  if (pleasure >= 10) return 80;
+  return 85;
+}
+
+/**
+ * Bonus spec. Membership zones (issue #807): ports score as nested
+ * function discs, cells as grid quads (see zones807.ts); outside stays
+ * unknown (unmapped is unmeasured, never calm). The live scorer legs
+ * are services/scoring/dims_p4_harbour.py.
  */
 export const HARBOUR_BONUS: Record<HarbourLayerId, BonusSpec> = {
-  harbour: { kind: "area", half: 60 },
+  harbour: { kind: "zones" },
 };
 
 /** Type guard for the bonusSpecFor hook in layers.ts. */
