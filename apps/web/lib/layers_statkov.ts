@@ -93,7 +93,7 @@ export const STATKOV_DEFAULTS: Record<StatKovLayerId, number> = {
   kovfisc: 30,
 };
 
-const SNAP = "kohalik hetktõmmis 2026-09-12";
+const SNAP = "kohalik väljavõte 2026-09-12";
 const PX = "Statamet PX-Web (võtmeta, tõmmatud 2026-09-13)";
 
 export const STATKOV_DEFS: LayerDef[] = [

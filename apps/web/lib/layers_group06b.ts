@@ -109,7 +109,7 @@ export const GROUP06B_NO_MAP: { param: number; reason: string }[] = [
   {
     param: 359,
     reason:
-      "Asbesti hetktõmmises pole (kontrollitud: 0 building:material=asbestos silti) — signaal puudub täielikult; skoorija None-stub (vajab laborit/uuringut, kaardistamata ≠ puudub).",
+      "Asbesti väljavõttes pole (kontrollitud: 0 building:material=asbestos silti) — signaal puudub täielikult; skoorija None-stub (vajab laborit/uuringut, kaardistamata ≠ puudub).",
   },
   {
     param: 360,
@@ -126,7 +126,7 @@ export const GROUP06B_DEFS: LayerDef[] = [
     goodLabel: "roheline = krohvfassaadiga hooneid tihedalt (käsitöö-hinnang)",
     badLabel: "punane = krohvhooneid vähe või pole (hinnang, MITTE registriotsus)",
     source:
-      "kohalik hetktõmmis 2026-09-12 (OSM building:material=plaster 4396 hoonet; Muinsuskaitseameti register hetktõmmises pole — lähedushinnang, mitte seisukorraotsus)",
+      "kohalik väljavõte 2026-09-12 (OSM building:material=plaster 4396 hoonet; Muinsuskaitseameti register väljavõttes pole — lähedushinnang, mitte seisukorraotsus)",
     fallbackPoints: [
       { lat: 59.428, lon: 24.698 }, // krohvhooned Kristiines (snapshot)
       { lat: 59.4276, lon: 24.6764 }, // krohvhooned (snapshot)
@@ -139,7 +139,7 @@ export const GROUP06B_DEFS: LayerDef[] = [
     goodLabel: "roheline = antiigipood jalutuskäigu kaugusel (hinnang)",
     badLabel: "punane = antiigipoode pole lähedal (hinnang — kauplus ≠ furnituuriladu)",
     source:
-      "kohalik hetktõmmis 2026-09-12 (OSM shop=antiques 14 kauplust; Muinsuskaitseameti register hetktõmmises pole — lähedushinnang, saadavus täpsustamata)",
+      "kohalik väljavõte 2026-09-12 (OSM shop=antiques 14 kauplust; Muinsuskaitseameti register väljavõttes pole — lähedushinnang, saadavus täpsustamata)",
     fallbackPoints: [
       { lat: 59.439, lon: 24.7464 }, // Baltik Antik (snapshot)
       { lat: 59.4403, lon: 24.7499 }, // Old House (snapshot)
@@ -152,7 +152,7 @@ export const GROUP06B_DEFS: LayerDef[] = [
     goodLabel: "roheline = lähikonnas vähe kaardistatud puithooneid (väiksem tuleleviku-hinnang)",
     badLabel: "punane = tihe kaardistatud puithooneala VÕI andmed puuduvad (hinnang, MITTE konstruktsiooniuuring)",
     source:
-      "kohalik hetktõmmis 2026-09-12 (OSM building:material=wood 2376 hoonet, pöörd-kaugus; puitmaterjali kaardistus on hõre — kaardistamata puithooned ei loe; Muinsuskaitseameti register hetktõmmises pole)",
+      "kohalik väljavõte 2026-09-12 (OSM building:material=wood 2376 hoonet, pöörd-kaugus; puitmaterjali kaardistus on hõre — kaardistamata puithooned ei loe; Muinsuskaitseameti register väljavõttes pole)",
     fallbackPoints: [
       { lat: 59.4295, lon: 24.7138 }, // puithoone (snapshot)
       { lat: 59.4425, lon: 24.6846 }, // Stroomi Rannahoone (snapshot)

@@ -75,7 +75,7 @@ export const G07C_NO_MAP: Record<number, string> = {
   260: "tolm dubleeriks lowspec-p408; õietolm kuulub p137 (sibling #140); seireandmed puuduvad",
   316: "tsentraalne puhastus — kaugusgradient oleks võlts (1 kaardistatud water_works)",
   401: "siseruumi nähtus (viimistlus/sisustus) — väline OSM-allikas puudub",
-  402: "kareduse register hetktõmmises puudub",
+  402: "kareduse register väljavõttes puudub",
 };
 
 export interface G07CPoint {
@@ -99,7 +99,7 @@ export interface G07CLayerDef {
   fallbackPoints: G07CPoint[];
 }
 
-const SNAP = "kohalik hetktõmmis 2026-09-12";
+const SNAP = "kohalik väljavõte 2026-09-12";
 
 export const G07C_LAYERS: G07CLayerDef[] = [
   {

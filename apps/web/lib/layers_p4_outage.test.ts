@@ -1,4 +1,7 @@
-// Hermetic tests for the outage hetkeseis layer (issue #729).
+// Hermetic tests for the outage latest-observed layer (issue #729;
+// wording per #783 slice 2: surfaces say "viimane vaatlus", never
+// "hetkeseis" — the #780 history-vs-observation side-by-side contract
+// is unchanged, only the observed-side label is renamed).
 // No network: the 2026-09-19 live verification (GetApplicationData
 // 200 + configuration.js field pins) lives in OUTAGE_PROBE + the
 // harvester (pulled live, /tmp only, never at runtime); the layer
@@ -36,7 +39,7 @@ import {
 const LIVE_TALLINN = { lat: OUTAGE_TALLINN.lat, lon: OUTAGE_TALLINN.lon };
 
 describe("outage registry", () => {
-  it("registers the honest-empty hetkeseis layer", () => {
+  it("registers the honest-empty latest-observed layer", () => {
     expect(OUTAGE_LAYER_IDS).toEqual(["outage"]);
     expect(LAYERS.find((l) => l.id === "outage")).toBeTruthy();
   });
@@ -61,18 +64,20 @@ describe("outage registry", () => {
     expect(OUTAGE_PROBE.sidecarCommitted).toBe(false);
   });
 
-  it("explains the hetkeseis in Estonian with zero markers", () => {
+  it("explains the latest observation in Estonian with zero markers", () => {
     const def = LAYERS.find((l) => l.id === "outage")!;
     expect(def.title).toContain("katkestused");
     expect(def.badLabel).toContain("EI OLE");
-    expect(def.source).toContain("hetkeseis");
+    expect(def.source).toContain("viimane vaatlus");
+    expect(def.source).not.toContain("hetkeseis");
     expect(def.paramIds).toEqual([]);
     expect(def.fallbackPoints).toEqual([]);
     expect(def.paramLabel).toBe("P4-009");
   });
 
   it("serves an Estonian legend and a registry-unique color", () => {
-    expect(overlayLegendFor("outage")).toContain("hetkeseis");
+    expect(overlayLegendFor("outage")).toContain("viimane vaatlus");
+    expect(overlayLegendFor("outage")).not.toContain("hetkeseis");
     expect(overlayColorFor("outage")).toMatch(/^#[0-9a-f]{6}$/);
     expect(overlayColorFor("outage")).toBe("#e65100");
     expect(overlayColorFor("outage")).not.toBe(overlayColorFor("tervise"));
@@ -136,17 +141,18 @@ describe("outage observed reliability (#780)", () => {
     expect(OUTAGE_RELIABILITY_METRIC).toContain("MITTE garantii");
   });
 
-  it("names the window and labels history vs hetkeseis on every surface", () => {
+  it("names the window and labels history vs latest observation on every surface", () => {
     const def = LAYERS.find((l) => l.id === "outage")!;
     expect(def.title).toContain("28 pv");
+    expect(def.title).toContain("viimane vaatlus");
     expect(def.source).toContain("28 päeva");
-    expect(def.source).toContain("punkt on hetkeseis");
+    expect(def.source).toContain("punkt on viimane vaatlus");
     expect(def.source).toContain("ajalugu on pooluse");
-    expect(def.goodLabel).toContain("hetkeseis-hinnang");
+    expect(def.goodLabel).toContain("viimase vaatluse hinnang");
     expect(def.goodLabel).toContain("ajalugu: 28 päeva");
     expect(overlayLegendFor("outage")).toContain("28 pv");
     expect(overlayLegendFor("outage")).toContain("ajalugu");
-    expect(overlayLegendFor("outage")).toContain("hetkeseis");
+    expect(overlayLegendFor("outage")).toContain("viimane vaatlus");
     expect(OUTAGE_HOOK).toContain("#780");
   });
 

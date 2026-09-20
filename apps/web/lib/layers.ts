@@ -868,8 +868,9 @@ import {
   viirsBonusSpecFor,
 } from "./layers_p4_viirs";
 // OUTAGE-HOOK (#729): live-outage tables live in
-// ./layers_p4_outage (P4-009 power leg, city-grain hetkeseis). That
-// module imports layers only as types, so no runtime cycle.
+// ./layers_p4_outage (P4-009 power leg, city-grain latest-observed
+// point). That module imports layers only as types, so no runtime
+// cycle.
 import type { OutageLayerId } from "./layers_p4_outage";
 import {
   OUTAGE_DECAY,
@@ -1013,7 +1014,8 @@ export type LayerId =
   // (./layers_p4_viirs, P4-035 proxy leg, 96 sampled cells).
   | ViirsLayerId
   // OUTAGE-HOOK (#729): live-outage overlay id
-  // (./layers_p4_outage, P4-009 power leg, city-grain hetkeseis).
+  // (./layers_p4_outage, P4-009 power leg, city-grain
+  // latest-observed point).
   | OutageLayerId
   // SPORT-HOOK (#607): sport-venue slice ids (./layers_p4_sport,
   // P4-048 pool/hall/field).
@@ -1415,7 +1417,7 @@ export const LAYERS: LayerDef[] = [
     title: "Pargid ja rohealad",
     goodLabel: "roheline = lühike jalutuskäik rohealale",
     badLabel: "punane = pikk jalutuskäik rohealadeni",
-    source: "kohalik hetktõmmis 2026-09-12 (kõndimisgraafik + haljasalad)",
+    source: "kohalik väljavõte 2026-09-12 (kõndimisgraafik + haljasalad)",
     fallbackPoints: [
       { lat: 59.4386, lon: 24.7912 }, // Kadriorg
       { lat: 59.4318, lon: 24.7383 }, // Hirvepark
@@ -1428,7 +1430,7 @@ export const LAYERS: LayerDef[] = [
     title: "Ühistransport",
     goodLabel: "roheline = lühike jalutuskäik sagedase ühenduseni",
     badLabel: "punane = pikk jalutuskäik või harv ühendus",
-    source: "kohalik hetktõmmis 2026-09-12 (kõndimisgraafik + GTFS väljumised)",
+    source: "kohalik väljavõte 2026-09-12 (kõndimisgraafik + GTFS väljumised)",
     fallbackPoints: [
       { lat: 59.4405, lon: 24.7369 }, // Balti jaam
       { lat: 59.4278, lon: 24.7611 }, // Viru
@@ -1441,7 +1443,7 @@ export const LAYERS: LayerDef[] = [
     title: "Koolid ja lasteaiad",
     goodLabel: "roheline = lühike jalutuskäik kooli/lasteaiani",
     badLabel: "punane = pikk jalutuskäik või koole pole",
-    source: "kohalik hetktõmmis 2026-09-12 (kõndimisgraafik + amenity)",
+    source: "kohalik väljavõte 2026-09-12 (kõndimisgraafik + amenity)",
     fallbackPoints: [
       { lat: 59.4326, lon: 24.7396 }, // Tallinna kesklinn
       { lat: 59.4211, lon: 24.7153 }, // Kristiine
@@ -1454,7 +1456,7 @@ export const LAYERS: LayerDef[] = [
     title: "Jalutatavus",
     goodLabel: "roheline = tihe, hästi ühendatud tänavavõrk",
     badLabel: "punane = hõre võrk, pikad kõrvalteed",
-    source: "kohalik hetktõmmis 2026-09-12 (kõndimisgraafiku ristmike tihedus)",
+    source: "kohalik väljavõte 2026-09-12 (kõndimisgraafiku ristmike tihedus)",
     fallbackPoints: [
       { lat: 59.4374, lon: 24.7454 }, // Vanalinn
       { lat: 59.4405, lon: 24.7369 }, // Balti jaam
@@ -1466,7 +1468,7 @@ export const LAYERS: LayerDef[] = [
     title: "Kõnniteed",
     goodLabel: "roheline = tihe kõnniteedevõrk",
     badLabel: "punane = kõnniteed puuduvad",
-    source: "kohalik hetktõmmis 2026-09-12 (kõndimisgraafik, kõnniteede km)",
+    source: "kohalik väljavõte 2026-09-12 (kõndimisgraafik, kõnniteede km)",
     fallbackPoints: [
       { lat: 59.4374, lon: 24.7454 }, // Vanalinn
       { lat: 59.412, lon: 24.655 }, // Õismäe
@@ -1478,7 +1480,7 @@ export const LAYERS: LayerDef[] = [
     title: "Rattateed",
     goodLabel: "roheline = tihe rattateedevõrk",
     badLabel: "punane = rattateed puuduvad",
-    source: "kohalik hetktõmmis 2026-09-12 (kõndimisgraafik, rattateede km)",
+    source: "kohalik väljavõte 2026-09-12 (kõndimisgraafik, rattateede km)",
     fallbackPoints: [
       { lat: 59.4437, lon: 24.7307 }, // Telliskivi
       { lat: 59.44, lon: 24.82 }, // Lasnamäe
@@ -1490,7 +1492,7 @@ export const LAYERS: LayerDef[] = [
     title: "Toidupoed",
     goodLabel: "roheline = pood jalutuskäigu kaugusel",
     badLabel: "punane = poed kaugel",
-    source: "kohalik hetktõmmis 2026-09-12 (kõndimisgraafik + shop)",
+    source: "kohalik väljavõte 2026-09-12 (kõndimisgraafik + shop)",
     fallbackPoints: [
       { lat: 59.4364, lon: 24.7536 }, // Viru
       { lat: 59.44, lon: 24.82 }, // Lasnamäe
@@ -1502,7 +1504,7 @@ export const LAYERS: LayerDef[] = [
     title: "Tervishoid",
     goodLabel: "roheline = apteek/arst jalutuskäigu kaugusel",
     badLabel: "punane = arstiabi kaugel",
-    source: "kohalik hetktõmmis 2026-09-12 (kõndimisgraafik + amenity)",
+    source: "kohalik väljavõte 2026-09-12 (kõndimisgraafik + amenity)",
     fallbackPoints: [
       { lat: 59.4364, lon: 24.7536 }, // Viru
       { lat: 59.412, lon: 24.655 }, // Õismäe

@@ -118,7 +118,7 @@ export const GROUP08C_LAYERS: LayerDef[] = [
     goodLabel: "roheline = tormilainetuse tsoonist kaugel (proksi, hinnang)",
     badLabel: "punane = lainetustsooni tänava ääres — kõrgveega läbipääsmatu (proksi, hinnang)",
     source:
-      "kohalik hetktõmmis 2026-09-12 (rannajoonest ≤150 m kaardistatud sõiduteed: Pirita tee, Reidi tee jt — tänava-läheduse hinnang; see EI OLE üleujutuskaart ega läbitavusprognoos)",
+      "kohalik väljavõte 2026-09-12 (rannajoonest ≤150 m kaardistatud sõiduteed: Pirita tee, Reidi tee jt — tänava-läheduse hinnang; see EI OLE üleujutuskaart ega läbitavusprognoos)",
     fallbackPoints: [
       { lat: 59.46048, lon: 24.81723 }, // Pirita tee (lainetustsooni tänaval)
       { lat: 59.39, lon: 24.68 }, // Nõmme keskus (rannast ~4,4 km, tsoonist väljas)
@@ -131,7 +131,7 @@ export const GROUP08C_LAYERS: LayerDef[] = [
     goodLabel: "roheline = järsakutest kaugel (varingu proksi, hinnang)",
     badLabel: "punane = kalju või järsaku ääres (varingu proksi, hinnang)",
     source:
-      "kohalik hetktõmmis 2026-09-12 (kaardistatud pangad 261 joont + järsakud — kauguse-hinnang; see EI OLE geoloogiline varingurisk ega laviinikaart)",
+      "kohalik väljavõte 2026-09-12 (kaardistatud pangad 261 joont + järsakud — kauguse-hinnang; see EI OLE geoloogiline varingurisk ega laviinikaart)",
     fallbackPoints: [
       { lat: 59.44208, lon: 24.80809 }, // Lasnamäe panga serv (järsaku ääres)
       { lat: 59.2, lon: 24.5 }, // Maapiirkond (järsakutest ~14 km kaugusel)

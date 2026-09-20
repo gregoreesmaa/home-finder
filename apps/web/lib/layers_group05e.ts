@@ -96,7 +96,7 @@ export const GROUP05E_ALL_PARAMS = [365, 381, 382, 384, 387] as const;
 
 export type Group05EParam = (typeof GROUP05E_ALL_PARAMS)[number];
 
-const SNAP = "kohalik hetktõmmis 2026-09-12";
+const SNAP = "kohalik väljavõte 2026-09-12";
 
 export const GROUP05E_LAYERS: LayerDef[] = [
   {

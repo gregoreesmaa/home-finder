@@ -66,7 +66,7 @@ export const BATCH4_LAYERS: Batch4LayerDef[] = [
     title: "Noorte iseseisvus",
     goodLabel: "roheline = sagedane nädalavahetuse ühendus (noor saab ise liikuda)",
     badLabel: "punane = nädalavahetusel ühendus puudub või on harv",
-    source: "kohalik hetktõmmis 2026-09-12 (kõndimisgraafik + GTFS laupäeva/pühapäeva väljumised)",
+    source: "kohalik väljavõte 2026-09-12 (kõndimisgraafik + GTFS laupäeva/pühapäeva väljumised)",
     fallbackPoints: [
       { lat: 59.4405, lon: 24.7369 }, // Balti jaam
       { lat: 59.4278, lon: 24.7611 }, // Viru
@@ -78,7 +78,7 @@ export const BATCH4_LAYERS: Batch4LayerDef[] = [
     title: "Lennujaama ühistranspordiühendus",
     goodLabel: "roheline = otsene lennujaamaliin jalutuskäigu kaugusel",
     badLabel: "punane = lennujaama saab vaid ümberistumisega või üldse mitte",
-    source: "kohalik hetktõmmis 2026-09-12 (kõndimisgraafik + GTFS lennujaamaliinide väljumised)",
+    source: "kohalik väljavõte 2026-09-12 (kõndimisgraafik + GTFS lennujaamaliinide väljumised)",
     fallbackPoints: [
       { lat: 59.41646, lon: 24.79659 }, // Lennujaam
       { lat: 59.4278, lon: 24.7611 }, // Viru (buss 2 / tramm T2/T4 koridor)
@@ -90,7 +90,7 @@ export const BATCH4_LAYERS: Batch4LayerDef[] = [
     title: "Pakiautomaadid",
     goodLabel: "roheline = pakiautomaat jalutuskäigu kaugusel",
     badLabel: "punane = pakiautomaadid kaugel",
-    source: "kohalik hetktõmmis 2026-09-12 (kõndimisgraafik + amenity=parcel_locker)",
+    source: "kohalik väljavõte 2026-09-12 (kõndimisgraafik + amenity=parcel_locker)",
     fallbackPoints: [
       { lat: 59.4278, lon: 24.7611 }, // Viru
       { lat: 59.44, lon: 24.82 }, // Lasnamäe
@@ -103,7 +103,7 @@ export const BATCH4_LAYERS: Batch4LayerDef[] = [
     goodLabel: "roheline = pakiautomaat või postkontor lähedal",
     badLabel: "punane = turvalist kättesaamist pole lähedal",
     source:
-      "kohalik hetktõmmis 2026-09-12 (kõndimisgraafik + parcel_locker ×1, postkontor ×2)",
+      "kohalik väljavõte 2026-09-12 (kõndimisgraafik + parcel_locker ×1, postkontor ×2)",
     fallbackPoints: [
       { lat: 59.4278, lon: 24.7611 }, // Viru
       { lat: 59.412, lon: 24.655 }, // Õismäe
@@ -116,7 +116,7 @@ export const BATCH4_LAYERS: Batch4LayerDef[] = [
     goodLabel: "roheline = lühike hinnanguline ooteaeg (~2 min)",
     badLabel: "punane = pikk hinnanguline ooteaeg (~15 min)",
     source:
-      "kohalik hetktõmmis 2026-09-12 (GTFS sageduse + teetiheduse PROKSI, mitte mõõdetud Bolt ETA)",
+      "kohalik väljavõte 2026-09-12 (GTFS sageduse + teetiheduse PROKSI, mitte mõõdetud Bolt ETA)",
     fallbackPoints: [
       { lat: 59.4405, lon: 24.7369 }, // Balti jaam
       { lat: 59.4278, lon: 24.7611 }, // Viru

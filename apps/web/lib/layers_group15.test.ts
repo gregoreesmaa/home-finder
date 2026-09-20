@@ -30,7 +30,7 @@ describe("group15 registry", () => {
     }
     const p130 = GROUP15_LAYERS[0];
     expect(`${p130.badLabel} ${p130.source}`).toMatch(/MITTE ametlik loosiinfo/);
-    expect(GROUP15_LAYERS[2].source).toMatch(/hooldusprogrammid hetktõmmises pole/);
+    expect(GROUP15_LAYERS[2].source).toMatch(/hooldusprogrammid väljavõttes pole/);
   });
 
   it("states the inverted green/red direction explicitly", () => {

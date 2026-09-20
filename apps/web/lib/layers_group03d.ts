@@ -101,7 +101,7 @@ export const GROUP03D_LAYERS: LayerDef[] = [
     goodLabel: "roheline = sadam või sildumiskoht lähedal (hinnang)",
     badLabel: "punane = sildumiskohad kaugel või andmed puuduvad (hinnang)",
     source:
-      "kohalik hetktõmmis 2026-09-12 (OSM leisure=marina + seamark sildumine/sadam + harbour/mooring, 195 objekti — sildumisvõimaluse läheduse hinnang; luba ise on krundi-põhine fakt — see EI OLE lubade register)",
+      "kohalik väljavõte 2026-09-12 (OSM leisure=marina + seamark sildumine/sadam + harbour/mooring, 195 objekti — sildumisvõimaluse läheduse hinnang; luba ise on krundi-põhine fakt — see EI OLE lubade register)",
     fallbackPoints: [
       { lat: 59.468, lon: 24.821 }, // Pirita sadam (sildumiskoha ääres)
       { lat: 59.39, lon: 24.68 }, // Nõmme keskus (sisemaal, sildumiskohtadeta)
@@ -114,7 +114,7 @@ export const GROUP03D_LAYERS: LayerDef[] = [
     goodLabel: "roheline = rannajoonest kaugel, keeluvööndist väljas (hinnang)",
     badLabel: "punane = rannajoone ääres või peal — kontrolli ehituspiiranguid (hinnang)",
     source:
-      "kohalik hetktõmmis 2026-09-12 (OSM rannajoon + järved/veekogud, jõed ja märgalad välja — ST_Distance kauguse-hinnang; see EI OLE õiguslik ehituskeeluotsus)",
+      "kohalik väljavõte 2026-09-12 (OSM rannajoon + järved/veekogud, jõed ja märgalad välja — ST_Distance kauguse-hinnang; see EI OLE õiguslik ehituskeeluotsus)",
     fallbackPoints: [
       { lat: 59.39, lon: 24.68 }, // Nõmme keskus (rannajoonest kaugel)
       { lat: 59.47, lon: 24.82 }, // Pirita rand (rannajoone ääres)

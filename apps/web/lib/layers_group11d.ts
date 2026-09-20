@@ -57,7 +57,7 @@ export const G11D_PARAM_IDS: Record<G11DLayerId, number[]> = {
   trailprivacy: [466],
 };
 
-const SNAP = "kohalik hetktõmmis 2026-09-12";
+const SNAP = "kohalik väljavõte 2026-09-12";
 
 export const G11D_LAYERS: LayerDef[] = [
   {

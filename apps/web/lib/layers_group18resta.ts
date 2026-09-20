@@ -98,7 +98,7 @@ export const GROUP18ARESTA_ALL_PARAMS = [34, 100, 231, 287, 305] as const;
 
 export type Group18ARestAParam = (typeof GROUP18ARESTA_ALL_PARAMS)[number];
 
-const SNAP = "kohalik hetktõmmis 2026-09-12";
+const SNAP = "kohalik väljavõte 2026-09-12";
 
 export const GROUP18ARESTA_LAYERS: LayerDef[] = [
   {

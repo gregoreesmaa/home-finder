@@ -130,7 +130,7 @@ export const BATCH6_NO_MAP = [
   },
 ] as const;
 
-const SNAP = "kohalik hetktõmmis 2026-09-12";
+const SNAP = "kohalik väljavõte 2026-09-12";
 
 export const BATCH6_DEFS: LayerDef[] = [
   {

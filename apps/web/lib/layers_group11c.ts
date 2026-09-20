@@ -86,12 +86,12 @@ export const G11C_DEFS: LayerDef[] = [
     goodLabel: "roheline = peatusega kool jalutuskäigu kaugusel (hinnang)",
     badLabel: "punane = kool kaugel või peatuseta (hinnang, MITTE tegelik bussiliin)",
     source:
-      "kohalik hetktõmmis 2026-09-12 (OSM amenity=school 500 m peatuseulatuses, 337/342; tegelikud koolibussiliinid kaardil pole)",
+      "kohalik väljavõte 2026-09-12 (OSM amenity=school 500 m peatuseulatuses, 337/342; tegelikud koolibussiliinid kaardil pole)",
     fallbackPoints: [
-      { lat: 59.4383, lon: 24.749 }, // kool kesklinnas (hetktõmmis)
-      { lat: 59.4353, lon: 24.7664 }, // kool kesklinnas (hetktõmmis)
-      { lat: 59.4278, lon: 24.7418 }, // kool kesklinnas (hetktõmmis)
-      { lat: 58.9352, lon: 23.541 }, // maakool (hetktõmmis)
+      { lat: 59.4383, lon: 24.749 }, // kool kesklinnas (väljavõte)
+      { lat: 59.4353, lon: 24.7664 }, // kool kesklinnas (väljavõte)
+      { lat: 59.4278, lon: 24.7418 }, // kool kesklinnas (väljavõte)
+      { lat: 58.9352, lon: 23.541 }, // maakool (väljavõte)
     ],
   },
   {
@@ -101,11 +101,11 @@ export const G11C_DEFS: LayerDef[] = [
     goodLabel: "roheline = erispordipaik (staadion/ujula/hall) lähedal",
     badLabel: "punane = erispordipaika lähedal pole",
     source:
-      "kohalik hetktõmmis 2026-09-12 (OSM leisure sporditasand: 523 kaardistatud paika; tavalised mänguväljakud loeb pargikiht)",
+      "kohalik väljavõte 2026-09-12 (OSM leisure sporditasand: 523 kaardistatud paika; tavalised mänguväljakud loeb pargikiht)",
     fallbackPoints: [
-      { lat: 59.4372, lon: 24.7512 }, // fitness (hetktõmmis)
-      { lat: 59.4376, lon: 24.756 }, // spordikeskus (hetktõmmis)
-      { lat: 59.4364, lon: 24.7567 }, // spordikeskus (hetktõmmis)
+      { lat: 59.4372, lon: 24.7512 }, // fitness (väljavõte)
+      { lat: 59.4376, lon: 24.756 }, // spordikeskus (väljavõte)
+      { lat: 59.4364, lon: 24.7567 }, // spordikeskus (väljavõte)
     ],
   },
   {
@@ -115,11 +115,11 @@ export const G11C_DEFS: LayerDef[] = [
     goodLabel: "roheline = haigla või hambaarst lähedal",
     badLabel: "punane = eriarstiabi kaugel",
     source:
-      "kohalik hetktõmmis 2026-09-12 (OSM haigla 41 + hambaarst 79; perearst/apteek loeb tervishoiukiht)",
+      "kohalik väljavõte 2026-09-12 (OSM haigla 41 + hambaarst 79; perearst/apteek loeb tervishoiukiht)",
     fallbackPoints: [
-      { lat: 59.4384, lon: 24.751 }, // hambaarst (hetktõmmis)
-      { lat: 59.4388, lon: 24.7498 }, // hambaarst (hetktõmmis)
-      { lat: 59.4398, lon: 24.7559 }, // hambaarst (hetktõmmis)
+      { lat: 59.4384, lon: 24.751 }, // hambaarst (väljavõte)
+      { lat: 59.4388, lon: 24.7498 }, // hambaarst (väljavõte)
+      { lat: 59.4398, lon: 24.7559 }, // hambaarst (väljavõte)
     ],
   },
   {
@@ -128,11 +128,11 @@ export const G11C_DEFS: LayerDef[] = [
     title: "Pühakojad ja kloostrid",
     goodLabel: "roheline = pühakoda lähedal",
     badLabel: "punane = pühakoda kaugel",
-    source: "kohalik hetktõmmis 2026-09-12 (OSM place_of_worship/monastery: 241 kaardistatud paika)",
+    source: "kohalik väljavõte 2026-09-12 (OSM place_of_worship/monastery: 241 kaardistatud paika)",
     fallbackPoints: [
-      { lat: 59.4379, lon: 24.7532 }, // pühakoda (hetktõmmis)
-      { lat: 59.438, lon: 24.7529 }, // pühakoda (hetktõmmis)
-      { lat: 59.4377, lon: 24.7488 }, // pühakoda (hetktõmmis)
+      { lat: 59.4379, lon: 24.7532 }, // pühakoda (väljavõte)
+      { lat: 59.438, lon: 24.7529 }, // pühakoda (väljavõte)
+      { lat: 59.4377, lon: 24.7488 }, // pühakoda (väljavõte)
     ],
   },
   {
@@ -142,12 +142,12 @@ export const G11C_DEFS: LayerDef[] = [
     goodLabel: "roheline = mets/võsa lähedal (marja- ja seenemaa)",
     badLabel: "punane = korjemaad kaugel",
     source:
-      "kohalik hetktõmmis 2026-09-12 (OSM landuse=forest + natural=wood/scrub/heath: ~19 tuhat kaardistatud üksust; saagikust kaardil pole)",
+      "kohalik väljavõte 2026-09-12 (OSM landuse=forest + natural=wood/scrub/heath: ~19 tuhat kaardistatud üksust; saagikust kaardil pole)",
     fallbackPoints: [
-      { lat: 59.4364, lon: 24.7489 }, // salumets (hetktõmmis)
-      { lat: 59.429, lon: 24.7602 }, // mets (hetktõmmis)
-      { lat: 59.4457, lon: 24.7464 }, // võsa (hetktõmmis)
-      { lat: 58.8491, lon: 23.5067 }, // maamets (hetktõmmis)
+      { lat: 59.4364, lon: 24.7489 }, // salumets (väljavõte)
+      { lat: 59.429, lon: 24.7602 }, // mets (väljavõte)
+      { lat: 59.4457, lon: 24.7464 }, // võsa (väljavõte)
+      { lat: 58.8491, lon: 23.5067 }, // maamets (väljavõte)
     ],
   },
 ];

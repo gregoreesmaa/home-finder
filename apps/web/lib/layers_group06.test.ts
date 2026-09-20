@@ -98,7 +98,7 @@ describe("batch G06 honesty (#138)", () => {
     expect(heritage?.title).toMatch(/proksi/i);
     expect(heritage?.goodLabel).toMatch(/hinnang/i);
     // The source must disclaim the official register explicitly.
-    expect(heritage?.source).toMatch(/Muinsuskaitseameti register hetktõmmises pole/);
+    expect(heritage?.source).toMatch(/Muinsuskaitseameti register väljavõttes pole/);
     expect(heritage?.badLabel).toMatch(/MITTE registriotsus/);
   });
 });

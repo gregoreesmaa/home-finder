@@ -90,7 +90,7 @@ export const G07D_NO_MAP: { param: number; reason: string }[] = [
   {
     param: 448,
     reason:
-      "lõikusaja tolm/liiklus: hooaja ajastus hetktõmmises puudub; ruumiline proksi dubleeriks p409 kaarti hooajalise tähendusega (libe täpsus, hinnangut kaardil pole)",
+      "lõikusaja tolm/liiklus: hooaja ajastus väljavõttes puudub; ruumiline proksi dubleeriks p409 kaarti hooajalise tähendusega (libe täpsus, hinnangut kaardil pole)",
   },
   {
     param: 471,
@@ -104,7 +104,7 @@ export const G07D_NO_MAP: { param: number; reason: string }[] = [
   },
 ];
 
-const SNAP = "kohalik hetktõmmis 2026-09-12";
+const SNAP = "kohalik väljavõte 2026-09-12";
 
 export const G07D_LAYERS: LayerDef[] = [
   {

@@ -106,7 +106,7 @@ export const OSMDAILY_P4: Record<OsmdailyLayerId, string> = {
   lastshop: "P4-061",
 };
 
-const SNAP = "kohalik hetktõmmis 2026-09-12";
+const SNAP = "kohalik väljavõte 2026-09-12";
 
 export const OSMDAILY_DEFS: LayerDef[] = [
   {

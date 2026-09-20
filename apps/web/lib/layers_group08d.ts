@@ -87,7 +87,7 @@ export const G08D_ALL_PARAMS = [377, 378, 429, 447] as const;
 
 export type G08DParam = (typeof G08D_ALL_PARAMS)[number];
 
-const SNAP = "kohalik hetktõmmis 2026-09-12";
+const SNAP = "kohalik väljavõte 2026-09-12";
 
 export const G08D_LAYERS: LayerDef[] = [
   {

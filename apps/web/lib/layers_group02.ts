@@ -54,7 +54,7 @@ export interface Group02Verdict {
   evidence: string;
 }
 
-const SNAP = "kohalik hetktõmmis 2026-09-12";
+const SNAP = "kohalik väljavõte 2026-09-12";
 
 export const GROUP02_VERDICTS: Group02Verdict[] = [
   {
@@ -103,7 +103,7 @@ export const GROUP02_VERDICTS: Group02Verdict[] = [
       "energiaklass oleks proksi proksil (kahekordne võlts). Klass " +
       "skooritakse kuulutuse/EHR fakti järgi (dims_group02), puuduv klass " +
       "jääb NULLiks, mitte hinnanguks.",
-    evidence: `${SNAP}: EPC/energia andmed hetktõmmises puuduvad (EHR, KredEx/EIS ` +
+    evidence: `${SNAP}: EPC/energia andmed väljavõttes puuduvad (EHR, KredEx/EIS ` +
       "ega Maa-amet LoD2 pole registrites); OSM-is klassiallikaid pole",
   },
   {
@@ -115,7 +115,7 @@ export const GROUP02_VERDICTS: Group02Verdict[] = [
       "Load on hoone, mitte asukoha omadus; naabermajade load ei puhasta " +
       "Sinu korterit. Olek skooritakse kuulutuse/EHR fakti järgi " +
       "(dims_group02), tundmatu olek jääb NULLiks.",
-    evidence: `${SNAP}: loa-/menetluse andmed hetktõmmises puuduvad (EHR ` +
+    evidence: `${SNAP}: loa-/menetluse andmed väljavõttes puuduvad (EHR ` +
       "loamenetlus ega KOV teadaanded pole registrites); OSM-is allikaid pole",
   },
 ];

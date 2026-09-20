@@ -84,7 +84,7 @@ export const GROUP10REST_ALL_PARAMS = [215, 491] as const;
 
 export type Group10RestParam = (typeof GROUP10REST_ALL_PARAMS)[number];
 
-const SNAP = "kohalik hetktõmmis 2026-09-12";
+const SNAP = "kohalik väljavõte 2026-09-12";
 
 export const GROUP10REST_LAYERS: LayerDef[] = [
   {

@@ -91,7 +91,7 @@ export const PAASTE_LAYERS: LayerDef[] = [
  */
 export const PAASTE_TAGS: Record<PaasteLayerId, string> = {
   paaste:
-    "Päästeameti kontaktipuu (rescue.ee/et/kontaktid, inimloetav HTML — nimed + aadressid, koordinaate pole; serveeritakse hetktõmmise vahemälu-komandode loendist, mitte Overpassist)",
+    "Päästeameti kontaktipuu (rescue.ee/et/kontaktid, inimloetav HTML — nimed + aadressid, koordinaate pole; serveeritakse väljavõtte vahemälu-komandode loendist, mitte Overpassist)",
 };
 
 /** Raster master filename (intentionally never built — see header). */

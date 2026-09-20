@@ -83,7 +83,7 @@ export const P4OSM_P4: Record<P4OSMLayerId, string> = {
   darkness: "P4-035",
 };
 
-const SNAP = "kohalik hetktõmmis 2026-09-12";
+const SNAP = "kohalik väljavõte 2026-09-12";
 
 export const P4OSM_LAYERS: LayerDef[] = [
   {

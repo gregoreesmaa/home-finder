@@ -835,7 +835,7 @@ export function overlayColorFor(layer: LayerId): string {
     // test).
     case "viirs":
       return "#818cf8";
-    // OUTAGE-HOOK (#729): outage marker (city-grain hetkeseis point).
+    // OUTAGE-HOOK (#729): outage marker (city-grain latest-observed point).
     // #e65100: deep-orange-900 hoiatusoranž (NOT #ea580c/#c2410c —
     // taken burnt oranges — and NOT #f97316/#fb923c — taken bright
     // oranges; darkest orange of the three, and layers never
@@ -1325,29 +1325,29 @@ export function overlayLegendFor(layer: LayerId): string {
     // SILLY-HOOK (#711): silly-bundle legends — mapped dots
     // (hinnang), never quality, never completeness.
     case "kirikukellad":
-      return "Kirikukellad (OSM hetktõmmis: 97 kirikut Tallinnas) · täpp = kaardistatud kirik (kellamüra-hinnang läheduse järgi; helitugevus teadmata — kohapeal kuulata)";
+      return "Kirikukellad (OSM väljavõte: 97 kirikut Tallinnas) · täpp = kaardistatud kirik (kellamüra-hinnang läheduse järgi; helitugevus teadmata — kohapeal kuulata)";
     case "kajakad":
-      return "Kajakad (OSM hetktõmmis: 5 sadamat + 27 turgu + 4 prügilat) · täpp = kajakate toidupaik (hinnang; kajakaid endid ei kaardistata — prügikast kinni)";
+      return "Kajakad (OSM väljavõte: 5 sadamat + 27 turgu + 4 prügilat) · täpp = kajakate toidupaik (hinnang; kajakaid endid ei kaardistata — prügikast kinni)";
     case "manguvaljakud":
-      return "Mänguväljakud (OSM hetktõmmis: 1874 väljakut) · täpp = kaardistatud väljak (päevakära-hinnang; kellaajad teadmata)";
+      return "Mänguväljakud (OSM väljavõte: 1874 väljakut) · täpp = kaardistatud väljak (päevakära-hinnang; kellaajad teadmata)";
     case "koertepargid":
-      return "Koertepargid (OSM hetktõmmis: 89 parki) · täpp = kaardistatud koertepark (haukumis-hinnang; koormus teadmata)";
+      return "Koertepargid (OSM väljavõte: 89 parki) · täpp = kaardistatud koertepark (haukumis-hinnang; koormus teadmata)";
     case "saunad":
-      return "Avalikud saunad (OSM hetktõmmis: 34 sauna) · täpp = kaardistatud saun (leili-hinnang; hinnad-ajad teadmata)";
+      return "Avalikud saunad (OSM väljavõte: 34 sauna) · täpp = kaardistatud saun (leili-hinnang; hinnad-ajad teadmata)";
     case "talisuplus":
-      return "Talisupluskohad (OSM hetktõmmis: 19 suplusala + 53 ujumist) · täpp = kaardistatud supluskoht (talvine auguhooldus TEADMATA — küsi kohapeal)";
+      return "Talisupluskohad (OSM väljavõte: 19 suplusala + 53 ujumist) · täpp = kaardistatud supluskoht (talvine auguhooldus TEADMATA — küsi kohapeal)";
     case "tanavasport":
-      return "Tänavasport (OSM hetktõmmis: 319 välijõusaali + 53 rulat + 6 discgolfi) · täpp = tänavaspordipunkt (hinnang; registri saalid on sport-kihis)";
+      return "Tänavasport (OSM väljavõte: 319 välijõusaali + 53 rulat + 6 discgolfi) · täpp = tänavaspordipunkt (hinnang; registri saalid on sport-kihis)";
     case "vesi":
-      return "Suvevesi (OSM hetktõmmis: 88 purskkaevu + 74 joogivett) · täpp = kaardistatud vesi (jahutus-hinnang; töökord teadmata)";
+      return "Suvevesi (OSM väljavõte: 88 purskkaevu + 74 joogivett) · täpp = kaardistatud vesi (jahutus-hinnang; töökord teadmata)";
     case "wc":
-      return "Avalikud WC-d (OSM hetktõmmis: 205 WC-d) · täpp = kaardistatud WC (hädahinnang; avatus teadmata)";
+      return "Avalikud WC-d (OSM väljavõte: 205 WC-d) · täpp = kaardistatud WC (hädahinnang; avatus teadmata)";
     case "aed":
-      return "AED defibrillaatorid (OSM hetktõmmis: AINULT 11 — hõre kaardistus, mitte tegelikkus) · täpp = kaardistatud AED (hinnang; hädaolukorras 112)";
+      return "AED defibrillaatorid (OSM väljavõte: AINULT 11 — hõre kaardistus, mitte tegelikkus) · täpp = kaardistatud AED (hinnang; hädaolukorras 112)";
     case "raamatukapid":
-      return "Raamatukapid (OSM hetktõmmis: 18 kappi) · täpp = kaardistatud raamatukapp (lugemis-hinnang; valik teadmata)";
+      return "Raamatukapid (OSM väljavõte: 18 kappi) · täpp = kaardistatud raamatukapp (lugemis-hinnang; valik teadmata)";
     case "kalmistu":
-      return "Kalmistu-vaikus (OSM hetktõmmis: 30 kalmistut) · täpp = kaardistatud kalmistu (roheline vaikus-hinnang; dB mõõtmata)";
+      return "Kalmistu-vaikus (OSM väljavõte: 30 kalmistut) · täpp = kaardistatud kalmistu (roheline vaikus-hinnang; dB mõõtmata)";
     // SEVESO-HOOK (#613): seveso danger-class fills (Päästeamet
     // ohualad) — inside a named polygon reads by class color, outside
     // every polygon is unknown (never safe): an unregistered hazard is
@@ -1485,11 +1485,11 @@ export function overlayLegendFor(layer: LayerId): string {
     case "viirs":
       return "Öötaeva heledus (P4-035 heledusproksi, 2016) · lähim ruut ≤3 km (pimedus-hinnang 90/70/50/30/10 — heleduspilt, MITTE mõõdetud radiomeetria)";
     // OUTAGE-HOOK (#729; reliability #780): outage (P4-009) —
-    // city-grain hetkeseis point PLUS the 28-day observed-reliability
-    // window, history vs hetkeseis labelled on every surface (see
-    // layers_p4_outage.ts).
+    // city-grain latest-observed point PLUS the 28-day
+    // observed-reliability window, history vs latest observation
+    // labelled on every surface (see layers_p4_outage.ts).
     case "outage":
-      return "Elektrikatkestused (P4-009 hetkeseis-punkt + 28 pv ajalugu) · Tallinna rida ≤15 km (hinnang 30/55/70/80, lagi 80 — punkt on hetkeseis, ajalugu on 28 päeva vaatlusaken: rikke-/plaaniliste vaatlusarv, MITTE garantii; seisu näitab rikkekaart)";
+      return "Elektrikatkestused (P4-009 vaatluspunkt + 28 pv ajalugu) · Tallinna rida ≤15 km (hinnang 30/55/70/80, lagi 80 — punkt on viimane vaatlus, ajalugu on 28 päeva vaatlusaken: rikke-/plaaniliste vaatlusarv, MITTE garantii; seisu näitab rikkekaart)";
   }
 }
 

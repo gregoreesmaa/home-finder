@@ -91,7 +91,7 @@ export const GROUP20B_NO_MAP: Group20BVerdict[] = [
     reason:
       "Kohalik vabatahtlikkus on ostja elustiili-hinnang (küsimustik, EI " +
       "OLE registrimõõt): selgub kogukonnaga suheldes, mitte " +
-      "hetktõmmisest — ära feigi.",
+      "väljavõttest — ära feigi.",
   },
   {
     param: 239,
@@ -181,7 +181,7 @@ export const GROUP20B_NO_MAP: Group20BVerdict[] = [
     nearestMap: "puudub — aia-fakt, aitab kohapealne vaatlus",
     reason:
       "Mürgised ilutaimed on aia-põhine vaatlusfakt (hinnang kohapeal, EI " +
-      "OLE kaardimõõt): liigid selguvad krundil, mitte hetktõmmisest — " +
+      "OLE kaardimõõt): liigid selguvad krundil, mitte väljavõttest — " +
       "ostja küsimustik ütleb, kas see loeb — ära feigi.",
   },
   {

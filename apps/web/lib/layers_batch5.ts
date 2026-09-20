@@ -72,7 +72,7 @@ export const BATCH5_DEFS: LayerDef[] = [
     goodLabel: "roheline = politseipunkt lähedal (hinnang)",
     badLabel: "punane = politseipunkt kaugel või andmed puuduvad",
     source:
-      "kohalik hetktõmmis 2026-09-12 (OSM amenity=police; PPA kuriteo-CSV-d hetktõmmises pole — see EI OLE mõõdetud kuritegevus)",
+      "kohalik väljavõte 2026-09-12 (OSM amenity=police; PPA kuriteo-CSV-d väljavõttes pole — see EI OLE mõõdetud kuritegevus)",
     fallbackPoints: [
       { lat: 59.4372, lon: 24.7536 }, // Tallinna kesklinn
       { lat: 58.378, lon: 26.729 }, // Tartu kesklinn
@@ -85,7 +85,7 @@ export const BATCH5_DEFS: LayerDef[] = [
     goodLabel: "roheline = päästekomando/haigla lähedal (hinnang)",
     badLabel: "punane = abi kaugel või andmed puuduvad",
     source:
-      "kohalik hetktõmmis 2026-09-12 (OSM amenity=fire_station/hospital; kauguse-hinnang, mitte mõõdetud reageerimisajad)",
+      "kohalik väljavõte 2026-09-12 (OSM amenity=fire_station/hospital; kauguse-hinnang, mitte mõõdetud reageerimisajad)",
     fallbackPoints: [
       { lat: 59.4372, lon: 24.7536 }, // Tallinna kesklinn
       { lat: 58.378, lon: 26.729 }, // Tartu kesklinn
@@ -98,7 +98,7 @@ export const BATCH5_DEFS: LayerDef[] = [
     goodLabel: "roheline = hüdrant lähedal",
     badLabel: "punane = hüdrant kaugel või andmed puuduvad",
     source:
-      "kohalik hetktõmmis 2026-09-12 (OSM emergency=fire_hydrant; lähedus, mitte mõõdetud vooluhulk)",
+      "kohalik väljavõte 2026-09-12 (OSM emergency=fire_hydrant; lähedus, mitte mõõdetud vooluhulk)",
     fallbackPoints: [
       { lat: 59.4374, lon: 24.7454 }, // Vanalinn
       { lat: 59.44, lon: 24.82 }, // Lasnamäe
@@ -111,7 +111,7 @@ export const BATCH5_DEFS: LayerDef[] = [
     goodLabel: "roheline = magistraaltee lähedal (hinnang)",
     badLabel: "punane = magistraalteed kaugel või andmed puuduvad",
     source:
-      "kohalik hetktõmmis 2026-09-12 (OSM highway=trunk/primary; teede läheduse hinnang, mitte ametlik evakuatsiooniplaan)",
+      "kohalik väljavõte 2026-09-12 (OSM highway=trunk/primary; teede läheduse hinnang, mitte ametlik evakuatsiooniplaan)",
     fallbackPoints: [
       { lat: 59.4372, lon: 24.7536 }, // Tallinna kesklinn
       { lat: 58.378, lon: 26.729 }, // Tartu kesklinn
@@ -124,7 +124,7 @@ export const BATCH5_DEFS: LayerDef[] = [
     goodLabel: "roheline = politsei/pääste/haigla lähedal (hinnang)",
     badLabel: "punane = hädaabiteenused kaugel või andmed puuduvad",
     source:
-      "kohalik hetktõmmis 2026-09-12 (OSM amenity=police/fire_station/hospital; läheduse hinnang, mitte mõõdetud väljakutseajad)",
+      "kohalik väljavõte 2026-09-12 (OSM amenity=police/fire_station/hospital; läheduse hinnang, mitte mõõdetud väljakutseajad)",
     fallbackPoints: [
       { lat: 59.4372, lon: 24.7536 }, // Tallinna kesklinn
       { lat: 58.378, lon: 26.729 }, // Tartu kesklinn

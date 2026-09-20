@@ -101,7 +101,7 @@ export const GROUP08B_ALL_PARAMS = [118, 182, 255, 333] as const;
 
 export type Group08BParam = (typeof GROUP08B_ALL_PARAMS)[number];
 
-const SNAP = "kohalik hetktõmmis 2026-09-12";
+const SNAP = "kohalik väljavõte 2026-09-12";
 
 export const GROUP08B_LAYERS: LayerDef[] = [
   {

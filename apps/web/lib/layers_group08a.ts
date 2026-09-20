@@ -117,7 +117,7 @@ export const G08A_LAYERS: LayerDef[] = [
     goodLabel: "roheline = metsast kaugel, kaitseruum olemas (proksi, hinnang)",
     badLabel: "punane = metsa servas või sees, kaitseruum puudub (proksi, hinnang)",
     source:
-      "kohalik hetktõmmis 2026-09-12 (OSM mets/puistu/võsa/nõmm ~10 tuhat polügooni; PROKSI-hinnang, mitte mõõdetud risk — heina-/niidumaad välja, need pole kütus)",
+      "kohalik väljavõte 2026-09-12 (OSM mets/puistu/võsa/nõmm ~10 tuhat polügooni; PROKSI-hinnang, mitte mõõdetud risk — heina-/niidumaad välja, need pole kütus)",
     fallbackPoints: [
       { lat: 59.3862, lon: 24.6611 }, // Nõmme mets (kütuse servas)
       { lat: 59.45, lon: 24.75 }, // Kalamaja (metsast kaugel)

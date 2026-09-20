@@ -131,7 +131,7 @@ export const ASUMEDIA_DEFS: LayerDef[] = [
 /**
  * Empty-state status line for the /layers page (issue #786). The
  * route serves provenance "empty" for asumedia, and the page's
- * generic empty copy ("Selle piirkonna kohta hetktõmmises andmed
+ * generic empty copy ("Selle piirkonna kohta väljavõttes andmed
  * puuduvad") cannot distinguish "pending by design" from "no
  * viewport coverage" — so this names the dated tally + the reopen
  * path instead. Built from ASUMEDIA_VERDICT / ASUMEDIA_MIN_N /
