@@ -54,6 +54,8 @@ import { OSMDAILY_LAYER_IDS } from "../layers_osmdaily";
 import { B1_LAYER_IDS } from "../layers_batch1";
 import { BATCH5_LAYER_IDS } from "../layers_batch5";
 import { G11C_LAYER_IDS } from "../layers_group11c";
+import { SHED_LAYER_IDS, SHED_BUDGET_SCORE, SHED_LAYER_SPEC } from "../layers_p4_tomtom_sheds";
+import { SILLY_QUIET_HALFM } from "../layers_p4_silly";
 
 /** Map-field distance vocabulary (issue #808 §Scope.1). */
 export type AuditMapDistance =
@@ -187,6 +189,10 @@ const COUNT: ReadonlySet<string> = new Set([
 const UTIL_WALK: ReadonlySet<string> = new Set(["fiber", "waste", "water"]);
 const NO_MASTER_FALLBACK = new Set<string>([...GTFSSTOPS_LAYER_IDS, ...BUSMESH_LAYER_IDS]);
 const OSMDAILY = new Set<string>(OSMDAILY_LAYER_IDS);
+// 807 families (issue #807: goodness scores for INERT/pins layers):
+// commute-shed isochrone membership zones + silly nuisance quiet kernels.
+const SHED807 = new Set<string>(SHED_LAYER_IDS);
+const SILLY_QUIET807 = new Set<string>(Object.keys(SILLY_QUIET_HALFM));
 
 function isPolygonFamily(layer: string): boolean {
   return (
@@ -397,6 +403,60 @@ export function auditRowFor(layer: LayerId): AuditRow {
       "reasonable",
       "Accident blackspots stay empty (projecting L-EST97 as WGS84 would " +
         "be fake precision): no field, no distance, both sides.",
+    );
+  }
+  // 807 commute sheds: TomTom Reachable Range drive-time polygons
+  // around the 5 job hubs (polygons-only, no raster master by
+  // decision). Drive time is baked into the MEASURED polygon shape
+  // by TomTom's router — neither side computes a distance (map
+  // paints membership fills/zones, scorer ray-casts
+  // point-in-polygon), so walk vs bird-flight never enters.
+  if (SHED807.has(layer)) {
+    const spec = SHED_LAYER_SPEC[layer as keyof typeof SHED_LAYER_SPEC];
+    const mins = spec.budgetS / 60;
+    const score = SHED_BUDGET_SCORE[spec.budgetS];
+    const band = spec.band === "rush" ? "tipptund" : "tipuväline";
+    return row(
+      layer,
+      "na",
+      "polygon",
+      "services/scoring/dims_tomtom_isochrones.py dim_jobs_within_30min " +
+        "(ray-casting point-in-polygon over hub shed rings)",
+      "reasonable",
+      `Green = inside a hub drive-time polygon (${mins} min autosõit ` +
+        `tööle, ${band} mõõtmik — reads ${score}): commute reach, and ` +
+        `the drive time lives in the measured ring shape, not in a ` +
+        `per-listing distance. Rush is the binding constraint the ` +
+        `scorer counts; off-peak sheds are reference only.`,
+    );
+  }
+  // 807 silly nuisances: church bells / gulls / barking score near =
+  // bad (quiet kernel). All three propagate through AIR, not along
+  // footpaths, so the Euclidean nearest-source kernel (0 on the
+  // source, 50 at halfM) is the physical metric — no walk follow-up.
+  // Map-only hinnang over the held OSM extract (no raster master by
+  // SILLY_NO_RASTER decision); the Python scorer has no leg for
+  // these nuisances, so the scorer column is honestly none.
+  if (SILLY_QUIET807.has(layer)) {
+    const halfM = SILLY_QUIET_HALFM[layer];
+    const src =
+      layer === "kirikukellad"
+        ? "mapped churches (97 place_of_worship, bells across the block)"
+        : layer === "kajakad"
+          ? "gull attractors (5 harbours + 27 markets + 4 landfills, colonies around the bins)"
+          : "mapped dog parks (89 leisure=dog_park, barking across the street)";
+    return row(
+      layer,
+      "euclidean-fallback",
+      "none",
+      "n/a (map-side hinnang only: no per-listing Python leg scores " +
+        "churches, gull attractors, or dog parks; generic OSM/nuisance " +
+        "legs answer different questions)",
+      "reasonable",
+      `Green = calm (far from ${src}): nuisance carries through air, ` +
+        `so Euclidean nearest-source quiet (0 on the source, 50 at ` +
+        `${halfM} m) is correct on the map side. Empty stays unknown, ` +
+        `never calm — and with no scorer leg there is nothing to route.`,
     );
   }
   // Documented no-master fallbacks: honest Euclidean splat.
