@@ -1197,7 +1197,8 @@ describe("layer walk rasters", () => {
     );
     try {
       const res = await loadLayerRaster("industprox", idir);
-      expect(res.distance).toBe("walk");
+      // 808-HOOK (#808): grid-Dijkstra master, never walked — euclidean.
+      expect(res.distance).toBe("euclidean");
       expect(res.raster?.half).toBe(500);
     } finally {
       await rm(idir, { recursive: true, force: true });
@@ -1549,7 +1550,8 @@ describe("G07D quiet rasters (agrifield/wildcorr)", () => {
     );
     try {
       const res = await loadLayerRaster("brownsoil", idir);
-      expect(res.distance).toBe("walk");
+      // 808-HOOK (#808): grid-Dijkstra master, never walked — euclidean.
+      expect(res.distance).toBe("euclidean");
       expect(res.raster?.half).toBe(500);
     } finally {
       await rm(idir, { recursive: true, force: true });
@@ -1573,7 +1575,8 @@ describe("G07D quiet rasters (agrifield/wildcorr)", () => {
     );
     try {
       const res = await loadLayerRaster("agriland", adir);
-      expect(res.distance).toBe("walk");
+      // 808-HOOK (#808): grid-Dijkstra master, never walked — euclidean.
+      expect(res.distance).toBe("euclidean");
       expect(res.raster?.half).toBe(800);
     } finally {
       await rm(adir, { recursive: true, force: true });
@@ -1614,7 +1617,8 @@ describe("G07D quiet rasters (agrifield/wildcorr)", () => {
     );
     try {
       const res = await loadLayerRaster("agrifield", idir);
-      expect(res.distance).toBe("walk");
+      // 808-HOOK (#808): grid-Dijkstra master, never walked — euclidean.
+      expect(res.distance).toBe("euclidean");
       expect(res.raster?.half).toBe(800);
     } finally {
       await rm(idir, { recursive: true, force: true });
@@ -1638,7 +1642,8 @@ describe("G07D quiet rasters (agrifield/wildcorr)", () => {
     );
     try {
       const res = await loadLayerRaster("wildcorr", wdir);
-      expect(res.distance).toBe("walk");
+      // 808-HOOK (#808): grid-Dijkstra master, never walked — euclidean.
+      expect(res.distance).toBe("euclidean");
       expect(res.raster?.half).toBe(500);
     } finally {
       await rm(wdir, { recursive: true, force: true });
@@ -1725,7 +1730,8 @@ describe("G07C quiet raster (vectorhabitat, #142)", () => {
     );
     try {
       const res = await loadLayerRaster("vectorhabitat", dir);
-      expect(res.distance).toBe("walk");
+      // 808-HOOK (#808): grid-Dijkstra master, never walked — euclidean.
+      expect(res.distance).toBe("euclidean");
       expect(res.raster?.half).toBe(300);
     } finally {
       await rm(dir, { recursive: true, force: true });

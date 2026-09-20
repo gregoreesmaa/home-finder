@@ -1995,6 +1995,73 @@ const MARUKOV_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set([
 // blockwalk + darkness (Euclidean count kernels, viewshed/moorage/
 // G05B precedent — see scripts/build/batch_p4_osmwalk.py).
 const P4OSM_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["blockwalk", "darkness"]);
+// 808-HOOK (#808): Euclidean-built G07-family masters ride "euclidean" —
+// industprox + odorsrc (issue #808 audit: scripts/build/
+// batch_g07_envhealth.py stamps exact full-grid 8-connectivity Dijkstra
+// from rasterized source cells — uniform-cost grid distance, no foot
+// graph, no barriers. Labeling them "walk" claimed footpath routing the
+// master never used, and hid the otsekaugus disclaimer on the layers
+// page; the per-listing scorer legs (dims_group07.py haversine bands,
+// "õhu proksi") already measure bird-flight).
+const G07_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["industprox", "odorsrc"]);
+// 808-HOOK (#808): Euclidean-built G07B masters ride "euclidean" —
+// brownsoil + oiltank + agriland (same grid-Dijkstra story, see
+// scripts/build/batch_g07b_envhealth.py; scorer dims_group07b.py
+// haversine).
+const G07B_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["brownsoil", "oiltank", "agriland"]);
+// 808-HOOK (#808): Euclidean-built G07C master rides "euclidean" —
+// vectorhabitat (same grid-Dijkstra story, see
+// scripts/build/batch_g07c_envhealth.py).
+const G07C_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["vectorhabitat"]);
+// 808-HOOK (#808): Euclidean-built G07D masters ride "euclidean" —
+// agrifield + wildcorr (same grid-Dijkstra story, see
+// scripts/build/batch_g07d_envhealth.py; scorer dims_group07d.py
+// haversine).
+const G07D_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["agrifield", "wildcorr"]);
+
+/**
+ * 808-HOOK (#808): distance label a contract-passing master earns.
+ * Pure (no I/O): "euclidean" for Euclidean-by-construction masters,
+ * "walk" for foot-graph-stamped ones. loadLayerRaster consults it so
+ * the label and the audit table (server/layers_distance_audit.ts)
+ * share one decision.
+ */
+export function rasterDistanceLabel(layer: LayerId): TransitDistance {
+  if (
+    B6_EUCLIDEAN_MASTER.has(layer) ||
+    G03_EUCLIDEAN_MASTER.has(layer) ||
+    G03D_EUCLIDEAN_MASTER.has(layer) ||
+    G08A_EUCLIDEAN_MASTER.has(layer) ||
+    G08D_EUCLIDEAN_MASTER.has(layer) ||
+    G08C_EUCLIDEAN_MASTER.has(layer) ||
+    G08B_EUCLIDEAN_MASTER.has(layer) ||
+    G05B_EUCLIDEAN_MASTER.has(layer) ||
+    G05D_EUCLIDEAN_MASTER.has(layer) ||
+    G05A_EUCLIDEAN_MASTER.has(layer) ||
+    G05C_EUCLIDEAN_MASTER.has(layer) ||
+    G05E_EUCLIDEAN_MASTER.has(layer) ||
+    G05F_EUCLIDEAN_MASTER.has(layer) ||
+    G10R_EUCLIDEAN_MASTER.has(layer) ||
+    G18A_EUCLIDEAN_MASTER.has(layer) ||
+    G18B_EUCLIDEAN_MASTER.has(layer) ||
+    G17A_EUCLIDEAN_MASTER.has(layer) ||
+    G17B_EUCLIDEAN_MASTER.has(layer) ||
+    G17R_EUCLIDEAN_MASTER.has(layer) ||
+    B10C_EUCLIDEAN_MASTER.has(layer) ||
+    RSAFE_EUCLIDEAN_MASTER.has(layer) ||
+    STATKOV_EUCLIDEAN_MASTER.has(layer) ||
+    P4PARK_EUCLIDEAN_MASTER.has(layer) ||
+    MARUKOV_EUCLIDEAN_MASTER.has(layer) ||
+    P4OSM_EUCLIDEAN_MASTER.has(layer) ||
+    G07_EUCLIDEAN_MASTER.has(layer) ||
+    G07B_EUCLIDEAN_MASTER.has(layer) ||
+    G07C_EUCLIDEAN_MASTER.has(layer) ||
+    G07D_EUCLIDEAN_MASTER.has(layer)
+  ) {
+    return "euclidean";
+  }
+  return "walk";
+}
 
 export async function loadLayerRaster(
   layer: LayerId,
@@ -2002,33 +2069,8 @@ export async function loadLayerRaster(
 ): Promise<{ raster: WalkRasterDoc | null; distance: TransitDistance }> {
   const doc = await loadWalkRaster(layer, dir);
   if (doc && matchesContract(doc, layer)) {
-    const euclidean =
-      B6_EUCLIDEAN_MASTER.has(layer) ||
-      G03_EUCLIDEAN_MASTER.has(layer) ||
-      G03D_EUCLIDEAN_MASTER.has(layer) ||
-      G08A_EUCLIDEAN_MASTER.has(layer) ||
-      G08D_EUCLIDEAN_MASTER.has(layer) || // G08D-HOOK (#170)
-      G08C_EUCLIDEAN_MASTER.has(layer) || // G08C-HOOK (#169)
-      G08B_EUCLIDEAN_MASTER.has(layer) || // G08B-HOOK (#168)
-      G05B_EUCLIDEAN_MASTER.has(layer) || // G05B-HOOK (#162)
-      G05D_EUCLIDEAN_MASTER.has(layer) || // G05D-HOOK (#164)
-      G05A_EUCLIDEAN_MASTER.has(layer) || // G05A-HOOK (#161)
-      G05C_EUCLIDEAN_MASTER.has(layer) || // G05C-HOOK (#163)
-      G05E_EUCLIDEAN_MASTER.has(layer) || // G05E-HOOK (#165)
-      G05F_EUCLIDEAN_MASTER.has(layer) || // G05F-HOOK (#166)
-      G10R_EUCLIDEAN_MASTER.has(layer) || // G10R-HOOK (#171)
-      G18A_EUCLIDEAN_MASTER.has(layer) || // G18A-HOOK (#172)
-      G18B_EUCLIDEAN_MASTER.has(layer) || // G18B-HOOK (#173)
-      G17A_EUCLIDEAN_MASTER.has(layer) || // G17A-HOOK (#177)
-      G17B_EUCLIDEAN_MASTER.has(layer) || // G17B-HOOK (#178)
-      G17R_EUCLIDEAN_MASTER.has(layer) || // G17R-HOOK (#196)
-      B10C_EUCLIDEAN_MASTER.has(layer) || // B10C-HOOK (#230)
-      RSAFE_EUCLIDEAN_MASTER.has(layer) || // RSAFE-HOOK (#481)
-      STATKOV_EUCLIDEAN_MASTER.has(layer) || // STATKOV-HOOK (#485)
-      P4PARK_EUCLIDEAN_MASTER.has(layer) || // P4PARK-HOOK (#479)
-      MARUKOV_EUCLIDEAN_MASTER.has(layer) || // MARUKOV-HOOK (#486)
-      P4OSM_EUCLIDEAN_MASTER.has(layer); // P4OSM-HOOK (#480)
-    return { raster: doc, distance: euclidean ? "euclidean" : "walk" };
+    // 808-HOOK (#808): one shared label decision (rasterDistanceLabel).
+    return { raster: doc, distance: rasterDistanceLabel(layer) };
   }
   return { raster: null, distance: "euclidean" };
 }
