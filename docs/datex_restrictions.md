@@ -43,6 +43,16 @@ describes the situation records, not a redistribution grant, so it
 does not lift the verdict. Re-check for a published licence before
 any long-term storage.
 
+> Re-check 2026-09-20 (issue #805): profile PDF re-fetched live
+> (HTTP 200, 838957 bytes, 9 pages — same document). Full-text
+> search of the fresh extract: zero hits for redistribut*,
+> licen*, permission, cache/caching, retention, archive*,
+> long-term; §4.1 ("historic data is not available") and §7
+> ("Keep your API-key secret!") unchanged. Verdict STANDS:
+> SHORT-TERM CACHE ONLY — all six DATEX feeds stay window-only,
+> no observation logs (full audit:
+> `docs/realtime_history_805.md`).
+
 Design consequence (all six PRs state this): raw bodies are /tmp-only
 in tests, fixtures are hand-written minima, and the key travels only
 as the `X-DATEX-API-KEY` header, never in files or logs.

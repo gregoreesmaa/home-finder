@@ -57,6 +57,30 @@ Or re-run `bootstrap.sh` (idempotent; keeps cache/built/state/logs).
 4. `python3 -m pytest pole/tests/ -q` — the drift test covers the new references.
 5. Deploy per Re-sync above; smoke-run once; document cadence in the Pi README.
 
+## History policy (issue #805)
+
+Realtime feeds accumulate history ONLY where ToS allows
+(full audit: `docs/realtime_history_805.md`):
+
+- **History**: `outage` (append-only
+  `cache/outage/observations.jsonl`, retention = forever, plus the
+  28-day `outage-reliability` rollup) and `delay` (gather-only cache,
+  never deleted). Disk growth: outage ≈ KB/day; delay ≈ 24 MB/day
+  (see `bin/run-prune.sh` for headroom math).
+- **Window-only, no-store** (ToS re-check 2026-09-20): all six
+  `datex-*` tables (DATEX SHORT-TERM CACHE ONLY — profile §4.1, no
+  storage/redistribution clause) and `incidents` + `sheds` (TomTom
+  clause 11.4). Wrappers replace the window table each pull
+  (atomic tmp+mv; failures keep the previous table) and must never
+  grow an observation log — pinned by
+  `pole/tests/test_realtime_history_805.py`.
+- **Exempt** (not realtime): fixit/medre/poi/mobile snapshot
+  rebuilds, viirs annual, skis seasonal.
+
+No new cron lines for #805 (nothing new to schedule); re-sync after
+repo changes per the section above (wrappers + tests only — no
+harvester/dims changes).
+
 ## Seasonal datasets (no cron)
 
 `skis` is the seasonal exception: `pole/api.py` already exposes
