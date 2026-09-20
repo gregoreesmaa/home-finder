@@ -95,8 +95,9 @@ Wrapper `bin/run-outage.sh` (every 5 min — live TTL):
 ```sh
 #!/bin/sh
 # Pole wrapper: Elektrilevi hetkeseis sidecar (5-min pull, keyless) +
-# observed-reliability build (#780: pull appends to the rolling log on
-# success only, then --build-reliability aggregates the surviving log —
+# observed-reliability build (#780: pull appends to the append-only
+# log on success only (#801: no prune, retention = forever), then
+# --build-reliability aggregates the trailing 28-day window —
 # same cron line, atomic tmp+mv both steps, honest 503s until built;
 # full text in pole/bin/run-outage.sh).
 ```
@@ -126,8 +127,11 @@ Open design questions decided for this slice (documented, reviewable):
 - Grain: CITY ROLLUP FIRST — the log keeps the Tallinn + Harju rows
   only (the 99-area verbatim sidecar would be ~37 MB/day; the compact
   record is ~300 B/pull, ~86 KB/day, ~8 MB at full retention).
-- Storage: ROLLING LOG — `cache/outage/observations.jsonl` pruned past
-  90 days (pole `cache/` convention; corrupt lines dropped, never data).
+- Storage: APPEND-ONLY LOG (issue #801 overrules the #780 rolling
+  90-day prune) — `cache/outage/observations.jsonl` is never deleted
+  (retention = forever, ~86 KB/day city rollup); corrupt lines stay
+  unread gaps, never data. Only the servable reliability TABLE is
+  windowed (trailing 28 days at build time — reads, never deletes).
 - Relationship: HISTORY LINE + LATEST-OBSERVATION POINT side by
   side — the mapped point stays the capped latest observation
   (viimane vaatlus; the "hetkeseis" label was purged per #783 slice

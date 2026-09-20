@@ -107,7 +107,8 @@ export const OUTAGE_RELIABILITY_POLE_DATASET = "outage-reliability";
 /**
  * Observed-reliability window in days (== RELIABILITY_WINDOW_DAYS in
  * scripts/build/batch_outage.py; the pole wrapper rebuilds the table
- * every 5 min from the rolling 90-day observation log).
+ * every 5 min from the append-only observation log (issue #801 —
+ * retention = forever; the 28-day window is a build-time read).
  */
 export const OUTAGE_RELIABILITY_WINDOW_DAYS = 28;
 

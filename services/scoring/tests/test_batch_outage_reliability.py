@@ -1,8 +1,11 @@
-"""Tests for the outage observation log + reliability build (issue #780).
+"""Tests for the outage observation log + reliability build (#780, #801).
 
 Hermetic: no network anywhere (live pulls are operator/pole only).
 Pins log-append (success appends, failure/corrupt appends nothing),
-retention pruning, aggregation windowing + metric, and build CLI.
+APPEND-ONLY growth (issue #801 deliberately removed the #780
+90-day prune — this file no longer imports prune_observations or
+RETAIN_DAYS; both are gone from batch_outage.py), aggregation
+windowing + metric, and build CLI.
 """
 
 import json
@@ -16,14 +19,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..",
 from batch_outage import (  # noqa: E402
     EXPECTED_PULLS_PER_DAY,
     RELIABILITY_WINDOW_DAYS,
-    RETAIN_DAYS,
     append_observation,
     build_reliability,
     build_sidecar,
     decode_application_data,
     main,
     observation_from_sidecar,
-    prune_observations,
     read_observations,
 )
 
@@ -101,16 +102,27 @@ def test_read_skips_corrupt_lines(tmp_path):
     assert read_observations(str(tmp_path / "missing.jsonl")) == []
 
 
-def test_prune_keeps_retention_window(tmp_path):
+def test_log_is_append_only_no_prune_entrypoint(tmp_path):
+    # Issue #801 overrules the #780 rolling 90-day prune: the module
+    # must offer NOTHING that deletes observations (no prune function,
+    # no retention constant, no --retain-days flag).
+    import batch_outage
+    import pytest
+    assert not hasattr(batch_outage, "prune_observations")
+    assert not hasattr(batch_outage, "RETAIN_DAYS")
+    # The CLI flag is gone too (argparse rejects before any pull —
+    # hermetic: no network reached).
+    with pytest.raises(SystemExit):
+        main(["--pull", "--retain-days", "90",
+              "--cache-dir", str(tmp_path)])
     log = str(tmp_path / "observations.jsonl")
-    with open(log, "w", encoding="utf-8") as fh:
-        fh.write(json.dumps(_obs(NOW - timedelta(days=RETAIN_DAYS + 1))) + "\n")
-        fh.write("{corrupt\n")
-        fh.write(json.dumps(_obs(NOW)) + "\n")
-    kept = prune_observations(log, now=NOW)
-    assert kept == 1
-    assert len(read_observations(log)) == 1
-    assert prune_observations(str(tmp_path / "missing.jsonl"), now=NOW) == 0
+    old = _obs(NOW - timedelta(days=400))
+    append_observation(log, old)
+    append_observation(log, _obs(NOW))
+    # A 400-day-old record survives: growth only, never deletion.
+    recs = read_observations(log)
+    assert len(recs) == 2
+    assert recs[0]["ts"] == old["ts"]
 
 
 def test_reliability_aggregates_window_metric():
