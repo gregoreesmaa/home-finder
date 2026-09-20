@@ -18,6 +18,39 @@ from fastapi.responses import FileResponse
 
 BUILT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "built")
 
+#: Pole bookkeeping written by bin/pole-sync.sh + bin/pole-guard.sh +
+#: bin/wrap-run.sh (issue #806). Absent in the repo checkout (CI, dev) —
+#: every reader below treats missing files as "unknown", never as data.
+STATE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "state")
+
+#: Serve-parity freshness TTL per dataset, seconds (issue #806). Pinned
+#: mirrors: datex values == DATEX_TTL_S in apps/web/lib/layers_datex.ts,
+#: outage/reliability == OUTAGE_TTL_S/OUTAGE_RELIABILITY_TTL_S in
+#: apps/web/lib/layers_p4_outage.ts, sheds/incidents == SHED_TTL_S /
+#: INCIDENTS_TTL_S. The rest derive from the pole cron cadence at ~2x
+#: the interval (delay builds hourly, fixit/medre daily, mobile weekly,
+#: poi monthly, viirs yearly + margin). skis is seasonal with no cron
+#: (docs/p4_skis.md) and has no TTL — it is never stale-flagged.
+DATASET_TTL_S = {
+    "delay": 2 * 3600,
+    "fixit": 2 * 86400,
+    "medre": 2 * 86400,
+    "poi": 60 * 86400,
+    "mobile": 14 * 86400,
+    "datex-restrictions": 24 * 3600,
+    "datex-srti": 6 * 3600,
+    "datex-weather": 1 * 3600,
+    "datex-counters": 1 * 3600,
+    "datex-cameras": 1 * 3600,
+    "datex-truckpark": 30 * 86400,
+    "skis": None,
+    "viirs": 400 * 86400,
+    "outage": 300,
+    "outage-reliability": 86400,
+    "sheds": 7 * 86400,
+    "incidents": 6 * 3600,
+}
+
 DATASETS = {
     "delay": "delay/delay-corridors.json",
     "fixit": "fixit/fixit-points.json",
@@ -97,12 +130,126 @@ def _info(name: str, rel: str) -> dict:
     }
 
 
+def _read_state_text(name: str) -> "str | None":
+    """One-line state file, stripped — None when absent (repo/CI)."""
+    try:
+        with open(os.path.join(STATE_DIR, name), encoding="utf-8") as f:
+            return f.read().strip() or None
+    except OSError:
+        return None
+
+
+def _deployed() -> dict:
+    """Deployed code identity written by bin/pole-sync.sh (issue #806)."""
+    return {
+        "deployed_sha": _read_state_text("deployed-sha.txt"),
+        "deployed_at": _read_state_text("deployed-at.txt"),
+    }
+
+
+def _guard_restarts(limit: int = 20) -> list:
+    """Recent unexpected API deaths recorded by bin/pole-guard.sh."""
+    path = os.path.join(STATE_DIR, "guard-restarts.jsonl")
+    try:
+        with open(path, encoding="utf-8") as f:
+            lines = [ln.strip() for ln in f if ln.strip()]
+    except OSError:
+        return []
+    out = []
+    for ln in lines[-limit:]:
+        try:
+            out.append(json.loads(ln))
+        except ValueError:
+            continue
+    return out
+
+
+def _wrapper_status() -> dict:
+    """Last exit per cron job recorded by bin/wrap-run.sh."""
+    status_dir = os.path.join(STATE_DIR, "wrapper-status")
+    try:
+        names = sorted(os.listdir(status_dir))
+    except OSError:
+        return {}
+    out = {}
+    for fn in names:
+        if not fn.endswith(".json"):
+            continue
+        try:
+            with open(os.path.join(status_dir, fn),
+                      encoding="utf-8") as f:
+                body = json.load(f)
+        except (OSError, ValueError):
+            continue
+        if isinstance(body, dict) and "rc" in body:
+            out[fn[: -len(".json")]] = body
+    return out
+
+
+def _sync_status() -> "dict | None":
+    """Last auto-sync result written by bin/pole-sync.sh."""
+    path = os.path.join(STATE_DIR, "sync-status.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            body = json.load(f)
+    except (OSError, ValueError):
+        return None
+    return body if isinstance(body, dict) else None
+
+
+def _dataset_freshness(now: datetime.datetime) -> list:
+    """Per-dataset age vs TTL for the watcher (issue #806)."""
+    rows = []
+    for name, rel in DATASETS.items():
+        info = _info(name, rel)
+        ttl = DATASET_TTL_S.get(name)
+        age_s = None
+        if info["ready"]:
+            try:
+                built = datetime.datetime.fromisoformat(info["built_at"])
+                age_s = max(0.0, (now - built).total_seconds())
+            except (ValueError, KeyError):
+                age_s = None
+        rows.append({
+            "name": name,
+            "ready": info["ready"],
+            "built_at": info.get("built_at"),
+            "age_s": age_s,
+            "ttl_s": ttl,
+            "stale": bool(info["ready"] and ttl is not None
+                          and age_s is not None and age_s > ttl),
+        })
+    return rows
+
+
 @app.get("/health")
 def health() -> dict:
-    return {
+    body = {
         "ok": True,
         "datasets": {n: _info(n, r)["ready"] for n, r in DATASETS.items()},
     }
+    body.update(_deployed())
+    return body
+
+
+@app.get("/v1/errors")
+def errors() -> dict:
+    """Machine-readable failure evidence for the Mac-side watcher.
+
+    Read-only roll-up of Pi-local bookkeeping (issue #806): unexpected
+    API deaths, last cron-wrapper exits, last auto-sync result, and
+    per-dataset age-vs-TTL. Missing state (fresh pole, repo checkout)
+    yields empty lists / nulls — never faked data.
+    """
+    now = datetime.datetime.now(tz=datetime.timezone.utc)
+    body = _deployed()
+    body.update({
+        "guard_restarts": _guard_restarts(),
+        "wrappers": _wrapper_status(),
+        "sync": _sync_status(),
+        "datasets": _dataset_freshness(now),
+    })
+    return body
 
 
 @app.get("/v1/datasets")
