@@ -87,15 +87,15 @@ export const G07B_NO_MAP: { param: number; reason: string }[] = [
   {
     param: 204,
     reason:
-      "ohtlikud ained: Seveso-/ohuregister hetktõmmises puudub (tehased kattuks p61 tööstusega, hinnangut kaardil pole)",
+      "ohtlikud ained: Seveso-/ohuregister väljavõttes puudub (tehased kattuks p61 tööstusega, hinnangut kaardil pole)",
   },
   {
     param: 252,
-    reason: "invasiivtaimed: liigiseiret hetktõmmises pole (haljas/puud loeks mõttetult, hinnangut kaardil pole)",
+    reason: "invasiivtaimed: liigiseiret väljavõttes pole (haljas/puud loeks mõttetult, hinnangut kaardil pole)",
   },
 ];
 
-const SNAP = "kohalik hetktõmmis 2026-09-12";
+const SNAP = "kohalik väljavõte 2026-09-12";
 
 export const G07B_LAYERS: LayerDef[] = [
   {

@@ -99,7 +99,7 @@ describe("batch G06B honesty (#139)", () => {
       expect(d.title).toMatch(/hinnang/i);
       expect(d.title).toMatch(/proksi/i);
       expect(d.badLabel).toMatch(/hinnang/i);
-      expect(d.source).toMatch(/Muinsuskaitseameti register hetktõmmises pole/);
+      expect(d.source).toMatch(/Muinsuskaitseameti register väljavõttes pole/);
     }
   });
 

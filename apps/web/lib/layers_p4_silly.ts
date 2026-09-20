@@ -106,7 +106,7 @@ export const SILLY_PROBE = {
   kalmistu: 30,
 } as const;
 
-const SNAP = "kohalik hetktõmmis 2026-09-12 (OSM, hinnang, mitte loendus)";
+const SNAP = "kohalik väljavõte 2026-09-12 (OSM, hinnang, mitte loendus)";
 
 export const SILLY_LAYERS: LayerDef[] = [
   {

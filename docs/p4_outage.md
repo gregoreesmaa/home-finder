@@ -6,14 +6,15 @@
 > `services/scoring/dims_p4_outage.py` (scorer, `outage_now` key);
 > overlay: `apps/web/lib/layers_p4_outage.ts` + server
 > `apps/web/lib/server/outage.ts` + route branch (city-grain
-> hetkeseis point). Tests: `test_dims_p4_outage.py` +
+> latest-observed point). Tests: `test_dims_p4_outage.py` +
 > `test_batch_outage.py` (hermetic) + `layers_p4_outage.test.ts` +
 > `server/outage.test.ts` (hermetic). Pole: `GET /v1/outage`
 > (honest 503 until the first pull).
 
 ## Buyer question
 
-"Kas siin praegu vool kõigub?" — running-outage hetkeseis for the
+"Kas siin praegu vool kõigub?" — latest-observed outage point
+(viimane vaatlus; wording per #783 slice 2, was "hetkeseis") for the
 power half of P4-009 (the Ookla slices own throughput; SAIDI history
 stays unpublished per `dims_p4_elektrilevi.py` — untouched).
 
@@ -76,7 +77,7 @@ Companion endpoints (`GetObjectsByTiles`, `GetNetworkObjects`,
 so per-outage points would need the tile scheme — out of scope;
 city grain is the honest shape (re-open path).
 
-## §4 Scorer + overlay (capped hetkeseis + observed history since #780)
+## §4 Scorer + overlay (capped latest observation + observed history since #780)
 
 `dim_outage_now`: fault-active → 30 / planned-active → 55 /
 upcoming-only → 70 / clean → 80 (capped — quiet map ≠ reliable
@@ -115,7 +116,7 @@ enforced in `loadOutageSnapshot` — stale sidecars never render.
 Jooksev seis rikkekaardilt (kaart näitab minuteid, mitte fiidri
 ajalugu); püsiühenduse TTJA netikaardilt.
 
-## §6 Observed reliability (issue #780 — history + hetkeseis)
+## §6 Observed reliability (issue #780 — history + latest observation)
 
 Open design questions decided for this slice (documented, reviewable):
 
@@ -127,10 +128,12 @@ Open design questions decided for this slice (documented, reviewable):
   record is ~300 B/pull, ~86 KB/day, ~8 MB at full retention).
 - Storage: ROLLING LOG — `cache/outage/observations.jsonl` pruned past
   90 days (pole `cache/` convention; corrupt lines dropped, never data).
-- Relationship: HISTORY LAYER + HETKESEIS OVERLAY side by side — the
-  mapped point stays the capped hetkeseis; the 28-day window rides the
-  route JSON as `reliability` and renders as a labelled history line.
-  Every surface labels history vs hetkeseis.
+- Relationship: HISTORY LINE + LATEST-OBSERVATION POINT side by
+  side — the mapped point stays the capped latest observation
+  (viimane vaatlus; the "hetkeseis" label was purged per #783 slice
+  2, the side-by-side contract is unchanged); the 28-day window rides
+  the route JSON as `reliability` and renders as a labelled history
+  line. Every surface labels history vs latest observation.
 
 Pipeline: `run-outage.sh` (same 5-min cron line) pulls (append on
 success only — failures leave sidecar AND log untouched) then builds

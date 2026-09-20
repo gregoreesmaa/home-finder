@@ -132,7 +132,7 @@ export const MARUKOV_RESALE_RULE =
   "kovedas = composite (deals>=100, yoy>=0): TT->70, TF->55, FT->50, " +
   "FF->35; a missing leg NULLs (no half-comps)";
 
-const SNAP = "kohalik hetktõmmis 2026-09-12";
+const SNAP = "kohalik väljavõte 2026-09-12";
 const MARU =
   "MARU kvartali KOV-väljavõte (haldaja paigaldatud eksport, " +
   "haldusüksuse täpsus; vormipõhine päringukeskkond, hulgi-lepingut EI OLE)";

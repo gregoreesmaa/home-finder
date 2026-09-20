@@ -73,7 +73,7 @@ export const G02B_DEFS: LayerDef[] = [
     goodLabel: "roheline = 5+ korrusega hooned lähedal (hinnang, lift tõenäoline)",
     badLabel: "punane = kõrghooned kaugel või andmed puuduvad (hinnang)",
     source:
-      "kohalik hetktõmmis 2026-09-12 (OSM building:levels≥5, 5023 hoonet — kõrghoonete läheduse hinnang; EHR liftiandmeid hetktõmmises pole — see EI OLE mõõdetud liftide register)",
+      "kohalik väljavõte 2026-09-12 (OSM building:levels≥5, 5023 hoonet — kõrghoonete läheduse hinnang; EHR liftiandmeid väljavõttes pole — see EI OLE mõõdetud liftide register)",
     fallbackPoints: [
       { lat: 59.4438, lon: 24.8117 }, // Lasnamäe (9-korruselised paneelmajad)
       { lat: 59.4125, lon: 24.6583 }, // Õismäe (paneelrajoon)

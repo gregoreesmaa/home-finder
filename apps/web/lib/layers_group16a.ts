@@ -72,7 +72,7 @@ export const GROUP16A_NO_MAP: Group16AVerdict[] = [
     reason:
       "Maamaksu määrad (EMTA/KOV tabel, EI OLE hinnangut snapshots): " +
       "KOV-kehtestatud määrad muutuvad aastas korra ja puuduvad OSM " +
-      "hetktõmmisest — gradient oleks väljamõeldis. Per-listing dim " +
+      "väljavõttest — gradient oleks väljamõeldis. Per-listing dim " +
       "jääb NULLiks KOV-tabeli kontrolli põhjusega.",
   },
   {
@@ -91,7 +91,7 @@ export const GROUP16A_NO_MAP: Group16AVerdict[] = [
     nearestMap: "puudub — kindlustuspakkumust ei kaardistata",
     reason:
       "Kodukindlustuse hind on hoone-põhine pakkumus (EI OLE hinnangut " +
-      "snapshots): kindlustusseltside tariife hetktõmmises pole. Dim " +
+      "snapshots): kindlustusseltside tariife väljavõttes pole. Dim " +
       "jääb NULLiks võrdluspakkumuse kontrolli põhjusega.",
   },
   {
@@ -121,7 +121,7 @@ export const GROUP16A_NO_MAP: Group16AVerdict[] = [
     reason:
       "Ajalugu (Maa-amet tehingud / Statistikaamet HH01) on kvartali " +
       "registritabel (EI OLE hinnangut snapshots): OSM " +
-      "hetktõmmisest ei saa tuletada hinnakasvu. Dim jääb NULLiks " +
+      "väljavõttest ei saa tuletada hinnakasvu. Dim jääb NULLiks " +
       "registri väljavõtte kontrolli põhjusega.",
   },
   {
@@ -179,7 +179,7 @@ export const GROUP16A_NO_MAP: Group16AVerdict[] = [
     dim: "dim_contractor_availability",
     nearestMap: "puudub — töövõtjate saadavus pole registrifakt",
     reason:
-      "Ehitajate saadavus on turu hetkeseis (EI OLE hinnangut " +
+      "Ehitajate saadavus on muutuv turuolukord (EI OLE hinnangut " +
       "snapshots): Äriregister loetleb firmasid, mitte vabu " +
       "brigaade. Dim jääb NULLiks hinnapäringute kontrolli " +
       "põhjusega.",

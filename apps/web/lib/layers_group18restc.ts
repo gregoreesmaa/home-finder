@@ -68,7 +68,7 @@ export const GROUP18C_NO_MAP: Group18CVerdict[] = [
     nearestMap:
       "daylight (p405) avarus + dayopen (p34) kõrghoonestuse vari + viewshed (p225) vaatekaitse + shoredist (p340) kaldalähedus: piirkonna avaruskontekst, MITTE akna vaade",
     reason:
-      "Aknavaade on korruse- ja suunapõhine vaatefakt (hinnang): hetktõmmises " +
+      "Aknavaade on korruse- ja suunapõhine vaatefakt (hinnang): väljavõttes " +
       "on ainult 252 140 hoonekeskme — jalajäljed, kõrgused ja asimuudid " +
       "puuduvad ning aknamärgendeid on terves maakonnas ÜKS, nii et " +
       "keskmistatud gradient ei ütle, mida OSTJA aknast näeb. Ainsat " +

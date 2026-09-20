@@ -72,7 +72,7 @@ export const BATCH10C_DEFS: LayerDef[] = [
     goodLabel: "roheline = avalik veepunkt (kraan/kaev/allikas) lähedal",
     badLabel: "punane = avalikku veepunkti lähedal pole",
     source:
-      "kohalik hetktõmmis 2026-09-12 (OSM drinking_water/water_well/spring; Tallinna ühisveevärk kaardil pole — kiht näitab avalikke punkte, nt matkajale ja koerajalutajale)",
+      "kohalik väljavõte 2026-09-12 (OSM drinking_water/water_well/spring; Tallinna ühisveevärk kaardil pole — kiht näitab avalikke punkte, nt matkajale ja koerajalutajale)",
     fallbackPoints: [
       { lat: 59.4374, lon: 24.7454 }, // Vanalinn
       { lat: 59.2, lon: 24.5 }, // Maapiirkond
@@ -85,7 +85,7 @@ export const BATCH10C_DEFS: LayerDef[] = [
     goodLabel: "roheline = taara- või jäätmepunkt lähedal",
     badLabel: "punane = viimispunkti lähedal pole",
     source:
-      "kohalik hetktõmmis 2026-09-12 (OSM waste_disposal/recycling; korraldatud prügivedu kaardil pole — kiht näitab viimispunkte; tänavaprügikastid välja arvatud)",
+      "kohalik väljavõte 2026-09-12 (OSM waste_disposal/recycling; korraldatud prügivedu kaardil pole — kiht näitab viimispunkte; tänavaprügikastid välja arvatud)",
     fallbackPoints: [
       { lat: 59.4374, lon: 24.7454 }, // Vanalinn
       { lat: 59.44, lon: 24.82 }, // Lasnamäe

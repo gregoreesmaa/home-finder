@@ -113,7 +113,7 @@ export const GROUP19B_NO_MAP: Group19BVerdict[] = [
     reason:
       "Nutikodu küberturve (vaikimisi paroolid, püsivara vanus, avatud " +
       "pordid) selgub ainult kohapealse võrgu-auditiga (hinnang): " +
-      "hetktõmmises pole ühegi seadme turva-hinnangut. Dim jääb NULLiks " +
+      "väljavõttes pole ühegi seadme turva-hinnangut. Dim jääb NULLiks " +
       "inspektori kontrollnimekirja põhjusega (EI OLE turva-hinnangut, " +
       "ära feigi).",
   },
@@ -123,7 +123,7 @@ export const GROUP19B_NO_MAP: Group19BVerdict[] = [
     nearestMap: "puudub — paigaldise võimsuskihti snapshots pole",
     reason:
       "Akuvarutoite maht selgub ainult inverteri/akude nimesiltidelt ja " +
-      "paigaldusaktist (hinnang): hetktõmmises pole elektripaigaldise " +
+      "paigaldusaktist (hinnang): väljavõttes pole elektripaigaldise " +
       "mahuhinnangut. Dim jääb NULLiks paigaldusakti kontrolli põhjusega " +
       "(EI OLE mahu-hinnangut, ära feigi).",
   },
@@ -133,7 +133,7 @@ export const GROUP19B_NO_MAP: Group19BVerdict[] = [
     nearestMap: "puudub — sisevõrgu kaablikihti snapshots pole",
     reason:
       "Kaabelvõrgu (Ethernet) olemasolu ja läbilase selguvad ainult " +
-      "kaabliteede/pistikute ülevaatusega kohapeal (hinnang): hetktõmmises " +
+      "kaabliteede/pistikute ülevaatusega kohapeal (hinnang): väljavõttes " +
       "pole sisevõrgu hinnangut. Dim jääb NULLiks kohapealse ülevaatuse " +
       "põhjusega (EI OLE läbilaske-hinnangut, ära feigi).",
   },
@@ -143,7 +143,7 @@ export const GROUP19B_NO_MAP: Group19BVerdict[] = [
     nearestMap: "puudub — kastmissüsteemi kihti snapshots pole",
     reason:
       "Nutikastmise tõhusus selgub ainult kontrolleri/tsoonide ülevaatusega " +
-      "kohapeal (hinnang): hetktõmmises pole kastmissüsteemi hinnangut. " +
+      "kohapeal (hinnang): väljavõttes pole kastmissüsteemi hinnangut. " +
       "Dim jääb NULLiks kohapealse ülevaatuse põhjusega (EI OLE tõhususe " +
       "hinnangut, ära feigi).",
   },
@@ -153,7 +153,7 @@ export const GROUP19B_NO_MAP: Group19BVerdict[] = [
     nearestMap: "puudub — trepi mõõdukihti snapshots pole",
     reason:
       "Trepi ergonoomika (astme kõrgus/sügavus, käsipuu) selgub ainult " +
-      "lasermõõtjaga kohapeal (hinnang): hetktõmmises pole trepi mõõtude " +
+      "lasermõõtjaga kohapeal (hinnang): väljavõttes pole trepi mõõtude " +
       "hinnangut. Dim jääb NULLiks kohapealse mõõtmise põhjusega (EI OLE " +
       "sammu-hinnangut, ära feigi).",
   },
@@ -163,7 +163,7 @@ export const GROUP19B_NO_MAP: Group19BVerdict[] = [
     nearestMap: "puudub — köögimõõtude kihti snapshots pole",
     reason:
       "Töötasapinna kõrguse sobivus selgub ainult mõõdulindiga kohapeal " +
-      "(hinnang): hetktõmmises pole köögimõõtude hinnangut. Dim jääb " +
+      "(hinnang): väljavõttes pole köögimõõtude hinnangut. Dim jääb " +
       "NULLiks ostja-mõõtmise põhjusega (EI OLE kõrguse hinnangut, ära " +
       "feigi).",
   },
@@ -174,7 +174,7 @@ export const GROUP19B_NO_MAP: Group19BVerdict[] = [
     reason:
       "Laetalade kandevõime (raske valgusti/voodi/pööningukoormus) selgub " +
       "ainult pööningu ülevaatuse või inseneri-auditiga (hinnang): " +
-      "hetktõmmises pole konstruktsiooni hinnangut. Dim jääb NULLiks " +
+      "väljavõttes pole konstruktsiooni hinnangut. Dim jääb NULLiks " +
       "inspektori kontrolli põhjusega (EI OLE kandevõime hinnangut, ära " +
       "feigi).",
   },
@@ -184,7 +184,7 @@ export const GROUP19B_NO_MAP: Group19BVerdict[] = [
     nearestMap: "puudub — viimistluse kihti snapshots pole",
     reason:
       "Lävepakkude tasasus (komistamis-/ligipääsurisk) selgub ainult " +
-      "nivelliiri/mõõdulindiga kohapeal (hinnang): hetktõmmises pole " +
+      "nivelliiri/mõõdulindiga kohapeal (hinnang): väljavõttes pole " +
       "viimistluse hinnangut. Dim jääb NULLiks kohapealse ülevaatuse " +
       "põhjusega (EI OLE tasasuse hinnangut, ära feigi).",
   },
@@ -194,7 +194,7 @@ export const GROUP19B_NO_MAP: Group19BVerdict[] = [
     nearestMap: "puudub — nõrkvoolu kaablikihti snapshots pole",
     reason:
       "Visuaalalarmide (vilkurite) eeljuhtmestus selgub ainult kilbi ja " +
-      "kaablite ülevaatusega kohapeal (hinnang): hetktõmmises pole " +
+      "kaablite ülevaatusega kohapeal (hinnang): väljavõttes pole " +
       "nõrkvoolu valmiduse hinnangut. Dim jääb NULLiks elektriku kontrolli " +
       "põhjusega (EI OLE valmiduse hinnangut, ära feigi).",
   },
@@ -205,7 +205,7 @@ export const GROUP19B_NO_MAP: Group19BVerdict[] = [
     reason:
       "Allergeene kinni pidav arhitektuur (vaibad, kardinad, ventilatsiooni " +
       "lahendus) selgub ainult materjalide ülevaatusega kohapeal (hinnang): " +
-      "hetktõmmises pole siseõhuallika hinnangut. Dim jääb NULLiks " +
+      "väljavõttes pole siseõhuallika hinnangut. Dim jääb NULLiks " +
       "kohapealse ülevaatuse põhjusega (EI OLE allergeeni-hinnangut, ära " +
       "feigi).",
   },
@@ -215,7 +215,7 @@ export const GROUP19B_NO_MAP: Group19BVerdict[] = [
     nearestMap: "puudub — maitse-eelistust ei kaardistata",
     reason:
       "Värvipimedatele sobivad viimistlused on ostja enda silmade küsimus " +
-      "(hinnang): hetktõmmises pole viimistlusvaliku hinnangut ega saagi " +
+      "(hinnang): väljavõttes pole viimistlusvaliku hinnangut ega saagi " +
       "olla. Dim jääb NULLiks kohapealse külastuse põhjusega (EI OLE " +
       "sobivuse hinnangut, ära feigi).",
   },
@@ -225,7 +225,7 @@ export const GROUP19B_NO_MAP: Group19BVerdict[] = [
     nearestMap: "puudub — paigaldise läbitavuskihti snapshots pole",
     reason:
       "Kaablitorude (kõride) olemasolu ja läbitavus selguvad ainult kilbi " +
-      "ja avade kaudu kohapeal (hinnang): hetktõmmises pole paigaldise " +
+      "ja avade kaudu kohapeal (hinnang): väljavõttes pole paigaldise " +
       "hinnangut. Dim jääb NULLiks elektriku kontrolli põhjusega (EI OLE " +
       "läbitavuse hinnangut, ära feigi).",
   },
@@ -235,7 +235,7 @@ export const GROUP19B_NO_MAP: Group19BVerdict[] = [
     nearestMap: "puudub — lukustuse ühilduvuskihti snapshots pole",
     reason:
       "Biomeetrilise turva (sõrmejäljelukk) valmidus selgub ainult ukse ja " +
-      "luku ühilduvuse kontrolliga kohapeal (hinnang): hetktõmmises pole " +
+      "luku ühilduvuse kontrolliga kohapeal (hinnang): väljavõttes pole " +
       "lukustuse hinnangut. Dim jääb NULLiks kohapealse ülevaatuse " +
       "põhjusega (EI OLE valmiduse hinnangut, ära feigi).",
   },
@@ -257,7 +257,7 @@ export const GROUP19B_NO_MAP: Group19BVerdict[] = [
     nearestMap: "puudub — varjustuse juhtmestikukihti snapshots pole",
     reason:
       "Automaatvarjustuse (mootorite) potentsiaal selgub ainult aknaajamite " +
-      "juhtmestiku ülevaatusega kohapeal (hinnang): hetktõmmises pole " +
+      "juhtmestiku ülevaatusega kohapeal (hinnang): väljavõttes pole " +
       "varjustuse hinnangut. Dim jääb NULLiks kohapealse ülevaatuse " +
       "põhjusega (EI OLE potentsiaali hinnangut, ära feigi).",
   },
@@ -267,7 +267,7 @@ export const GROUP19B_NO_MAP: Group19BVerdict[] = [
     nearestMap: "puudub — ökosüsteemi kihti snapshots pole",
     reason:
       "Nutikodu tootjalukustus (suletud protokollid/hub) selgub ainult " +
-      "seadmete jaoturi ülevaatusega kohapeal (hinnang): hetktõmmises pole " +
+      "seadmete jaoturi ülevaatusega kohapeal (hinnang): väljavõttes pole " +
       "ökosüsteemi hinnangut. Dim jääb NULLiks inspektori kontrollnimekirja " +
       "põhjusega (EI OLE lukustuse hinnangut, ära feigi).",
   },
@@ -277,7 +277,7 @@ export const GROUP19B_NO_MAP: Group19BVerdict[] = [
     nearestMap: "puudub — veevaru mahutikihti snapshots pole",
     reason:
       "Varuveemahutite (tsisternide) olemasolu ja maht selguvad ainult " +
-      "mahutite/pumba ülevaatusega kohapeal (hinnang): hetktõmmises pole " +
+      "mahutite/pumba ülevaatusega kohapeal (hinnang): väljavõttes pole " +
       "veevaru hinnangut. Dim jääb NULLiks kohapealse ülevaatuse põhjusega " +
       "(EI OLE mahu-hinnangut, ära feigi).",
   },
@@ -287,7 +287,7 @@ export const GROUP19B_NO_MAP: Group19BVerdict[] = [
     nearestMap: "puudub — põranda koormuskihti snapshots pole",
     reason:
       "Raske kodujõusaali (masinad, raskused) kandevõime selgub ainult " +
-      "inseneri koormus-hinnanguga (hinnang): hetktõmmises pole põranda " +
+      "inseneri koormus-hinnanguga (hinnang): väljavõttes pole põranda " +
       "kandevõime hinnangut. Dim jääb NULLiks inseneri-auditi põhjusega " +
       "(EI OLE koormuse hinnangut, ära feigi).",
   },
@@ -297,7 +297,7 @@ export const GROUP19B_NO_MAP: Group19BVerdict[] = [
     nearestMap: "puudub — katusevee äravoolukihti snapshots pole",
     reason:
       "Lamekatuse drenaaž (kalded, neelud, lombid) selgub ainult katuse " +
-      "ülevaatuse või vihmase ilmaga külastusega (hinnang): hetktõmmises " +
+      "ülevaatuse või vihmase ilmaga külastusega (hinnang): väljavõttes " +
       "pole katusevee hinnangut. Dim jääb NULLiks katuse-ülevaatuse " +
       "põhjusega (EI OLE äravoolu-hinnangut, ära feigi).",
   },
@@ -307,7 +307,7 @@ export const GROUP19B_NO_MAP: Group19BVerdict[] = [
     nearestMap: "puudub — staatika kihti snapshots pole",
     reason:
       "Konsoolse (väljulatuva) konstruktsiooni pingeseisund selgub ainult " +
-      "inseneri staatika-auditiga (hinnang): hetktõmmises pole staatika " +
+      "inseneri staatika-auditiga (hinnang): väljavõttes pole staatika " +
       "hinnangut. Dim jääb NULLiks inseneri-auditi põhjusega (EI OLE " +
       "kandevõime hinnangut, ära feigi).",
   },
@@ -318,7 +318,7 @@ export const GROUP19B_NO_MAP: Group19BVerdict[] = [
     reason:
       "Põrandakütte remonditavus (kollektor, kontuurid, ligipääs) selgub " +
       "ainult jaotuskollektori ülevaatuse ja kaetud tööde aktidega " +
-      "(hinnang): hetktõmmises pole küttesüsteemi hinnangut. Dim jääb " +
+      "(hinnang): väljavõttes pole küttesüsteemi hinnangut. Dim jääb " +
       "NULLiks aktide + torumehe kontrolli põhjusega (EI OLE " +
       "remondi-hinnangut, ära feigi).",
   },
@@ -328,7 +328,7 @@ export const GROUP19B_NO_MAP: Group19BVerdict[] = [
     nearestMap: "puudub — aknakaevude kihti snapshots pole",
     reason:
       "Soklikorruse aknakaevude (valguskaevude) drenaaž ja katted selguvad " +
-      "ainult ülevaatusega kohapeal (hinnang): hetktõmmises pole kaevude " +
+      "ainult ülevaatusega kohapeal (hinnang): väljavõttes pole kaevude " +
       "hinnangut. Dim jääb NULLiks kohapealse ülevaatuse põhjusega (EI OLE " +
       "äravoolu-hinnangut, ära feigi).",
   },
@@ -338,7 +338,7 @@ export const GROUP19B_NO_MAP: Group19BVerdict[] = [
     nearestMap: "puudub — hinnakalkulatsiooni kihti snapshots pole",
     reason:
       "Eritellimus-klaaside (erimõõdud, kolmekordsed) maksumus selgub " +
-      "ainult klaasifirma pakkumisega (hinnang): hetktõmmises pole " +
+      "ainult klaasifirma pakkumisega (hinnang): väljavõttes pole " +
       "hinnakalkulatsiooni. Dim jääb NULLiks pakkumise küsimise põhjusega " +
       "(EI OLE kulu-hinnangut, ära feigi).",
   },
@@ -348,7 +348,7 @@ export const GROUP19B_NO_MAP: Group19BVerdict[] = [
     nearestMap: "puudub — terase seisukorra kihti snapshots pole",
     reason:
       "Paljandatud arhitektuurse terase (korrosioon, tulekaitse) seisukord " +
-      "selgub ainult visuaalse ülevaatusega kohapeal (hinnang): hetktõmmises " +
+      "selgub ainult visuaalse ülevaatusega kohapeal (hinnang): väljavõttes " +
       "pole terase hinnangut. Dim jääb NULLiks inspektori kontrolli " +
       "põhjusega (EI OLE seisundi-hinnangut, ära feigi).",
   },
@@ -358,7 +358,7 @@ export const GROUP19B_NO_MAP: Group19BVerdict[] = [
     nearestMap: "puudub — ruumimahu kulu-kihti snapshots pole",
     reason:
       "Kõrge (kelp-)lae energiakulu selgub ainult kütteloogika ja arvete " +
-      "ülevaatusega (hinnang): hetktõmmises pole ruumimahu kulu-hinnangut. " +
+      "ülevaatusega (hinnang): väljavõttes pole ruumimahu kulu-hinnangut. " +
       "Dim jääb NULLiks arvete + inspektori kontrolli põhjusega (EI OLE " +
       "kulu-hinnangut, ära feigi).",
   },
@@ -368,7 +368,7 @@ export const GROUP19B_NO_MAP: Group19BVerdict[] = [
     nearestMap: "puudub — ümberehitusloo kihti snapshots pole",
     reason:
       "Taaskasutatud (ümber ehitatud) hoone eripärad selguvad ainult " +
-      "ümberehituse ajaloo ja EHR-i uurimisega (hinnang): hetktõmmises pole " +
+      "ümberehituse ajaloo ja EHR-i uurimisega (hinnang): väljavõttes pole " +
       "ajaloo hinnangut. Dim jääb NULLiks dokumendi-uurimise põhjusega " +
       "(EI OLE eripärade hinnangut, ära feigi).",
   },
@@ -379,7 +379,7 @@ export const GROUP19B_NO_MAP: Group19BVerdict[] = [
     reason:
       "Taaskasutatud materjalide (vana puit, tellis) õrnus ja kulumine " +
       "selguvad ainult visuaalse ülevaatusega kohapeal (hinnang): " +
-      "hetktõmmises pole materjali seisundi hinnangut. Dim jääb NULLiks " +
+      "väljavõttes pole materjali seisundi hinnangut. Dim jääb NULLiks " +
       "kohapealse ülevaatuse põhjusega (EI OLE vastupidavuse hinnangut, " +
       "ära feigi).",
   },
@@ -389,7 +389,7 @@ export const GROUP19B_NO_MAP: Group19BVerdict[] = [
     nearestMap: "puudub — soojusleke termopildikihti snapshots pole",
     reason:
       "Külmasildade (soojuslekete) tunnetus selgub ainult termokaameraga " +
-      "kütteperioodil (hinnang): hetktõmmises pole soojusleke hinnangut. " +
+      "kütteperioodil (hinnang): väljavõttes pole soojusleke hinnangut. " +
       "Dim jääb NULLiks termopildi-uuringu põhjusega (EI OLE " +
       "termopildi-hinnangut, ära feigi).",
   },
@@ -399,7 +399,7 @@ export const GROUP19B_NO_MAP: Group19BVerdict[] = [
     nearestMap: "puudub — akustika mõõtmiskihti snapshots pole",
     reason:
       "Korrustevaheline heliresonants (sammud, bass) selgub ainult " +
-      "kuulamisega kohapeal vaikses majas (hinnang): hetktõmmises pole " +
+      "kuulamisega kohapeal vaikses majas (hinnang): väljavõttes pole " +
       "akustika mõõtmist. Dim jääb NULLiks kohapealse kuulamise põhjusega " +
       "(EI OLE heli-hinnangut, ära feigi).",
   },
@@ -409,7 +409,7 @@ export const GROUP19B_NO_MAP: Group19BVerdict[] = [
     nearestMap: "puudub — järelkõla mõõtmiskihti snapshots pole",
     reason:
       "Kaja ja ruumi järelkõla selguvad ainult kuulamisega kohapeal, " +
-      "soovitavalt tühjas ruumis (hinnang): hetktõmmises pole akustika " +
+      "soovitavalt tühjas ruumis (hinnang): väljavõttes pole akustika " +
       "mõõtmist. Dim jääb NULLiks kohapealse kuulamise põhjusega (EI OLE " +
       "järelkõla hinnangut, ära feigi).",
   },
@@ -419,7 +419,7 @@ export const GROUP19B_NO_MAP: Group19BVerdict[] = [
     nearestMap: "puudub — torustiku heli-kihti snapshots pole",
     reason:
       "Torustiku veelöögid (kolin kraanide sulgemisel) selguvad ainult " +
-      "kuulamisega kohapeal (hinnang): hetktõmmises pole torustiku " +
+      "kuulamisega kohapeal (hinnang): väljavõttes pole torustiku " +
       "heli-hinnangut. Dim jääb NULLiks torumehe kontrolli põhjusega (EI " +
       "OLE löögi-hinnangut, ära feigi).",
   },
@@ -429,7 +429,7 @@ export const GROUP19B_NO_MAP: Group19BVerdict[] = [
     nearestMap: "puudub — ventilatsioonimüra kihti snapshots pole",
     reason:
       "Ventilatsioonirestide vilin täiskoormusel selgub ainult kuulates " +
-      "HVAC-i täisvõimsusel kohapeal (hinnang): hetktõmmises pole " +
+      "HVAC-i täisvõimsusel kohapeal (hinnang): väljavõttes pole " +
       "müramõõtmist. Dim jääb NULLiks kohapealse kuulamise põhjusega (EI " +
       "OLE mürataseme hinnangut, ära feigi).",
   },
@@ -439,7 +439,7 @@ export const GROUP19B_NO_MAP: Group19BVerdict[] = [
     nearestMap: "puudub — tasasuse mõõtmiskihti snapshots pole",
     reason:
       "Põranda peen kalle ja viltusus (vajumine) selguvad ainult " +
-      "nivelliiri/pika latiga kohapeal (hinnang): hetktõmmises pole " +
+      "nivelliiri/pika latiga kohapeal (hinnang): väljavõttes pole " +
       "tasasuse mõõtmist. Dim jääb NULLiks kohapealse mõõtmise põhjusega " +
       "(EI OLE kalde-hinnangut, ära feigi).",
   },

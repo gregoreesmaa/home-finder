@@ -80,7 +80,7 @@ export const GROUP03_LAYERS: LayerDef[] = [
     goodLabel: "roheline = avaveest kaugel, hea drenaaži eeldus (hinnang)",
     badLabel: "punane = veekogu ääres või peal — kontrolli drenaaži (hinnang)",
     source:
-      "kohalik hetktõmmis 2026-09-12 (OSM rannajoon + veekogud + märgalad + vooluveed; kauguse-hinnang, EI OLE mõõdetud reljeef/vooluhulk/üleujutustsoon)",
+      "kohalik väljavõte 2026-09-12 (OSM rannajoon + veekogud + märgalad + vooluveed; kauguse-hinnang, EI OLE mõõdetud reljeef/vooluhulk/üleujutustsoon)",
     fallbackPoints: [
       { lat: 59.47, lon: 24.82 }, // Pirita jõe kallas (vee ääres)
       { lat: 59.39, lon: 24.68 }, // Nõmme kõrgustik (veest kaugel)

@@ -106,7 +106,7 @@ export const GBFS_LAYERS: LayerDef[] = [
  */
 export const GBFS_TAGS: Record<GbfsLayerId, string> = {
   gbfs:
-    "GBFS auto-discovery (station_information + station_status; serveeritakse verifitseeritud keyless-voost hetktõmmise kaudu, mitte Overpassist — voogu pole, hetktõmmis tühi)",
+    "GBFS auto-discovery (station_information + station_status; serveeritakse verifitseeritud keyless-voost väljavõtte kaudu, mitte Overpassist — voogu pole, väljavõte tühi)",
 };
 
 /** Raster master filename (intentionally never built — see header). */

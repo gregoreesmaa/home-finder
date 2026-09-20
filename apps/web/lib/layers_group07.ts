@@ -66,20 +66,20 @@ export const G07_PARAM_IDS: Record<G07LayerId, number[]> = {
 export const G07_NO_MAP: { param: number; reason: string }[] = [
   {
     param: 66,
-    reason: "radoon: geoloogia/WFS-atlas hetktõmmises puudub (hinnangut kaardil pole)",
+    reason: "radoon: geoloogia/WFS-atlas väljavõttes puudub (hinnangut kaardil pole)",
   },
   {
     param: 67,
-    reason: "kahjurid/metsloomad: seiret hetktõmmises pole (hinnangut kaardil pole)",
+    reason: "kahjurid/metsloomad: seiret väljavõttes pole (hinnangut kaardil pole)",
   },
   {
     param: 137,
     reason:
-      "allergeenid: õietolmujaamu hetktõmmises pole; haljas loeks VASTUPIDI (pargid eritavad õietolmu)",
+      "allergeenid: õietolmujaamu väljavõttes pole; haljas loeks VASTUPIDI (pargid eritavad õietolmu)",
   },
 ];
 
-const SNAP = "kohalik hetktõmmis 2026-09-12";
+const SNAP = "kohalik väljavõte 2026-09-12";
 
 export const G07_LAYERS: LayerDef[] = [
   {

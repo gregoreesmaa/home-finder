@@ -74,7 +74,7 @@ export const RSAFE_DEFS: LayerDef[] = [
       "roheline = märgistatud ülekäik/rahusti lähedal (kaardistuskasutus, mitte ohutustõde)",
     badLabel: "punane = märgistatud ülekäiku/rahustit lähedal pole või andmed puuduvad",
     source:
-      "kohalik hetktõmmis 2026-09-12 (OSM highway=crossing 12348 + traffic_calming 2672 kasutusjuhtu, 14445 ainulaadset objekti; Transpordiameti õnnetuspunktid ja Päästeameti sõiduajad hetktõmmises pole — see EI OLE mõõdetud liiklusohutus, vaid kaardistatud mööbli tiheduse proksi)",
+      "kohalik väljavõte 2026-09-12 (OSM highway=crossing 12348 + traffic_calming 2672 kasutusjuhtu, 14445 ainulaadset objekti; Transpordiameti õnnetuspunktid ja Päästeameti sõiduajad väljavõttes pole — see EI OLE mõõdetud liiklusohutus, vaid kaardistatud mööbli tiheduse proksi)",
     fallbackPoints: [
       { lat: 59.4374, lon: 24.7454 }, // Vanalinn (tihe kaardistus)
       { lat: 59.2, lon: 24.5 }, // Maapiirkond (kaardistatud mööblist kaugel)

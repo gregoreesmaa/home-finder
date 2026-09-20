@@ -134,10 +134,11 @@ import { isKliimaLayerId } from "../../lib/layers_kliima";
 // (see isQbands branch below) — labelled proxy, never radiometry.
 import { isViirsLayerId } from "../../lib/layers_p4_viirs";
 // OUTAGE-HOOK (#729; reliability #780): qbands status names the
-// hetkeseis sidecar for outage (see isQbands branch below) — the
-// Terviseamet default would otherwise misname it (harno #687 rule).
-// The 28-day observed-reliability window rides along as a history
-// line when the route serves it (history vs hetkeseis labelled).
+// latest-observed sidecar for outage (see isQbands branch below) —
+// the Terviseamet default would otherwise misname it (harno #687
+// rule). The 28-day observed-reliability window rides along as a
+// history line when the route serves it (history vs latest
+// observation labelled).
 import { isOutageLayerId, outageHistoryStatus } from "../../lib/layers_p4_outage";
 // SILLY-HOOK (#711, status #774): demo-by-design status names the
 // sample state for silly layers (see demo branch below) — the generic
@@ -317,7 +318,7 @@ export default function LayersPage() {
   const [pointCount, setPointCount] = useState(0);
   // OUTAGE-RELIABILITY-HOOK (#780): history line off the outage
   // route's `reliability` field (null until the first pole build —
-  // the hetkeseis status renders without it).
+  // the observed-point status renders without it).
   const [outageHistory, setOutageHistory] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshFailed, setRefreshFailed] = useState(false);
@@ -382,7 +383,8 @@ export default function LayersPage() {
         setDistance(res.distance);
         // OUTAGE-RELIABILITY-HOOK (#780): history rides the outage
         // fetch only (other layers never send `reliability`; an
-        // absent/unshaped payload formats to null — hetkeseis alone).
+        // absent/unshaped payload formats to null — observed point
+        // alone).
         setOutageHistory(
           isOutageLayerId(layer) ? outageHistoryStatus(res.reliability) : null,
         );
@@ -1199,14 +1201,15 @@ export default function LayersPage() {
                   : isViirsLayerId(layer)
                     ? `GIBSi väljavõte (VIIRS Black Marble 2016 heledusproksi, 96 ruutu${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""}) · ${pointCount} ruutu`
                     // OUTAGE-HOOK (#729; reliability #780): outage
-                    // names the hetkeseis sidecar (the Terviseamet
-                    // default below would otherwise misname the outage
-                    // qbands kernel as the bathing-water extract —
-                    // harno #687 rule) plus the 28-day history line
-                    // when the pole has built it (history vs hetkeseis
-                    // labelled — the point is never reliability).
+                    // names the latest-observed sidecar (the
+                    // Terviseamet default below would otherwise
+                    // misname the outage qbands kernel as the
+                    // bathing-water extract — harno #687 rule) plus
+                    // the 28-day history line when the pole has built
+                    // it (history vs latest observation labelled —
+                    // the point is never reliability).
                     : isOutageLayerId(layer)
-                      ? `Elektrilevi hetkeseis (rikkekaart, 5-min väljavõte${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""}) · ${pointCount} punkti${outageHistory !== null ? ` · ${outageHistory}` : ""}`
+                      ? `Elektrilevi viimane vaatlus (rikkekaart, 5-min väljavõte${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""}) · ${pointCount} punkti${outageHistory !== null ? ` · ${outageHistory}` : ""}`
                       : `Terviseameti väljavõte (suplusvesi, seis 2026-09-14)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
               : isDbands
                 ? isEhisLayerId(layer)
@@ -1226,15 +1229,15 @@ export default function LayersPage() {
                 ? isSillyLayerId(layer)
                   ? sillySnapshotStatus(pointCount)
                   : `annateada väljavõte (libisev 19 päeva aken, seis 2026-09-17)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} teadet`
-                : `Kohalik hetktõmmis (2026-09-12) · ${pointCount} punkti`
-          : "Kohalik hetktõmmis (2026-09-12) · rasterkiht"
+                : `Kohalik väljavõte (2026-09-12) · ${pointCount} punkti`
+          : "Kohalik väljavõte (2026-09-12) · rasterkiht"
         : provenance === "empty"
           // ASUMEDIA-HOOK (#495, status #786): pending-by-design
           // names its dated tally + reopen path; every other empty
           // layer keeps the generic no-coverage copy.
           ? isAsumediaLayerId(layer)
             ? asumediaEmptyStatus()
-            : "Selle piirkonna kohta hetktõmmises andmed puuduvad"
+            : "Selle piirkonna kohta väljavõttes andmed puuduvad"
           // WINDOWED-HOOK (#783): the dead live-provenance branch is
           // gone — verified no route emits it anymore (all routes
           // serve snapshot|empty|stale; grep-pinned by
@@ -1281,7 +1284,7 @@ export default function LayersPage() {
       <h1>Parameetrikaardid</h1>
       <p>
         Iga kiht värvib piirkonnad: roheline = hea, punane = halb. Andmed
-        pärinevad kohalikust 2026-09-12 hetktõmmisest (Harjumaa); väljaspool
+        pärinevad kohalikust 2026-09-12 väljavõttest (Harjumaa); väljaspool
         selle katvust andmeid ei kuvata.
       </p>
       <div>

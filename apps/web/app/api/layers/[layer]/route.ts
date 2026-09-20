@@ -21,7 +21,8 @@ import {
 // extract (never the OSM snapshot, never live).
 import { isOoklaLayerId } from "../../../../lib/layers_p4_ookla";
 // OUTAGE-HOOK (#729; reliability #780): outage city point comes from
-// the operator hetkeseis sidecar (never the OSM snapshot, never live);
+// the operator latest-observed sidecar (never the OSM snapshot,
+// never live);
 // the 28-day observed-reliability window rides along when the pole has
 // built it (never required: history is a companion, not the point).
 import {
@@ -588,7 +589,7 @@ export async function GET(
     const points = outagePointsIn(snap, bbox);
     // OUTAGE-RELIABILITY-HOOK (#780): the 28-day window rides along
     // when the pole has built it (pole-first, server-side only; null
-    // until the first build — the hetkeseis point serves without it).
+    // until the first build — the observed point serves without it).
     const relPole = await fetchPoleTable(OUTAGE_RELIABILITY_POLE_DATASET);
     const reliability = relPole
       ? outageReliabilityFromBody(relPole.table, Date.now())

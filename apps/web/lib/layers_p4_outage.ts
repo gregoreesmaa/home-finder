@@ -22,7 +22,8 @@
 //
 // HONESTY (load-bearing): a live snapshot is thin evidence — the
 // bands are capped (fault 30 / planned 55 / upcoming-only 70 /
-// clean 80) and every surface says hetkeseis, never reliability. A
+// clean 80) and every surface says viimane vaatlus (latest observed
+// pull, #783 wording — never "hetkeseis"), never reliability. A
 // quiet live map is NOT a reliable feeder (SAIDI stays unpublished
 // per dims_p4_elektrilevi — that module is untouched). City grain:
 // ONE Tallinn centroid point (59.4372, 24.7536) carries the Tallinn
@@ -81,13 +82,13 @@ export const OUTAGE_TTL_S = 300;
  */
 export const OUTAGE_POLE_DATASET = "outage";
 
-/** Capped hetkeseis bands (parity with dim_outage_now). */
+/** Capped latest-observation bands (parity with dim_outage_now). */
 export const OUTAGE_BANDS = { fault: 30, planned: 55, upcoming: 70, clean: 80 } as const;
 
 /**
  * Pole dataset serving the observed-reliability table (issue #780:
  * pole/api.py key; the route reads it pole-first, server-side only,
- * same DATEX #763 precedent as the hetkeseis sidecar).
+ * same DATEX #763 precedent as the 5-min observed sidecar).
  */
 export const OUTAGE_RELIABILITY_POLE_DATASET = "outage-reliability";
 
@@ -140,9 +141,10 @@ function isFiniteJsonNum(v: unknown): v is number {
 /**
  * Defensive client-side history line off the route's `reliability`
  * field (issue #780): names the window + metric and labels AJALUGU
- * vs HETKESEIS so the hetkeseis point is never read as reliability.
- * Null when absent or unshaped — the hetkeseis status then renders
- * without history (never a faked window). Pure, client-safe.
+ * vs VIIMANE VAATLUS so the observed point is never read as
+ * reliability. Null when absent or unshaped — the observed-point
+ * status then renders without history (never a faked window). Pure,
+ * client-safe.
  */
 export function outageHistoryStatus(v: unknown): string | null {
   if (typeof v !== "object" || v === null) return null;
@@ -179,13 +181,13 @@ export const OUTAGE_LAYERS: LayerDef[] = [
     id: "outage",
     paramIds: [],
     paramLabel: OUTAGE_PARAM_LABEL,
-    title: "Elektrikatkestused (hetkeseis + 28 pv ajalugu, hinnang)",
+    title: "Elektrikatkestused (viimane vaatlus + 28 pv ajalugu, hinnang)",
     goodLabel:
-      "roheline = rikkekaardil aktiivseid katkestusi pole (hetkeseis-hinnang, lagi 80 — vaikne kaart ei ole töökindluse tõend; ajalugu: 28 päeva vaatlusaken allpool)",
+      "roheline = rikkekaardil aktiivseid katkestusi pole (viimase vaatluse hinnang, lagi 80 — vaikne kaart ei ole töökindluse tõend; ajalugu: 28 päeva vaatlusaken allpool)",
     badLabel:
-      "punane = aktiivne rikkeline VÕI plaaniline katkestus Tallinnas (hetkeseis) VÕI seis teadmata (EI OLE värsket väljavõtet)",
+      "punane = aktiivne rikkeline VÕI plaaniline katkestus Tallinnas (viimane vaatlus) VÕI seis teadmata (EI OLE värsket väljavõtet)",
     source:
-      "Elektrilevi rikkekaart (keyless GetApplicationData, 5-min väljavõte; Tallinna rida: fc/fcc aktiivsed rikked, pc/pcc plaanilised, uc/ucc tulevased — punkt on hetkeseis; ajalugu on pooluse 28 päeva vaatlusaken: rikke-/plaaniliste vaatlusarv + mõjutatud kliendid, SAIDI-sarnane mõtlemine, MITTE garantii; lähemalt docs/p4_outage.md)",
+      "Elektrilevi rikkekaart (keyless GetApplicationData, 5-min väljavõte; Tallinna rida: fc/fcc aktiivsed rikked, pc/pcc plaanilised, uc/ucc tulevased — punkt on viimane vaatlus; ajalugu on pooluse 28 päeva vaatlusaken: rikke-/plaaniliste vaatlusarv + mõjutatud kliendid, SAIDI-sarnane mõtlemine, MITTE garantii; lähemalt docs/p4_outage.md)",
     // EMPTY BY HONESTY (load-bearing): no committed snapshot exists
     // (live data goes stale in minutes) — the route serves the fresh
     // sidecar when the operator pull is in TTL, else 500 → demo.
@@ -253,7 +255,7 @@ export function outageHavKm(lon1: number, lat1: number, lon2: number, lat2: numb
 export interface OutagePoint {
   lat: number;
   lon: number;
-  /** Capped hetkeseis band (absent = quality NULL, never a faked calm). */
+  /** Capped observed band (absent = quality NULL, never a faked calm). */
   q?: number;
   tags?: Record<string, string>;
 }
@@ -275,7 +277,7 @@ export function outageCountOf(
 }
 
 /**
- * Capped hetkeseis band off one area row's counters — byte parity
+ * Capped observed band off one area row's counters — byte parity
  * with dim_outage_now in services/scoring/dims_p4_outage.py (fault
  * 30 / planned 55 / upcoming-only 70 / clean 80; missing counts
  * never zero-fill into calm). Null when the row carries no
@@ -323,9 +325,9 @@ export function outageNearby(
 }
 
 /**
- * Hetkeseis hinnang at one address: the NEAREST point's band, null
- * where no point covers the address or the nearest point's quality
- * is NULL (unknown, never zero, never a faked calm).
+ * Latest-observation hinnang at one address: the NEAREST point's
+ * band, null where no point covers the address or the nearest
+ * point's quality is NULL (unknown, never zero, never a faked calm).
  */
 export function outageBandAt(
   lat: number,
@@ -349,4 +351,4 @@ export function outagePointsIn(points: OutagePoint[], bbox: BBoxLike): LayerPoin
 
 /** Hook marker, pinned by test so the wiring contract stays greppable. */
 export const OUTAGE_HOOK =
-  "OUTAGE-HOOK (#729) + reliability (#780): outage wired into layers/overlays/snapshot/route/server; P4-009 power leg, city-grain hetkeseis point PLUS 28-day observed-reliability window (history vs hetkeseis labelled, never a guarantee).";
+  "OUTAGE-HOOK (#729) + reliability (#780): outage wired into layers/overlays/snapshot/route/server; P4-009 power leg, city-grain latest-observed point PLUS 28-day observed-reliability window (history vs latest observation labelled, never a guarantee).";

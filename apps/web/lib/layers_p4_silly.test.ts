@@ -68,7 +68,7 @@ describe("silly bundle registry", () => {
       expect(def.title.length).toBeGreaterThan(0);
       expect(def.goodLabel.length).toBeGreaterThan(0);
       expect(def.badLabel.length).toBeGreaterThan(0);
-      expect(def.source).toContain("hetktõmmis");
+      expect(def.source).toContain("väljavõte");
       expect(def.paramIds).toEqual([]);
       // Real mapped points in Tallinn (never invented, never empty).
       expect(def.fallbackPoints.length).toBeGreaterThan(0);

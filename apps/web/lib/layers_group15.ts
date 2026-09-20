@@ -74,7 +74,7 @@ export interface Group15LayerDef {
   fallbackPoints: Group15Point[];
 }
 
-const SNAP = "kohalik hetktõmmis 2026-09-12";
+const SNAP = "kohalik väljavõte 2026-09-12";
 
 export const GROUP15_LAYERS: Group15LayerDef[] = [
   {
@@ -83,7 +83,7 @@ export const GROUP15_LAYERS: Group15LayerDef[] = [
     title: "Koolivalik (koolitiheduse proksi)",
     goodLabel: "roheline = palju kaardistatud koole lähedal (proksi)",
     badLabel: "punane = koole vähe või pole (proksi, MITTE ametlik loosiinfo)",
-    source: `${SNAP} (OSM amenity=school 342; EHIS loosiandmed hetktõmmises pole)`,
+    source: `${SNAP} (OSM amenity=school 342; EHIS loosiandmed väljavõttes pole)`,
     fallbackPoints: [
       { lat: 59.4405, lon: 24.7369 }, // Balti jaam (tihe koolivalik)
       { lat: 59.4278, lon: 24.7611 }, // Viru (tihe koolivalik)
@@ -95,7 +95,7 @@ export const GROUP15_LAYERS: Group15LayerDef[] = [
     title: "Koolipiiride muutuste haavatavus (proksi)",
     goodLabel: "roheline = stabiilne, palju koole lähedal (proksi)",
     badLabel: "punane = haavatav, vähe koole / piiritsoon (proksi)",
-    source: `${SNAP} (OSM amenity=school 2 km tihedus; piirijooned hetktõmmises pole)`,
+    source: `${SNAP} (OSM amenity=school 2 km tihedus; piirijooned väljavõttes pole)`,
     fallbackPoints: [
       { lat: 59.2, lon: 24.5 }, // Maapiirkond (vähe koole, haavatav)
       { lat: 59.51, lon: 24.83 }, // Viimsi (hõre koolivalik)
@@ -107,7 +107,7 @@ export const GROUP15_LAYERS: Group15LayerDef[] = [
     title: "Veekogude lähedus (veeproksi)",
     goodLabel: "roheline = veekogu lähedal (proksi)",
     badLabel: "punane = veekogu kaugel (proksi, MITTE mõõdetud hooldus)",
-    source: `${SNAP} (OSM natural=water + water=pond/lake/reservoir/basin/river; hooldusprogrammid hetktõmmises pole)`,
+    source: `${SNAP} (OSM natural=water + water=pond/lake/reservoir/basin/river; hooldusprogrammid väljavõttes pole)`,
     fallbackPoints: [
       { lat: 59.4405, lon: 24.7369 }, // Balti (Snelli tiik lähedal)
       { lat: 59.4711, lon: 24.8153 }, // Pirita (jõgi/meri)
@@ -119,7 +119,7 @@ export const GROUP15_LAYERS: Group15LayerDef[] = [
     title: "Festivali- ja ürituspaikade mõju (proksi)",
     goodLabel: "roheline = ürituspaigad kaugel, rahulik (proksi)",
     badLabel: "punane = ürituspaik lähedal, müra/rahvahulgad (proksi)",
-    source: `${SNAP} (OSM amenity=events_venue/marketplace + tourism=attraction 177; ürituskalender hetktõmmises pole)`,
+    source: `${SNAP} (OSM amenity=events_venue/marketplace + tourism=attraction 177; ürituskalender väljavõttes pole)`,
     fallbackPoints: [
       { lat: 59.4374, lon: 24.7454 }, // Vanalinn (üritused lähedal)
       { lat: 59.4449, lon: 24.799 }, // Lauluväljak (laulupeod)
@@ -131,7 +131,7 @@ export const GROUP15_LAYERS: Group15LayerDef[] = [
     title: "Staadioniliiklus (proksi)",
     goodLabel: "roheline = staadion kaugel, rahulik (proksi)",
     badLabel: "punane = staadion lähedal, ürituste liiklus (proksi)",
-    source: `${SNAP} (OSM leisure=stadium 55; piletitulu/külastajate arv hetktõmmises pole)`,
+    source: `${SNAP} (OSM leisure=stadium 55; piletitulu/külastajate arv väljavõttes pole)`,
     fallbackPoints: [
       { lat: 59.4278, lon: 24.7611 }, // Viru (Kalevi staadion lähedal)
       { lat: 59.412, lon: 24.655 }, // Õismäe (staadionikaugus)

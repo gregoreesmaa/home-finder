@@ -80,7 +80,7 @@ export const P4PARK_PARAMS: Record<P4ParkingLayerId, number> = {
   parking: 4013,
 };
 
-const SNAP = "kohalik hetktõmmis 2026-09-12";
+const SNAP = "kohalik väljavõte 2026-09-12";
 
 export const P4PARK_DEFS: LayerDef[] = [
   {

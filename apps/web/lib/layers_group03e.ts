@@ -71,7 +71,7 @@ export const GROUP03E_NO_MAP: Group03EVerdict[] = [
     reason:
       "Piirdeaia omand (ostja/naaber/ühine) on krundi-põhine juriidiline " +
       "fakt (hinnang, p71 servituudi ja p75 piiride pretsedent #151): " +
-      "hetktõmmise 11308 aia seas pole ühtki ownership/owner-märgendit, " +
+      "väljavõtte 11308 aia seas pole ühtki ownership/owner-märgendit, " +
       "364 operator-märgendit kuuluvad koolide/alajaamade piirdeaedadele " +
       "ega vasta elamukrundi küsimusele. Dim jääb NULLiks " +
       "müüja/kinnistusraamatu kontrolli põhjusega — ära feigi.",

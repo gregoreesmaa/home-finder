@@ -86,7 +86,7 @@ export const EELIS_PARAM_LABELS: Record<EelisLayerId, string> = {
   eelisraie: "P4-030",
 };
 
-const SNAP = "kohalik hetktõmmis 2026-09-12";
+const SNAP = "kohalik väljavõte 2026-09-12";
 const WFS = "Keskkonnaagentuuri EELIS WFS (võtmeta, loetud 2026-09-13)";
 
 export const EELIS_DEFS: LayerDef[] = [

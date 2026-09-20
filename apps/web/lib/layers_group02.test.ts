@@ -22,7 +22,7 @@ describe("group02 verdicts", () => {
       expect(v.status).toBe("no-map");
       expect(v.name.length).toBeGreaterThan(0);
       expect(v.reason.length).toBeGreaterThan(20);
-      expect(v.evidence).toMatch(/hetktõmmis 2026-09-12/);
+      expect(v.evidence).toMatch(/väljavõte 2026-09-12/);
     }
   });
 

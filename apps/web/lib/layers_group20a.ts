@@ -89,15 +89,15 @@ export const GROUP20A_NO_MAP: Group20AVerdict[] = [
     reason:
       "Uhkus kvartali üle on kohapealse vaatluse hinnang (EI OLE " +
       "registriandmeid): hoovide ja fassaadide hooldusseisundit " +
-      "hetktõmmises pole — vaata kvartal üle jalgsi, kaardikiht puudub.",
+      "väljavõttes pole — vaata kvartal üle jalgsi, kaardikiht puudub.",
   },
   {
     param: 85,
     dim: "dim_demographic_balance",
-    nearestMap: "puudub — ostjaprofiili eelistus + REL2021 ruudustik (pole hetktõmmises)",
+    nearestMap: "puudub — ostjaprofiili eelistus + REL2021 ruudustik (pole väljavõttes)",
     reason:
       "Demograafiline tasakaal eeldaks Statistikaameti REL2021 1 km " +
-      "ruudustikku, mida hetktõmmises pole (EI OLE hinnangut): sobivus " +
+      "ruudustikku, mida väljavõttes pole (EI OLE hinnangut): sobivus " +
       "tuleneb ostjaprofiili eelistusest, mitte ala skoorist — ära feigi.",
   },
   {
@@ -106,7 +106,7 @@ export const GROUP20A_NO_MAP: Group20AVerdict[] = [
     nearestMap: "puudub — ostjaprofiili küsimustik (kaasatuse-liugur)",
     reason:
       "Kodanikuaktiivsus on ostja osaluseelistuse hinnang (EI OLE " +
-      "kaardikiht): seltside ja ürituste tihedust hetktõmmises pole — " +
+      "kaardikiht): seltside ja ürituste tihedust väljavõttes pole — " +
       "märgi oma kaasatuse liugur küsimustikus, ala skoor puudub.",
   },
   {
@@ -143,7 +143,7 @@ export const GROUP20A_NO_MAP: Group20AVerdict[] = [
     reason:
       "Lapsuturvalisus on korteri ja trepikoja fakt (EI OLE kaardikiht): " +
       "pistikukaitsed, rõdupiirded ja trepikoja värav selguvad vaatlusel " +
-      "— KOV intsidentide tabelit hetktõmmises pole, hinnang tuleb kohapealt.",
+      "— KOV intsidentide tabelit väljavõttes pole, hinnang tuleb kohapealt.",
   },
   {
     param: 126,
@@ -206,15 +206,15 @@ export const GROUP20A_NO_MAP: Group20AVerdict[] = [
     reason:
       "Tehnoloogiline privaatsus on ostja tundlikkuse hinnang (EI OLE " +
       "kaardikiht): kaamerate ja nutiseadmete taluvus on ostjaprofiili liugur " +
-      "— hetktõmmises pole seirekaarti, ära feigi.",
+      "— väljavõttes pole seirekaarti, ära feigi.",
   },
   {
     param: 161,
     dim: "dim_civic_alignment",
-    nearestMap: "puudub — ostjaprofiili eelistus + REL2021 ruudustik (pole hetktõmmises)",
+    nearestMap: "puudub — ostjaprofiili eelistus + REL2021 ruudustik (pole väljavõttes)",
     reason:
       "Poliitiline ja kodaniku-ühtekuuluvus eeldaks REL2021 ruudustikku, " +
-      "mida hetktõmmises pole (EI OLE hinnangut): väärtusruumi sobivus " +
+      "mida väljavõttes pole (EI OLE hinnangut): väärtusruumi sobivus " +
       "on ostjaprofiili küsimus, mitte ala skoor — ära feigi.",
   },
   {
@@ -232,7 +232,7 @@ export const GROUP20A_NO_MAP: Group20AVerdict[] = [
     nearestMap: "puudub — kvartali vaatlus + naabrite küsitlus",
     reason:
       "Kommikülastajate hulk on kvartali vaatluse hinnang (EI OLE " +
-      "loendust): lastega perede tihedust hetktõmmises pole — küsi " +
+      "loendust): lastega perede tihedust väljavõttes pole — küsi " +
       "naabritelt kohapeal, kaardikiht puudub.",
   },
   {
@@ -241,7 +241,7 @@ export const GROUP20A_NO_MAP: Group20AVerdict[] = [
     nearestMap: "puudub — KÜ päring (üürikorterite osakaal)",
     reason:
       "Läbikäivate naabrite tihedus eeldaks lühiajalise üüri tiheduse " +
-      "kraapimist, mida hetktõmmises pole (EI OLE hinnangut): " +
+      "kraapimist, mida väljavõttes pole (EI OLE hinnangut): " +
       "üürikorterite osakaal on hoone fakt — küsi KÜ-lt, ära feigi " +
       "ala skoori.",
   },
@@ -258,7 +258,7 @@ export const GROUP20A_NO_MAP: Group20AVerdict[] = [
 export const GROUP20A_CONSIDERED_TAGS: Record<Group20AParam, string> = {
   18: "(puudub — ostjaprofiili maitse-liugur, OSM-is signaali pole)",
   81: "(puudub — kvartali hooldusseisundi vaatlus, OSM-is signaali pole)",
-  85: "(puudub — REL2021 ruudustik, hetktõmmises pole)",
+  85: "(puudub — REL2021 ruudustik, väljavõttes pole)",
   90: "(puudub — ostja kaasatuseelistus, OSM-is signaali pole)",
   98: "(puudub — korteri/hoone fakt kuulutusest, OSM-is signaali pole)",
   104: "(puudub — põrandaplaani fakt kuulutusest, OSM-is signaali pole)",
@@ -270,11 +270,11 @@ export const GROUP20A_CONSIDERED_TAGS: Record<Group20AParam, string> = {
   131: "(puudub — ostja stiili-liugur, OSM-is signaali pole)",
   133: "(puudub — ostja disaini-liugur, OSM-is signaali pole)",
   134: "(puudub — ostja sisetunne/kõhutunde veto, OSM-is signaali pole)",
-  136: "(puudub — ostja privaatsus-liugur; seirekaarti hetktõmmises pole)",
-  161: "(puudub — REL2021 ruudustik, hetktõmmises pole)",
+  136: "(puudub — ostja privaatsus-liugur; seirekaarti väljavõttes pole)",
+  161: "(puudub — REL2021 ruudustik, väljavõttes pole)",
   163: "(puudub — hooajaline kvartali vaatlus, OSM-is signaali pole)",
   164: "(puudub — kvartali vaatlus + naabrite küsitlus, OSM-is signaali pole)",
-  165: "(puudub — lühiajalise üüri kraaping + KÜ päring, hetktõmmises pole)",
+  165: "(puudub — lühiajalise üüri kraaping + KÜ päring, väljavõttes pole)",
 };
 
 /** Hook marker, pinned by test so the no-wiring contract stays greppable. */

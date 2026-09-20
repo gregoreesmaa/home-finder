@@ -37,7 +37,7 @@ export const B1_LAYERS: LayerDef[] = [
     title: "Lemmikloomad",
     goodLabel: "roheline = koerapark või loomaarst jalutuskäigu kaugusel",
     badLabel: "punane = lemmikloomateenused kaugel",
-    source: "kohalik hetktõmmis 2026-09-12 (kõndimisgraafik + leisure/amenity/shop)",
+    source: "kohalik väljavõte 2026-09-12 (kõndimisgraafik + leisure/amenity/shop)",
     // Real snapshot features (labeled demo only: shown iff the snapshot
     // cannot be read). Coordinates rounded from derived-pets.json.
     fallbackPoints: [
@@ -52,7 +52,7 @@ export const B1_LAYERS: LayerDef[] = [
     title: "Kogukonnaruumid",
     goodLabel: "roheline = kogukonnakeskus lähedal",
     badLabel: "punane = kogukonnaruumid kaugel",
-    source: "kohalik hetktõmmis 2026-09-12 (kõndimisgraafik + amenity)",
+    source: "kohalik väljavõte 2026-09-12 (kõndimisgraafik + amenity)",
     fallbackPoints: [
       { lat: 59.4372, lon: 24.7517 }, // townhall (snapshot)
       { lat: 59.4327, lon: 24.744 }, // townhall (snapshot)
@@ -65,7 +65,7 @@ export const B1_LAYERS: LayerDef[] = [
     title: "Kultuur",
     goodLabel: "roheline = teater/muuseum jalutuskäigu kaugusel",
     badLabel: "punane = kultuur kaugel",
-    source: "kohalik hetktõmmis 2026-09-12 (kõndimisgraafik + amenity/tourism)",
+    source: "kohalik väljavõte 2026-09-12 (kõndimisgraafik + amenity/tourism)",
     fallbackPoints: [
       { lat: 59.4382, lon: 24.7433 }, // theatre (snapshot)
       { lat: 59.4405, lon: 24.7476 }, // museum (snapshot)
@@ -78,7 +78,7 @@ export const B1_LAYERS: LayerDef[] = [
     title: "Ööelu",
     goodLabel: "roheline = baarid ja kino lähedal",
     badLabel: "punane = ööelu kaugel",
-    source: "kohalik hetktõmmis 2026-09-12 (kõndimisgraafik + amenity)",
+    source: "kohalik väljavõte 2026-09-12 (kõndimisgraafik + amenity)",
     fallbackPoints: [
       { lat: 59.4303, lon: 24.7468 }, // nightclub (snapshot)
       { lat: 59.4383, lon: 24.7565 }, // cinema (snapshot)
@@ -91,7 +91,7 @@ export const B1_LAYERS: LayerDef[] = [
     title: "Raamatukogud",
     goodLabel: "roheline = raamatukogu jalutuskäigu kaugusel",
     badLabel: "punane = raamatukogu kaugel",
-    source: "kohalik hetktõmmis 2026-09-12 (kõndimisgraafik + amenity)",
+    source: "kohalik väljavõte 2026-09-12 (kõndimisgraafik + amenity)",
     fallbackPoints: [
       { lat: 59.4336, lon: 24.7534 }, // library (snapshot)
       { lat: 59.4423, lon: 24.7489 }, // library (snapshot)

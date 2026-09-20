@@ -103,7 +103,7 @@ export const GROUP05D_ALL_PARAMS = [226, 230, 244, 275, 280] as const;
 
 export type Group05DParam = (typeof GROUP05D_ALL_PARAMS)[number];
 
-const SNAP = "kohalik hetktõmmis 2026-09-12";
+const SNAP = "kohalik väljavõte 2026-09-12";
 
 export const GROUP05D_LAYERS: LayerDef[] = [
   {

@@ -162,7 +162,7 @@ export function planktprColorForUse(use: unknown): string | null {
   return cls === null ? null : PLANKTPR_USE_COLORS[cls];
 }
 
-const SNAP = "kohalik hetktõmmis 2026-09-12";
+const SNAP = "kohalik väljavõte 2026-09-12";
 const WFS_NEGATIVE =
   "PLANK-WFS-liides puudub (2026-09-13: GetCapabilities viib E-ehituse " +
   "platvormile, WFS-XML-i pole) ja TPR-il avaandmete liidest pole " +

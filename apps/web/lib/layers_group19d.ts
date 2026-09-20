@@ -98,7 +98,7 @@ export const GROUP19D_NO_MAP: Group19DVerdict[] = [
     nearestMap: NO_MAP,
     reason:
       "Õue liikumisvalgustuse katvus selgub ainult pimedas kohapealsel " +
-      "külastusel — hetktõmmis ei tea, milline lamp põleb ja kuhu ta " +
+      "külastusel — väljavõte ei tea, milline lamp põleb ja kuhu ta " +
       "näitab (EI OLE hinnangut): vajab ostja õhtust kontrolli — ära feigi.",
   },
   {

@@ -106,7 +106,7 @@ export const GROUP06_DEFS: LayerDef[] = [
     goodLabel: "roheline = kaardistatud muinsusobjekte tihedalt lähedal (hinnang)",
     badLabel: "punane = muinsusobjekte vähe või pole (hinnang, MITTE registriotsus)",
     source:
-      "kohalik hetktõmmis 2026-09-12 (OSM historic=*/heritage=*/unesco=* 781 objekti; Muinsuskaitseameti register hetktõmmises pole — lähedushinnang, mitte kaitsevööndiotsus)",
+      "kohalik väljavõte 2026-09-12 (OSM historic=*/heritage=*/unesco=* 781 objekti; Muinsuskaitseameti register väljavõttes pole — lähedushinnang, mitte kaitsevööndiotsus)",
     fallbackPoints: [
       { lat: 59.4374, lon: 24.7454 }, // Vanalinn (tihe muinsusala)
       { lat: 59.4386, lon: 24.7912 }, // Kadriorg (loss + park)

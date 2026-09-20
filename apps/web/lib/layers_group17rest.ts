@@ -113,7 +113,7 @@ export const GROUP17REST_ALL_PARAMS = [4, 49, 142, 145, 152, 167, 245, 246, 247,
 
 export type Group17RestParam = (typeof GROUP17REST_ALL_PARAMS)[number];
 
-const SNAP = "kohalik hetktõmmis 2026-09-12";
+const SNAP = "kohalik väljavõte 2026-09-12";
 
 export const GROUP17REST_LAYERS: LayerDef[] = [
   {

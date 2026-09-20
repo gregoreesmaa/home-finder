@@ -44,7 +44,7 @@ export const INCIDENTS_DEFS: LayerDef[] = [
     goodLabel: "roheline = marsruudil täna ummikuid/sulgusid pole",
     badLabel: "punane = ummik, sulgus või teetöö lähedal (mõõtmik, mitte prognoos)",
     source:
-      "TomTomi intsidentide võtmega nädalasisene mõõtmik operaatori 6 h puhvrist (hetkeseis, mitte reaalajas; aegunud peitub ajatempli taha)",
+      "TomTomi intsidentide võtmega nädalasisene mõõtmik operaatori 6 h puhvrist (6 h aken, mitte reaalajas; aegunud peitub ajatempli taha)",
     fallbackPoints: [
       { lat: 59.4372, lon: 24.7536 }, // Kesklinn (labeled demo only)
     ],
