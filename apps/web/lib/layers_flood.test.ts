@@ -125,13 +125,13 @@ describe("floodzone scoring contract (#487)", () => {
     expect(radiusKmFor("floodzone")).toBeCloseTo(0.5, 5);
   });
 
-  it("locks the inert bonus placeholder (zero points + null raster)", () => {
-    expect(FLOOD_BONUS).toEqual({ floodzone: { kind: "area", half: 60 } });
-    expect(bonusSpecFor("floodzone")).toEqual({ kind: "area", half: 60 });
+  it("locks the zones bonus spec (polygons carry the band score, #807)", () => {
+    expect(FLOOD_BONUS).toEqual({ floodzone: { kind: "zones" } });
+    expect(bonusSpecFor("floodzone")).toEqual({ kind: "zones" });
   });
 
   it("bonusSpecForFlood answers floodzone and ignores other layers", () => {
-    expect(bonusSpecForFlood("floodzone")).toEqual({ kind: "area", half: 60 });
+    expect(bonusSpecForFlood("floodzone")).toEqual({ kind: "zones" });
     expect(bonusSpecForFlood("parks")).toBeUndefined();
     expect(isFloodLayerId("floodzone")).toBe(true);
     expect(isFloodLayerId("parks")).toBe(false);

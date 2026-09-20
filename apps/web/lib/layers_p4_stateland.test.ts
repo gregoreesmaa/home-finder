@@ -168,13 +168,13 @@ describe("stateland scoring contract (#615)", () => {
     expect(radiusKmFor("stateland")).toBeCloseTo(0.5, 5);
   });
 
-  it("locks the inert bonus placeholder (zero points + null raster)", () => {
-    expect(STATELAND_BONUS).toEqual({ stateland: { kind: "area", half: 60 } });
-    expect(bonusSpecFor("stateland")).toEqual({ kind: "area", half: 60 });
+  it("locks the zones bonus spec (polygons carry the state/auction bands, #807)", () => {
+    expect(STATELAND_BONUS).toEqual({ stateland: { kind: "zones" } });
+    expect(bonusSpecFor("stateland")).toEqual({ kind: "zones" });
   });
 
   it("bonusSpecForStateland answers stateland and ignores other layers", () => {
-    expect(bonusSpecForStateland("stateland")).toEqual({ kind: "area", half: 60 });
+    expect(bonusSpecForStateland("stateland")).toEqual({ kind: "zones" });
     expect(bonusSpecForStateland("parks")).toBeUndefined();
     expect(isStatelandLayerId("stateland")).toBe(true);
     expect(isStatelandLayerId("parks")).toBe(false);

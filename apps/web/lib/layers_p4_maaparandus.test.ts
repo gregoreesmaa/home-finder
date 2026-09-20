@@ -160,13 +160,13 @@ describe("drainage scoring contract (#616)", () => {
     expect(radiusKmFor("maaparandus")).toBeCloseTo(0.5, 5);
   });
 
-  it("locks the inert bonus placeholder (zero points + null raster)", () => {
-    expect(MAAPARANDUS_BONUS).toEqual({ maaparandus: { kind: "area", half: 60 } });
-    expect(bonusSpecFor("maaparandus")).toEqual({ kind: "area", half: 60 });
+  it("locks the zones bonus spec (shapes carry the drainage bands, #807)", () => {
+    expect(MAAPARANDUS_BONUS).toEqual({ maaparandus: { kind: "zones" } });
+    expect(bonusSpecFor("maaparandus")).toEqual({ kind: "zones" });
   });
 
   it("bonusSpecForMaaparandus answers drainage and ignores other layers", () => {
-    expect(bonusSpecForMaaparandus("maaparandus")).toEqual({ kind: "area", half: 60 });
+    expect(bonusSpecForMaaparandus("maaparandus")).toEqual({ kind: "zones" });
     expect(bonusSpecForMaaparandus("parks")).toBeUndefined();
     expect(isMaaparandusLayerId("maaparandus")).toBe(true);
     expect(isMaaparandusLayerId("parks")).toBe(false);

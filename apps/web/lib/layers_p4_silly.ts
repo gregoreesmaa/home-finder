@@ -27,9 +27,13 @@
 //   sääskedel ja STR-il pole kaardistatud allikat, osaline komposiit
 //   täisnime all oleks feik-täpsus.
 //
-// HONESTY (load-bearing): markers-only `pins` layers (fixit #623
-// precedent) — dots mark MAPPED objects (hinnang), never quality, never
-// completeness (AED: 11 punkti on hõre kaardistus, mitte hõre tegelikkus).
+// HONESTY (load-bearing): dots mark MAPPED objects (hinnang), never
+// completeness (AED: 11 punkti on hõre kaardistus, mitte hõre
+// tegelikkus). Issue #807 amendment (2026-09-20): the dots now ALSO
+// score — amenity proximity-good (dbands doorstep), nuisance near =
+// bad (quiet) — because mapped presence IS the place signal here
+// (unlike fixit reports, which measure reporting activity). Empty
+// input still scores unknown everywhere, never zero.
 // talisuplus shows mapped swim spots (leisure=swimming_area +
 // sport=swimming): dedicated winter-swimming tagging does not exist in
 // OSM, so the title/source carry the talvehooldus-teadmata caveat.
@@ -114,8 +118,8 @@ export const SILLY_LAYERS: LayerDef[] = [
     paramIds: [],
     paramLabel: "P4-kellad",
     title: "Kirikukellad (pühapäevamüra, hinnang)",
-    goodLabel: "lilla täpp = kaardistatud kirik lähedal (kellamüra-hinnang)",
-    badLabel: "tühi kaart = kirikut lähedal pole (teadmata, mitte vaikne)",
+    goodLabel: "roheline = kirik kaugel, kellamüra kaugel (hinnang)",
+    badLabel: "punane = kaardistatud kirik lähedal (kellamüra-hinnang); tühi kaart = teadmata, mitte vaikne",
     source: `${SNAP} (amenity=place_of_worship, Tallinnas 97; kellade helitugevust ega heliaegu snapshots pole — kauguse-hinnang, kohapeal kuulata)`,
     fallbackPoints: [
       { lat: 59.43763, lon: 24.71339 }, // Toompea (kaardistatud kirik)
@@ -127,8 +131,8 @@ export const SILLY_LAYERS: LayerDef[] = [
     paramIds: [],
     paramLabel: "P4-kajakad",
     title: "Kajakad (sadam/turg/prügila, hinnang)",
-    goodLabel: "roheline täpp = kajakate meelispaik lähedal (hinnang — prügikast kinni)",
-    badLabel: "tühi kaart = sadamat/turgu/prügilat lähedal pole (teadmata)",
+    goodLabel: "roheline = kajakate meelispaigast kaugel (hinnang — prügikast kinni)",
+    badLabel: "punane = sadam/turg/prügila lähedal (kajakära-hinnang); tühi kaart = teadmata",
     source: `${SNAP} (landuse=harbour 5 + amenity=marketplace 27 + landuse=landfill 4; kajakaid endid ei kaardistata — toidupaiga-hinnang)`,
     fallbackPoints: [
       { lat: 59.44848, lon: 24.75213 }, // Vanasadam (kaardistatud sadam)
@@ -141,8 +145,8 @@ export const SILLY_LAYERS: LayerDef[] = [
     paramIds: [],
     paramLabel: "P4-mäng",
     title: "Mänguväljakud (päevakära, hinnang)",
-    goodLabel: "roosa täpp = mänguväljak lähedal (lapsed + päevakära-hinnang)",
-    badLabel: "tühi kaart = mänguväljakut lähedal pole (teadmata)",
+    goodLabel: "roheline = mänguväljak jalutuskäigu kaugusel (lapsed + päevakära-hinnang)",
+    badLabel: "punane = mänguväljak kaugel või kaardistamata (teadmata)",
     source: `${SNAP} (leisure=playground, Tallinnas 1874; kellaaegu ega müra snapshots pole — läheduse-hinnang)`,
     fallbackPoints: [
       { lat: 59.44618, lon: 24.69656 }, // Pelgulinn (kaardistatud väljak)
@@ -154,8 +158,8 @@ export const SILLY_LAYERS: LayerDef[] = [
     paramIds: [],
     paramLabel: "P4-koerad",
     title: "Koertepargid (hinnang)",
-    goodLabel: "sinine täpp = koertepark lähedal (haukumis-hinnang)",
-    badLabel: "tühi kaart = koerteparki lähedal pole (teadmata)",
+    goodLabel: "roheline = koertepargist kaugel (haukumis-hinnang)",
+    badLabel: "punane = koertepark lähedal (haukumis-hinnang); tühi kaart = teadmata",
     source: `${SNAP} (leisure=dog_park, Tallinnas 89; lahtiolekut ega koormust snapshots pole — läheduse-hinnang)`,
     fallbackPoints: [
       { lat: 59.36937, lon: 24.74753 }, // Männiku (kaardistatud koertepark)
@@ -167,8 +171,8 @@ export const SILLY_LAYERS: LayerDef[] = [
     paramIds: [],
     paramLabel: "P4-saun",
     title: "Avalikud saunad (hinnang)",
-    goodLabel: "roosa täpp = avalik saun lähedal (leili-hinnang)",
-    badLabel: "tühi kaart = sauna lähedal pole (teadmata)",
+    goodLabel: "roheline = avalik saun jalutuskäigu kaugusel (leili-hinnang)",
+    badLabel: "punane = saun kaugel või kaardistamata (teadmata)",
     source: `${SNAP} (leisure=sauna, Tallinnas 34; hindu ega aegu snapshots pole — läheduse-hinnang)`,
     fallbackPoints: [
       { lat: 59.4363, lon: 24.76696 }, // Kadriorg (kaardistatud saun)
@@ -180,8 +184,8 @@ export const SILLY_LAYERS: LayerDef[] = [
     paramIds: [],
     paramLabel: "P4-suplus",
     title: "Talisupluskohad (kaardistatud supluskohad, talvehooldus teadmata)",
-    goodLabel: "helesinine täpp = supluskoht lähedal (talvine auk teadmata — küsi kohapeal)",
-    badLabel: "tühi kaart = supluskohta lähedal pole (teadmata)",
+    goodLabel: "roheline = supluskoht jalutuskäigu kaugusel (talvine auk teadmata — küsi kohapeal)",
+    badLabel: "punane = supluskoht kaugel või kaardistamata (teadmata)",
     source: `${SNAP} (leisure=swimming_area 19 + sport=swimming 53; talisupluse eraldi märgendit OSM-is pole — supluskoha-hinnang, auguhooldus teadmata)`,
     fallbackPoints: [
       { lat: 59.43103, lon: 24.9348 }, // Pirita (kaardistatud suplusala)
@@ -193,8 +197,8 @@ export const SILLY_LAYERS: LayerDef[] = [
     paramIds: [],
     paramLabel: "P4-tänavasport",
     title: "Tänavasport (välijõusaalid/rula/discgolf, hinnang)",
-    goodLabel: "heleroheline täpp = välijõusaal/rula/discgolf lähedal (hinnang)",
-    badLabel: "tühi kaart = tänavasporti lähedal pole (teadmata)",
+    goodLabel: "roheline = välijõusaal/rula/discgolf jalutuskäigu kaugusel (hinnang)",
+    badLabel: "punane = tänavasport kaugel või kaardistamata (teadmata)",
     source: `${SNAP} (leisure=fitness_station 319 + sport=skateboard 53 + sport=disc_golf 6; registri saalid/basseinid on layers_p4_sport kihis, siin ainult tänavavorm — läheduse-hinnang)`,
     fallbackPoints: [
       { lat: 59.42306, lon: 24.72949 }, // Kristiine (kaardistatud välijõusaal)
@@ -207,8 +211,8 @@ export const SILLY_LAYERS: LayerDef[] = [
     paramIds: [],
     paramLabel: "P4-vesi",
     title: "Suvevesi (purskkaevud/joogivesi, hinnang)",
-    goodLabel: "türkiissinine täpp = purskkaev/joogivesi lähedal (jahutus-hinnang)",
-    badLabel: "tühi kaart = vett lähedal pole (teadmata)",
+    goodLabel: "roheline = purskkaev/joogivesi jalutuskäigu kaugusel (jahutus-hinnang)",
+    badLabel: "punane = vesi kaugel või kaardistamata (teadmata)",
     source: `${SNAP} (amenity=fountain 88 + amenity=drinking_water 74; töökorda ega veekvaliteeti snapshots pole — läheduse-hinnang)`,
     fallbackPoints: [
       { lat: 59.43913, lon: 24.75285 }, // Vanalinn (kaardistatud purskkaev)
@@ -220,8 +224,8 @@ export const SILLY_LAYERS: LayerDef[] = [
     paramIds: [],
     paramLabel: "P4-WC",
     title: "Avalikud WC-d (hinnang)",
-    goodLabel: "virsikitäpp = avalik WC lähedal (hädahinnang)",
-    badLabel: "tühi kaart = WC-d lähedal pole (teadmata)",
+    goodLabel: "roheline = avalik WC jalutuskäigu kaugusel (hädahinnang)",
+    badLabel: "punane = WC kaugel või kaardistamata (teadmata)",
     source: `${SNAP} (amenity=toilets, Tallinnas 205; avatust ega tasulisust snapshots pole — läheduse-hinnang)`,
     fallbackPoints: [
       { lat: 59.43536, lon: 24.73981 }, // Kesklinn (kaardistatud WC)
@@ -233,8 +237,8 @@ export const SILLY_LAYERS: LayerDef[] = [
     paramIds: [],
     paramLabel: "P4-AED",
     title: "AED defibrillaatorid (hõre kaardistus, hinnang)",
-    goodLabel: "punane täpp = defibrillaator lähedal (hinnang — kaardistus hõre)",
-    badLabel: "tühi kaart = defibrillaatorit lähedal pole (TEADMATA — 11 punkti on kaardistus, mitte tegelikkus)",
+    goodLabel: "roheline = defibrillaator jalutuskäigu kaugusel (hinnang — kaardistus hõre)",
+    badLabel: "punane = defibrillaator kaugel või kaardistamata (TEADMATA — 11 punkti on kaardistus, mitte tegelikkus)",
     source: `${SNAP} (emergency=defibrillator, Tallinnas AINULT 11 — hõre kaardistus, mitte hõre tegelikkus; töökorra snapshots pole — läheduse-hinnang, hädaolukorras helista 112)`,
     fallbackPoints: [
       { lat: 59.43901, lon: 24.75633 }, // Kesklinn (kaardistatud AED)
@@ -246,8 +250,8 @@ export const SILLY_LAYERS: LayerDef[] = [
     paramIds: [],
     paramLabel: "P4-raamat",
     title: "Raamatukapid (hinnang)",
-    goodLabel: "lilla täpp = avalik raamatukapp lähedal (lugemis-hinnang)",
-    badLabel: "tühi kaart = raamatukappi lähedal pole (teadmata)",
+    goodLabel: "roheline = avalik raamatukapp jalutuskäigu kaugusel (lugemis-hinnang)",
+    badLabel: "punane = raamatukapp kaugel või kaardistamata (teadmata)",
     source: `${SNAP} (amenity=public_bookcase, Tallinnas 18; valikut ega seisu snapshots pole — läheduse-hinnang)`,
     fallbackPoints: [
       { lat: 59.43796, lon: 24.77973 }, // Kadriorg (kaardistatud raamatukapp)
@@ -259,8 +263,8 @@ export const SILLY_LAYERS: LayerDef[] = [
     paramIds: [],
     paramLabel: "P4-kalmistu",
     title: "Kalmistu-vaikus (roheline vaikus, hinnang)",
-    goodLabel: "hall täpp = kalmistu lähedal (roheline vaikus-hinnang)",
-    badLabel: "tühi kaart = kalmistut lähedal pole (teadmata)",
+    goodLabel: "roheline = kalmistu jalutuskäigu kaugusel (roheline vaikus-hinnang)",
+    badLabel: "punane = kalmistu kaugel või kaardistamata (teadmata)",
     source: `${SNAP} (landuse=cemetery, Tallinnas 30; vaikus on hinnang, mitte mõõdetud dB — kohapeal kuulata)`,
     fallbackPoints: [
       { lat: 59.42183, lon: 24.7659 }, // Siselinna (kaardistatud kalmistu)
@@ -355,10 +359,41 @@ export function isSillyLayerId(layer: LayerId): layer is SillyLayerId {
   return (SILLY_LAYER_IDS as string[]).includes(layer);
 }
 
-/** Marker-only spec for silly layers (called from the bonusSpecFor hook). */
+/**
+ * Doorstep distance bands (issue #807) — poi #612 precedent at the
+ * silly 0.5 km doorstep scale (SILLY_DECAY): a mapped amenity within
+ * 250 m reads 85, within 500 m 65; past 500 m it says nothing about
+ * the backyard (unknown, never zero).
+ */
+export const SILLY_DBAND_EDGES: Array<[number, number]> = [
+  [250, 85],
+  [500, 65],
+];
+export const SILLY_DBAND_RADIUS_M = 500;
+
+/**
+ * Nuisance half-widths in metres (issue #807 judgment — how far the
+ * nuisance carries: church bells across the block, gull colonies
+ * around the harbour/market bins, barking across the street). The
+ * quiet kernel reads 0 on the source, 50 at halfM, calm far away.
+ */
+export const SILLY_QUIET_HALFM: Record<string, number> = {
+  kirikukellad: 300,
+  kajakad: 200,
+  koertepargid: 150,
+};
+
+/**
+ * Goodness spec for silly layers (issue #807; called from the
+ * bonusSpecFor hook). Nine amenity layers score proximity-good
+ * (dbands); three nuisance layers score near = bad (quiet — bells,
+ * gulls, barking). Markers still ride the overlay path; the field is
+ * new. Empty input stays unknown everywhere (never a faked score).
+ */
 export function sillyBonusSpecFor(layer: SillyLayerId): BonusSpec {
-  void layer;
-  return { kind: "pins" };
+  const halfM = SILLY_QUIET_HALFM[layer];
+  if (halfM !== undefined) return { kind: "quiet", halfM };
+  return { kind: "dbands", radiusM: SILLY_DBAND_RADIUS_M, edges: SILLY_DBAND_EDGES };
 }
 
 /** Points within the hard doorstep radius, nearest first (pure). */
@@ -415,7 +450,7 @@ export function sillySnapshotStatus(pointCount: number): string {
 
 /** Hook marker, pinned by test so the wiring contract stays greppable. */
 export const SILLY_HOOK =
-  "SILLY-HOOK (#711): silly bundle wired into layers/overlays/snapshot; twelve markers-only pins layers from the held OSM extract, zero new pulls.";
+  "SILLY-HOOK (#711): silly bundle wired into layers/overlays/snapshot; twelve scored layers (dbands amenity + quiet nuisance, #807) from the held OSM extract, zero new pulls.";
 
 /**
  * Demo-by-design status line (issue #774). Silly layers have no

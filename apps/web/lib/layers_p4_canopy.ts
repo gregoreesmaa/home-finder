@@ -28,6 +28,8 @@ export const CANOPY_LAYER_IDS: CanopyLayerId[] = ["canopy"];
 /** Publisher attribution (CC BY 4.0 — stamped in sidecar stats). */
 export const CANOPY_ATTRIBUTION = "Maa- ja Ruumiamet CHM (CC BY 4.0, CHM2022_suvi)";
 
+/** #807 NO-SCORE DECISION (2026-09-20): tree-cover shade is buyer
+ * taste, not quality — the tint stays unscored (INERT). */
 /** Publisher height classes (index 0 = <1 m / missing). */
 export const CANOPY_CLASSES = [
   "<1m/puudub",

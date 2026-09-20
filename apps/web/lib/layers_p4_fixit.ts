@@ -31,6 +31,10 @@
 // serve time (pins older than 19 days never render as current), so a
 // stale sidecar degrades to honestly-empty. The legend states the
 // bias caveat + the rolling window + the pull vintage on every view.
+// #807 NO-SCORE DECISION (2026-09-20, re-affirmed): pins stay `pins`
+// — complaint density ranks reporting activity, never place goodness
+// (a silent street is unknown, not fine). No band table exists and
+// none is invented here.
 //
 // The layer carries NO parameters3.md id: the fix-it dims are
 // parameters4 buyer params (tervise #494 precedent). paramIds stays []

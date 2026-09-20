@@ -33,12 +33,12 @@ describe("silly bundle registry", () => {
     }
   });
 
-  it("ships twelve layers, all markers-only pins", () => {
+  it("ships twelve scored layers (dbands amenity + quiet nuisance, #807)", () => {
     expect(SILLY_LAYER_IDS).toHaveLength(12);
     for (const id of SILLY_LAYER_IDS) {
       expect(isSillyLayerId(id)).toBe(true);
-      expect(sillyBonusSpecFor(id)).toEqual({ kind: "pins" });
-      expect(bonusSpecFor(id)).toEqual({ kind: "pins" });
+      expect(sillyBonusSpecFor(id)).toEqual(bonusSpecFor(id));
+      expect(["dbands", "quiet"]).toContain((sillyBonusSpecFor(id) as { kind: string }).kind);
       expect(radiusKmFor(id)).toBe(0.5);
     }
     expect(isSillyLayerId("fixit")).toBe(false);

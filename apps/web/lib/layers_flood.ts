@@ -20,6 +20,11 @@
 // (5 km model grids behind a login are not per-parcel zones), and
 // nearest-object distance to a Saaremaa lake as a Tallinn flood fact
 // (only containment scores — centre and edge of a polygon read alike).
+// #807 AMENDMENT (2026-09-20, contract change for the reviewer):
+// the containment verdict IS now painted as a membership band score
+// (zones kernel, FLOOD_ZONE_SCORE) — still no model, no smoothing,
+// no decay; outside stays NULL. Approve by merging, or reject by
+// demanding fills-only back.
 //
 // POLYGONS-ONLY plumbing (documented divergence from every other
 // layer): fallbackPoints is EMPTY (demo points would paint a fake
@@ -116,12 +121,21 @@ export const FLOOD_RASTER_FILE: Record<FloodLayerId, string> = {
 export const FLOOD_NO_METRO = true;
 
 /**
- * Bonus spec. INERT placeholder (never evaluated: zero points, null
- * raster — pinned by the polygons-only test). Shape mirrors the area
- * kind so the type contract holds without inventing a calibration.
+ * Inside-zone score (issue #807): KAUR flood zones bite at the parcel
+ * (tariff + illiquidity flag) — parity with the EELIS P4-015
+ * FLOOD_SCORE 35 in services/scoring/dims_p4_eelis.py (same buyer
+ * meaning; dims_flood_harju.py is verdict-only, no direct score leg).
+ * Outside every zone stays unknown (no T-bands, no Tallinn polygons).
+ */
+export const FLOOD_ZONE_SCORE = 35;
+
+/**
+ * Bonus spec. Membership zones (issue #807): polygons carry the
+ * verdict — inside reads FLOOD_ZONE_SCORE (see zones807.ts), outside
+ * stays unknown. Zero points, null raster (still polygons-only).
  */
 export const FLOOD_BONUS: Record<FloodLayerId, BonusSpec> = {
-  floodzone: { kind: "area", half: 60 },
+  floodzone: { kind: "zones" },
 };
 
 /** Type guard for the bonusSpecFor hook in layers.ts. */

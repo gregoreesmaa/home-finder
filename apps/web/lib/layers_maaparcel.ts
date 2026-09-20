@@ -32,7 +32,10 @@
 // polygon-only layers out, see layers.test.ts); MAAPARCEL_DECAY and
 // MAAPARCEL_BONUS below are inert placeholders required by the
 // Record<LayerId> tables (zero points and a null raster mean neither is
-// ever evaluated — pinned by test); MAAPARCEL_TAGS is a provenance note,
+// ever evaluated — pinned by test; #807 NO-SCORE DECISION (2026-09-20):
+// parcel membership answers WHICH parcel (cadastre ID), not whether the
+// place is good — scoring inside-a-parcel would rank listings by window
+// coverage. Spec stays INERT); MAAPARCEL_TAGS is a provenance note,
 // NOT runnable Overpass QL (the only rebuild path is
 // scripts/build/batch_maaparcel_kataster.py off the cached GeoJSON).
 // The points endpoint answers honestly-empty for this layer (polygons

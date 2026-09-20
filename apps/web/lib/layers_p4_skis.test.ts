@@ -23,11 +23,11 @@ describe("skis registry", () => {
     expect(LAYERS.find((l) => l.id === "skis")).toBeTruthy();
   });
 
-  it("wires the pins spec through the shared hooks", () => {
+  it("wires the dormant dbands spec through the shared hooks (#807)", () => {
     expect(isSkisLayerId("skis")).toBe(true);
     expect(isSkisLayerId("fixit")).toBe(false);
-    expect(skisBonusSpecFor("skis")).toEqual({ kind: "pins" });
-    expect(bonusSpecFor("skis")).toEqual({ kind: "pins" });
+    expect(skisBonusSpecFor("skis")).toEqual({ kind: "dbands", radiusM: 1000, edges: [[1000, 75]] });
+    expect(bonusSpecFor("skis")).toEqual({ kind: "dbands", radiusM: 1000, edges: [[1000, 75]] });
     expect(radiusKmFor("skis")).toBe(1.0);
     expect(SKIS_RADIUS_M).toBe(1000);
   });

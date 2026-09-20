@@ -30,6 +30,10 @@ export const DENSITY_LAYER_IDS: DensityLayerId[] = ["density"];
 /** Publisher attribution (CC0 — still attributed; stamped in sidecar). */
 export const DENSITY_ATTRIBUTION = "Maa- ja Ruumiamet INSPIRE PD 1x1 km (CC0, Statistikaamet)";
 
+/** #807 NO-SCORE DECISION (2026-09-20): density character (city buzz
+ * vs quiet) is buyer taste, not quality — the squares stay unscored
+ * (INERT). A dense cell is services-near AND noise-near; collapsing
+ * that to one number would fake a verdict. */
 /** Our inhabitant bins (0 = empty OR privacy-masked <4, never "empty"). */
 export const DENSITY_CLASSES = [
   "0 (tühi/varjatud)",

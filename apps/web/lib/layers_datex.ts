@@ -22,6 +22,13 @@
 // Markers only (pins spec — no score field is painted for these
 // layers, by design). Shared files touch this module only through
 // marked `DATEX-HOOK (#763)` blocks.
+// #807 NO-SCORE DECISION (2026-09-20): restrictions/srti have NO
+// geometry by format (cannot join spatially — accblack precedent);
+// weather/counters/cameras/truckpark DO plot, but station proximity
+// measures measurement availability, not place goodness (a counter
+// marks a counted road, a camera a watched junction — scoring
+// near-a-sensor as good/bad would fake a quality gradient). Specs
+// stay `pins` for all six feeds.
 
 import type { BonusSpec, LayerDef } from "./layers";
 

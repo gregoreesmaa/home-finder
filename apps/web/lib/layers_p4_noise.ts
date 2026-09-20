@@ -80,14 +80,45 @@ export const NOISE_NO_RASTER = true;
 export const NOISE_NO_METRO = true;
 
 /**
- * Bonus spec. INERT placeholder (never evaluated: zero points, null
- * raster — pinned by test). The live scorer leg is
- * services/scoring/dims_p4_noisemap.py (registry entry point, not
- * this bonus). Shape mirrors the area kind so the type contract holds
- * without inventing a calibration.
+/**
+ * Strategic-noise band tables (issue #807) — byte parity with
+ * LDEN_BANDS / LNIGHT_BANDS / LDEN_LOUD / LNIGHT_LOUD in
+ * services/scoring/dims_p4_noisemap.py. band_db IS the contour upper
+ * bound (MYRAKLASS steps 45/50/55…), so the scorer's _band_score
+ * applies verbatim; min-wins across legs happens in zones807.
+ */
+export const NOISE_LDEN_BANDS: Array<[number, number]> = [
+  [45, 85],
+  [55, 65],
+  [65, 40],
+];
+export const NOISE_LDEN_LOUD = 20;
+export const NOISE_LNIGHT_BANDS: Array<[number, number]> = [
+  [40, 85],
+  [50, 65],
+  [60, 40],
+];
+export const NOISE_LNIGHT_LOUD = 20;
+
+/** Band score for one sidecar polygon (null when the leg is unknown). */
+export function noiseScoreForArea(leg: string, bandDb: number): number | null {
+  const bands = leg === "Lden" ? NOISE_LDEN_BANDS : leg === "Lnight" ? NOISE_LNIGHT_BANDS : null;
+  if (!bands || !Number.isFinite(bandDb)) return null;
+  for (const [limit, pts] of bands) {
+    if (bandDb <= limit) return pts;
+  }
+  return leg === "Lden" ? NOISE_LDEN_LOUD : NOISE_LNIGHT_LOUD;
+}
+
+/**
+ * Bonus spec. Membership zones (issue #807): polygons carry the
+ * verdict — inside reads noiseScoreForArea (see zones807.ts), outside
+ * stays unknown (unmapped is unmeasured, never quiet). Zero points,
+ * null raster (still polygons-only). The live scorer leg is
+ * services/scoring/dims_p4_noisemap.py.
  */
 export const NOISE_BONUS: Record<NoiseLayerId, BonusSpec> = {
-  noise: { kind: "area", half: 60 },
+  noise: { kind: "zones" },
 };
 
 /** Type guard for the bonusSpecFor hook in layers.ts. */

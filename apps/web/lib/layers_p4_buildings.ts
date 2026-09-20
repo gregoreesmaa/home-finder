@@ -31,6 +31,8 @@ export const BUILDINGS_LAYER_IDS: BuildingsLayerId[] = ["buildings"];
 /** Publisher attribution (CC BY 4.0 — stamped in sidecar stats). */
 export const BUILDINGS_ATTRIBUTION = "Maa- ja Ruumiamet 3D hoonete LoD1 (CC BY 4.0)";
 
+/** #807 NO-SCORE DECISION (2026-09-20): building-height character is
+ * buyer taste, not quality — the tint stays unscored (INERT). */
 /** Our height bins (index 0 = missing/negative). Stated as ours, never publisher classes. */
 export const BUILDINGS_CLASSES = [
   "<3m/puudub",

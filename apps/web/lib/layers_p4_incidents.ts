@@ -15,6 +15,11 @@
 // Markers only (pins spec — no score field is painted for this layer,
 // by design). One marker per incident at its FIRST geometry coordinate
 // (where drivers encounter it); coordless incidents never plot.
+// #807 NO-SCORE DECISION (2026-09-20): transient 6-hour now-state
+// measures this morning's traffic, not place goodness — scoring it
+// would rank streets by today's jams (fixit #623 precedent: activity
+// ≠ quality). Spec stays `pins`; revisit only if a stable
+// typical-state aggregate replaces the rolling window.
 // Shared files touch this module only through marked
 // `INCIDENTS-HOOK (#763)` blocks.
 

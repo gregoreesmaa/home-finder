@@ -10,6 +10,8 @@ import {
   type ScoredField,
 } from "../lib/distanceField";
 import type { BBoxLike, BonusSpec, ParkOutline, WalkRasterDoc } from "../lib/layers";
+// 807-HOOK (#807): scored membership zones for the zones field (type-only; shapes live in zones807.ts).
+import type { Zone } from "../lib/zones807";
 import type { FloodArea } from "../lib/layers_flood";
 import type { MaaParcelArea } from "../lib/layers_maaparcel";
 import type { EelisArea } from "../lib/layers_eelis";
@@ -292,6 +294,8 @@ export function ValueHeatMap({
   points,
   radiusKm,
   bonus,
+  // 807-HOOK (#807): scored membership zones ride the refresh slot (same slot as the painted effect below).
+  zones,
   raster,
   outlines,
   floodAreas,
@@ -335,6 +339,8 @@ export function ValueHeatMap({
   points: HeatPoint[];
   radiusKm: number;
   bonus: BonusSpec;
+  // 807-HOOK (#807): scored membership zones for the zones field (page-held sidecars, mapped in zones807.ts).
+  zones?: Zone[] | null;
   /** Pre-scored county walk raster (transit); splat path when null. */
   raster?: WalkRasterDoc | null;
   /** Park polygon outlines (parks layer only); boundary overlay. */
@@ -418,6 +424,8 @@ export function ValueHeatMap({
     points,
     radiusKm,
     bonus,
+    // 807-HOOK (#807): zones ride the refresh slot so pans keep the band grid.
+    zones,
     raster,
     outlines,
     floodAreas,
@@ -474,6 +482,8 @@ export function ValueHeatMap({
     points,
     radiusKm,
     bonus,
+    // 807-HOOK (#807): zones ride the refresh slot so pans keep the band grid.
+    zones,
     raster,
     outlines,
     floodAreas,
@@ -601,6 +611,25 @@ export function ValueHeatMap({
           layer.setField(null, 0, 0, [0, 0, 0, 0]);
           return;
         }
+        // 807-HOOK (#807): membership zones paint the band grid (empty = honestly unpainted, like zero points).
+        if (spec.kind === "zones") {
+          const z = dataRef.current.zones ?? [];
+          if (z.length === 0) {
+            gridRef.current = null;
+            layer.setField(null, 0, 0, [0, 0, 0, 0]);
+            return;
+          }
+          const res = fieldResolution(box, rKm);
+          const grid = buildScoredField([], box, res.cols, res.rows, rKm, spec, z);
+          gridRef.current = grid;
+          layer.setField(scoredToRgba(grid), res.cols, res.rows, [
+            box.minlon,
+            box.minlat,
+            box.maxlon,
+            box.maxlat,
+          ]);
+          return;
+        }
         const res = fieldResolution(box, rKm);
         const grid = buildScoredField(valid, box, res.cols, res.rows, rKm, spec);
         gridRef.current = grid;
@@ -698,9 +727,10 @@ export function ValueHeatMap({
   }, []);
 
   // New layer data repaints the field without touching the camera.
+  // 807-HOOK (#807): zones join the field deps (new sidecars repaint the band grid).
   useEffect(() => {
     refreshRef.current?.();
-  }, [points, radiusKm, bonus, raster]);
+  }, [points, radiusKm, bonus, raster, zones]);
 
   // Overlay rides the map lifecycle: paint once loaded, clear on switch.
   useEffect(() => {

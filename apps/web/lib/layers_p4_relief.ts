@@ -10,6 +10,8 @@
 // anywhere; the scorer has NO relief legs in this issue (tint first,
 // capped taste legs second — legs arrive with the buyer-taste
 // selection they need, never unlabeled).
+// #807 NO-SCORE DECISION (2026-09-20): taste tints cannot score —
+// flat vs high is buyer taste, not quality. Spec stays INERT.
 //
 // Serving: the whole-county grid (1000x570, ~130x240 m cells) ships in
 // ONE sidecar (relief/relief-tint.json, ~1.5 MB) via
