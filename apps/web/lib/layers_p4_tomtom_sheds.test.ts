@@ -13,6 +13,7 @@ import {
   SHED_RASTER_FILE,
   SHED_TAGS,
   SHED_UNMEASURED_FILL,
+  SHED_WINDOW_ET,
   bonusSpecForSheds,
   fetchShedAreas,
   isShedLayerId,
@@ -67,14 +68,16 @@ describe("shed overlay (#670)", () => {
     expect(SHED_HOOK).toMatch(/SHED-HOOK \(#763\)/);
   });
 
-  it("labels every layer short-cache-never-live in Estonian", () => {
+  it("labels every layer windowed-never-live in Estonian (#783)", () => {
     for (const def of SHED_DEFS) {
       expect(def.hubCount).toBe(5);
       expect(`${def.title} ${def.source}`).toMatch(
-        /mõõtmik lühiajalisest puhvrist, mitte reaalajas/,
+        /mõõtmik, mitte reaalajas/,
       );
+      expect(def.source).toContain(SHED_WINDOW_ET);
     }
     expect(SHED_ATTRIBUTION).toMatch(/mitte reaalajas/);
+    expect(SHED_ATTRIBUTION).toContain(SHED_WINDOW_ET);
   });
 
   it("selects only matching-budget/band polygons with real rings", () => {

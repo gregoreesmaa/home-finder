@@ -1122,21 +1122,23 @@ export function overlayLegendFor(layer: LayerId): string {
       return "Ümberistumissõlmed laupäeviti · suurus = marsruutide arv peatuses (küllastus 5, sõiduplaan, täituvus ja töökindlus teadmata — EI OLE loendusandmeid)";
     case "busmesh-sun":
       return "Ümberistumissõlmed pühapäeviti · suurus = marsruutide arv peatuses (küllastus 5, sõiduplaan, täituvus ja töökindlus teadmata — EI OLE loendusandmeid)";
-    // SHED-HOOK (#763): shed hub fills (P4-sõiduulatus) — weekly keyed
-    // measurement from a short-lived operator cache, never realtime.
+    // SHED-HOOK (#763) + WINDOWED-HOOK (#783): shed hub fills name
+    // their observation window + vintage (pole window table, weekly
+    // keyed measurement, never momentary state).
     case "shed-15-peak":
-      return "15 min tööulatus tipptunnil · 5 tööhubi polügooni (mõõtmik lühiajalisest puhvrist, mitte reaalajas)";
+      return "15 min tööulatus tipptunnil · 5 tööhubi polügooni (7-päeva aken, nädalatõmme; mõõtmik, mitte reaalajas)";
     case "shed-15-offpeak":
-      return "15 min tööulatus tipuvälisel ajal · 5 tööhubi polügooni (mõõtmik lühiajalisest puhvrist, mitte reaalajas)";
+      return "15 min tööulatus tipuvälisel ajal · 5 tööhubi polügooni (7-päeva aken, nädalatõmme; mõõtmik, mitte reaalajas)";
     case "shed-30-peak":
-      return "30 min tööulatus tipptunnil · 5 tööhubi polügooni (mõõtmik lühiajalisest puhvrist, mitte reaalajas)";
+      return "30 min tööulatus tipptunnil · 5 tööhubi polügooni (7-päeva aken, nädalatõmme; mõõtmik, mitte reaalajas)";
     case "shed-30-offpeak":
-      return "30 min tööulatus tipuvälisel ajal · 5 tööhubi polügooni (mõõtmik lühiajalisest puhvrist, mitte reaalajas)";
-    // INCIDENTS-HOOK (#763; pole-first #782): incidents
-    // (P4-intsidendid) — today's freshness-dated snapshot from the
-    // pole live table (6 h TTL), local operator cache as fallback.
+      return "30 min tööulatus tipuvälisel ajal · 5 tööhubi polügooni (7-päeva aken, nädalatõmme; mõõtmik, mitte reaalajas)";
+    // INCIDENTS-HOOK (#763; pole-first #782) + WINDOWED-HOOK (#783):
+    // incidents (P4-intsidendid) names its observation window +
+    // vintage (pole window table, 6 h TTL; local operator cache as
+    // fallback; never momentary state).
     case "incidents":
-      return "Intsidendid täna (ummik/sulgus/teetöö) · pooli elustabel 6 h puhvrist (kohalik varu, aegunud peitub ajatempli taha, reaalajas pole)";
+      return "Intsidendid (ummik/sulgus/teetöö) · pooli vaatlusakna tabel (6 h aken; kohalik varu, aegunud peitub ajatempli taha, reaalajas pole)";
     // DATEX-HOOK (#763) + WINDOWED-HOOK (#783): DATEX feeds name
     // their observation window + vintage (pole window tables,
     // short-term cache only — no committed sidecars, never

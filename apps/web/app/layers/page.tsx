@@ -43,12 +43,14 @@ import {
 } from "../../lib/layers_flood";
 // OOKLA-HOOK (#489): tileband status line + suffix (see below).
 import { OOKLA_QUARTER } from "../../lib/layers_p4_ookla";
-// SHED-HOOK (#763): shed layers paint TomTom hub polygons (polygons
-// only, never a gradient) instead of points.
+// SHED-HOOK (#763) + WINDOWED-HOOK (#783): shed layers paint TomTom
+// hub polygons (polygons only, never a gradient) instead of points;
+// status names the 7-day window + vintage.
 import {
   SHED_FILL,
   fetchShedAreas,
   isShedLayerId,
+  shedStatusLine,
   type ShedArea,
 } from "../../lib/layers_p4_tomtom_sheds";
 // DATEX-HOOK (#763) + WINDOWED-HOOK (#783): DATEX windowed status
@@ -58,9 +60,13 @@ import {
   datexStatusLine,
   isDatexLayerId,
 } from "../../lib/layers_datex";
-// INCIDENTS-HOOK (#763): incidents status line (operator 6h cache,
-// markers only).
-import { isIncidentsLayerId } from "../../lib/layers_p4_incidents";
+// INCIDENTS-HOOK (#763) + WINDOWED-HOOK (#783): incidents windowed
+// status line (pole window table, markers only — window + vintage,
+// never momentary state).
+import {
+  incidentsStatusLine,
+  isIncidentsLayerId,
+} from "../../lib/layers_p4_incidents";
 
 // MAAPARCEL-HOOK (#491): maaparcel paints kataster parcel polygons
 // (polygons only, never a gradient) instead of points.
@@ -1168,24 +1174,25 @@ export default function LayersPage() {
       ? "Laadin kihi andmeid…"
       : provenance === "snapshot"
         ? pointCount > 0 || !raster
-          // SHED-HOOK (#763): shed freshness names the 7-day operator
-          // cache (user-visible freshness for pole/cache layers —
-          // issue AC). Missing/expired cache is a 503 upstream
-          // (fetchShedAreas -> null) and paints honestly-empty slate
-          // "mõõtmata" (no fills, #787).
+          // SHED-HOOK (#763) + WINDOWED-HOOK (#783): shed freshness
+          // names the 7-day window + vintage (user-visible freshness
+          // for pole/cache layers — issue AC). Missing/expired cache
+          // is a 503 upstream (fetchShedAreas -> null) and paints
+          // honestly-empty slate "mõõtmata" (no fills, #787).
           ? isShedLayerId(layer)
             ? shedAreas && shedAreas.length > 0
-              ? `TomTomi tööulatus (5 hubi, 7-päeva puhver${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""}) · ${shedAreas.length} polügooni`
-              : "TomTomi tööulatus — mõõtmata (operaatoripuhver puudub/aegunud — tõmmet pole)"
+              ? shedStatusLine(shedAreas.length, ageMs !== null ? ageEt(ageMs) : null)
+              : "TomTomi tööulatus — mõõtmata (7-päeva aken: operaatoripuhver puudub/aegunud — tõmmet pole)"
             // DATEX-HOOK (#763): DATEX freshness names the pole live
             // table per feed (user-visible freshness — issue AC).
             // Geometry-less feeds show the format truth, not a count.
             : isDatexLayerId(layer)
               ? datexStatusLine(layer, pointCount, ageMs !== null ? ageEt(ageMs) : null)
-              // INCIDENTS-HOOK (#763): incidents freshness names the
-              // 6h operator cache (user-visible freshness — issue AC).
+              // INCIDENTS-HOOK (#763) + WINDOWED-HOOK (#783):
+              // incidents freshness names the 6 h window + vintage
+              // (user-visible freshness — issue AC).
               : isIncidentsLayerId(layer)
-                ? `Intsidendid (TomTomi 6 h puhver${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""}) · ${pointCount} punkti`
+                ? incidentsStatusLine(pointCount, ageMs !== null ? ageEt(ageMs) : null)
                 : isTileband
             ? `Ookla Tallinna väljavõte (${OOKLA_QUARTER}) · ${pointCount} ruutu`
             // PAASTE-HOOK (#493): the extract label is senscom-only.
