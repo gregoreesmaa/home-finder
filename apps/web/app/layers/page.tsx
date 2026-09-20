@@ -1301,6 +1301,15 @@ export default function LayersPage() {
         pärinevad kohalikust 2026-09-12 väljavõttest (Harjumaa); väljaspool
         selle katvust andmeid ei kuvata.
       </p>
+      {/* 810-HOOK (#810): aggregate agreement view (sibling route) — all
+          goodness layers combined, green/red/orange by agreement. */}
+      <p>
+        <Link href="/layers/aggregate">
+          Kombineeritud vaade →
+        </Link>{" "}
+        kõik kihid ühel kaardil (roheline = nõustuvad, et hea, punane = et
+        halb, oranž = vastukäiv).
+      </p>
       <div>
         <button type="button" onClick={() => setLayer(stepLayerId(layer, -1))}>
           ← Eelmine
