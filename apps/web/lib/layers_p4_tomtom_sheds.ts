@@ -4,11 +4,12 @@
 import type { BonusSpec, LayerDef } from "./layers";
 //
 // HONESTY (load-bearing): sheds are a WEEKLY keyed measurement served
-// from a short-lived operator cache (ToS 11.4 — never a committed
-// sidecar), so every def carries "mõõtmik lühiajalisest puhvrist,
-// mitte reaalajas". Rush sheds are the binding constraint; off-peak
-// sheds are reference only. Empty rings paint slate "mõõtmata"
-// (never dropped, never shrunk to a dot).
+// from the pole aggregate-window table (ToS 11.4 — never a committed
+// sidecar), so every def carries the 7-day window + vintage
+// ("7-päeva aken, nädalatõmme; mõõtmik, mitte reaalajas", issue
+// #783). Rush sheds are the binding constraint; off-peak sheds are
+// reference only. Empty rings paint slate "mõõtmata" (never dropped,
+// never shrunk to a dot).
 //
 // SCOPE (judgment call, for the reviewer): WIRED by #763 — the live
 // keyed cache exists (the harvester's git-ignored operator cache dir,
@@ -86,7 +87,17 @@ export const SHED_FILL: Record<ShedLayerId, string> = {
 export const SHED_UNMEASURED_FILL = "#94a3b8";
 
 export const SHED_ATTRIBUTION =
-  "TomTom Reachable Range (võtmega nädalapuhver — mõõtmik lühiajalisest puhvrist, mitte reaalajas)";
+  "TomTom Reachable Range (pooli vaatlusakna tabel — 7-päeva aken, nädalatõmme; mõõtmik, mitte reaalajas)";
+
+/**
+ * Observation window, user-visible (issue #783: each live-descended
+ * layer names its window + vintage). The window is the pull cadence +
+ * serve TTL in parity: pulled weekly (Sun 20:05 cron) served 7d
+ * (SHED_TTL_S in lib/server/sheds.ts — pinned mirror). All four shed
+ * layers share the one window (single-window mirror of
+ * DATEX_WINDOW_ET, pinned by test).
+ */
+export const SHED_WINDOW_ET = "7-päeva aken, nädalatõmme";
 
 /** Layer descriptors (standalone: not part of the shared LayerId union). */
 export interface ShedDef {
@@ -115,7 +126,22 @@ export const SHED_DEFS: ShedDef[] = SHED_LAYER_IDS.map((id) => {
   };
 });
 
-export const SHED_HOOK = "SHED-HOOK (#763)";
+export const SHED_HOOK =
+  "SHED-HOOK (#763) WINDOWED-HOOK (#783): shed hub fills name the 7-day observation window + vintage, never momentary state.";
+
+/**
+ * Windowed status line for /layers (issue #783: window + vintage on
+ * the surface, never momentary state). `age` is the preformatted
+ * vintage ("3 pv", null when unknown) — formatting lives with the
+ * page's ageEt, this helper owns the window wording only.
+ */
+export function shedStatusLine(
+  areaCount: number,
+  age: string | null,
+): string {
+  const vintage = age !== null ? `; vanus ${age}` : "";
+  return `TomTomi tööulatus (5 hubi, ${SHED_WINDOW_ET}${vintage}) · ${areaCount} polügooni`;
+}
 
 /**
  * Registry defs (polygons-only, flood #487 precedent): no score field

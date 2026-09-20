@@ -1,13 +1,16 @@
-// TomTom daily incident overlay (issue #763, harvester #672): today's
-// jams, closures and roadworks on the Tallinn bbox.
+// TomTom incident overlay (issue #763, harvester #672): jams,
+// closures and roadworks on the Tallinn bbox from a 6-hour
+// observation window.
 //
-// Data reads the keyed harvester's git-ignored operator cache
-// (tomtom_incidents.json, 6 h TTL — SHORT-TERM CACHE ONLY verdict,
-// docs/p4_tomtom_incidents.md section 0; no committed sidecars, no
-// stored tables). The freshness timestamp is the contract: a stale
-// cache hides behind it (route degrades past INCIDENTS_TTL_S, never
-// presented as live when old — scorer NULLs on stale by the same
-// rule). No network, ever.
+// Data reads POLE AGGREGATE-WINDOW TABLES (/v1/incidents, never
+// committed sidecars — the SHORT-TERM CACHE ONLY verdict gates all
+// TomTom work, see docs/p4_tomtom_incidents.md section 0), local
+// keyed-harvester operator cache (tomtom_incidents.json, 6 h TTL) as
+// fallback. The window is the contract (issue #783: no momentary
+// state — every live-descended layer names its window + vintage):
+// a stale cache hides behind the freshness timestamp (route degrades
+// past INCIDENTS_TTL_S, never presented as live when old — scorer
+// NULLs on stale by the same rule). No network, ever.
 //
 // Markers only (pins spec — no score field is painted for this layer,
 // by design). One marker per incident at its FIRST geometry coordinate
@@ -23,6 +26,15 @@ export const INCIDENTS_LAYER_IDS: IncidentsLayerId[] = ["incidents"];
 
 /** 6-hour short-term cache (parity with INCIDENTS_TTL_S, pinned). */
 export const INCIDENTS_TTL_S = 6 * 3600;
+
+/**
+ * Observation window, user-visible (issue #783: each live-descended
+ * layer names its window + vintage). The window is the pull cadence +
+ * serve TTL in parity: pulled 6-hourly (minute 17 past every 6th
+ * hour cron) served 6h.
+ * Single-layer mirror of DATEX_WINDOW_ET (pinned by test).
+ */
+export const INCIDENTS_WINDOW_ET = "6 h aken";
 
 /** Pole live-table dataset (pole/api.py TOMTOM-HOOK, issue #782). */
 export const INCIDENTS_POLE_DATASET = "incidents";
@@ -41,10 +53,11 @@ export const INCIDENTS_DEFS: LayerDef[] = [
     paramIds: [],
     paramLabel: "P4-intsidendid",
     title: "Intsidendid (TomTom)",
-    goodLabel: "roheline = marsruudil täna ummikuid/sulgusid pole",
-    badLabel: "punane = ummik, sulgus või teetöö lähedal (mõõtmik, mitte prognoos)",
+    goodLabel: "roheline = aknas marsruudil ummikuid/sulgusid pole",
+    badLabel:
+      "punane = ummik, sulgus või teetöö lähedal (mõõtmik 6 h aknast, mitte prognoos)",
     source:
-      "TomTomi intsidentide võtmega nädalasisene mõõtmik operaatori 6 h puhvrist (6 h aken, mitte reaalajas; aegunud peitub ajatempli taha)",
+      "TomTomi intsidentide pooli vaatlusakna tabel (6 h aken, 6-tunni tõmme; aegunud peitub ajatempli taha)",
     fallbackPoints: [
       { lat: 59.4372, lon: 24.7536 }, // Kesklinn (labeled demo only)
     ],
@@ -181,6 +194,20 @@ export function incidentPointsForPoleTable(body: unknown): IncidentPoint[] {
   return out;
 }
 
+/**
+ * Windowed status line for /layers (issue #783: window + vintage on
+ * the surface, never momentary state). `age` is the preformatted
+ * vintage ("3 h", null when unknown) — formatting lives with the
+ * page's ageEt, this helper owns the window wording only.
+ */
+export function incidentsStatusLine(
+  pointCount: number,
+  age: string | null,
+): string {
+  const vintage = age !== null ? `; vanus ${age}` : "";
+  return `Intsidendid (TomTomi ${INCIDENTS_WINDOW_ET}${vintage}) · ${pointCount} punkti`;
+}
+
 /** Hook marker, pinned by test so the wiring contract stays greppable. */
 export const INCIDENTS_HOOK =
-  "INCIDENTS-HOOK (#763): incidents overlay wired into layers/overlays/snapshot; operator 6h cache only, stale hides behind the timestamp.";
+  "INCIDENTS-HOOK (#763): incidents overlay wired into layers/overlays/snapshot; operator 6h cache only, stale hides behind the timestamp. WINDOWED-HOOK (#783): names the 6 h observation window + vintage, never momentary state.";
