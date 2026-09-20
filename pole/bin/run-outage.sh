@@ -1,14 +1,15 @@
 #!/bin/sh
 # Pole wrapper: Elektrilevi hetkeseis sidecar (5-min pull, keyless) +
-# observed-reliability build (issue #780).
+# observed-reliability build (issue #780; log append-only per #801).
 #
-# Every successful pull appends one compact record to the rolling
-# observation log (pole cache/outage/observations.jsonl, 90-day
-# retention, harvester-side); failures leave the sidecar AND the log
-# untouched (no loss on failure, corrupt never logged as data). The
-# reliability table rebuilds from the surviving log either way, so a
-# failed pull never loses history; a failed build leaves the previous
-# table in place (atomic tmp+mv both steps). Until the first build,
+# Every successful pull appends one compact record to the APPEND-ONLY
+# observation log (pole cache/outage/observations.jsonl, retention =
+# forever — the #780 90-day prune was removed by #801, nothing here
+# deletes); failures leave the sidecar AND the log untouched (no loss
+# on failure, corrupt never logged as data). The reliability table
+# rebuilds from the growing log either way, so a failed pull never
+# loses history; a failed build leaves the previous table in place
+# (atomic tmp+mv both steps). Until the first build,
 # GET /v1/outage-reliability answers an honest 503.
 set -eu
 POLE="$HOME/hf-pole"

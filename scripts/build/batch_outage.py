@@ -22,10 +22,15 @@ Usage:
       --log DIR/observations.jsonl --out reliability.json
 
 Issue #780: --pull also appends one compact record per successful pull
-to <cache-dir>/observations.jsonl (rolling 90-day log, city rollup);
---build-reliability aggregates the log into the servable 28-day
-reliability table (pole built/outage/reliability.json, honest 503
-until the first build).
+to <cache-dir>/observations.jsonl (city rollup); --build-reliability
+aggregates the log into the servable 28-day reliability table (pole
+built/outage/reliability.json, honest 503 until the first build).
+
+Issue #801 overrules the #780 rolling 90-day prune: the observation
+log is APPEND-ONLY (retention = forever). prune_observations and
+RETAIN_DAYS were removed — pulls append, nothing ever deletes.
+Corrupt pulls still return before append (never logged as data);
+malformed log lines stay unread gaps via read_observations.
 """
 
 import argparse
@@ -48,11 +53,10 @@ TTL_S = 300
 #: rolling raw, NOT served; the aggregation below reads it).
 OBSERVATIONS_NAME = "observations.jsonl"
 
-#: Log retention in days (rolling log, 288 pulls/day; ~300 B/line ->
-#: ~8 MB at full retention — prune policy, documented).
-RETAIN_DAYS = 90
-
 #: Reliability window in days (documented metric window, issue #780).
+#: (Issue #801: the observation LOG has no retention limit — it is
+#: append-only. Only the servable reliability TABLE is windowed to
+#: the trailing 28 days at build time; windowing reads, never deletes.)
 RELIABILITY_WINDOW_DAYS = 28
 
 #: Expected pulls per day at the 5-min cadence (coverage denominator).
@@ -242,40 +246,6 @@ def read_observations(log_path: str) -> List[Dict[str, Any]]:
     return out
 
 
-def prune_observations(log_path: str, retain_days: int = RETAIN_DAYS,
-                       now: Optional[datetime] = None) -> int:
-    """Drop log lines older than retain_days (rolling log, issue #780).
-
-    Malformed lines are dropped too (never data). Returns surviving
-    count. A missing log is a no-op returning 0.
-    """
-    at = now or datetime.now(tz=timezone.utc)
-    try:
-        with open(log_path, encoding="utf-8") as fh:
-            lines = fh.read().splitlines()
-    except OSError:
-        return 0
-    cutoff = at.timestamp() - retain_days * 86400
-    kept: List[str] = []
-    for line in lines:
-        if not line.strip():
-            continue
-        try:
-            rec = json.loads(line)
-            ts = datetime.fromisoformat(str(rec.get("ts", "")))
-            if ts.tzinfo is None:
-                ts = ts.replace(tzinfo=timezone.utc)
-        except (ValueError, TypeError, AttributeError):
-            continue
-        if ts.timestamp() >= cutoff:
-            kept.append(line)
-    tmp = log_path + ".part"
-    with open(tmp, "w", encoding="utf-8") as fh:
-        fh.write("".join(line + "\n" for line in kept))
-    os.replace(tmp, log_path)
-    return len(kept)
-
-
 def build_reliability(observations: List[Dict[str, Any]],
                       window_days: int = RELIABILITY_WINDOW_DAYS,
                       now: Optional[datetime] = None) -> Dict[str, Any]:
@@ -359,7 +329,6 @@ def main(argv: Optional[List[str]] = None) -> int:
                          "(default <cache-dir>/observations.jsonl)")
     ap.add_argument("--window-days", type=int,
                     default=RELIABILITY_WINDOW_DAYS)
-    ap.add_argument("--retain-days", type=int, default=RETAIN_DAYS)
     args = ap.parse_args(argv)
     log_path = args.log or os.path.join(args.cache_dir, OBSERVATIONS_NAME)
     if args.build_reliability:
@@ -396,13 +365,13 @@ def main(argv: Optional[List[str]] = None) -> int:
         json.dump(sidecar, fh, ensure_ascii=False)
     os.replace(tmp, out)
     # Issue #780: every successful pull appends one compact record to
-    # the rolling log (failures/corrupt pulls return above — the old
-    # sidecar AND the log stay untouched: no loss on failure, corrupt
-    # never logged as data), then prunes past retention.
+    # the log (failures/corrupt pulls return above — the old sidecar
+    # AND the log stay untouched: no loss on failure, corrupt never
+    # logged as data). Issue #801: the log is append-only — no prune
+    # step exists anymore (retention = forever).
     obs = observation_from_sidecar(sidecar)
     if obs is not None:
         append_observation(log_path, obs)
-    prune_observations(log_path, retain_days=args.retain_days)
     print("wrote %d areas -> %s" % (len(sidecar["areas"]), out))
     return 0
 
