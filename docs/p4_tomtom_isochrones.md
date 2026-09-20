@@ -25,6 +25,12 @@ tables.** Full verdict in `docs/p4_tomtom_matrix.md` §0. This
 harvester keeps a 7 d operator cache (weekly refresh) and honors
 response max-age in code.
 
+> Re-check 2026-09-20 (issue #805): same exercise as
+> `docs/p4_tomtom_incidents.md` (terms page live, clause 11.4
+> stands). Verdict STANDS: SHORT-TERM CACHE ONLY — sheds stay
+> window-only, no observation log (full audit:
+> `docs/realtime_history_805.md`).
+
 ## Buyer question
 
 "Mitu töökohta jääb 30 min autosõidu kaugusele" — 15/30-min

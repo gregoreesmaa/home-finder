@@ -25,6 +25,14 @@ harvester keeps a 6 h operator cache and honors response max-age in
 code — incidents are the most perishable of the seven datasets, so
 the TTL is the shortest.
 
+> Re-check 2026-09-20 (issue #805): terms page verified live at the
+> same URL (HTTP 200; direct dev-machine fetch returns empty —
+> page needs JS/CDN, same limitation as 2026-09-19 — so the
+> operative clause-11.4 text captured live 2026-09-19 stands, with
+> no evidenced storage-permitting amendment). Verdict STANDS:
+> SHORT-TERM CACHE ONLY — incidents stay window-only, no
+> observation log (full audit: `docs/realtime_history_805.md`).
+
 ## Buyer question
 
 "Kas mu marsruudil on täna ummik, sulgus või teetööd" — one Tallinn

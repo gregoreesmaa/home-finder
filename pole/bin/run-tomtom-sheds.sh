@@ -10,6 +10,12 @@
 # keyed pull, GET /v1/sheds answers an honest 503 and
 # /api/layers/sheds/areas stays honestly-503 with the map painting
 # slate "mõõtmata".
+# HISTORY POLICY (#805, ToS re-check 2026-09-20): WINDOW-ONLY,
+# no-store — this wrapper replaces the window table each pull and
+# must never grow an observation log (TomTom clause 11.4 prohibits
+# storing Results beyond max-age). A failed pull exits before mv
+# (trap drops the tmp) so the previous table stays.
+# See docs/realtime_history_805.md.
 set -eu
 POLE="$HOME/hf-pole"
 export TOMTOM_API_KEY="$(cat "$POLE/state/tomtom.key")"
