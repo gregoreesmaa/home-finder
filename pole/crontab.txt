@@ -1,19 +1,23 @@
 @reboot $HOME/hf-pole/bin/pole-start.sh
 */5 * * * * $HOME/hf-pole/bin/pole-guard.sh
-* * * * * $HOME/hf-pole/bin/run-delay-pull.sh
-7 * * * * $HOME/hf-pole/bin/run-delay-build.sh
-15 4 * * * $HOME/hf-pole/bin/run-fixit.sh
-30 4 * * * $HOME/hf-pole/bin/run-medre.sh
-45 4 * * 0 $HOME/hf-pole/bin/run-mobile.sh
-0 5 1 * * $HOME/hf-pole/bin/run-poi.sh
-0 6 * * * $HOME/hf-pole/bin/run-prune.sh
-17 4 * * * $HOME/hf-pole/bin/run-datex-restrictions.sh >>$HOME/hf-pole/logs/datex-restrictions.log 2>&1
-47 */6 * * * $HOME/hf-pole/bin/run-datex-srti.sh >>$HOME/hf-pole/logs/datex-srti.log 2>&1
-12 * * * * $HOME/hf-pole/bin/run-datex-weather.sh >>$HOME/hf-pole/logs/datex-weather.log 2>&1
-32 * * * * $HOME/hf-pole/bin/run-datex-counters.sh >>$HOME/hf-pole/logs/datex-counters.log 2>&1
-52 * * * * $HOME/hf-pole/bin/run-datex-cameras.sh >>$HOME/hf-pole/logs/datex-cameras.log 2>&1
-23 5 3 * * $HOME/hf-pole/bin/run-datex-truckpark.sh >>$HOME/hf-pole/logs/datex-truckpark.log 2>&1
-*/5 * * * * $HOME/hf-pole/bin/run-outage.sh >>$HOME/hf-pole/logs/outage.log 2>&1
-23 4 15 1 * $HOME/hf-pole/bin/run-viirs.sh >>$HOME/hf-pole/logs/viirs.log 2>&1
-20 5 * * 0 $HOME/hf-pole/bin/run-tomtom-sheds.sh >>$HOME/hf-pole/logs/tomtom-sheds.log 2>&1
-17 */6 * * * $HOME/hf-pole/bin/run-tomtom-incidents.sh >>$HOME/hf-pole/logs/tomtom-incidents.log 2>&1
+# Hourly auto-sync to green-main (issue #806): code only, keeps data.
+17 * * * * $HOME/hf-pole/bin/pole-sync.sh >>$HOME/hf-pole/logs/pole-sync.log 2>&1
+# Every run- wrapper goes through wrap-run.sh (issue #806) so its exit
+# lands in state/wrapper-status/<job>.json for GET /v1/errors.
+* * * * * $HOME/hf-pole/bin/wrap-run.sh delay-pull $HOME/hf-pole/bin/run-delay-pull.sh
+7 * * * * $HOME/hf-pole/bin/wrap-run.sh delay-build $HOME/hf-pole/bin/run-delay-build.sh
+15 4 * * * $HOME/hf-pole/bin/wrap-run.sh fixit $HOME/hf-pole/bin/run-fixit.sh
+30 4 * * * $HOME/hf-pole/bin/wrap-run.sh medre $HOME/hf-pole/bin/run-medre.sh
+45 4 * * 0 $HOME/hf-pole/bin/wrap-run.sh mobile $HOME/hf-pole/bin/run-mobile.sh
+0 5 1 * * $HOME/hf-pole/bin/wrap-run.sh poi $HOME/hf-pole/bin/run-poi.sh
+0 6 * * * $HOME/hf-pole/bin/wrap-run.sh prune $HOME/hf-pole/bin/run-prune.sh
+17 4 * * * $HOME/hf-pole/bin/wrap-run.sh datex-restrictions $HOME/hf-pole/bin/run-datex-restrictions.sh >>$HOME/hf-pole/logs/datex-restrictions.log 2>&1
+47 */6 * * * $HOME/hf-pole/bin/wrap-run.sh datex-srti $HOME/hf-pole/bin/run-datex-srti.sh >>$HOME/hf-pole/logs/datex-srti.log 2>&1
+12 * * * * $HOME/hf-pole/bin/wrap-run.sh datex-weather $HOME/hf-pole/bin/run-datex-weather.sh >>$HOME/hf-pole/logs/datex-weather.log 2>&1
+32 * * * * $HOME/hf-pole/bin/wrap-run.sh datex-counters $HOME/hf-pole/bin/run-datex-counters.sh >>$HOME/hf-pole/logs/datex-counters.log 2>&1
+52 * * * * $HOME/hf-pole/bin/wrap-run.sh datex-cameras $HOME/hf-pole/bin/run-datex-cameras.sh >>$HOME/hf-pole/logs/datex-cameras.log 2>&1
+23 5 3 * * $HOME/hf-pole/bin/wrap-run.sh datex-truckpark $HOME/hf-pole/bin/run-datex-truckpark.sh >>$HOME/hf-pole/logs/datex-truckpark.log 2>&1
+*/5 * * * * $HOME/hf-pole/bin/wrap-run.sh outage $HOME/hf-pole/bin/run-outage.sh >>$HOME/hf-pole/logs/outage.log 2>&1
+23 4 15 1 * $HOME/hf-pole/bin/wrap-run.sh viirs $HOME/hf-pole/bin/run-viirs.sh >>$HOME/hf-pole/logs/viirs.log 2>&1
+20 5 * * 0 $HOME/hf-pole/bin/wrap-run.sh tomtom-sheds $HOME/hf-pole/bin/run-tomtom-sheds.sh >>$HOME/hf-pole/logs/tomtom-sheds.log 2>&1
+17 */6 * * * $HOME/hf-pole/bin/wrap-run.sh tomtom-incidents $HOME/hf-pole/bin/run-tomtom-incidents.sh >>$HOME/hf-pole/logs/tomtom-incidents.log 2>&1

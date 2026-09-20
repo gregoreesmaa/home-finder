@@ -2685,7 +2685,8 @@ export async function fetchWindow(
   // (polygons only — the sidecar carries the data). Same skip, same
   // reason.
   if (isMaaparandusPolygonOnlyLayer(layer)) return null;
-  if (isStatelandPolygonOnlyLayer(layer)) return null;  if (isStatelandPolygonOnlyLayer(layer)) return null;
+  // 808-HOOK (#808): dropped a duplicated isStatelandPolygonOnlyLayer
+  // guard on this line (dead second condition, same predicate twice).
   // SOIL-HOOK (#617): soil has no raster master by decision
   // (polygons only — the viewport proxy carries the data). Same skip,
   // same reason.

@@ -4,6 +4,7 @@ The API reads built/*.json from its own directory; tests point BUILT_DIR at
 a tmp dir with fixtures, so no network and no Pi are involved.
 """
 
+import contextlib
 import json
 import os
 import sys
@@ -23,7 +24,7 @@ MEDRE_FULL = {"vintage": "2026-09-16", "linkage_rate": 0.9847,
 
 def _client(tmp_path, missing=(), medre=None):
     built = tmp_path / "built"
-    (built / "fixit").mkdir(parents=True)
+    (built / "fixit").mkdir(parents=True, exist_ok=True)
     if "fixit" not in missing:
         (built / "fixit" / "fixit-points.json").write_text(
             json.dumps(FIXTURE), encoding="utf-8")
@@ -130,6 +131,123 @@ def _write_built(tmp_path, rel, body):
     target = tmp_path / "built" / rel
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(body), encoding="utf-8")
+
+
+@contextlib.contextmanager
+def _client_with_state(tmp_path, state_files=(), wrapper_files=(),
+                       guard_lines=(), sync_body=None, mtimes=None):
+    # Issue #806: point both BUILT_DIR and STATE_DIR at tmp fixtures.
+    import time
+    _client(tmp_path)  # fixit fixture dirs under tmp built/
+    state = tmp_path / "state"
+    state.mkdir(exist_ok=True)
+    for name, text in state_files:
+        (state / name).write_text(text, encoding="utf-8")
+    wdir = state / "wrapper-status"
+    wdir.mkdir(exist_ok=True)
+    for name, body in wrapper_files:
+        (wdir / (name + ".json")).write_text(
+            json.dumps(body), encoding="utf-8")
+    if guard_lines:
+        (state / "guard-restarts.jsonl").write_text(
+            "\n".join(guard_lines) + "\n", encoding="utf-8")
+    if sync_body is not None:
+        (state / "sync-status.json").write_text(
+            json.dumps(sync_body), encoding="utf-8")
+    for rel, age_s in (mtimes or {}).items():
+        old = time.time() - age_s
+        os.utime(str(tmp_path / "built" / rel), (old, old))
+    old_built, old_state = api.BUILT_DIR, api.STATE_DIR
+    api.BUILT_DIR = str(tmp_path / "built")
+    api.STATE_DIR = str(state)
+    try:
+        yield TestClient(api.app)
+    finally:
+        api.BUILT_DIR, api.STATE_DIR = old_built, old_state
+
+
+def test_health_exposes_deployed_sha(tmp_path):
+    # Issue #806: /health carries the pole-sync deployment identity.
+    with _client_with_state(
+            tmp_path,
+            state_files=[("deployed-sha.txt", "abc123\n"),
+                         ("deployed-at.txt",
+                          "2026-09-20T12:00:00+00:00\n")]) as c:
+        body = c.get("/health").json()
+        assert body["deployed_sha"] == "abc123"
+        assert body["deployed_at"] == "2026-09-20T12:00:00+00:00"
+
+
+def test_health_deployed_unknown_without_state(tmp_path):
+    # Repo checkout / fresh pole: nulls, never faked data.
+    with _client_with_state(tmp_path) as c:
+        body = c.get("/health").json()
+        assert body["deployed_sha"] is None
+        assert body["deployed_at"] is None
+
+
+def test_errors_empty_without_state(tmp_path):
+    with _client_with_state(tmp_path) as c:
+        body = c.get("/v1/errors").json()
+        assert body["guard_restarts"] == []
+        assert body["wrappers"] == {}
+        assert body["sync"] is None
+        assert body["deployed_sha"] is None
+
+
+def test_errors_reports_wrappers_guard_sync(tmp_path):
+    with _client_with_state(
+            tmp_path,
+            wrapper_files=[("outage", {"job": "outage", "rc": 1,
+                                       "at": "2026-09-20T12:00:00+00:00"}),
+                           ("poi", {"job": "poi", "rc": 0,
+                                    "at": "2026-09-20T12:05:00+00:00"})],
+            guard_lines=['{"at": "2026-09-20T11:00:00+00:00", '
+                         '"event": "guard-restart"}',
+                         "not-json, skipped"],
+            sync_body={"rc": 0, "at": "2026-09-20T10:00:00+00:00",
+                       "sha": "abc123", "ref": "refs/heads/main"}) as c:
+        body = c.get("/v1/errors").json()
+        assert body["wrappers"]["outage"]["rc"] == 1
+        assert body["wrappers"]["poi"]["rc"] == 0
+        assert body["guard_restarts"] == [
+            {"at": "2026-09-20T11:00:00+00:00", "event": "guard-restart"}]
+        assert body["sync"]["rc"] == 0
+
+
+def test_errors_staleness_math(tmp_path):
+    # Issue #806: stale = ready + older than serve-parity TTL.
+    outage = {"pulled_at": "x", "areas": {}}
+    (tmp_path / "built" / "outage").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "built" / "outage" / "table.json").write_text(
+        json.dumps(outage), encoding="utf-8")
+    with _client_with_state(tmp_path,
+                            mtimes={"outage/table.json": 9999}) as c:
+        rows = {d["name"]: d for d in c.get("/v1/errors").json()["datasets"]}
+        assert rows["outage"]["stale"] is True  # 9999 s > 300 s TTL
+        assert rows["outage"]["ttl_s"] == 300
+        assert rows["delay"]["stale"] is False  # not built: stale-never
+        assert rows["delay"]["ttl_s"] == 7200
+    with _client_with_state(tmp_path,
+                            mtimes={"outage/table.json": 60}) as c:
+        rows = {d["name"]: d for d in c.get("/v1/errors").json()["datasets"]}
+        assert rows["outage"]["stale"] is False
+
+
+def test_errors_ttl_parity_with_web_constants():
+    # Pinned mirrors the watcher trusts: datex == DATEX_TTL_S,
+    # outage pair == web OUTAGE_*_TTL_S, sheds/incidents == web TTLs.
+    assert api.DATASET_TTL_S["datex-restrictions"] == 24 * 3600
+    assert api.DATASET_TTL_S["datex-srti"] == 6 * 3600
+    for name in ("datex-weather", "datex-counters", "datex-cameras"):
+        assert api.DATASET_TTL_S[name] == 3600
+    assert api.DATASET_TTL_S["datex-truckpark"] == 30 * 86400
+    assert api.DATASET_TTL_S["outage"] == 300
+    assert api.DATASET_TTL_S["outage-reliability"] == 86400
+    assert api.DATASET_TTL_S["sheds"] == 7 * 86400
+    assert api.DATASET_TTL_S["incidents"] == 6 * 3600
+    assert api.DATASET_TTL_S["skis"] is None  # seasonal: never stale
+    assert set(api.DATASET_TTL_S) == set(api.DATASETS)
 
 
 def test_tomtom_tables_missing_builds_are_honest_503(tmp_path):
