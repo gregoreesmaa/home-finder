@@ -76,6 +76,18 @@ export const OUTAGE_RADIUS_M = 15000;
 export const OUTAGE_TTL_S = 300;
 
 /**
+ * Observation window, user-visible (issue #783: each live-descended
+ * layer names its window + vintage). The window is the pull cadence +
+ * serve TTL in parity: pulled every 5 min (harvester refills the
+ * sidecar, pole serves the live table) served 5 min. Single-layer
+ * mirror of DATEX_WINDOW_ET (pinned by test). The 28-day
+ * observed-reliability history (OUTAGE_RELIABILITY_WINDOW_DAYS) rides
+ * alongside — history vs latest observation stay labelled, never
+ * merged (#780 contract).
+ */
+export const OUTAGE_WINDOW_ET = "5 min aken, 5-min tõmme";
+
+/**
  * Pole dataset serving the same sidecar shape (pole/api.py DATASETS
  * key, issue #775): the route reads the live table first (DATEX #763
  * precedent) and falls back to the operator local sidecar.
@@ -181,13 +193,13 @@ export const OUTAGE_LAYERS: LayerDef[] = [
     id: "outage",
     paramIds: [],
     paramLabel: OUTAGE_PARAM_LABEL,
-    title: "Elektrikatkestused (viimane vaatlus + 28 pv ajalugu, hinnang)",
+    title: "Elektrikatkestused (viimane vaatlus 5 min aknast + 28 pv ajalugu, hinnang)",
     goodLabel:
-      "roheline = rikkekaardil aktiivseid katkestusi pole (viimase vaatluse hinnang, lagi 80 — vaikne kaart ei ole töökindluse tõend; ajalugu: 28 päeva vaatlusaken allpool)",
+      "roheline = rikkekaardil aktiivseid katkestusi pole (viimase vaatluse hinnang 5 min aknast, lagi 80 — vaikne kaart ei ole töökindluse tõend; ajalugu: 28 päeva vaatlusaken allpool)",
     badLabel:
-      "punane = aktiivne rikkeline VÕI plaaniline katkestus Tallinnas (viimane vaatlus) VÕI seis teadmata (EI OLE värsket väljavõtet)",
+      "punane = aktiivne rikkeline VÕI plaaniline katkestus Tallinnas (viimane vaatlus 5 min aknast) VÕI seis teadmata (EI OLE värsket väljavõtet)",
     source:
-      "Elektrilevi rikkekaart (keyless GetApplicationData, 5-min väljavõte; Tallinna rida: fc/fcc aktiivsed rikked, pc/pcc plaanilised, uc/ucc tulevased — punkt on viimane vaatlus; ajalugu on pooluse 28 päeva vaatlusaken: rikke-/plaaniliste vaatlusarv + mõjutatud kliendid, SAIDI-sarnane mõtlemine, MITTE garantii; lähemalt docs/p4_outage.md)",
+      "Elektrilevi rikkekaart (keyless GetApplicationData, 5 min aken, 5-min tõmme; Tallinna rida: fc/fcc aktiivsed rikked, pc/pcc plaanilised, uc/ucc tulevased — punkt on viimane vaatlus (5 min aknast); ajalugu on pooluse 28 päeva vaatlusaken: rikke-/plaaniliste vaatlusarv + mõjutatud kliendid, SAIDI-sarnane mõtlemine, MITTE garantii; lähemalt docs/p4_outage.md)",
     // EMPTY BY HONESTY (load-bearing): no committed snapshot exists
     // (live data goes stale in minutes) — the route serves the fresh
     // sidecar when the operator pull is in TTL, else 500 → demo.
@@ -349,6 +361,23 @@ export function outagePointsIn(points: OutagePoint[], bbox: BBoxLike): LayerPoin
   );
 }
 
+/**
+ * Windowed status line for /layers (issue #783: window + vintage on
+ * the surface, never momentary state). `age` is the preformatted
+ * vintage ("5 min", null when unknown) — formatting lives with the
+ * page's ageEt, this helper owns the window wording only. The 28-day
+ * history line (outageHistoryStatus) is appended by the page, never
+ * merged here — history + latest observation stay side by side
+ * (#780 contract).
+ */
+export function outageStatusLine(
+  pointCount: number,
+  age: string | null,
+): string {
+  const vintage = age !== null ? `; vanus ${age}` : "";
+  return `Elektrilevi viimane vaatlus (rikkekaart, ${OUTAGE_WINDOW_ET}${vintage}) · ${pointCount} punkti`;
+}
+
 /** Hook marker, pinned by test so the wiring contract stays greppable. */
 export const OUTAGE_HOOK =
-  "OUTAGE-HOOK (#729) + reliability (#780): outage wired into layers/overlays/snapshot/route/server; P4-009 power leg, city-grain latest-observed point PLUS 28-day observed-reliability window (history vs latest observation labelled, never a guarantee).";
+  "OUTAGE-HOOK (#729) + reliability (#780): outage wired into layers/overlays/snapshot/route/server; P4-009 power leg, city-grain latest-observed point PLUS 28-day observed-reliability window (history vs latest observation labelled, never a guarantee). WINDOWED-HOOK (#783): names the 5 min observation window + vintage, never momentary state.";

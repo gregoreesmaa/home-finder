@@ -139,13 +139,18 @@ import { isKliimaLayerId } from "../../lib/layers_kliima";
 // VIIRS-HOOK (#719): qbands status names the GIBS extract for viirs
 // (see isQbands branch below) — labelled proxy, never radiometry.
 import { isViirsLayerId } from "../../lib/layers_p4_viirs";
-// OUTAGE-HOOK (#729; reliability #780): qbands status names the
-// latest-observed sidecar for outage (see isQbands branch below) —
-// the Terviseamet default would otherwise misname it (harno #687
-// rule). The 28-day observed-reliability window rides along as a
-// history line when the route serves it (history vs latest
-// observation labelled).
-import { isOutageLayerId, outageHistoryStatus } from "../../lib/layers_p4_outage";
+// OUTAGE-HOOK (#729; reliability #780) + WINDOWED-HOOK (#783):
+// qbands status names the 5 min observation window + vintage for
+// outage (see isQbands branch below) — the Terviseamet default would
+// otherwise misname it (harno #687 rule). The 28-day
+// observed-reliability window rides along as a history line when the
+// route serves it (history vs latest observation labelled, #780
+// side-by-side contract).
+import {
+  isOutageLayerId,
+  outageHistoryStatus,
+  outageStatusLine,
+} from "../../lib/layers_p4_outage";
 // SILLY-HOOK (#711, status #774): demo-by-design status names the
 // sample state for silly layers (see demo branch below) — the generic
 // "live ebaõnnestus" would otherwise present designed demo as a load
@@ -1207,16 +1212,18 @@ export default function LayersPage() {
                   ? `Keskkonnaagentuuri väljavõte (kliimanormatiiv 1991-2020, seis 2026-09-16)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
                   : isViirsLayerId(layer)
                     ? `GIBSi väljavõte (VIIRS Black Marble 2016 heledusproksi, 96 ruutu${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""}) · ${pointCount} ruutu`
-                    // OUTAGE-HOOK (#729; reliability #780): outage
-                    // names the latest-observed sidecar (the
-                    // Terviseamet default below would otherwise
-                    // misname the outage qbands kernel as the
-                    // bathing-water extract — harno #687 rule) plus
-                    // the 28-day history line when the pole has built
-                    // it (history vs latest observation labelled —
-                    // the point is never reliability).
+                    // OUTAGE-HOOK (#729; reliability #780) +
+                    // WINDOWED-HOOK (#783): outage names the 5 min
+                    // observation window + vintage via
+                    // outageStatusLine (the Terviseamet default below
+                    // would otherwise misname the outage qbands kernel
+                    // as the bathing-water extract — harno #687 rule)
+                    // plus the 28-day history line when the pole has
+                    // built it (history vs latest observation labelled
+                    // — the point is never reliability; #780
+                    // side-by-side contract).
                     : isOutageLayerId(layer)
-                      ? `Elektrilevi viimane vaatlus (rikkekaart, 5-min väljavõte${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""}) · ${pointCount} punkti${outageHistory !== null ? ` · ${outageHistory}` : ""}`
+                      ? `${outageStatusLine(pointCount, ageMs !== null ? ageEt(ageMs) : null)}${outageHistory !== null ? ` · ${outageHistory}` : ""}`
                       : `Terviseameti väljavõte (suplusvesi, seis 2026-09-14)${ageMs !== null ? ` (vanus ${ageEt(ageMs)})` : ""} · ${pointCount} punkti`
               : isDbands
                 ? isEhisLayerId(layer)
