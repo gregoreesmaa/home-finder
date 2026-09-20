@@ -15,7 +15,7 @@ import { overlayLegendFor } from "./overlays";
 import { asumediaEmptyStatus } from "./layers_asumedia";
 import { gbfsDemoStatus } from "./layers_p4_gbfs";
 import { harnoDemoStatus } from "./layers_p4_harno";
-import { outageHistoryStatus } from "./layers_p4_outage";
+import { outageHistoryStatus, outageStatusLine } from "./layers_p4_outage";
 import { sillyDemoStatus, sillySnapshotStatus } from "./layers_p4_silly";
 import { skisDemoStatus } from "./layers_p4_skis";
 import { paasteDemoStatus } from "./layers_paaste";
@@ -77,6 +77,8 @@ function statusSurfaces(): string[] {
     paasteDemoStatus(0),
     planktprDemoStatus(0),
     outageHistoryStatus(rel) ?? "",
+    outageStatusLine(2, "3 min"),
+    outageStatusLine(0, null),
   ];
 }
 
@@ -128,7 +130,10 @@ describe("wording purge (#783 slice 2)", () => {
         expect(src).not.toContain(word);
       }
     }
-    expect(PAGE_SRC).toContain("Elektrilevi viimane vaatlus");
+    // Outage observed-side copy lives in outageStatusLine (#783 slice
+    // 4: window + vintage helper) — the page wires it, the helper test
+    // pins the rendered "Elektrilevi viimane vaatlus" wording.
+    expect(PAGE_SRC).toContain("outageStatusLine");
     expect(PAGE_SRC).toContain("Kohalik väljavõte (2026-09-12)");
     for (const src of [ROUTE_SRC, OVERLAY_ROUTE_SRC]) {
       expect(src).not.toMatch(/provenance:\s*["']live["']/);
