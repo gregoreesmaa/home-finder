@@ -452,6 +452,17 @@ import {
   P4PARK_TAGS,
   bonusSpecForP4Parking,
 } from "./layers_p4_parking";
+// CARFRICTION-HOOK (#829): car-friction tables live in
+// ./layers_p4_carfriction (OSM motor-vehicle restrictions,
+// sparse-kind inverted count). That module imports layers only as
+// types, so no runtime cycle.
+import type { CarfrictionLayerId } from "./layers_p4_carfriction";
+import {
+  CARFRICTION_DECAY,
+  CARFRICTION_DEFS,
+  CARFRICTION_TAGS,
+  bonusSpecForCarfriction,
+} from "./layers_p4_carfriction";
 // MARUKOV-HOOK (#486): MARU per-KOV market choropleth tables live in
 // ./layers_maru (p41/p149/p43/p484 exact KOV fills; p421 refused).
 // That module imports layers only as types, so no runtime cycle.
@@ -974,6 +985,9 @@ export type LayerId =
   | StatKovLayerId
   // P4PARK-HOOK (#479): P4 OSM parking id (./layers_p4_parking).
   | P4ParkingLayerId
+  // CARFRICTION-HOOK (#829): car-friction id
+  // (./layers_p4_carfriction, sparse-kind restrictions).
+  | CarfrictionLayerId
   // MARUKOV-HOOK (#486): MARU per-KOV market choropleth ids
   // (./layers_maru).
   | MaruKovLayerId
@@ -1286,6 +1300,9 @@ const DECAY_KM: Record<LayerId, number> = {
   ...STATKOV_DECAY,
   // P4PARK-HOOK (#479): parking radius (see layers_p4_parking.ts P4PARK_DECAY).
   ...P4PARK_DECAY,
+  // CARFRICTION-HOOK (#829): car-friction radius (see
+  // layers_p4_carfriction.ts CARFRICTION_DECAY).
+  ...CARFRICTION_DECAY,
   // MARUKOV-HOOK (#486): choropleth fallback widths (see layers_maru.ts).
   ...MARUKOV_DECAY,
   // FLOOD-HOOK (#487): floodzone radius (see layers_flood.ts FLOOD_DECAY —
@@ -1597,6 +1614,9 @@ export const LAYERS: LayerDef[] = [
   ...STATKOV_DEFS,
   // P4PARK-HOOK (#479): parking def (P4-013 bays+lots proxy) from ./layers_p4_parking.
   ...P4PARK_DEFS,
+  // CARFRICTION-HOOK (#829): car-friction def (motor-vehicle
+  // restrictions, sparse-kind) from ./layers_p4_carfriction.
+  ...CARFRICTION_DEFS,
   // MARUKOV-HOOK (#486): choropleth defs (p41/p149/p43/p484) from ./layers_maru.
   ...MARUKOV_DEFS,
   // FLOOD-HOOK (#487): floodzone def (p112, KAUR zone choropleth) from ./layers_flood.
@@ -1837,6 +1857,9 @@ const TAGS: Record<LayerId, string> = {
   ...STATKOV_TAGS,
   // P4PARK-HOOK (#479): parking query (see layers_p4_parking.ts P4PARK_TAGS).
   ...P4PARK_TAGS,
+  // CARFRICTION-HOOK (#829): car-friction query (see
+  // layers_p4_carfriction.ts CARFRICTION_TAGS).
+  ...CARFRICTION_TAGS,
   // MARUKOV-HOOK (#486): KOV polygon queries (see layers_maru.ts MARUKOV_TAGS).
   ...MARUKOV_TAGS,
   // FLOOD-HOOK (#487): floodzone source note (see layers_flood.ts FLOOD_TAGS —
@@ -2447,6 +2470,10 @@ export function bonusSpecFor(layer: LayerId): BonusSpec {
   // P4PARK-HOOK (#479): parking spec lives in ./layers_p4_parking.
   const p4park = bonusSpecForP4Parking(layer);
   if (p4park) return p4park;
+  // CARFRICTION-HOOK (#829): car-friction sparse spec lives in
+  // ./layers_p4_carfriction.
+  const carfriction = bonusSpecForCarfriction(layer);
+  if (carfriction) return carfriction;
   // MARUKOV-HOOK (#486): choropleth specs live in ./layers_maru.
   const marukov = bonusSpecForMaruKov(layer);
   if (marukov) return marukov;

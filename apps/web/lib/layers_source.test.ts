@@ -112,8 +112,10 @@ describe("serving families (#762)", () => {
     }
     // 762-HOOK (#762): 103 generic + 6 operator-cache + 6 pole-live +
     // 46 dedicated-snapshot + 12 silly-demo = 173.
+    // CARFRICTION-HOOK (#829): carfriction rides generic-snapshot-file
+    // (104 generic; 173 + 1 = 174).
     expect(fams).toEqual({
-      "generic-snapshot-file": 103,
+      "generic-snapshot-file": 104,
       "operator-cache": 6,
       "pole-live": 6,
       "dedicated-snapshot": 46,

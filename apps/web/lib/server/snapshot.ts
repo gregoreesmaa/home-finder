@@ -101,6 +101,9 @@ import { SENSCOM_RASTER_FILE } from "../layers_p4_senscom";
 import { STATKOV_RASTER_FILE } from "../layers_statkov";
 // P4PARK-HOOK (#479): P4 parking raster file lives in layers_p4_parking.ts.
 import { P4PARK_RASTER_FILE } from "../layers_p4_parking";
+// CARFRICTION-HOOK (#829): car-friction raster file lives in
+// layers_p4_carfriction.ts.
+import { CARFRICTION_RASTER_FILE } from "../layers_p4_carfriction";
 // MARUKOV-HOOK (#486): maru raster files live in layers_maru.ts
 // (unbuilt until the maintainer places the MARU KOV export -- absent
 // files degrade to the honest Euclidean fallback, never an error).
@@ -1642,6 +1645,9 @@ const RASTER_FILE: Record<LayerId, string> = {
   ...STATKOV_RASTER_FILE,
   // P4PARK-HOOK (#479): parking raster (scripts/build/batch_p4_parking.py).
   ...P4PARK_RASTER_FILE,
+  // CARFRICTION-HOOK (#829): carfriction raster
+  // (scripts/build/batch_carfriction.py).
+  ...CARFRICTION_RASTER_FILE,
   // MARUKOV-HOOK (#486): choropleth rasters
   // (scripts/build/batch_maru_choropleth.py).
   ...MARUKOV_RASTER_FILE,
@@ -1982,6 +1988,10 @@ const STATKOV_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set([
 // "euclidean" — parking (Euclidean count kernel, lawncare/G17A
 // precedent — see scripts/build/batch_p4_parking.py).
 const P4PARK_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["parking"]);
+// CARFRICTION-HOOK (#829): Euclidean-built carfriction master rides
+// "euclidean" — carfriction (Euclidean count kernel, lawncare/G17B
+// precedent — see scripts/build/batch_carfriction.py).
+const CARFRICTION_EUCLIDEAN_MASTER: ReadonlySet<string> = new Set(["carfriction"]);
 // MARUKOV-HOOK (#486): Euclidean-built maru masters ride "euclidean" --
 // exact KOV fills by construction (no walk graph, no kernel; the page
 // skips the otsekaugus suffix for these ids -- see app/layers/page.tsx).
@@ -2051,6 +2061,7 @@ export function rasterDistanceLabel(layer: LayerId): TransitDistance {
     RSAFE_EUCLIDEAN_MASTER.has(layer) ||
     STATKOV_EUCLIDEAN_MASTER.has(layer) ||
     P4PARK_EUCLIDEAN_MASTER.has(layer) ||
+    CARFRICTION_EUCLIDEAN_MASTER.has(layer) ||
     MARUKOV_EUCLIDEAN_MASTER.has(layer) ||
     P4OSM_EUCLIDEAN_MASTER.has(layer) ||
     G07_EUCLIDEAN_MASTER.has(layer) ||
@@ -2271,6 +2282,10 @@ const METRO_PREFIX: Record<LayerId, string> = {
   // precision — the file is absent, so windows serve county
   // everywhere, like G02B/G03/G03D/G08B/G05C/G17B).
   parking: "parking-metro",
+  // CARFRICTION-HOOK (#829): no carfriction metro master (documented
+  // fake precision — the file is absent, so windows serve county
+  // everywhere, like G02B/G03/G03D/G08B/G05C/G17B).
+  carfriction: "carfriction-metro",
   // MARUKOV-HOOK (#486): no metro masters by documented decision (see
   // layers_maru.ts MARUKOV_NO_METRO) -- names resolve to absent files
   // so windows fall back to county cleanly.

@@ -208,6 +208,9 @@ const COUNT: ReadonlySet<string> = new Set([
   "moorage",
   "roadsafety",
   "parking",
+  // CARFRICTION-HOOK (#829): carfriction is the inverted-count sibling
+  // (sparse-kind; Euclidean count kernel, haversine scorer fallback).
+  "carfriction",
   "blockwalk",
   "darkness",
 ]);
@@ -635,10 +638,11 @@ export function auditRowFor(layer: LayerId): AuditRow {
         "(all haversine / around-radius)",
       "reasonable",
       "Green = dense facility counts nearby (gardens, ehitus, compost, " +
-        "roadsafety, parking, blockwalk, daylight openness...): Euclidean " +
-        "count kernels by construction on the map, around-radius + " +
-        "haversine in the scorer. Euclidean on both sides is correct " +
-        "(counts, not routes).",
+        "roadsafety, parking, blockwalk, daylight openness...; carfriction " +
+        "reads the same kernel INVERTED — red where restrictions are " +
+        "dense): Euclidean count kernels by construction on the map, " +
+        "around-radius + haversine in the scorer. Euclidean on both " +
+        "sides is correct (counts, not routes).",
     );
   }
   // True walk-graph raster families (foot-graph-stamped masters).

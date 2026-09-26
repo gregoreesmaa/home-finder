@@ -210,6 +210,9 @@ describe("layer registry", () => {
       "kovfisc",
       // P4PARK-HOOK (#479): P4 OSM parking id (P4-013 bays+lots proxy).
       "parking",
+      // CARFRICTION-HOOK (#829): car-friction id (motor-vehicle
+      // restrictions, sparse-kind inverted count).
+      "carfriction",
       // MARUKOV-HOOK (#486): MARU per-KOV choropleth ids (p41 kovkasv +
       // p149 kovkaive + p43 kovedas + p484 kovkiirus; p421 refused).
       "kovkasv",
@@ -899,6 +902,17 @@ describe("layer registry", () => {
     expect(radiusKmFor("parking")).toBe(0.8);
     expect(LAYERS.find((l) => l.id === "parking")?.paramIds).toEqual([4013]);
     expect(overpassQueryFor("parking", TALLINN_BBOX)).toContain("parking");
+  });
+
+  it("wires the carfriction layer with locked calibration", () => {
+    // CARFRICTION-HOOK (#829): drift guard — hook specs must equal
+    // CARFRICTION_CAL in layers_p4_carfriction.ts and the Python builder
+    // (parsed by test_batch_carfriction.py).
+    expect(bonusSpecFor("carfriction")).toEqual({ kind: "sparse", half: 60 });
+    expect(radiusKmFor("carfriction")).toBe(0.3);
+    expect(LAYERS.find((l) => l.id === "carfriction")?.paramIds).toEqual([]);
+    expect(LAYERS.find((l) => l.id === "carfriction")?.paramLabel).toBe("P4-auto");
+    expect(overpassQueryFor("carfriction", TALLINN_BBOX)).toContain("motor_vehicle");
   });
 
   it("wires the G17R privroad layer with locked calibration", () => {
