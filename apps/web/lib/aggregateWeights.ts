@@ -271,7 +271,9 @@ export const DEFAULT_WEIGHTS: Record<LayerId, number> = {
   blockwalk: 1.5, // Everyday sidewalk/paving walkability is core livability.
   pedinfra: 1.25, // Sidewalk density matters daily on foot, but largely overlaps walkability signal.
   alley: 0.25, // Back-alley proximity is cartographic trivia with no plausible buyer demand.
-  parking: 1.5, // Mapped parking density is daily convenience for car owners.
+  parking: 0.25, // Weak regional signal (#827): estates have their own
+    // parking, and mapped-lot proximity says nothing about paid zones /
+    // permits / free spots. Slider it back up if you care.
   carfriction: 1, // Driving-restriction density is a real car-hardship signal; moderate until calibrated.
   gbfs: 1, // Bikeshare station access is a real everyday mobility option.
   "shed-15-peak": 1.5, // Peak 15-min catchment decides commute feasibility (delay-morning parity).
