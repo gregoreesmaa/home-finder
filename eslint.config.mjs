@@ -11,6 +11,9 @@ export default tseslint.config(
       "**/coverage/**",
       "**/playwright-report/**",
       "**/test-results/**",
+      // Generated open-water geometry (#821): linting ~1 MB of
+      // coordinates is pure cost, no signal.
+      "apps/web/lib/waterMaskData.ts",
     ],
   },
   js.configs.recommended,

@@ -343,6 +343,60 @@ describe("viewport recalibration (#819)", () => {
   });
 });
 
+describe("open-water mask (#821)", () => {
+  // East half of the grid reads as water; west half is land.
+  const water = (): Uint8Array => {
+    const m = new Uint8Array(COLS * ROWS);
+    for (let iy = 0; iy < ROWS; iy++) {
+      for (let ix = COLS / 2; ix < COLS; ix++) m[iy * COLS + ix] = 1;
+    }
+    return m;
+  };
+
+  it("viewportScaleFor ignores water extremes", () => {
+    // Water column scores 0 (would anchor red); land runs 65..79.
+    const f = combineStandardRasters(
+      [
+        {
+          raster: mkRaster((ix) => (ix < COLS / 2 ? 60 + ix * 4 : 0)),
+          weight: 1,
+        },
+        { raster: mkRaster(() => 70), weight: 1 },
+      ],
+      GRID,
+      "average",
+    );
+    const s = viewportScaleFor(f, water());
+    // Land columns run (60+70)/2 .. (72+70)/2 = 65..71; the water
+    // column's 35 ((0+70)/2) must not anchor the scale.
+    expect(s?.min).toBeCloseTo(65, 9);
+    expect(s?.max).toBeCloseTo(71, 9);
+  });
+
+  it("water paints fixed blue, land still spans the ramp", () => {
+    const f = combineStandardRasters([good()], GRID, "average");
+    const rgba = aggregateToRgba(f, viewportScaleFor(f, water()), water());
+    const sea = (COLS - 1) * 4;
+    expect([rgba[sea], rgba[sea + 1], rgba[sea + 2]]).toEqual([59, 130, 246]);
+    expect(rgba[sea + 3]).toBe(AGREE_ALPHA);
+    // West (land) column still paints the ramp, not blue.
+    expect([rgba[0], rgba[1], rgba[2]]).not.toEqual([59, 130, 246]);
+  });
+
+  it("sampleAggregate flags water instead of scoring it", () => {
+    const f = combineStandardRasters([good()], GRID, "average");
+    const wet = sampleAggregate(f, 0.99, 0.5, water());
+    expect(wet?.water).toBe(true);
+    expect(wet && Number.isNaN(wet.score)).toBe(true);
+    const dry = sampleAggregate(f, 0.01, 0.5, water());
+    expect(dry?.water).toBe(false);
+    expect(dry?.score).toBe(90);
+    // No mask: legacy shape, water false.
+    const legacy = sampleAggregate(f, 0.99, 0.5);
+    expect(legacy?.water).toBe(false);
+  });
+});
+
 describe("hover readback + grid helper", () => {
   it("aggregateGridFor preserves aspect and stays capped", () => {
     const g = aggregateGridFor(UNIT);

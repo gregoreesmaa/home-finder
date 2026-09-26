@@ -20,6 +20,7 @@ import {
   conformsToGrid,
   type StandardRaster,
 } from "./standardRaster";
+import { WATER_BLUE } from "./waterMask";
 
 /** Combining modes, switchable live on the aggregate route. */
 export type CombineMode = "average" | "multiply" | "overlay";
@@ -206,12 +207,18 @@ export interface ViewportScale {
 /**
  * Min/max over the finite combined means; null when no cell is known.
  * Nodata cells (NaN / known 0) never enter the scale — they stay
- * transparent instead of anchoring an end of the ramp.
+ * transparent instead of anchoring an end of the ramp. Open-water
+ * cells (#821, optional mask) are likewise excluded: sea extremes
+ * must not stretch the land gradient.
  */
-export function viewportScaleFor(field: Pick<AggregateField, "mean">): ViewportScale | null {
+export function viewportScaleFor(
+  field: Pick<AggregateField, "mean">,
+  water?: Uint8Array | null,
+): ViewportScale | null {
   let min = Infinity;
   let max = -Infinity;
   for (let k = 0; k < field.mean.length; k++) {
+    if (water && water[k] === 1) continue;
     const m = field.mean[k];
     if (!Number.isFinite(m)) continue;
     if (m < min) min = m;
@@ -263,10 +270,14 @@ export function agreementColorFor(
  *
  * Pass a viewport scale (viewportScaleFor of this field) for the
  * recalibrated gradient (#819). Omitting it paints absolute colors.
+ * Open-water cells (#821, optional mask) paint fixed WATER_BLUE —
+ * never the goodness ramp — so sea/lakes cannot be mistaken for
+ * scored land.
  */
 export function aggregateToRgba(
   f: AggregateField,
   scale?: ViewportScale | null,
+  water?: Uint8Array | null,
 ): Uint8ClampedArray {
   const out = new Uint8ClampedArray(f.cols * f.rows * 4);
   for (let k = 0; k < f.cols * f.rows; k++) {
@@ -274,6 +285,13 @@ export function aggregateToRgba(
     const m = f.mean[k];
     if (!Number.isFinite(m) || f.known[k] === 0) {
       out[o + 3] = 0;
+      continue;
+    }
+    if (water && water[k] === 1) {
+      out[o] = WATER_BLUE[0];
+      out[o + 1] = WATER_BLUE[1];
+      out[o + 2] = WATER_BLUE[2];
+      out[o + 3] = AGREE_ALPHA;
       continue;
     }
     const [r, g, b] = agreementColorFor(m, f.spread[k], scale);
@@ -285,12 +303,17 @@ export function aggregateToRgba(
   return out;
 }
 
-/** Nearest-node readback for hover: null outside the grid or on nodata. */
+/**
+ * Nearest-node readback for hover: null outside the grid or on
+ * nodata. Open-water cells (#821, optional mask) report water: true
+ * with NaN score so the UI never shows a land score for water.
+ */
 export function sampleAggregate(
   f: AggregateField,
   lon: number,
   lat: number,
-): { score: number; spread: number; known: number } | null {
+  water?: Uint8Array | null,
+): { score: number; spread: number; known: number; water: boolean } | null {
   const gx =
     ((lon - f.bbox.minlon) / (f.bbox.maxlon - f.bbox.minlon)) * (f.cols - 1);
   const gy =
@@ -301,7 +324,10 @@ export function sampleAggregate(
   if (ix < 0 || iy < 0 || ix >= f.cols || iy >= f.rows) return null;
   const k = iy * f.cols + ix;
   if (f.known[k] === 0 || !Number.isFinite(f.mean[k])) return null;
-  return { score: f.mean[k], spread: f.spread[k], known: f.known[k] };
+  if (water && water[k] === 1) {
+    return { score: NaN, spread: NaN, known: f.known[k], water: true };
+  }
+  return { score: f.mean[k], spread: f.spread[k], known: f.known[k], water: false };
 }
 
 /**

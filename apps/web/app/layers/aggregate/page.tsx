@@ -51,6 +51,7 @@ import {
   parseStoredAggregate,
   type AggregateCategory,
 } from "../../../lib/aggregateWeights";
+import { waterMaskFor } from "../../../lib/waterMask";
 
 const ESTONIA_CENTER: [number, number] = [25.0, 58.75];
 
@@ -105,6 +106,7 @@ export default function AggregatePage() {
   const tipRef = useRef<HTMLDivElement>(null);
   const layerRef = useRef<ValueHeatLayer | null>(null);
   const fieldRef = useRef<AggregateField | null>(null);
+  const maskRef = useRef<Uint8Array | null>(null);
   const requestRef = useRef(0);
 
   // Restore persisted weights + multipliers + mode once (client only).
@@ -214,17 +216,24 @@ export default function AggregatePage() {
     return combineStandardRasters(inputs, grid, mode);
   }, [feeds, grid, weights, multipliers, mode]);
 
+  // Open-water mask (#821): sea/lakes excluded from the scale and
+  // painted blue. Built from the grid (same memo scope as the field),
+  // so pan/zoom rebuild it with the settled view.
+  const mask = useMemo(() => waterMaskFor(grid), [grid]);
+
   // Viewport-recalibrated gradient (#819): normalize to the visible
   // extent so green = best visible cell, red = worst visible cell.
   // Derived from the field, which rebuilds per debounced view, so pan
   // and zoom re-recalibrate with the 600 ms settled-view schedule.
+  // Water cells never enter the scale (#821).
   const scale = useMemo(
-    () => (aggregate ? viewportScaleFor(aggregate) : null),
-    [aggregate],
+    () => (aggregate ? viewportScaleFor(aggregate, mask) : null),
+    [aggregate, mask],
   );
 
   useEffect(() => {
     fieldRef.current = aggregate;
+    maskRef.current = mask;
     const layer = layerRef.current;
     if (!layer) return;
     if (!aggregate) {
@@ -233,12 +242,12 @@ export default function AggregatePage() {
     }
     const b = aggregate.bbox;
     layer.setField(
-      aggregateToRgba(aggregate, scale),
+      aggregateToRgba(aggregate, scale, mask),
       aggregate.cols,
       aggregate.rows,
       [b.minlon, b.minlat, b.maxlon, b.maxlat],
     );
-  }, [aggregate, scale]);
+  }, [aggregate, scale, mask]);
 
   // Map shell: base map + one agreement overlay + hover readout +
   // settled-view reports (debounced, like ValueHeatMap's schedule).
@@ -280,16 +289,18 @@ export default function AggregatePage() {
           mapObj.addLayer(layer as unknown as maplibregl.CustomLayerInterface);
         }
         // Paint the field computed before the map finished loading
-        // (recalibrated like the live path: best visible = green).
+        // (recalibrated like the live path: best visible = green,
+        // water masked like the live path).
         const f = fieldRef.current;
         if (f) {
           const b = f.bbox;
-          layer.setField(aggregateToRgba(f, viewportScaleFor(f)), f.cols, f.rows, [
-            b.minlon,
-            b.minlat,
-            b.maxlon,
-            b.maxlat,
-          ]);
+          const m = maskRef.current;
+          layer.setField(
+            aggregateToRgba(f, viewportScaleFor(f, m), m),
+            f.cols,
+            f.rows,
+            [b.minlon, b.minlat, b.maxlon, b.maxlat],
+          );
         }
       });
       const schedule = () => {
@@ -312,7 +323,9 @@ export default function AggregatePage() {
         if (!tip) return;
         const rect = mapObj.getCanvas().getBoundingClientRect();
         const ll = mapObj.unproject([e.clientX - rect.left, e.clientY - rect.top]);
-        const hit = fieldRef.current && sampleAggregate(fieldRef.current, ll.lng, ll.lat);
+        const hit =
+          fieldRef.current &&
+          sampleAggregate(fieldRef.current, ll.lng, ll.lat, maskRef.current);
         if (!hit) {
           tip.style.display = "none";
           return;
@@ -320,9 +333,10 @@ export default function AggregatePage() {
         tip.style.display = "block";
         tip.style.left = `${e.clientX - rect.left + 12}px`;
         tip.style.top = `${e.clientY - rect.top + 12}px`;
-        tip.textContent =
-          `koondskoor ${Math.round(hit.score)} · ${hit.known} kihti` +
-          (hit.spread >= 25 ? " · vastukäiv" : "");
+        tip.textContent = hit.water
+          ? "vesi"
+          : `koondskoor ${Math.round(hit.score)} · ${hit.known} kihti` +
+            (hit.spread >= 25 ? " · vastukäiv" : "");
       });
     })();
     return () => {
@@ -369,7 +383,9 @@ export default function AggregatePage() {
         <strong style={{ color: "#d97706" }}>oranž</strong> = vastukäiv (~50/50). Tühi ala =
         andmed puuduvad (ei hinnata, ei peideta keskmise taha). Skaala
         kalibreerub nähtava ala järgi: roheline = parim nähtav koht,
-        punane = halvim nähtav koht.
+        punane = halvim nähtav koht.{" "}
+        <strong style={{ color: "#3b82f6" }}>Sinine</strong> = avavesi
+        (meri/järv — skaalast väljas, hinnangut ei anta).
       </p>
       <p aria-live="polite">
         {building || feeds.length === 0
