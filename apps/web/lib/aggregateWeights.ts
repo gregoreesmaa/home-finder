@@ -487,6 +487,37 @@ export interface StoredAggregateState {
   mode: string;
 }
 
+/**
+ * Sanitize an unknown factor map from storage (toggle stash / expanded
+ * extras, #825): finite non-negative numbers clamped to WEIGHT_MAX,
+ * everything else dropped so old or hand-edited blobs stay loadable.
+ */
+export function cleanFactorMap(v: unknown): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (!v || typeof v !== "object" || Array.isArray(v)) return out;
+  for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+    if (typeof val === "number" && Number.isFinite(val) && val >= 0) {
+      out[k] = Math.min(WEIGHT_MAX, val);
+    }
+  }
+  return out;
+}
+
+/**
+ * Quick-trial checkbox toggle with restore (#825). Uncheck stashes
+ * the nonzero value and yields 0; re-check restores the stash (or
+ * the shipped fallback, or 1 when both are non-positive).
+ */
+export function toggleFactor(
+  current: number,
+  stash: number | undefined,
+  fallback: number,
+): { value: number; stash: number | undefined } {
+  if (current > 0) return { value: 0, stash: current };
+  const back = stash ?? fallback;
+  return { value: back > 0 ? back : 1, stash };
+}
+
 /** Local-storage key for weights + multipliers + mode (#819). */
 export const STORE_KEY = "hf-aggregate-v2";
 

@@ -47,8 +47,10 @@ import {
   STORE_KEY,
   WEIGHT_MAX,
   WEIGHT_STEP,
+  cleanFactorMap,
   effectiveWeight,
   parseStoredAggregate,
+  toggleFactor,
   type AggregateCategory,
 } from "../../../lib/aggregateWeights";
 import { waterMaskFor } from "../../../lib/waterMask";
@@ -71,6 +73,9 @@ function loadStored(): {
   weights: Record<string, number>;
   multipliers: Record<string, number>;
   mode: CombineMode;
+  prevWeights: Record<string, number>;
+  prevMultipliers: Record<string, number>;
+  expanded: string[];
 } | null {
   try {
     const raw = window.localStorage.getItem(STORE_KEY);
@@ -78,12 +83,27 @@ function loadStored(): {
     // Unreadable v2 blob (or anything unexpected) -> null, and the
     // caller falls back to shipped defaults. The legacy hf-aggregate-v1
     // key is deliberately never read: it has no category multipliers.
+    // Extra fields (prev, expanded) are optional: old blobs load fine.
     const parsed = parseStoredAggregate(JSON.parse(raw));
     if (!parsed) return null;
     const mode: CombineMode = COMBINE_MODES.includes(parsed.mode as CombineMode)
       ? (parsed.mode as CombineMode)
       : "average";
-    return { weights: parsed.weights, multipliers: parsed.multipliers, mode };
+    const body = JSON.parse(raw) as {
+      prev?: { weights?: unknown; multipliers?: unknown };
+      expanded?: unknown;
+    };
+    const expanded = Array.isArray(body.expanded)
+      ? body.expanded.filter((c): c is string => typeof c === "string")
+      : [];
+    return {
+      weights: parsed.weights,
+      multipliers: parsed.multipliers,
+      mode,
+      prevWeights: cleanFactorMap(body.prev?.weights),
+      prevMultipliers: cleanFactorMap(body.prev?.multipliers),
+      expanded,
+    };
   } catch {
     return null;
   }
@@ -101,6 +121,14 @@ export default function AggregatePage() {
     ...DEFAULT_CATEGORY_MULTIPLIERS,
   });
   const [mode, setMode] = useState<CombineMode>("average");
+  // Expanded categories (collapsed by default) + last-nonzero stash
+  // for the checkmark toggles (#825). The stash persists so re-check
+  // restores the pre-uncheck value even across reloads.
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const prevRef = useRef<{
+    weights: Record<string, number>;
+    multipliers: Record<string, number>;
+  }>({ weights: {}, multipliers: {} });
 
   const mapDiv = useRef<HTMLDivElement>(null);
   const tipRef = useRef<HTMLDivElement>(null);
@@ -117,6 +145,13 @@ export default function AggregatePage() {
       setWeights({ ...DEFAULT_WEIGHTS, ...stored.weights });
       setMultipliers({ ...DEFAULT_CATEGORY_MULTIPLIERS, ...stored.multipliers });
       setMode(stored.mode);
+      prevRef.current = {
+        weights: stored.prevWeights,
+        multipliers: stored.prevMultipliers,
+      };
+      const open: Record<string, boolean> = {};
+      for (const c of stored.expanded) open[c] = true;
+      setExpanded(open);
     }
   }, []);
 
@@ -125,12 +160,18 @@ export default function AggregatePage() {
     try {
       window.localStorage.setItem(
         STORE_KEY,
-        JSON.stringify({ weights, multipliers, mode }),
+        JSON.stringify({
+          weights,
+          multipliers,
+          mode,
+          prev: prevRef.current,
+          expanded: Object.keys(expanded).filter((c) => expanded[c]),
+        }),
       );
     } catch {
       // Private mode etc: persistence is a nicety, never a blocker.
     }
-  }, [weights, multipliers, mode]);
+  }, [weights, multipliers, mode, expanded]);
 
   // Fetch every layer's points for the settled view. Pins layers are
   // markers-only by decision (no scored field) and are skipped before
@@ -354,12 +395,40 @@ export default function AggregatePage() {
   const weightFor = (id: LayerId): number => effectiveWeight(id, weights, multipliers);
   const multiplierFor = (c: AggregateCategory): number =>
     multipliers[c] ?? DEFAULT_CATEGORY_MULTIPLIERS[c] ?? 1;
+  const layerOwn = (id: LayerId): number =>
+    weights[id] ?? DEFAULT_WEIGHTS[id] ?? 1;
   const activeCount = feeds.filter((f) => weightFor(f.id) > 0).length;
   const resetAll = () => {
     setWeights({ ...DEFAULT_WEIGHTS });
     setMultipliers({ ...DEFAULT_CATEGORY_MULTIPLIERS });
     setMode("average");
+    prevRef.current = { weights: {}, multipliers: {} };
+    setExpanded({});
   };
+
+  // Quick trial toggles (#825): uncheck stashes the nonzero value and
+  // sets 0; re-check restores the stash (or the shipped default).
+  const toggleLayer = (id: LayerId) => {
+    const next = toggleFactor(
+      layerOwn(id),
+      prevRef.current.weights[id],
+      DEFAULT_WEIGHTS[id] ?? 1,
+    );
+    if (next.stash !== undefined) prevRef.current.weights[id] = next.stash;
+    setWeights((prev) => ({ ...prev, [id]: next.value }));
+  };
+  const toggleCategory = (c: AggregateCategory) => {
+    const next = toggleFactor(
+      multiplierFor(c),
+      prevRef.current.multipliers[c],
+      DEFAULT_CATEGORY_MULTIPLIERS[c] ?? 1,
+    );
+    if (next.stash !== undefined)
+      prevRef.current.multipliers[c] = next.stash;
+    setMultipliers((prev) => ({ ...prev, [c]: next.value }));
+  };
+  const toggleExpand = (c: AggregateCategory) =>
+    setExpanded((prev) => ({ ...prev, [c]: !prev[c] }));
   const feedsByCategory = useMemo(() => {
     const groups = new Map<AggregateCategory, LayerFeed[]>();
     for (const c of CATEGORIES) groups.set(c, []);
@@ -423,78 +492,113 @@ export default function AggregatePage() {
           }}
         />
       </div>
-      <h2 style={{ marginTop: 24 }}>Kategooriate kordajad</h2>
+      <h2 style={{ marginTop: 24 }}>Kategooriad ja kihid</h2>
       <p>
-        Iga kategooria võimendab oma kihte: tegelik kaal = kihi kaal ×
-        kategooria kordaja (0 = kategooria välja arvatud).
+        Linnuke lülitab kiiresti sisse/välja (eelmine väärtus taastub).
+        Kategooria lahti võttes näed selle kihte. Tegelik kaal = kihi
+        kaal × kategooria kordaja. Muudatused rakenduvad kohe ja
+        salvestuvad sellesse brauserisse.{" "}
+        <button type="button" onClick={resetAll}>
+          Lähtesta
+        </button>{" "}
+        <button
+          type="button"
+          onClick={() => {
+            const open: Record<string, boolean> = {};
+            for (const g of feedsByCategory) open[g.category] = true;
+            setExpanded(open);
+          }}
+        >
+          Laienda kõik
+        </button>{" "}
+        <button type="button" onClick={() => setExpanded({})}>
+          Ahenda kõik
+        </button>
       </p>
-      <ul style={{ columns: 2, listStyle: "none", padding: 0 }}>
-        {CATEGORIES.map((c) => (
-          <li key={c} style={{ breakInside: "avoid", margin: "4px 0" }}>
-            <label>
-              {CATEGORY_LABEL[c]}{" "}
+      <ul style={{ listStyle: "none", padding: 0 }}>
+        {feedsByCategory.map((g) => {
+          const open = !!expanded[g.category];
+          const mult = multiplierFor(g.category);
+          return (
+            <li key={g.category} style={{ margin: "8px 0" }}>
+              <input
+                type="checkbox"
+                checked={mult > 0}
+                aria-label={`${CATEGORY_LABEL[g.category]} sees/väljas`}
+                onChange={() => toggleCategory(g.category)}
+              />{" "}
+              <button
+                type="button"
+                aria-expanded={open}
+                onClick={() => toggleExpand(g.category)}
+                style={{
+                  fontWeight: "bold",
+                  background: "none",
+                  border: "none",
+                  padding: 0,
+                  cursor: "pointer",
+                  fontSize: "1em",
+                }}
+              >
+                {open ? "▾" : "▸"} {CATEGORY_LABEL[g.category]} (×{mult} ·{" "}
+                {g.feeds.length} kihti)
+              </button>{" "}
               <input
                 type="range"
                 min={0}
                 max={WEIGHT_MAX}
                 step={WEIGHT_STEP}
-                value={multiplierFor(c)}
-                aria-label={`${CATEGORY_LABEL[c]} kordaja`}
+                value={mult}
+                aria-label={`${CATEGORY_LABEL[g.category]} kordaja`}
                 onChange={(e) =>
                   setMultipliers((prev) => ({
                     ...prev,
-                    [c]: Number(e.target.value),
+                    [g.category]: Number(e.target.value),
                   }))
                 }
-              />{" "}
-              ×{multiplierFor(c)}
-            </label>
-          </li>
-        ))}
+              />
+              {open && (
+                <ul style={{ listStyle: "none", padding: "4px 0 4px 24px" }}>
+                  {g.feeds.map((f) => {
+                    const layerW = layerOwn(f.id);
+                    return (
+                      <li
+                        key={f.id}
+                        style={{ breakInside: "avoid", margin: "4px 0" }}
+                      >
+                        <label>
+                          <input
+                            type="checkbox"
+                            checked={layerW > 0}
+                            aria-label={`${f.title} sees/väljas`}
+                            onChange={() => toggleLayer(f.id)}
+                          />{" "}
+                          {f.title}{" "}
+                          <input
+                            type="range"
+                            min={0}
+                            max={WEIGHT_MAX}
+                            step={WEIGHT_STEP}
+                            value={layerW}
+                            aria-label={`${f.title} kaal`}
+                            onChange={(e) =>
+                              setWeights((prev) => ({
+                                ...prev,
+                                [f.id]: Number(e.target.value),
+                              }))
+                            }
+                          />{" "}
+                          ×{weightFor(f.id)}
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </li>
+          );
+        })}
       </ul>
-      <h2 style={{ marginTop: 24 }}>Kihi kaalud</h2>
-      <p>
-        Lohista kaalu (0 = kiht välja arvatud). Tegelik kaal arvestab ka
-        kategooria kordajat. Muudatused rakenduvad kohe ja salvestuvad
-        sellesse brauserisse.{" "}
-        <button type="button" onClick={resetAll}>
-          Lähtesta
-        </button>
-      </p>
-      {feedsByCategory.map((g) => (
-        <div key={g.category}>
-          <h3>
-            {CATEGORY_LABEL[g.category]} (×{multiplierFor(g.category)})
-          </h3>
-          <ul style={{ columns: 2, listStyle: "none", padding: 0 }}>
-            {g.feeds.map((f) => {
-              const layerW = weights[f.id] ?? DEFAULT_WEIGHTS[f.id] ?? 1;
-              return (
-                <li key={f.id} style={{ breakInside: "avoid", margin: "4px 0" }}>
-                  <label>
-                    {f.title}{" "}
-                    <input
-                      type="range"
-                      min={0}
-                      max={WEIGHT_MAX}
-                      step={WEIGHT_STEP}
-                      value={layerW}
-                      aria-label={`${f.title} kaal`}
-                      onChange={(e) =>
-                        setWeights((prev) => ({
-                          ...prev,
-                          [f.id]: Number(e.target.value),
-                        }))
-                      }
-                    />{" "}
-                    ×{weightFor(f.id)}
-                  </label>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ))}
       {excluded.length > 0 && (
         <details>
           <summary>Andmeteta kihid ({excluded.length}) — kaardil ei osale</summary>
