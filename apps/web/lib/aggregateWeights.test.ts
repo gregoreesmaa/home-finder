@@ -13,8 +13,10 @@ import {
   LAYER_CATEGORY,
   LEGACY_STORE_KEY,
   STORE_KEY,
+  cleanFactorMap,
   effectiveWeight,
   parseStoredAggregate,
+  toggleFactor,
   type AggregateCategory,
 } from "./aggregateWeights";
 
@@ -243,5 +245,32 @@ describe("v2 store", () => {
       multipliers: {},
       mode: "average",
     });
+  });
+});
+
+describe("quick-trial toggles (#825)", () => {
+  it("uncheck stashes the nonzero value and yields 0", () => {
+    expect(toggleFactor(1.5, undefined, 1)).toEqual({ value: 0, stash: 1.5 });
+  });
+
+  it("re-check restores the stash", () => {
+    expect(toggleFactor(0, 1.5, 1)).toEqual({ value: 1.5, stash: 1.5 });
+  });
+
+  it("re-check with no stash restores the shipped fallback", () => {
+    expect(toggleFactor(0, undefined, 0.75)).toEqual({ value: 0.75, stash: undefined });
+  });
+
+  it("non-positive stash and fallback fall back to 1 (never stuck off)", () => {
+    expect(toggleFactor(0, 0, 0)).toEqual({ value: 1, stash: 0 });
+  });
+
+  it("cleanFactorMap keeps finite non-negatives, drops the rest", () => {
+    expect(
+      cleanFactorMap({ a: 1.5, b: 0, c: -1, d: NaN, e: "x", f: Infinity }),
+    ).toEqual({ a: 1.5, b: 0 });
+    expect(cleanFactorMap({ a: 99 })).toEqual({ a: 2 });
+    expect(cleanFactorMap(null)).toEqual({});
+    expect(cleanFactorMap([1])).toEqual({});
   });
 });
