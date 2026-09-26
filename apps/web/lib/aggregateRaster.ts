@@ -192,24 +192,82 @@ export function combineStandardRasters(
 }
 
 /**
+ * Viewport recalibration scale (#819): min/max of the combined means
+ * over the visible field. Green = best visible cell, red = worst
+ * visible cell, so zoomed-in views with little absolute variation
+ * still read. Recomputed from the field whenever the view settles
+ * (the aggregate route rebuilds the field per debounced view).
+ */
+export interface ViewportScale {
+  min: number;
+  max: number;
+}
+
+/**
+ * Min/max over the finite combined means; null when no cell is known.
+ * Nodata cells (NaN / known 0) never enter the scale — they stay
+ * transparent instead of anchoring an end of the ramp.
+ */
+export function viewportScaleFor(field: Pick<AggregateField, "mean">): ViewportScale | null {
+  let min = Infinity;
+  let max = -Infinity;
+  for (let k = 0; k < field.mean.length; k++) {
+    const m = field.mean[k];
+    if (!Number.isFinite(m)) continue;
+    if (m < min) min = m;
+    if (m > max) max = m;
+  }
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
+  return { min, max };
+}
+
+/**
+ * Map a raw combined mean onto the 0..100 ramp under a viewport
+ * scale. A degenerate (uniform) viewport keeps the absolute value so
+ * a uniformly good view does not flip to mid-orange; otherwise the
+ * best visible cell reads 100 and the worst 0.
+ */
+export function recalibratedMean(meanValue: number, scale: ViewportScale | null | undefined): number {
+  if (!scale) return meanValue;
+  const span = scale.max - scale.min;
+  if (!(span > 1e-9)) return meanValue;
+  return ((meanValue - scale.min) / span) * 100;
+}
+
+/**
  * Agreement color for one cell: red->orange->green ramp by mean, then
  * pulled toward orange by disagreement. Unanimous 90+ reads green,
  * unanimous 10- reads red, middling or split reads orange-ish.
+ *
+ * With a viewport scale (#819) the ramp runs on the recalibrated mean
+ * (best visible = green, worst visible = red) while the orange pull
+ * still uses the RAW spread in goodness points — contested stays
+ * contested, never normalized away.
  */
 export function agreementColorFor(
   meanValue: number,
   spreadValue: number,
+  scale?: ViewportScale | null,
 ): [number, number, number] {
+  const v = recalibratedMean(meanValue, scale);
   const base =
-    meanValue <= 50
-      ? lerp3(AGREE_RED, AGREE_ORANGE, meanValue / 50)
-      : lerp3(AGREE_ORANGE, AGREE_GREEN, (meanValue - 50) / 50);
+    v <= 50
+      ? lerp3(AGREE_RED, AGREE_ORANGE, v / 50)
+      : lerp3(AGREE_ORANGE, AGREE_GREEN, (v - 50) / 50);
   const t = Math.min(1, Math.max(0, spreadValue / CONTEST_SPREAD));
   return lerp3(base, AGREE_ORANGE, t);
 }
 
-/** Paint the agreement field; unknown cells stay transparent (alpha 0). */
-export function aggregateToRgba(f: AggregateField): Uint8ClampedArray {
+/**
+ * Paint the agreement field; unknown cells stay transparent (alpha 0).
+ *
+ * Pass a viewport scale (viewportScaleFor of this field) for the
+ * recalibrated gradient (#819). Omitting it paints absolute colors.
+ */
+export function aggregateToRgba(
+  f: AggregateField,
+  scale?: ViewportScale | null,
+): Uint8ClampedArray {
   const out = new Uint8ClampedArray(f.cols * f.rows * 4);
   for (let k = 0; k < f.cols * f.rows; k++) {
     const o = k * 4;
@@ -218,7 +276,7 @@ export function aggregateToRgba(f: AggregateField): Uint8ClampedArray {
       out[o + 3] = 0;
       continue;
     }
-    const [r, g, b] = agreementColorFor(m, f.spread[k]);
+    const [r, g, b] = agreementColorFor(m, f.spread[k], scale);
     out[o] = Math.round(r);
     out[o + 1] = Math.round(g);
     out[o + 2] = Math.round(b);

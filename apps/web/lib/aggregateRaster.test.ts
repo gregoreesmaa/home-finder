@@ -11,9 +11,13 @@ import {
   aggregateGridFor,
   aggregateToRgba,
   combineStandardRasters,
+  recalibratedMean,
   sampleAggregate,
+  viewportScaleFor,
+  type AggregateField,
   type AggregateInput,
   type CombineMode,
+  type ViewportScale,
 } from "./aggregateRaster";
 import { STANDARD_UNKNOWN, type StandardRaster } from "./standardRaster";
 
@@ -246,7 +250,100 @@ describe("hover readback + grid helper", () => {
     );
     expect(sampleAggregate(hole, 0.5, 0.5)).toBeNull();
   });
+});
 
+describe("viewport recalibration (#819)", () => {
+  const grad = (): AggregateField =>
+    combineStandardRasters(
+      [
+        { raster: mkRaster((ix) => 60 + ix * 4), weight: 1 }, // 60..88 W-E
+        { raster: mkRaster(() => 70), weight: 1 },
+      ],
+      GRID,
+      "average",
+    );
+
+  it("viewportScaleFor spans the finite means, ignoring nodata", () => {
+    const f = grad();
+    const s = viewportScaleFor(f);
+    expect(s).not.toBeNull();
+    // Column means run (60+70)/2 .. (88+70)/2 = 65..79.
+    expect(s?.min).toBeCloseTo(65, 9);
+    expect(s?.max).toBeCloseTo(79, 9);
+  });
+
+  it("viewportScaleFor is null when nothing is known", () => {
+    const hole = combineStandardRasters(
+      [{ raster: mkRaster(() => STANDARD_UNKNOWN), weight: 1 }],
+      GRID,
+      "average",
+    );
+    expect(viewportScaleFor(hole)).toBeNull();
+  });
+
+  it("recalibratedMean maps best visible to 100 and worst to 0", () => {
+    const scale: ViewportScale = { min: 65, max: 79 };
+    expect(recalibratedMean(79, scale)).toBe(100);
+    expect(recalibratedMean(65, scale)).toBe(0);
+    expect(recalibratedMean(72, scale)).toBeCloseTo(50, 9);
+  });
+
+  it("uniform viewports keep the absolute value (no flip to orange)", () => {
+    expect(recalibratedMean(80, { min: 80, max: 80 })).toBe(80);
+    expect(recalibratedMean(80, null)).toBe(80);
+    expect(recalibratedMean(80, undefined)).toBe(80);
+  });
+
+  it("best visible cell reads green, worst reads red — even in a narrow band", () => {
+    const scale: ViewportScale = { min: 65, max: 79 };
+    const [br, bg] = agreementColorFor(79, 0, scale);
+    expect(bg).toBeGreaterThan(br); // best visible: green
+    const [wr, wg] = agreementColorFor(65, 0, scale);
+    expect(wr).toBeGreaterThan(wg); // worst visible: red
+  });
+
+  it("recalibrated paint spans the ramp: worst red, best green", () => {
+    const f = grad();
+    const rgba = aggregateToRgba(f, viewportScaleFor(f));
+    // West column (worst visible) reads red-dominant, east (best)
+    // green-dominant — a narrow absolute band still spans the ramp.
+    const west = 0 * 4;
+    const east = (COLS - 1) * 4;
+    expect(rgba[west]).toBeGreaterThan(rgba[west + 1]);
+    expect(rgba[east + 1]).toBeGreaterThan(rgba[east]);
+    expect(rgba[west + 3]).toBe(AGREE_ALPHA);
+    expect(rgba[east + 3]).toBe(AGREE_ALPHA);
+  });
+
+  it("nodata stays transparent under recalibration, never an endpoint", () => {
+    const left: AggregateInput = {
+      raster: mkRaster((ix) => (ix < COLS / 2 ? 80 : STANDARD_UNKNOWN)),
+      weight: 1,
+    };
+    const f = combineStandardRasters([left], GRID, "average");
+    const rgba = aggregateToRgba(f, viewportScaleFor(f));
+    const hole = ((ROWS - 1) * COLS + (COLS - 1)) * 4;
+    expect(rgba[hole + 3]).toBe(0);
+  });
+
+  it("contested spread still pulls a best-visible cell to orange", () => {
+    // Best visible cell with full disagreement reads orange, like the
+    // middling cell — the spread pull uses raw goodness points.
+    const best = agreementColorFor(79, 40, { min: 65, max: 79 });
+    expect(best).toEqual(agreementColorFor(50, 0));
+  });
+
+  it("omitting the scale keeps absolute colors (existing callers)", () => {
+    const f = combineStandardRasters([good()], GRID, "average");
+    const rgba = aggregateToRgba(f);
+    expect(rgba[3]).toBe(AGREE_ALPHA);
+    expect([rgba[0], rgba[1], rgba[2]]).toEqual(
+      agreementColorFor(90, 0).map((v) => Math.round(v)),
+    );
+  });
+});
+
+describe("hover readback + grid helper", () => {
   it("aggregateGridFor preserves aspect and stays capped", () => {
     const g = aggregateGridFor(UNIT);
     expect(g.cols).toBeLessThanOrEqual(200);
