@@ -10,7 +10,7 @@
 // recalibrates to the visible extent (best visible = green) and layer
 // weights multiply with per-category multipliers.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { ValueHeatLayer } from "../../../components/ValueHeatLayer";
@@ -19,20 +19,20 @@ import {
   LAYERS,
   bonusSpecFor,
   fetchLayerPoints,
-  radiusKmFor,
   type BBoxLike,
   type LayerId,
   type LayerPoint,
   type LayerProvenance,
 } from "../../../lib/layers";
-import { buildScoredField } from "../../../lib/distanceField";
-import { standardFromScoredField } from "../../../lib/standardRaster";
+import {
+  buildStandardRasters,
+  recombineCached,
+} from "../../../lib/aggregateBuild";
 import {
   COMBINE_MODES,
   COMBINE_MODE_LABEL,
   aggregateGridFor,
   aggregateToRgba,
-  combineStandardRasters,
   sampleAggregate,
   viewportScaleFor,
   type AggregateField,
@@ -68,6 +68,53 @@ interface LayerFeed {
 function isUsableProvenance(p: LayerProvenance): boolean {
   return p === "live" || p === "cache" || p === "stale" || p === "snapshot" || p === "empty";
 }
+
+interface LayerRowProps {
+  id: LayerId;
+  title: string;
+  checked: boolean;
+  value: number;
+  effective: number;
+  onToggle: (id: LayerId) => void;
+  onWeight: (id: LayerId, value: number) => void;
+}
+
+// #830: memoised so a slider tick re-renders only the edited row, not
+// all ~115. Props are primitives + stable callbacks, so the memo check
+// is cheap and effective.
+const LayerRow = memo(function LayerRow({
+  id,
+  title,
+  checked,
+  value,
+  effective,
+  onToggle,
+  onWeight,
+}: LayerRowProps) {
+  return (
+    <li style={{ breakInside: "avoid", margin: "4px 0" }}>
+      <label>
+        <input
+          type="checkbox"
+          checked={checked}
+          aria-label={`${title} sees/väljas`}
+          onChange={() => onToggle(id)}
+        />{" "}
+        {title}{" "}
+        <input
+          type="range"
+          min={0}
+          max={WEIGHT_MAX}
+          step={WEIGHT_STEP}
+          value={value}
+          aria-label={`${title} kaal`}
+          onChange={(e) => onWeight(id, Number(e.target.value))}
+        />{" "}
+        ×{effective}
+      </label>
+    </li>
+  );
+});
 
 function loadStored(): {
   weights: Record<string, number>;
@@ -228,34 +275,28 @@ export default function AggregatePage() {
     };
   }, [view]);
 
-  // Shared grid + per-layer standard rasters + combine. Weight/mode
-  // edits only re-run the cheap combine below (fields are memoised on
-  // the fetched feeds, so sliders stay live).
+  // Shared grid + per-layer standard rasters + combine (#830).
+  // Raster builds (~115 EDT splats over ~23k cells, ~110 ms) are
+  // memoised on [feeds, grid] only, so checkbox/slider/mode edits skip
+  // them and re-run just the combine (~25 ms) over cached rasters.
+  // The combine reads DEFERRED weights: the dragged control re-renders
+  // urgently (slider tracks the pointer) while rapid ticks coalesce
+  // into one combine+paint per settled value. Math is unchanged — the
+  // same builders and combineStandardRasters run, only less often.
   const grid = useMemo(() => aggregateGridFor(view), [view]);
-  const aggregate = useMemo<AggregateField | null>(() => {
-    if (feeds.length === 0) return null;
-    const inputs = [];
-    for (const f of feeds) {
-      const valid = f.points.filter(
-        (p) => Number.isFinite(p.lon) && Number.isFinite(p.lat),
-      );
-      if (valid.length === 0) continue;
-      const scored = buildScoredField(
-        valid,
-        grid.bbox,
-        grid.cols,
-        grid.rows,
-        radiusKmFor(f.id),
-        bonusSpecFor(f.id),
-      );
-      inputs.push({
-        raster: standardFromScoredField(scored),
-        weight: effectiveWeight(f.id, weights, multipliers),
-      });
-    }
-    if (inputs.length === 0) return null;
-    return combineStandardRasters(inputs, grid, mode);
-  }, [feeds, grid, weights, multipliers, mode]);
+  const built = useMemo(() => buildStandardRasters(feeds, grid), [feeds, grid]);
+  const deferred = useDeferredValue({ weights, multipliers, mode });
+  const aggregate = useMemo<AggregateField | null>(
+    () =>
+      recombineCached(
+        built,
+        grid,
+        deferred.weights,
+        deferred.multipliers,
+        deferred.mode,
+      ),
+    [built, grid, deferred],
+  );
 
   // Open-water mask (#821): sea/lakes excluded from the scale and
   // painted blue. Built from the grid (same memo scope as the field),
@@ -395,9 +436,14 @@ export default function AggregatePage() {
   const weightFor = (id: LayerId): number => effectiveWeight(id, weights, multipliers);
   const multiplierFor = (c: AggregateCategory): number =>
     multipliers[c] ?? DEFAULT_CATEGORY_MULTIPLIERS[c] ?? 1;
-  const layerOwn = (id: LayerId): number =>
-    weights[id] ?? DEFAULT_WEIGHTS[id] ?? 1;
   const activeCount = feeds.filter((f) => weightFor(f.id) > 0).length;
+  // Latest-state mirrors (#830): row callbacks stay referentially
+  // stable (so memoised LayerRows skip unedited rows) while still
+  // reading fresh values for the #825 stash toggles.
+  const weightsRef = useRef(weights);
+  weightsRef.current = weights;
+  const multipliersRef = useRef(multipliers);
+  multipliersRef.current = multipliers;
   const resetAll = () => {
     setWeights({ ...DEFAULT_WEIGHTS });
     setMultipliers({ ...DEFAULT_CATEGORY_MULTIPLIERS });
@@ -408,25 +454,33 @@ export default function AggregatePage() {
 
   // Quick trial toggles (#825): uncheck stashes the nonzero value and
   // sets 0; re-check restores the stash (or the shipped default).
-  const toggleLayer = (id: LayerId) => {
+  // Stable callbacks (#830) for the memoised rows; current values come
+  // from the mirrors above.
+  const toggleLayer = useCallback((id: LayerId) => {
     const next = toggleFactor(
-      layerOwn(id),
+      weightsRef.current[id] ?? DEFAULT_WEIGHTS[id] ?? 1,
       prevRef.current.weights[id],
       DEFAULT_WEIGHTS[id] ?? 1,
     );
     if (next.stash !== undefined) prevRef.current.weights[id] = next.stash;
     setWeights((prev) => ({ ...prev, [id]: next.value }));
-  };
-  const toggleCategory = (c: AggregateCategory) => {
+  }, []);
+  const toggleCategory = useCallback((c: AggregateCategory) => {
     const next = toggleFactor(
-      multiplierFor(c),
+      multipliersRef.current[c] ?? DEFAULT_CATEGORY_MULTIPLIERS[c] ?? 1,
       prevRef.current.multipliers[c],
       DEFAULT_CATEGORY_MULTIPLIERS[c] ?? 1,
     );
     if (next.stash !== undefined)
       prevRef.current.multipliers[c] = next.stash;
     setMultipliers((prev) => ({ ...prev, [c]: next.value }));
-  };
+  }, []);
+  const setLayerWeight = useCallback((id: LayerId, value: number) => {
+    setWeights((prev) => ({ ...prev, [id]: value }));
+  }, []);
+  const setCategoryMultiplier = useCallback((c: AggregateCategory, value: number) => {
+    setMultipliers((prev) => ({ ...prev, [c]: value }));
+  }, []);
   const toggleExpand = (c: AggregateCategory) =>
     setExpanded((prev) => ({ ...prev, [c]: !prev[c] }));
   const feedsByCategory = useMemo(() => {
@@ -551,46 +605,24 @@ export default function AggregatePage() {
                 value={mult}
                 aria-label={`${CATEGORY_LABEL[g.category]} kordaja`}
                 onChange={(e) =>
-                  setMultipliers((prev) => ({
-                    ...prev,
-                    [g.category]: Number(e.target.value),
-                  }))
+                  setCategoryMultiplier(g.category, Number(e.target.value))
                 }
               />
               {open && (
                 <ul style={{ listStyle: "none", padding: "4px 0 4px 24px" }}>
                   {g.feeds.map((f) => {
-                    const layerW = layerOwn(f.id);
+                    const layerW = weights[f.id] ?? DEFAULT_WEIGHTS[f.id] ?? 1;
                     return (
-                      <li
+                      <LayerRow
                         key={f.id}
-                        style={{ breakInside: "avoid", margin: "4px 0" }}
-                      >
-                        <label>
-                          <input
-                            type="checkbox"
-                            checked={layerW > 0}
-                            aria-label={`${f.title} sees/väljas`}
-                            onChange={() => toggleLayer(f.id)}
-                          />{" "}
-                          {f.title}{" "}
-                          <input
-                            type="range"
-                            min={0}
-                            max={WEIGHT_MAX}
-                            step={WEIGHT_STEP}
-                            value={layerW}
-                            aria-label={`${f.title} kaal`}
-                            onChange={(e) =>
-                              setWeights((prev) => ({
-                                ...prev,
-                                [f.id]: Number(e.target.value),
-                              }))
-                            }
-                          />{" "}
-                          ×{weightFor(f.id)}
-                        </label>
-                      </li>
+                        id={f.id}
+                        title={f.title}
+                        checked={layerW > 0}
+                        value={layerW}
+                        effective={weightFor(f.id)}
+                        onToggle={toggleLayer}
+                        onWeight={setLayerWeight}
+                      />
                     );
                   })}
                 </ul>
