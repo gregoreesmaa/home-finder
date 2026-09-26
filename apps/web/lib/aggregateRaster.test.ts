@@ -6,6 +6,8 @@ import { describe, expect, it } from "vitest";
 import type { BBoxLike } from "./layers";
 import {
   AGREE_ALPHA,
+  AGREE_ORANGE,
+  CONTEST_MAX_PULL,
   CONTEST_SPREAD,
   agreementColorFor,
   aggregateGridFor,
@@ -220,18 +222,60 @@ describe("agreement coloring", () => {
     expect(b).toBeLessThan(60);
   });
 
-  it("disagreement pulls a high mean toward orange (contested)", () => {
+  it("disagreement tints a high mean toward orange but keeps green (capped, #823)", () => {
     const calm = agreementColorFor(90, 0);
     const split = agreementColorFor(90, 40);
     // Contested: red-green gap shrinks toward the orange balance.
     expect(Math.abs(split[0] - split[1])).toBeLessThan(Math.abs(calm[0] - calm[1]));
-    // Fully contested agrees with the middling cell.
-    expect(split).toEqual(agreementColorFor(50, 0));
+    // Capped pull: a split high cell keeps a green tint instead of
+    // flattening to the middling cell's pure orange (old behavior).
+    expect(split[1]).toBeGreaterThan(split[0]);
+    expect(split).not.toEqual(agreementColorFor(50, 0));
   });
 
   it("ramp endpoints match the documented brand colors", () => {
     expect(agreementColorFor(100, 0)).toEqual([22, 163, 74]);
     expect(agreementColorFor(0, 0)).toEqual([220, 38, 38]);
+  });
+});
+
+describe("contested-pull cap (#823)", () => {
+  it("even maximal spread keeps half the ramp color", () => {
+    expect(CONTEST_MAX_PULL).toBe(0.5);
+    // Endpoints pulled halfway to orange: exact pins of the cap.
+    expect(agreementColorFor(100, 1000)).toEqual([133.5, 160.5, 42.5]);
+    expect(agreementColorFor(0, 1000)).toEqual([232.5, 98, 24.5]);
+  });
+
+  it("spreads below the cap interpolate exactly as before", () => {
+    // spread 12.5 hits t = 0.5 without the cap, so it must paint
+    // identically to a fully contested cell (both at the cap).
+    expect(agreementColorFor(100, 12.5)).toEqual(agreementColorFor(100, 40));
+    expect(agreementColorFor(0, 12.5)).toEqual(agreementColorFor(0, 40));
+  });
+
+  it("Tallinn-viewport fixture still spans green->red at high spread", () => {
+    // Measured on real served data 2026-09-26 (Tallinn bbox
+    // 24.55/59.35-24.95/59.55, 115 feeds, default weights, average
+    // mode): scale min 42.27 / max 82.05, spread min 18.9 / p50 29.2 —
+    // every land cell sat at pull >= 0.75, so the uncapped ramp read
+    // 100% orange (0 red / 0 green of 23,965 land cells). With the cap
+    // the extremes must read clearly green/red while the middle keeps
+    // an orange tint. No network here: the fixture pins those measured
+    // extremes (best cell spread 23.49, worst cell spread 31.53).
+    const scale: ViewportScale = { min: 42.27, max: 82.05 };
+    const best = agreementColorFor(82.05, 23.49, scale);
+    expect(best[1]).toBeGreaterThan(best[0]); // best visible: green
+    const worst = agreementColorFor(42.27, 31.53, scale);
+    expect(worst[0]).toBeGreaterThan(worst[1]); // worst visible: red
+    // Middle of the viewport stays orange-ish (tint, not endpoint).
+    const mid = agreementColorFor(60, 29, scale);
+    const dOrange = Math.hypot(
+      mid[0] - AGREE_ORANGE[0],
+      mid[1] - AGREE_ORANGE[1],
+      mid[2] - AGREE_ORANGE[2],
+    );
+    expect(dOrange).toBeLessThan(40);
   });
 });
 
@@ -326,11 +370,13 @@ describe("viewport recalibration (#819)", () => {
     expect(rgba[hole + 3]).toBe(0);
   });
 
-  it("contested spread still pulls a best-visible cell to orange", () => {
-    // Best visible cell with full disagreement reads orange, like the
-    // middling cell — the spread pull uses raw goodness points.
+  it("capped spread tints a best-visible cell but keeps it green (#823)", () => {
+    // Best visible cell with full disagreement keeps a green tint
+    // instead of flattening to orange (old behavior) — the spread pull
+    // still uses raw goodness points, only its maximum is capped.
     const best = agreementColorFor(79, 40, { min: 65, max: 79 });
-    expect(best).toEqual(agreementColorFor(50, 0));
+    expect(best[1]).toBeGreaterThan(best[0]);
+    expect(best).not.toEqual(agreementColorFor(50, 0));
   });
 
   it("omitting the scale keeps absolute colors (existing callers)", () => {
