@@ -181,6 +181,9 @@ export const STATIC_LAYER_IDS: LayerId[] = [
   "roadsafety",
   "senscom",
   "parking",
+  // CARFRICTION-HOOK (#829): carfriction is a frozen-snapshot OSM
+  // extract (static, like its parking sibling).
+  "carfriction",
   "floodzone",
   "blockwalk",
   "darkness",

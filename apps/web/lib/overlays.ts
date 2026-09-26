@@ -490,6 +490,12 @@ export function overlayColorFor(layer: LayerId): string {
     // from every other marker (distinct-color test).
     case "parking":
       return "#1f2937";
+    // CARFRICTION-HOOK (#829): carfriction marker (point overlay,
+    // stride-sampled like grocery). #57534e: stone-600 barrier
+    // concrete (no-entry-block gray; verified free 2026-09-26).
+    // Distinct from every other marker (distinct-color test).
+    case "carfriction":
+      return "#57534e";
     // MARUKOV-HOOK (#486): choropleth colors (registry contract --
     // these layers are raster-only exact fills with NO point markers,
     // so the overlay slot stays empty and the toggle reads (0); the
@@ -1196,6 +1202,10 @@ export function overlayLegendFor(layer: LayerId): string {
     // raster holds the full count field.
     case "parking":
       return "Kaardistatud parklad (taskud + platsid) · lähedaste arv (asukoha-hinnang, küllastus 75, vabade kohtade arv ega elanikuluba pole)";
+    // CARFRICTION-HOOK (#829): carfriction — mapped motor-vehicle
+    // restrictions, the raster holds the full INVERTED-count field.
+    case "carfriction":
+      return "Mootorsõiduki piirangud (keelu-/eramärgid) · PÖÖRATUD tihedus-hinnang (autosõidu raskus, küllastus 60, ummikud ega tasulised tsoonid kaardil pole)";
     // MARUKOV-HOOK (#486): choropleth legends (p41/p149/p43/p484) --
     // each KOV one flat colour off its quarterly MARU band; rida/paar
     // puudu = EI OLE (punane = halb VÕI tundmatu, mitte null-hinne).

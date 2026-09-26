@@ -78,6 +78,7 @@ export const LAYER_CATEGORY: Record<LayerId, AggregateCategory> = {
   pedinfra: "transport",
   alley: "transport",
   parking: "transport",
+  carfriction: "transport", // gap default (no calib entry)
   gbfs: "transport",
   "shed-15-peak": "transport", // gap default (no calib entry)
   "shed-15-offpeak": "transport", // gap default (no calib entry)
@@ -271,6 +272,7 @@ export const DEFAULT_WEIGHTS: Record<LayerId, number> = {
   pedinfra: 1.25, // Sidewalk density matters daily on foot, but largely overlaps walkability signal.
   alley: 0.25, // Back-alley proximity is cartographic trivia with no plausible buyer demand.
   parking: 1.5, // Mapped parking density is daily convenience for car owners.
+  carfriction: 1, // Driving-restriction density is a real car-hardship signal; moderate until calibrated.
   gbfs: 1, // Bikeshare station access is a real everyday mobility option.
   "shed-15-peak": 1.5, // Peak 15-min catchment decides commute feasibility (delay-morning parity).
   "shed-15-offpeak": 0.5, // Free-flow reference catchment; small residual so off-peak reachability still counts.
