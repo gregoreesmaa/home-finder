@@ -87,7 +87,53 @@ describe("808 distance audit table", () => {
     expect(lines.length).toBe(LAYERS.length + 2);
     expect(lines[0]).toContain("| id | map | scorer | verdict | rationale |");
     expect(md).toContain("| industprox | euclidean-raster | haversine-bands | change |");
-    expect(md).toContain("| transit | walk-raster | haversine | reasonable |");
+    expect(md).toContain("| transit | walk-raster | walk-graph | reasonable |");
+  });
+
+  it("shows scorer walk-graph for the #814 migrated families", () => {
+    // Core + amenity walk-raster families migrated in #814.
+    for (const id of [
+      "transit",
+      "parks",
+      "schools",
+      "mailbox",
+      "postal",
+      "alley",
+      "plaster",
+      "antiques",
+      "heritage",
+      "woodfire",
+      "trailprivacy",
+      "waste",
+      "water",
+    ] as LayerId[]) {
+      const r = auditRowFor(id);
+      expect(r.map).toBe("walk-raster");
+      expect(r.scorer).toBe("walk-graph");
+      expect(r.followUp).toBeUndefined();
+      expect(r.scorerRef).toContain("walk_access.py");
+    }
+    // Migrated dbands register-proximity layers.
+    for (const id of ["sport_hall", "medre_gp", "poi_library"] as LayerId[]) {
+      const r = auditRowFor(id);
+      expect(r.scorer).toBe("walk-graph");
+      expect(r.followUp).toBeUndefined();
+    }
+  });
+
+  it("leaves non-pedestrian layers off the walk-graph scorer", () => {
+    // Air-station coverage: Euclidean by design (air does not walk).
+    const air = auditRowFor("ohuseire" as LayerId);
+    expect(air.scorer).toBe("haversine-bands");
+    expect(air.followUp).toBeUndefined();
+    // Fiber has no per-listing leg: nothing to route.
+    const fiber = auditRowFor("fiber" as LayerId);
+    expect(fiber.scorer).toBe("none");
+    // Every walk-raster row is either migrated, legless, or attribute.
+    for (const r of buildAuditTable()) {
+      if (r.map !== "walk-raster") continue;
+      expect(["walk-graph", "none", "attribute"]).toContain(r.scorer);
+    }
   });
 });
 

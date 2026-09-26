@@ -74,7 +74,26 @@ edits would break every sibling.
 import math
 from typing import Dict, List, Optional, Tuple
 
+from walk_access import (
+    WALK_TAG,
+    FootGraph,
+    count_within_walk_m,
+    walk_cutoff,
+)
+
 Score = Tuple[Optional[int], str]  # (score 0..100 | None, Estonian reason)
+
+# ---------------------------------------------------------------------------
+# 814-HOOK (#814): heritage-density legs count within the walk-equivalent
+# radius when a graph is injected, else the legacy bird-flight count
+# (bit-identical). Count bands score COUNTS, so no band rescaling applies
+# — the walk window (radius * WALK_DETOUR) is the recalibration.
+# ---------------------------------------------------------------------------
+
+
+def _walked(reason: str, method: str) -> str:
+    """Append the walk marker on the routed path, else the reason as-is."""
+    return reason + (WALK_TAG if method == "walk" else "")
 
 # ---------------------------------------------------------------------------
 # Local pure helpers (livability-shaped; see module docstring for why local).
@@ -169,17 +188,34 @@ def kinds_from_tags(tags: dict) -> Optional[str]:
 HERITAGE_RADIUS_M = 800.0
 
 
+def _count_reason_walk(prefix: str, radius_m: float, n: int) -> str:
+    """Walk-path count reason: names the walk-equivalent radius."""
+    return "%s ~%d m jalgsikäigu raadiuses: %d" % (
+        prefix, int(round(walk_cutoff(radius_m))), n)
+
+
 def dim_heritage_district(origin: Optional[Tuple[float, float]],
-                          pois: Optional[List[dict]]) -> Score:
-    """p72: mapped heritage objects within 800 m (muinsusala-hinnang)."""
+                          pois: Optional[List[dict]],
+                          graph: Optional[FootGraph] = None) -> Score:
+    """p72: mapped heritage objects within 800 m (muinsusala-hinnang).
+
+    814: walk-equivalent count radius when graph is given, else legacy
+    (bit-identical).
+    """
     if not origin or pois is None:
         return None, "Muinsusala info puudub"
-    n = _count_within_m(origin, pois, {"heritage"}, HERITAGE_RADIUS_M)
+    n, method = count_within_walk_m(origin, pois, {"heritage"},
+                                    HERITAGE_RADIUS_M, graph)
     if n == 0:
-        return 20, ("Kaardistatud muinsusobjekte 800 m raadiuses pole "
-                    "(muinsusala-hinnang, mitte registriotsus; "
-                    "Muinsuskaitseameti registrit snapshots pole)")
+        return 20, _walked(
+            ("Kaardistatud muinsusobjekte 800 m raadiuses pole "
+             "(muinsusala-hinnang, mitte registriotsus; "
+             "Muinsuskaitseameti registrit snapshots pole)"),
+            method)
     s = _band(n, [(1, 45), (3, 65), (6, 85), (float("inf"), 100)])
+    if method == "walk":
+        return s, _count_reason_walk("Kaardistatud muinsusobjekte",
+                                     HERITAGE_RADIUS_M, n) + WALK_TAG
     return s, ("Kaardistatud muinsusobjekte 800 m raadiuses: %d "
                "(muinsusala-hinnang, mitte kaitsevööndiotsus)") % n
 
@@ -221,22 +257,34 @@ def dim_facade_easements(origin: Optional[Tuple[float, float]],
 # ---------------------------------------------------------------------------
 
 def dim_commission(origin: Optional[Tuple[float, float]],
-                   pois: Optional[List[dict]]) -> Score:
+                   pois: Optional[List[dict]],
+                   graph: Optional[FootGraph] = None) -> Score:
     """p320: renovation-friction heuristic — HIGHER score = LESS friction.
 
     Deliberate inverse of p72 from the same honest source: dense mapped
     heritage predicts Muinsuskaitseamet/KOV coordination need. Bands are
     soft (25..90): proximity predicts review likelihood, never a named
     commission decision.
+
+    814: walk-equivalent count radius when graph is given, else legacy
+    (bit-identical).
     """
     if not origin or pois is None:
         return None, "Komisjoni menetluse info puudub"
-    n = _count_within_m(origin, pois, {"heritage"}, HERITAGE_RADIUS_M)
+    n, method = count_within_walk_m(origin, pois, {"heritage"},
+                                    HERITAGE_RADIUS_M, graph)
     if n == 0:
-        return 90, ("Läheduses kaardistatud muinsusobjekte pole — "
-                    "komisjoni kooskõlastuse tõenäosus väike (hinnang, "
-                    "mitte menetlusotsus)")
+        return 90, _walked(
+            ("Läheduses kaardistatud muinsusobjekte pole — "
+             "komisjoni kooskõlastuse tõenäosus väike (hinnang, "
+             "mitte menetlusotsus)"),
+            method)
     s = _band(n, [(1, 70), (3, 55), (6, 40), (float("inf"), 25)])
+    if method == "walk":
+        return s, (_count_reason_walk("Kaardistatud muinsusobjekte",
+                                      HERITAGE_RADIUS_M, n) +
+                   " — renoveerimisel tõenäoline kooskõlastusvajadus "
+                   "(hinnang, mitte menetlusotsus)" + WALK_TAG)
     return s, ("Kaardistatud muinsusobjekte 800 m raadiuses: %d — "
                "renoveerimisel tõenäoline kooskõlastusvajadus "
                "(hinnang, mitte menetlusotsus)") % n
@@ -265,7 +313,17 @@ GROUP06_DIMS = (
 
 
 def score_group06(origin: Optional[Tuple[float, float]],
-                  pois: Optional[List[dict]]) -> Dict[str, Optional[int]]:
+                  pois: Optional[List[dict]],
+                  graph: Optional[FootGraph] = None) -> Dict[str, Optional[int]]:
     """All five Group 6 batch-G06 dims for one listing (entry point for the
-    weight-rebalance follow-up; keys match GROUP06_DIMS)."""
-    return {key: fn(origin, pois)[0] for key, _, fn in GROUP06_DIMS}
+    weight-rebalance follow-up; keys match GROUP06_DIMS).
+
+    814: graph routes the heritage-density legs; stubs take no graph.
+    """
+    out: Dict[str, Optional[int]] = {}
+    for key, _, fn in GROUP06_DIMS:
+        if key in ("heritage_district", "commission"):
+            out[key] = fn(origin, pois, graph)[0]
+        else:
+            out[key] = fn(origin, pois)[0]
+    return out

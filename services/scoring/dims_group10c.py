@@ -97,7 +97,34 @@ sibling.
 import math
 from typing import Dict, List, Optional, Tuple
 
+from walk_access import (
+    WALK_TAG,
+    FootGraph,
+    bands_for,
+    nearest_walk_m,
+    walk_cutoff,
+)
+
 Score = Tuple[Optional[int], str]  # (score 0..100 | None, Estonian reason)
+
+# ---------------------------------------------------------------------------
+# 814-HOOK (#814): the water/waste access legs are walk-aware when a
+# graph is injected, else the legacy bird-flight path (bit-identical).
+# Radio legs (internet/redundancy/ota) measure propagation, not
+# pedestrian access, and stay untouched (AIR precedent).
+# ---------------------------------------------------------------------------
+
+#: Legacy haversine band tables (walk recalibration via bands_for).
+WATER_BANDS = [(400, 100), (800, 85), (1500, 70)]
+WASTE_BANDS = [(300, 100), (600, 85), (1000, 70)]
+#: Routing windows (legacy band maxima; bound routing work only).
+WATER_WINDOW_M = 1500.0
+WASTE_WINDOW_M = 1000.0
+
+
+def _walked(reason: str, method: str) -> str:
+    """Append the walk marker on the routed path, else the reason as-is."""
+    return reason + (WALK_TAG if method == "walk" else "")
 
 # ---------------------------------------------------------------------------
 # Local pure helpers (livability-shaped; see module docstring for why local).
@@ -258,18 +285,29 @@ WATER_RADIUS_M = 3000.0
 
 
 def dim_water(origin: Optional[Tuple[float, float]],
-              pois: Optional[List[dict]]) -> Score:
-    """p53: nearest mapped public water point (joogivesi/kaev/allikas)."""
+              pois: Optional[List[dict]],
+              graph: Optional[FootGraph] = None) -> Score:
+    """p53: nearest mapped public water point (joogivesi/kaev/allikas).
+
+    814: routed foot-graph metres on the rescaled bands when graph is
+    given, else the legacy bird-flight path (bit-identical).
+    """
     if not origin or pois is None:
         return None, "Veevarustuse info puudub"
-    m = _nearest_m(origin, pois, {"waterpoint"})
-    if m is None or m > WATER_RADIUS_M:
-        return 45, ("Kaardistatud avalikku veepunkti 3 km raadiuses pole "
-                    "(ÜVK/tsentraalse veevarustuse registrit snapshots pole; "
-                    "maja kraanivee allikat hinnang ei tea)")
-    s = _band(m, [(400, 100), (800, 85), (1500, 70)])
-    return s, ("Lähim kaardistatud avalik veepunkt %s "
-               "(veevarustuse hinnang, mitte maja veeallika mõõtmine)") % _fmt_m(m)
+    m, method = nearest_walk_m(origin, pois, {"waterpoint"},
+                               WATER_WINDOW_M, graph)
+    gate = walk_cutoff(WATER_RADIUS_M) if method == "walk" else WATER_RADIUS_M
+    if m is None or m > gate:
+        return 45, _walked(
+            ("Kaardistatud avalikku veepunkti 3 km raadiuses pole "
+             "(ÜVK/tsentraalse veevarustuse registrit snapshots pole; "
+             "maja kraanivee allikat hinnang ei tea)"),
+            method)
+    s = _band(m, bands_for(method, WATER_BANDS))
+    return s, _walked(
+        ("Lähim kaardistatud avalik veepunkt %s "
+         "(veevarustuse hinnang, mitte maja veeallika mõõtmine)") % _fmt_m(m),
+        method)
 
 
 # ---------------------------------------------------------------------------
@@ -281,17 +319,28 @@ WASTE_RADIUS_M = 2000.0
 
 
 def dim_waste(origin: Optional[Tuple[float, float]],
-              pois: Optional[List[dict]]) -> Score:
-    """p54: nearest mapped waste collection point (jäätmejaam/taara)."""
+              pois: Optional[List[dict]],
+              graph: Optional[FootGraph] = None) -> Score:
+    """p54: nearest mapped waste collection point (jäätmejaam/taara).
+
+    814: routed foot-graph metres on the rescaled bands when graph is
+    given, else the legacy bird-flight path (bit-identical).
+    """
     if not origin or pois is None:
         return None, "Jäätmeinfo puudub"
-    m = _nearest_m(origin, pois, {"wastepoint"})
-    if m is None or m > WASTE_RADIUS_M:
-        return 50, ("Kaardistatud jäätmekogumispunkti 2 km raadiuses pole "
-                    "(korraldatud veo hinnang, mitte teenuse mõõtmine)")
-    s = _band(m, [(300, 100), (600, 85), (1000, 70)])
-    return s, ("Lähim kaardistatud jäätmekogumispunkt %s "
-               "(korraldatud veo hinnang)") % _fmt_m(m)
+    m, method = nearest_walk_m(origin, pois, {"wastepoint"},
+                               WASTE_WINDOW_M, graph)
+    gate = walk_cutoff(WASTE_RADIUS_M) if method == "walk" else WASTE_RADIUS_M
+    if m is None or m > gate:
+        return 50, _walked(
+            ("Kaardistatud jäätmekogumispunkti 2 km raadiuses pole "
+             "(korraldatud veo hinnang, mitte teenuse mõõtmine)"),
+            method)
+    s = _band(m, bands_for(method, WASTE_BANDS))
+    return s, _walked(
+        ("Lähim kaardistatud jäätmekogumispunkt %s "
+         "(korraldatud veo hinnang)") % _fmt_m(m),
+        method)
 
 
 # ---------------------------------------------------------------------------
@@ -360,7 +409,18 @@ GROUP10C_DIMS = (
 
 
 def score_group10c(origin: Optional[Tuple[float, float]],
-                   pois: Optional[List[dict]]) -> Dict[str, Optional[int]]:
+                   pois: Optional[List[dict]],
+                   graph: Optional[FootGraph] = None) -> Dict[str, Optional[int]]:
     """All five Group 10 batch-C dims for one listing (entry point for the
-    weight-rebalance follow-up; keys match GROUP10C_DIMS)."""
-    return {key: fn(origin, pois)[0] for key, _, fn in GROUP10C_DIMS}
+    weight-rebalance follow-up; keys match GROUP10C_DIMS).
+
+    814: graph routes the water/waste access legs; radio legs take no
+    graph.
+    """
+    out: Dict[str, Optional[int]] = {}
+    for key, _, fn in GROUP10C_DIMS:
+        if key in ("water", "waste"):
+            out[key] = fn(origin, pois, graph)[0]
+        else:
+            out[key] = fn(origin, pois)[0]
+    return out

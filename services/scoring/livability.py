@@ -38,6 +38,14 @@ from typing import Callable, Dict, List, Optional, Tuple
 import httpx
 
 from adapters import cached_fetch, polite_headers
+from walk_access import (
+    WALK_TAG,
+    FootGraph,
+    bands_for,
+    count_within_walk_m,
+    nearest_walk_m,
+    walk_cutoff,
+)
 
 Scores = List[Tuple[str, Optional[int], str]]  # (dim, score|None, reason)
 
@@ -159,54 +167,114 @@ def _count_within_m(origin: Tuple[float, float], pois: List[dict], kinds: set, r
     return n
 
 
-def dim_schools(origin: Optional[Tuple[float, float]], pois: Optional[List[dict]]) -> Tuple[Optional[int], str]:
-    """A2: schools / childcare proximity (OSM amenity=school|kindergarten)."""
+# ---------------------------------------------------------------------------
+# 814-HOOK (#814): pedestrian-access legs route the foot graph when a
+# graph is injected, else the legacy bird-flight path (bit-identical).
+# Band literals below are the LEGACY haversine tables; bands_for picks
+# the rescaled walk table on the walk path. Windows bound routing work
+# only (nearest_walk_m/count fallbacks are window-independent, so the
+# default path never changes).
+# ---------------------------------------------------------------------------
+
+#: Legacy haversine band tables (walk recalibration via bands_for).
+SCHOOL_BANDS = [(300, 100), (600, 85), (1000, 70), (1500, 50), (2500, 30)]
+GREEN_BANDS = [(400, 100), (800, 80), (1200, 60)]
+SERVICES_BANDS = [(400, 100), (800, 80), (1200, 60)]
+#: Routing windows: the legacy band maxima, so the whole scored range
+#: stays routable on the walk path (walk cutoff = window * WALK_DETOUR).
+SCHOOL_WINDOW_M = 2500.0
+TRANSIT_COUNT_RADIUS_M = 500.0
+TRANSIT_WINDOW_M = 1000.0
+GREEN_WINDOW_M = 1200.0
+SERVICES_WINDOW_M = 1200.0
+
+
+def _walked(reason: str, method: str) -> str:
+    """Append the walk marker on the routed path, else the reason as-is."""
+    return reason + (WALK_TAG if method == "walk" else "")
+
+
+def _transit_count_reason(n: int, method: str) -> str:
+    if method == "walk":
+        return "Bussipeatused jalgsikäigu raadiuses (~%d m): %d" % (
+            int(round(walk_cutoff(TRANSIT_COUNT_RADIUS_M))), n)
+    return "Bussipeatused 500 m raadiuses: %d" % n
+
+
+def dim_schools(origin: Optional[Tuple[float, float]], pois: Optional[List[dict]],
+                graph: Optional["FootGraph"] = None) -> Tuple[Optional[int], str]:
+    """A2: schools / childcare proximity (OSM amenity=school|kindergarten).
+
+    814: routed foot-graph metres on the rescaled bands when graph is
+    given, else the legacy bird-flight path (bit-identical).
+    """
     if not origin or pois is None:
         return None, "Koolide info puudub"
-    m = _nearest_m(origin, pois, {"school", "kindergarten"})
+    m, method = nearest_walk_m(origin, pois, {"school", "kindergarten"},
+                               SCHOOL_WINDOW_M, graph)
     if m is None:
         return 15, "Lähim kool/Lasteaed üle 2,5 km"
-    s = _band(m, [(300, 100), (600, 85), (1000, 70), (1500, 50), (2500, 30)])
-    return s, "Lähim kool/lasteaed %s" % _fmt_m(m)
+    s = _band(m, bands_for(method, SCHOOL_BANDS))
+    return s, _walked("Lähim kool/lasteaed %s" % _fmt_m(m), method)
 
 
-def dim_transit(origin: Optional[Tuple[float, float]], pois: Optional[List[dict]]) -> Tuple[Optional[int], str]:
-    """A3: public-transit access (OSM stops within 500 m)."""
+def dim_transit(origin: Optional[Tuple[float, float]], pois: Optional[List[dict]],
+                graph: Optional["FootGraph"] = None) -> Tuple[Optional[int], str]:
+    """A3: public-transit access (OSM stops within 500 m).
+
+    814: stop counts within the walk-equivalent radius and routed
+    nearest-stop metres when graph is given, else legacy (bit-identical).
+    """
     if not origin or pois is None:
         return None, "Ühistranspordi info puudub"
-    n = _count_within_m(origin, pois, {"bus_stop"}, 500)
+    n, n_method = count_within_walk_m(origin, pois, {"bus_stop"},
+                                      TRANSIT_COUNT_RADIUS_M, graph)
     if n >= 5:
-        return 100, "Bussipeatused 500 m raadiuses: %d" % n
+        return 100, _transit_count_reason(n, n_method)
     if n >= 3:
-        return 80, "Bussipeatused 500 m raadiuses: %d" % n
+        return 80, _transit_count_reason(n, n_method)
     if n >= 1:
-        return 60, "Lähim peatus 500 m raadiuses"
-    m = _nearest_m(origin, pois, {"bus_stop"})
-    if m is not None and m <= 1000:
-        return 35, "Lähim peatus %s" % _fmt_m(m)
+        return 60, _walked("Lähim peatus 500 m raadiuses", n_method)
+    m, method = nearest_walk_m(origin, pois, {"bus_stop"},
+                               TRANSIT_WINDOW_M, graph)
+    gate = walk_cutoff(TRANSIT_WINDOW_M) if method == "walk" else TRANSIT_WINDOW_M
+    if m is not None and m <= gate:
+        return 35, _walked("Lähim peatus %s" % _fmt_m(m), method)
     return 15, "Peatus üle 1 km kaugusel"
 
 
-def dim_green(origin: Optional[Tuple[float, float]], pois: Optional[List[dict]]) -> Tuple[Optional[int], str]:
-    """A4: green space / recreation (OSM parks, forests, beaches)."""
+def dim_green(origin: Optional[Tuple[float, float]], pois: Optional[List[dict]],
+              graph: Optional["FootGraph"] = None) -> Tuple[Optional[int], str]:
+    """A4: green space / recreation (OSM parks, forests, beaches).
+
+    814: routed foot-graph metres on the rescaled bands when graph is
+    given, else the legacy bird-flight path (bit-identical).
+    """
     if not origin or pois is None:
         return None, "Haljasalade info puudub"
-    m = _nearest_m(origin, pois, {"park", "forest", "beach"})
+    m, method = nearest_walk_m(origin, pois, {"park", "forest", "beach"},
+                               GREEN_WINDOW_M, graph)
     if m is None:
         return 20, "Park/mets/rand üle 1,5 km"
-    s = _band(m, [(400, 100), (800, 80), (1200, 60)])
-    return s, "Lähim park/mets/rand %s" % _fmt_m(m)
+    s = _band(m, bands_for(method, GREEN_BANDS))
+    return s, _walked("Lähim park/mets/rand %s" % _fmt_m(m), method)
 
 
-def dim_services(origin: Optional[Tuple[float, float]], pois: Optional[List[dict]]) -> Tuple[Optional[int], str]:
-    """A7: daily services (supermarket, pharmacy, clinic)."""
+def dim_services(origin: Optional[Tuple[float, float]], pois: Optional[List[dict]],
+                 graph: Optional["FootGraph"] = None) -> Tuple[Optional[int], str]:
+    """A7: daily services (supermarket, pharmacy, clinic).
+
+    814: routed foot-graph metres on the rescaled bands when graph is
+    given, else the legacy bird-flight path (bit-identical).
+    """
     if not origin or pois is None:
         return None, "Teenuste info puudub"
-    m = _nearest_m(origin, pois, {"supermarket", "convenience", "pharmacy", "clinic"})
+    m, method = nearest_walk_m(origin, pois, {"supermarket", "convenience", "pharmacy", "clinic"},
+                               SERVICES_WINDOW_M, graph)
     if m is None:
         return 20, "Pood/apteek/kliinik üle 1,5 km"
-    s = _band(m, [(400, 100), (800, 80), (1200, 60)])
-    return s, "Lähim pood/apteek/kliinik %s" % _fmt_m(m)
+    s = _band(m, bands_for(method, SERVICES_BANDS))
+    return s, _walked("Lähim pood/apteek/kliinik %s" % _fmt_m(m), method)
 
 
 def commute_target(address: str) -> Optional[Tuple[str, Tuple[float, float]]]:
@@ -621,14 +689,17 @@ def _load_pois(raw: str) -> Optional[List[dict]]:
 
 def enrich_row(address: str, county: str, cache_dir: Optional[str] = None,
                resolver: Optional[Callable[[str], Optional[dict]]] = None,
-               geo: Optional[dict] = None) -> Tuple[int, List[str], Dict[str, Optional[int]]]:
+               geo: Optional[dict] = None,
+               graph: Optional[FootGraph] = None) -> Tuple[int, List[str], Dict[str, Optional[int]]]:
     """(livability, reasons, dims) for one listing. resolver injects fakes.
 
     `dims` maps every WEIGHTS key to its score (None when missing) so the UI
     can re-weight per buyer taste (#74); combined livability stays the
     weight-renormalized default mean. Pass pre-resolved `geo` to avoid
     resolving twice (ingest stashes the coordinates on the row for the map);
-    otherwise resolves here.
+    otherwise resolves here. Pass a foot-graph `graph` (#814) to route the
+    pedestrian-access legs (schools/transit/green/services) on the walk
+    graph; None keeps the legacy bird-flight path.
     """
     if geo is None:
         geo = (resolver or (lambda a: resolve(a, cache_dir)))(address)
@@ -637,10 +708,10 @@ def enrich_row(address: str, county: str, cache_dir: Optional[str] = None,
     dims: Dict[str, Optional[int]] = {}
     scored: Scores = []
     for name, fn in (
-        ("schools", lambda: dim_schools(origin, pois)),
-        ("transit", lambda: dim_transit(origin, pois)),
-        ("green", lambda: dim_green(origin, pois)),
-        ("services", lambda: dim_services(origin, pois)),
+        ("schools", lambda: dim_schools(origin, pois, graph)),
+        ("transit", lambda: dim_transit(origin, pois, graph)),
+        ("green", lambda: dim_green(origin, pois, graph)),
+        ("services", lambda: dim_services(origin, pois, graph)),
         ("water", lambda: dim_water(origin, pois)),
         ("rail", lambda: dim_rail(origin, pois)),
         ("urban", lambda: dim_urban(origin, pois)),

@@ -47,8 +47,41 @@ parallel batch agents, so rebalancing must happen once, centrally
 (`score_group11` below is the entry point for that follow-up).
 """
 
-import math
 from typing import Dict, List, Optional, Tuple
+
+from walk_access import (
+    WALK_TAG,
+    FootGraph,
+    bands_for,
+    nearest_walk_m,
+)
+
+# ---------------------------------------------------------------------------
+# 814-HOOK (#814): pedestrian-access legs route the foot graph when a
+# graph is injected, else the legacy bird-flight path (bit-identical).
+# This module must not import livability (cycle via the hook); the walk
+# helpers come from walk_access (stdlib-only, no sibling imports).
+# Legacy band tables live in *_BANDS consts; bands_for picks the
+# rescaled walk table on the walk path. Windows bound routing work only.
+# ---------------------------------------------------------------------------
+
+#: Legacy haversine band tables (walk recalibration via bands_for).
+WORSHIP_BANDS = [(400, 100), (800, 80), (1200, 60)]
+LETTERBOX_BANDS = [(300, 100), (600, 85), (1000, 70), (1500, 50), (2500, 30)]
+ALLEY_BANDS = [(150, 80), (300, 70), (500, 60)]
+TRAIL_PRIVACY_BANDS = [(100, 35), (250, 60), (500, 80)]
+POSTAL_BANDS = [(500, 100), (1000, 80), (2000, 60)]
+#: Routing windows (legacy band maxima; bound routing work only).
+WORSHIP_WINDOW_M = 1200.0
+LETTERBOX_WINDOW_M = 2500.0
+ALLEY_WINDOW_M = 500.0
+TRAIL_PRIVACY_WINDOW_M = 500.0
+POSTAL_WINDOW_M = 2000.0
+
+
+def _walked(reason: str, method: str) -> str:
+    """Append the walk marker on the routed path, else the reason as-is."""
+    return reason + (WALK_TAG if method == "walk" else "")
 
 # Overpass QL statements for the Group 11 tags. Spliced inside the (...)
 # block of livability.OVERPASS_QUERY by the marked hook; {lat}/{lon}
@@ -74,17 +107,6 @@ GROUP11_POI_KIND = [
 ]
 
 
-def _haversine_m(origin: Tuple[float, float], lat: float, lon: float) -> float:
-    """Great-circle distance in metres (local copy: this module must not
-    import livability, which imports this module via the hook)."""
-    r = 6371000.0
-    la1, lo1, la2, lo2 = map(math.radians, (origin[0], origin[1], lat, lon))
-    h = math.sin((la2 - la1) / 2) ** 2 + math.cos(la1) * math.cos(la2) * math.sin(
-        (lo2 - lo1) / 2
-    ) ** 2
-    return 2 * r * math.asin(math.sqrt(h))
-
-
 def _band(value: Optional[float], bands: List[Tuple[float, int]]) -> Optional[int]:
     """First score whose threshold covers the value; None stays None."""
     if value is None:
@@ -95,84 +117,104 @@ def _band(value: Optional[float], bands: List[Tuple[float, int]]) -> Optional[in
     return bands[-1][1]
 
 
-def _nearest_m(origin: Tuple[float, float], pois: List[dict], kinds: set) -> Optional[float]:
-    best: Optional[float] = None
-    for p in pois:
-        if p.get("kind") in kinds and p.get("lat") is not None:
-            d = _haversine_m(origin, p["lat"], p["lon"])
-            if best is None or d < best:
-                best = d
-    return best
-
-
 def _fmt_m(m: float) -> str:
     return "%d m" % int(round(m)) if m < 1000 else "~%.1f km" % (m / 1000.0)
 
 
 def dim_worship(origin: Optional[Tuple[float, float]],
-                pois: Optional[List[dict]]) -> Tuple[Optional[int], str]:
-    """p169: philosophical/religious site proximity (OSM place_of_worship)."""
+                pois: Optional[List[dict]],
+                graph: Optional[FootGraph] = None) -> Tuple[Optional[int], str]:
+    """p169: philosophical/religious site proximity (OSM place_of_worship).
+
+    814: routed foot-graph metres when graph is given, else legacy
+    (bit-identical).
+    """
     if not origin or pois is None:
         return None, "Pühakodade info puudub"
-    m = _nearest_m(origin, pois, {"worship"})
+    m, method = nearest_walk_m(origin, pois, {"worship"},
+                               WORSHIP_WINDOW_M, graph)
     if m is None:
         return 20, "Läheduses kaardistatud pühakoda puudub"
-    s = _band(m, [(400, 100), (800, 80), (1200, 60)])
-    return s, "Lähim pühakoda %s" % _fmt_m(m)
+    s = _band(m, bands_for(method, WORSHIP_BANDS))
+    return s, _walked("Lähim pühakoda %s" % _fmt_m(m), method)
 
 
 def dim_letterbox(origin: Optional[Tuple[float, float]],
-                  pois: Optional[List[dict]]) -> Tuple[Optional[int], str]:
-    """p346: mailbox placement/security (OSM amenity=letter_box)."""
+                  pois: Optional[List[dict]],
+                  graph: Optional[FootGraph] = None) -> Tuple[Optional[int], str]:
+    """p346: mailbox placement/security (OSM amenity=letter_box).
+
+    814: routed foot-graph metres when graph is given, else legacy
+    (bit-identical).
+    """
     if not origin or pois is None:
         return None, "Postkasti info puudub"
-    m = _nearest_m(origin, pois, {"letter_box"})
+    m, method = nearest_walk_m(origin, pois, {"letter_box"},
+                               LETTERBOX_WINDOW_M, graph)
     if m is None:
         return 30, "Läheduses kaardistatud postkasti pole"
-    s = _band(m, [(300, 100), (600, 85), (1000, 70), (1500, 50), (2500, 30)])
-    return s, "Lähim postkast %s" % _fmt_m(m)
+    s = _band(m, bands_for(method, LETTERBOX_BANDS))
+    return s, _walked("Lähim postkast %s" % _fmt_m(m), method)
 
 
 def dim_alley(origin: Optional[Tuple[float, float]],
-              pois: Optional[List[dict]]) -> Tuple[Optional[int], str]:
-    """p419: alleyway (rear-lane) access (OSM service=alley ways)."""
+              pois: Optional[List[dict]],
+              graph: Optional[FootGraph] = None) -> Tuple[Optional[int], str]:
+    """p419: alleyway (rear-lane) access (OSM service=alley ways).
+
+    814: routed foot-graph metres when graph is given, else legacy
+    (bit-identical).
+    """
     if not origin or pois is None:
         return None, "Taga-tänavate info puudub"
-    m = _nearest_m(origin, pois, {"alley"})
+    m, method = nearest_walk_m(origin, pois, {"alley"},
+                               ALLEY_WINDOW_M, graph)
     if m is None:
         return 50, "Kaardistatud taga-tänav läheduses puudub (neutraalne)"
-    s = _band(m, [(150, 80), (300, 70), (500, 60)])
-    return s, "Taga-tänava ligipääs %s" % _fmt_m(m)
+    s = _band(m, bands_for(method, ALLEY_BANDS))
+    return s, _walked("Taga-tänava ligipääs %s" % _fmt_m(m), method)
 
 
 def dim_trail_privacy(origin: Optional[Tuple[float, float]],
-                      pois: Optional[List[dict]]) -> Tuple[Optional[int], str]:
+                      pois: Optional[List[dict]],
+                      graph: Optional[FootGraph] = None) -> Tuple[Optional[int], str]:
     """p466: public-trail privacy loss, INVERTED (OSM highway=path).
 
     Closer mapped trail -> more foot traffic past the home -> lower
     score. Urban footway/cycleway sidewalks are NOT in the "trail" kind.
+
+    814: routed foot-graph metres when graph is given, else legacy
+    (bit-identical). Inversion is orthogonal to the measurement: the
+    rescaled bands keep the same inverted shape.
     """
     if not origin or pois is None:
         return None, "Matkaradade info puudub"
-    m = _nearest_m(origin, pois, {"trail"})
+    m, method = nearest_walk_m(origin, pois, {"trail"},
+                               TRAIL_PRIVACY_WINDOW_M, graph)
     if m is None:
         return 90, "Kaardistatud matkarada läheduses pole"
-    s = _band(m, [(100, 35), (250, 60), (500, 80)])
-    return s, "Lähim matkarada %s (privaatsus)" % _fmt_m(m)
+    s = _band(m, bands_for(method, TRAIL_PRIVACY_BANDS))
+    return s, _walked("Lähim matkarada %s (privaatsus)" % _fmt_m(m), method)
 
 
 def dim_postal(origin: Optional[Tuple[float, float]],
-               pois: Optional[List[dict]]) -> Tuple[Optional[int], str]:
-    """p470: mail delivery location (OSM post_office + parcel_locker)."""
+               pois: Optional[List[dict]],
+               graph: Optional[FootGraph] = None) -> Tuple[Optional[int], str]:
+    """p470: mail delivery location (OSM post_office + parcel_locker).
+
+    814: routed foot-graph metres when graph is given, else legacy
+    (bit-identical).
+    """
     if not origin or pois is None:
         return None, "Postiteenuste info puudub"
     # Both kinds: the parser merges locker->post_office, but the scorer
     # must not depend on that (other POI sources may keep them split).
-    m = _nearest_m(origin, pois, {"post_office", "parcel_locker"})
+    m, method = nearest_walk_m(origin, pois, {"post_office", "parcel_locker"},
+                               POSTAL_WINDOW_M, graph)
     if m is None:
         return 25, "Postkontor/pakiautomaat üle 2 km või kaardistamata"
-    s = _band(m, [(500, 100), (1000, 80), (2000, 60)])
-    return s, "Lähim postkontor/pakiautomaat %s" % _fmt_m(m)
+    s = _band(m, bands_for(method, POSTAL_BANDS))
+    return s, _walked("Lähim postkontor/pakiautomaat %s" % _fmt_m(m), method)
 
 
 # Registry for the central weight-rebalance follow-up: (dims key, param id).
@@ -186,7 +228,11 @@ GROUP11_DIMS = (
 
 
 def score_group11(origin: Optional[Tuple[float, float]],
-                  pois: Optional[List[dict]]) -> Dict[str, Optional[int]]:
+                  pois: Optional[List[dict]],
+                  graph: Optional[FootGraph] = None) -> Dict[str, Optional[int]]:
     """All five Group 11 dims for one listing (entry point for the
-    weight-rebalance follow-up; keys match GROUP11_DIMS)."""
-    return {key: fn(origin, pois)[0] for key, _, fn in GROUP11_DIMS}
+    weight-rebalance follow-up; keys match GROUP11_DIMS).
+
+    814: graph routes the pedestrian-access legs; None keeps legacy.
+    """
+    return {key: fn(origin, pois, graph)[0] for key, _, fn in GROUP11_DIMS}

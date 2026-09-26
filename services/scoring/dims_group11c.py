@@ -37,6 +37,7 @@ from dims_group11 import (
     dim_school_bus,
 )
 from dims_group11b import dim_worship
+from walk_access import FootGraph
 
 Score = Tuple[Optional[int], str]  # (score 0..100 | None, Estonian reason)
 
@@ -62,6 +63,11 @@ G11C_VERDICTS: Dict[int, str] = {
 def score_group11c(
     origin: Optional[Tuple[float, float]],
     pois: Optional[List[dict]],
+    graph: Optional[FootGraph] = None,
 ) -> Dict[str, Optional[int]]:
-    """All five leftover-A layer dims at once, keyed by map layer id."""
-    return {layer: fn(origin, pois)[0] for layer, (_, _, fn) in G11C_LAYER_DIMS.items()}
+    """All five leftover-A layer dims at once, keyed by map layer id.
+
+    814: graph routes the canonical pedestrian-access legs; None keeps
+    legacy.
+    """
+    return {layer: fn(origin, pois, graph)[0] for layer, (_, _, fn) in G11C_LAYER_DIMS.items()}

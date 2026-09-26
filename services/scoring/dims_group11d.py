@@ -32,6 +32,7 @@ from dims_group11b import (
     dim_postal,
     dim_trail_privacy,
 )
+from walk_access import FootGraph
 
 Score = Tuple[Optional[int], str]  # (score 0..100 | None, Estonian reason)
 
@@ -59,8 +60,19 @@ GROUP11D_DIMS: Tuple[Tuple[str, str, str, Callable[..., Score]], ...] = (
 
 
 def score_group11d(
-    origin: Optional[Tuple[float, float]], pois: Optional[List[dict]]
+    origin: Optional[Tuple[float, float]], pois: Optional[List[dict]],
+    graph: Optional[FootGraph] = None,
 ) -> Dict[str, Optional[int]]:
     """All five batch-D dims for one listing (entry point for the central
-    weight-rebalance follow-up; keys match GROUP11D_DIMS)."""
-    return {key: fn(origin, pois)[0] for key, _, _, fn in GROUP11D_DIMS}
+    weight-rebalance follow-up; keys match GROUP11D_DIMS).
+
+    814: graph routes the pedestrian-access legs; None keeps legacy.
+    The park-upkeep adapter takes no graph (honest stub, no signal).
+    """
+    out: Dict[str, Optional[int]] = {}
+    for key, _, _, fn in GROUP11D_DIMS:
+        if key == "park_upkeep":
+            out[key] = fn(origin, pois)[0]
+        else:
+            out[key] = fn(origin, pois, graph)[0]
+    return out

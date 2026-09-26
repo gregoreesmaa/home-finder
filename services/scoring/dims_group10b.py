@@ -74,7 +74,32 @@ per-batch WEIGHTS edits would break every sibling.
 import math
 from typing import Dict, List, Optional, Tuple
 
+from walk_access import (
+    WALK_TAG,
+    FootGraph,
+    bands_for,
+    nearest_walk_m,
+    walk_cutoff,
+)
+
 Score = Tuple[Optional[int], str]  # (score 0..100 | None, Estonian reason)
+
+# ---------------------------------------------------------------------------
+# 814-HOOK (#814): the emergency leg is walk-aware when a graph is
+# injected, else the legacy bird-flight path (bit-identical). Utility
+# count legs (grid/solar/shadow/underground) are not pedestrian access
+# and stay untouched.
+# ---------------------------------------------------------------------------
+
+#: Legacy haversine band table (walk recalibration via bands_for).
+EMERGENCY_BANDS = [(800, 100), (1500, 85), (3000, 65)]
+#: Routing window (legacy band maximum; bounds routing work only).
+EMERGENCY_WINDOW_M = 3000.0
+
+
+def _walked(reason: str, method: str) -> str:
+    """Append the walk marker on the routed path, else the reason as-is."""
+    return reason + (WALK_TAG if method == "walk" else "")
 
 # ---------------------------------------------------------------------------
 # Local pure helpers (livability-shaped; see module docstring for why local).
@@ -266,17 +291,28 @@ EMERGENCY_RADIUS_M = 5000.0
 
 
 def dim_emergency(origin: Optional[Tuple[float, float]],
-                  pois: Optional[List[dict]]) -> Score:
-    """p420: nearest mapped response site (fire/police/hospital/ambulance)."""
+                  pois: Optional[List[dict]],
+                  graph: Optional[FootGraph] = None) -> Score:
+    """p420: nearest mapped response site (fire/police/hospital/ambulance).
+
+    814: routed foot-graph metres on the rescaled bands when graph is
+    given, else the legacy bird-flight path (bit-identical).
+    """
     if not origin or pois is None:
         return None, "Päästeteenistuse info puudub"
-    m = _nearest_m(origin, pois, {"emergency"})
-    if m is None or m > EMERGENCY_RADIUS_M:
-        return 30, ("Kaardistatud päästeteenistus (tuletõrje/politsei/haigla) "
-                    "üle 5 km (reageerimisaja hinnang, mitte mõõdetud)")
-    s = _band(m, [(800, 100), (1500, 85), (3000, 65)])
-    return s, ("Lähim kaardistatud päästeteenistus %s "
-               "(reageerimisaja hinnang, mitte mõõdetud)") % _fmt_m(m)
+    m, method = nearest_walk_m(origin, pois, {"emergency"},
+                               EMERGENCY_WINDOW_M, graph)
+    gate = walk_cutoff(EMERGENCY_RADIUS_M) if method == "walk" else EMERGENCY_RADIUS_M
+    if m is None or m > gate:
+        return 30, _walked(
+            ("Kaardistatud päästeteenistus (tuletõrje/politsei/haigla) "
+             "üle 5 km (reageerimisaja hinnang, mitte mõõdetud)"),
+            method)
+    s = _band(m, bands_for(method, EMERGENCY_BANDS))
+    return s, _walked(
+        ("Lähim kaardistatud päästeteenistus %s "
+         "(reageerimisaja hinnang, mitte mõõdetud)") % _fmt_m(m),
+        method)
 
 
 # ---------------------------------------------------------------------------
@@ -312,7 +348,17 @@ GROUP10B_DIMS = (
 
 
 def score_group10b(origin: Optional[Tuple[float, float]],
-                   pois: Optional[List[dict]]) -> Dict[str, Optional[int]]:
+                   pois: Optional[List[dict]],
+                   graph: Optional[FootGraph] = None) -> Dict[str, Optional[int]]:
     """All five Group 10 batch-B dims for one listing (entry point for the
-    weight-rebalance follow-up; keys match GROUP10B_DIMS)."""
-    return {key: fn(origin, pois)[0] for key, _, fn in GROUP10B_DIMS}
+    weight-rebalance follow-up; keys match GROUP10B_DIMS).
+
+    814: graph routes the emergency leg; other legs take no graph.
+    """
+    out: Dict[str, Optional[int]] = {}
+    for key, _, fn in GROUP10B_DIMS:
+        if key == "emergency":
+            out[key] = fn(origin, pois, graph)[0]
+        else:
+            out[key] = fn(origin, pois)[0]
+    return out

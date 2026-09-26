@@ -38,7 +38,39 @@ The live-path cache key (liv_pois3) needs a version bump at that point.
 
 from typing import Callable, Dict, List, Optional, Tuple
 
-from livability import _band, _count_within_m, _fmt_m, _nearest_m
+from livability import _band, _fmt_m
+from walk_access import (
+    WALK_TAG,
+    FootGraph,
+    bands_for,
+    count_within_walk_m,
+    nearest_walk_m,
+)
+
+# ---------------------------------------------------------------------------
+# 814-HOOK (#814): pedestrian-access legs route the foot graph when a
+# graph is injected, else the legacy bird-flight path (bit-identical).
+# Legacy band tables live in *_BANDS consts; bands_for picks the
+# rescaled walk table on the walk path.
+# ---------------------------------------------------------------------------
+
+#: Legacy haversine band tables (walk recalibration via bands_for).
+SCHOOL_BUS_BANDS = [(600, 100), (1000, 85), (1500, 70)]
+REC_SPECIAL_BANDS = [(800, 100), (1500, 80), (2000, 60)]
+MEDICAL_SPECIAL_BANDS = [(2000, 100), (3500, 80), (5000, 60)]
+FORAGE_BANDS = [(600, 100), (1000, 80), (1500, 60)]
+#: Routing windows (legacy band maxima; bound routing work only).
+SCHOOL_BUS_WINDOW_M = 1500.0
+BUS_STOP_WINDOW_M = 1500.0
+BUS_STOP_COUNT_RADIUS_M = 500.0
+REC_SPECIAL_WINDOW_M = 2000.0
+MEDICAL_SPECIAL_WINDOW_M = 5000.0
+FORAGE_WINDOW_M = 1500.0
+
+
+def _walked(reason: str, method: str) -> str:
+    """Append the walk marker on the routed path, else the reason as-is."""
+    return reason + (WALK_TAG if method == "walk" else "")
 
 Score = Tuple[Optional[int], str]  # (score 0..100 | None, Estonian reason)
 
@@ -86,22 +118,37 @@ def kinds_from_tags(tags: dict) -> Optional[str]:
 # ---------------------------------------------------------------------------
 
 def dim_school_bus(origin: Optional[Tuple[float, float]],
-                   pois: Optional[List[dict]]) -> Score:
-    """p88: school within reach AND a bus stop to serve it (estimate)."""
+                   pois: Optional[List[dict]],
+                   graph: Optional[FootGraph] = None) -> Score:
+    """p88: school within reach AND a bus stop to serve it (estimate).
+
+    814: routed foot-graph metres when graph is given, else legacy
+    (bit-identical).
+    """
     if not origin or pois is None:
         return None, "Koolibussi info puudub"
-    m_school = _nearest_m(origin, pois, {"school"})
+    m_school, method = nearest_walk_m(origin, pois, {"school"},
+                                      SCHOOL_BUS_WINDOW_M, graph)
     if m_school is None:
         return 15, "Kool üle 1,5 km – koolibussiühendus ebaselge (hinnang)"
-    base = _band(m_school, [(600, 100), (1000, 85), (1500, 70)])
+    base = _band(m_school, bands_for(method, SCHOOL_BUS_BANDS))
     assert base is not None
-    if _count_within_m(origin, pois, {"bus_stop"}, 500) >= 1:
-        return base, "Koolibussi hinnang: kool %s, bussipeatus 500 m raadiuses" % _fmt_m(m_school)
-    m_stop = _nearest_m(origin, pois, {"bus_stop"})
+    n_stop, _ = count_within_walk_m(origin, pois, {"bus_stop"},
+                                    BUS_STOP_COUNT_RADIUS_M, graph)
+    if n_stop >= 1:
+        return base, _walked(
+            "Koolibussi hinnang: kool %s, bussipeatus 500 m raadiuses" % _fmt_m(m_school),
+            method)
+    m_stop, _ = nearest_walk_m(origin, pois, {"bus_stop"},
+                                 BUS_STOP_WINDOW_M, graph)
     capped = min(base, 45)
     if m_stop is None:
-        return capped, "Koolibussi hinnang: kool %s, bussipeatus üle 1,5 km" % _fmt_m(m_school)
-    return capped, "Koolibussi hinnang: kool %s, lähim peatus %s" % (_fmt_m(m_school), _fmt_m(m_stop))
+        return capped, _walked(
+            "Koolibussi hinnang: kool %s, bussipeatus üle 1,5 km" % _fmt_m(m_school),
+            method)
+    return capped, _walked(
+        "Koolibussi hinnang: kool %s, lähim peatus %s" % (_fmt_m(m_school), _fmt_m(m_stop)),
+        method)
 
 
 # ---------------------------------------------------------------------------
@@ -111,15 +158,21 @@ def dim_school_bus(origin: Optional[Tuple[float, float]],
 # ---------------------------------------------------------------------------
 
 def dim_rec_special(origin: Optional[Tuple[float, float]],
-                    pois: Optional[List[dict]]) -> Score:
-    """p101: nearest specialised sports facility (OSM leisure=* tier)."""
+                    pois: Optional[List[dict]],
+                    graph: Optional[FootGraph] = None) -> Score:
+    """p101: nearest specialised sports facility (OSM leisure=* tier).
+
+    814: routed foot-graph metres when graph is given, else legacy
+    (bit-identical).
+    """
     if not origin or pois is None:
         return None, "Erisportimise info puudub"
-    m = _nearest_m(origin, pois, {"rec_special"})
+    m, method = nearest_walk_m(origin, pois, {"rec_special"},
+                               REC_SPECIAL_WINDOW_M, graph)
     if m is None:
         return 25, "Spordikeskus/ujula/staadion üle 2 km"
-    s = _band(m, [(800, 100), (1500, 80), (2000, 60)])
-    return s, "Lähim erisport (staadion/ujula/spordikeskus) %s" % _fmt_m(m)
+    s = _band(m, bands_for(method, REC_SPECIAL_BANDS))
+    return s, _walked("Lähim erisport (staadion/ujula/spordikeskus) %s" % _fmt_m(m), method)
 
 
 # ---------------------------------------------------------------------------
@@ -128,15 +181,21 @@ def dim_rec_special(origin: Optional[Tuple[float, float]],
 # ---------------------------------------------------------------------------
 
 def dim_medical_special(origin: Optional[Tuple[float, float]],
-                        pois: Optional[List[dict]]) -> Score:
-    """p124: nearest hospital or dentist (sparse tier, 5 km window)."""
+                        pois: Optional[List[dict]],
+                        graph: Optional[FootGraph] = None) -> Score:
+    """p124: nearest hospital or dentist (sparse tier, 5 km window).
+
+    814: routed foot-graph metres when graph is given, else legacy
+    (bit-identical).
+    """
     if not origin or pois is None:
         return None, "Eriarstiabi info puudub"
-    m = _nearest_m(origin, pois, {"hospital", "dentist"})
+    m, method = nearest_walk_m(origin, pois, {"hospital", "dentist"},
+                               MEDICAL_SPECIAL_WINDOW_M, graph)
     if m is None:
         return 25, "Haigla/hambaarst üle 5 km"
-    s = _band(m, [(2000, 100), (3500, 80), (5000, 60)])
-    return s, "Lähim haigla/hambaarst %s" % _fmt_m(m)
+    s = _band(m, bands_for(method, MEDICAL_SPECIAL_BANDS))
+    return s, _walked("Lähim haigla/hambaarst %s" % _fmt_m(m), method)
 
 
 # ---------------------------------------------------------------------------
@@ -145,15 +204,21 @@ def dim_medical_special(origin: Optional[Tuple[float, float]],
 # ---------------------------------------------------------------------------
 
 def dim_forage(origin: Optional[Tuple[float, float]],
-               pois: Optional[List[dict]]) -> Score:
-    """p190: nearest forest/scrub foraging land (mets/võsa)."""
+               pois: Optional[List[dict]],
+               graph: Optional[FootGraph] = None) -> Score:
+    """p190: nearest forest/scrub foraging land (mets/võsa).
+
+    814: routed foot-graph metres when graph is given, else legacy
+    (bit-identical).
+    """
     if not origin or pois is None:
         return None, "Korjealade info puudub"
-    m = _nearest_m(origin, pois, {"forest", "scrub"})
+    m, method = nearest_walk_m(origin, pois, {"forest", "scrub"},
+                               FORAGE_WINDOW_M, graph)
     if m is None:
         return 20, "Korjeala (mets/võsa) üle 1,5 km"
-    s = _band(m, [(600, 100), (1000, 80), (1500, 60)])
-    return s, "Lähim korjeala (mets/võsa) %s" % _fmt_m(m)
+    s = _band(m, bands_for(method, FORAGE_BANDS))
+    return s, _walked("Lähim korjeala (mets/võsa) %s" % _fmt_m(m), method)
 
 
 # ---------------------------------------------------------------------------
@@ -178,12 +243,17 @@ GROUP11_DIMS: Dict[str, Tuple[str, Callable[..., Score]]] = {
 
 
 def score_group11(origin: Optional[Tuple[float, float]],
-                  pois: Optional[List[dict]]) -> Tuple[Dict[str, Optional[int]], List[str]]:
-    """All Group 11 dims at once: ({param: score}, [reasons])."""
+                  pois: Optional[List[dict]],
+                  graph: Optional[FootGraph] = None,
+                  ) -> Tuple[Dict[str, Optional[int]], List[str]]:
+    """All Group 11 dims at once: ({param: score}, [reasons]).
+
+    814: graph routes the pedestrian-access legs; None keeps legacy.
+    """
     dims: Dict[str, Optional[int]] = {}
     reasons: List[str] = []
     for param, (_, fn) in GROUP11_DIMS.items():
-        v, reason = fn(origin, pois) if param != "park_upkeep" else fn()
+        v, reason = fn(origin, pois, graph) if param != "park_upkeep" else fn()
         dims[param] = v
         if v is not None:
             reasons.append(reason)

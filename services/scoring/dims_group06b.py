@@ -83,7 +83,40 @@ edits would break every sibling.
 import math
 from typing import Dict, List, Optional, Tuple
 
+from walk_access import (
+    WALK_TAG,
+    FootGraph,
+    bands_for,
+    count_within_walk_m,
+    nearest_walk_m,
+    walk_cutoff,
+)
+
 Score = Tuple[Optional[int], str]  # (score 0..100 | None, Estonian reason)
+
+# ---------------------------------------------------------------------------
+# 814-HOOK (#814): plaster/antiques/woodfire/society legs are
+# walk-aware when a graph is injected, else the legacy bird-flight path
+# (bit-identical). Metre bands rescale via bands_for; count bands score
+# COUNTS (walk window = radius * WALK_DETOUR is the recalibration).
+# ---------------------------------------------------------------------------
+
+#: Legacy haversine band tables (walk recalibration via bands_for).
+WOODFIRE_BANDS = [(50, 20), (150, 40), (300, 60), (600, 80), (float("inf"), 95)]
+#: Routing windows (legacy scored-range maxima; bound routing work only).
+ANTIQUES_WINDOW_M = 2000.0
+WOODFIRE_WINDOW_M = 600.0
+
+
+def _walked(reason: str, method: str) -> str:
+    """Append the walk marker on the routed path, else the reason as-is."""
+    return reason + (WALK_TAG if method == "walk" else "")
+
+
+def _count_reason_walk(prefix: str, radius_m: float, n: int) -> str:
+    """Walk-path count reason: names the walk-equivalent radius."""
+    return "%s ~%d m jalgsikäigu raadiuses: %d" % (
+        prefix, int(round(walk_cutoff(radius_m))), n)
 
 # ---------------------------------------------------------------------------
 # Local pure helpers (livability-shaped; see module docstring for why local).
@@ -192,16 +225,28 @@ PLASTER_RADIUS_M = 500.0
 
 
 def dim_plaster_craft(origin: Optional[Tuple[float, float]],
-                      pois: Optional[List[dict]]) -> Score:
-    """p352: mapped plaster buildings within 500 m (käsitöö-hinnang)."""
+                      pois: Optional[List[dict]],
+                      graph: Optional[FootGraph] = None) -> Score:
+    """p352: mapped plaster buildings within 500 m (käsitöö-hinnang).
+
+    814: walk-equivalent count radius when graph is given, else legacy
+    (bit-identical).
+    """
     if not origin or pois is None:
         return None, "Krohvitöö info puudub"
-    n = _count_within_m(origin, pois, {"plasterbld"}, PLASTER_RADIUS_M)
+    n, method = count_within_walk_m(origin, pois, {"plasterbld"},
+                                    PLASTER_RADIUS_M, graph)
     if n == 0:
-        return 30, ("Kaardistatud krohvfassaadiga hooneid 500 m raadiuses pole "
-                    "(käsitöö-hinnang, mitte registriotsus; materjali "
-                    "kaardistus on hõre — käsitööline võib siiski leiduda)")
+        return 30, _walked(
+            ("Kaardistatud krohvfassaadiga hooneid 500 m raadiuses pole "
+             "(käsitöö-hinnang, mitte registriotsus; materjali "
+             "kaardistus on hõre — käsitööline võib siiski leiduda)"),
+            method)
     s = _band(n, [(1, 50), (3, 70), (6, 85), (float("inf"), 100)])
+    if method == "walk":
+        return s, (_count_reason_walk("Kaardistatud krohvfassaadiga hooneid",
+                                      PLASTER_RADIUS_M, n) +
+                   " (käsitöö-hinnang, mitte seisukorraotsus)" + WALK_TAG)
     return s, ("Kaardistatud krohvfassaadiga hooneid 500 m raadiuses: %d "
                "(käsitöö-hinnang, mitte seisukorraotsus)") % n
 
@@ -215,20 +260,30 @@ ANTIQUES_RADIUS_M = 2000.0
 
 
 def dim_antiques(origin: Optional[Tuple[float, float]],
-                 pois: Optional[List[dict]]) -> Score:
+                 pois: Optional[List[dict]],
+                 graph: Optional[FootGraph] = None) -> Score:
     """p353: 1/0 — mapped antiques dealer within 2 km (saadavus-hinnang).
 
     Boolean per parameters3.md ("Default FALSE; mark unverified"): the
     score says a dealer is near, never that hardware is in stock.
+
+    814: routed foot-graph metres against the walk-equivalent gate when
+    graph is given, else legacy (bit-identical).
     """
     if not origin or pois is None:
         return None, "Antiigipoodide info puudub"
-    d = _nearest_within_m(origin, pois, {"antiqueshop"})
-    if d is None or d > ANTIQUES_RADIUS_M:
-        return 0, ("Kaardistatud antiigipoodi 2 km raadiuses pole "
-                   "(saadavus-hinnang täpsustamata)")
-    return 1, ("Kaardistatud antiigipood %s kaugusel (saadavus "
-               "täpsustamata — kauplus ≠ furnituuriladu)" % _fmt_m(d))
+    d, method = nearest_walk_m(origin, pois, {"antiqueshop"},
+                               ANTIQUES_WINDOW_M, graph)
+    gate = walk_cutoff(ANTIQUES_RADIUS_M) if method == "walk" else ANTIQUES_RADIUS_M
+    if d is None or d > gate:
+        return 0, _walked(
+            ("Kaardistatud antiigipoodi 2 km raadiuses pole "
+             "(saadavus-hinnang täpsustamata)"),
+            method)
+    return 1, _walked(
+        ("Kaardistatud antiigipood %s kaugusel (saadavus "
+         "täpsustamata — kauplus ≠ furnituuriladu)" % _fmt_m(d)),
+        method)
 
 
 # ---------------------------------------------------------------------------
@@ -252,7 +307,8 @@ SOCIETY_RADIUS_M = 800.0
 
 
 def dim_society(origin: Optional[Tuple[float, float]],
-                pois: Optional[List[dict]]) -> Score:
+                pois: Optional[List[dict]],
+                graph: Optional[FootGraph] = None) -> Score:
     """p355: society-friction heuristic — HIGHER score = LESS friction.
 
     Deliberate parallel of #138's p320 commission heuristic from the
@@ -261,15 +317,26 @@ def dim_society(origin: Optional[Tuple[float, float]],
     Bands are soft (25..90): proximity predicts coordination
     likelihood, never a named society decision. No second map gradient
     (see GROUP06B_NO_MAP) — the dim reuses the G06 kind on purpose.
+
+    814: walk-equivalent count radius when graph is given, else legacy
+    (bit-identical).
     """
     if not origin or pois is None:
         return None, "Seltsiliikumise info puudub"
-    n = _count_within_m(origin, pois, {"heritage"}, SOCIETY_RADIUS_M)
+    n, method = count_within_walk_m(origin, pois, {"heritage"},
+                                    SOCIETY_RADIUS_M, graph)
     if n == 0:
-        return 90, ("Läheduses kaardistatud muinsusobjekte pole — "
-                    "seltsi kooskõlastuse tõenäosus väike (hinnang, "
-                    "mitte seltsiotsus)")
+        return 90, _walked(
+            ("Läheduses kaardistatud muinsusobjekte pole — "
+             "seltsi kooskõlastuse tõenäosus väike (hinnang, "
+             "mitte seltsiotsus)"),
+            method)
     s = _band(n, [(1, 70), (3, 55), (6, 40), (float("inf"), 25)])
+    if method == "walk":
+        return s, (_count_reason_walk("Kaardistatud muinsusobjekte",
+                                      SOCIETY_RADIUS_M, n) +
+                   " — miljööalal tõenäoline kooskõlastusvajadus "
+                   "(hinnang, mitte seltsiotsus)" + WALK_TAG)
     return s, ("Kaardistatud muinsusobjekte 800 m raadiuses: %d — "
                "miljööalal tõenäoline kooskõlastusvajadus "
                "(hinnang, mitte seltsiotsus)") % n
@@ -280,24 +347,32 @@ def dim_society(origin: Optional[Tuple[float, float]],
 # ---------------------------------------------------------------------------
 
 def dim_woodfire(origin: Optional[Tuple[float, float]],
-                 pois: Optional[List[dict]]) -> Score:
+                 pois: Optional[List[dict]],
+                 graph: Optional[FootGraph] = None) -> Score:
     """p356: nearest mapped wooden house (tuleleviku-hinnang).
 
     Inverse like the map layer: the adjacent wooden neighbour drives
     the score DOWN. Bands stay soft (20..95, never 0/100): material
     mapping is thin, so far-from-mapped-wood is low-attention with a
     caveat, never a construction verdict.
+
+    814: routed foot-graph metres on the rescaled bands when graph is
+    given, else legacy (bit-identical). Inversion is orthogonal to the
+    measurement: the rescaled bands keep the same inverted shape.
     """
     if not origin or pois is None:
         return None, "Puithoonete tuleohutuse info puudub"
-    d = _nearest_within_m(origin, pois, {"woodbld"})
+    d, method = nearest_walk_m(origin, pois, {"woodbld"},
+                               WOODFIRE_WINDOW_M, graph)
     if d is None:
         return 95, ("Kaardistatud puithooneid läheduses pole "
                     "(tuleleviku-hinnang; materjali kaardistus on hõre — "
                     "kaardistamata puithooned ei loe)")
-    s = _band(d, [(50, 20), (150, 40), (300, 60), (600, 80), (float("inf"), 95)])
-    return s, ("Lähim kaardistatud puithoone %s kaugusel "
-               "(tuleleviku-hinnang, mitte konstruktsiooniuuring)" % _fmt_m(d))
+    s = _band(d, bands_for(method, WOODFIRE_BANDS))
+    return s, _walked(
+        ("Lähim kaardistatud puithoone %s kaugusel "
+         "(tuleleviku-hinnang, mitte konstruktsiooniuuring)" % _fmt_m(d)),
+        method)
 
 
 # ---------------------------------------------------------------------------
@@ -337,7 +412,17 @@ GROUP06B_DIMS = (
 
 
 def score_group06b(origin: Optional[Tuple[float, float]],
-                   pois: Optional[List[dict]]) -> Dict[str, Optional[int]]:
+                   pois: Optional[List[dict]],
+                   graph: Optional[FootGraph] = None) -> Dict[str, Optional[int]]:
     """All seven Group 6 batch-G06B dims for one listing (entry point for
-    the weight-rebalance follow-up; keys match GROUP06B_DIMS)."""
-    return {key: fn(origin, pois)[0] for key, _, fn in GROUP06B_DIMS}
+    the weight-rebalance follow-up; keys match GROUP06B_DIMS).
+
+    814: graph routes the walk-aware legs; stubs take no graph.
+    """
+    out: Dict[str, Optional[int]] = {}
+    for key, _, fn in GROUP06B_DIMS:
+        if key in ("plaster_craft", "antiques", "society", "woodfire"):
+            out[key] = fn(origin, pois, graph)[0]
+        else:
+            out[key] = fn(origin, pois)[0]
+    return out
