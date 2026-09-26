@@ -34,12 +34,31 @@ export const COMBINE_MODE_LABEL: Record<CombineMode, string> = {
 };
 
 /**
- * Weighted disagreement (std) at which a cell reads fully contested
- * (pure orange) regardless of its mean. Below it the base ramp shows;
- * above it the cell is orange. Judgment call: 25 goodness points is
- * roughly the gap between "hea" and "keskmine" on one layer.
+ * Weighted disagreement (std) at which a cell would read fully
+ * contested (pure orange) regardless of its mean. Below it the base
+ * ramp shows through. Judgment call: 25 goodness points is roughly
+ * the gap between "hea" and "keskmine" on one layer.
+ *
+ * NOTE: the pull toward orange never actually reaches 1 — see
+ * CONTEST_MAX_PULL. Real-data calibration (#823, Tallinn 2026-09,
+ * 115 feeds: spread min 18.9 / p50 29.2, i.e. every land cell pulled
+ * >= 0.75) showed an uncapped pull flattens dense viewports to 100%
+ * orange and buries the #819 recalibrated ramp entirely.
  */
 export const CONTEST_SPREAD = 25;
+
+/**
+ * Cap on the contested-spread pull toward orange (#823): even a
+ * maximally disagreed cell keeps half of its ramp color, so the best
+ * visible cell still reads green and the worst still reads red while
+ * contested areas keep a clear orange tint. Real-data check on the
+ * Tallinn viewport above: cap 0.5 leaves ~3/4 of land cells reading
+ * orange, with the extremes clearly green/red; 0.6 left the best cell
+ * muddy (g-r of 4) and 1.0 left zero red/green cells. The spread
+ * itself is still measured from raw layer values — only the paint is
+ * capped, never the disagreement.
+ */
+export const CONTEST_MAX_PULL = 0.5;
 
 /** Ramp ends: unanimous bad / contested / unanimous good. */
 export const AGREE_RED: readonly [number, number, number] = [220, 38, 38];
@@ -244,7 +263,10 @@ export function recalibratedMean(meanValue: number, scale: ViewportScale | null 
 /**
  * Agreement color for one cell: red->orange->green ramp by mean, then
  * pulled toward orange by disagreement. Unanimous 90+ reads green,
- * unanimous 10- reads red, middling or split reads orange-ish.
+ * unanimous 10- reads red, middling reads orange-ish; a split cell
+ * keeps an orange TINT but never flattens to pure orange — the pull
+ * is capped at CONTEST_MAX_PULL (#823) so dense, high-spread
+ * viewports still span green->red instead of reading all-orange.
  *
  * With a viewport scale (#819) the ramp runs on the recalibrated mean
  * (best visible = green, worst visible = red) while the orange pull
@@ -261,7 +283,7 @@ export function agreementColorFor(
     v <= 50
       ? lerp3(AGREE_RED, AGREE_ORANGE, v / 50)
       : lerp3(AGREE_ORANGE, AGREE_GREEN, (v - 50) / 50);
-  const t = Math.min(1, Math.max(0, spreadValue / CONTEST_SPREAD));
+  const t = Math.min(CONTEST_MAX_PULL, Math.max(0, spreadValue / CONTEST_SPREAD));
   return lerp3(base, AGREE_ORANGE, t);
 }
 
