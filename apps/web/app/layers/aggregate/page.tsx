@@ -6,7 +6,9 @@
 // combine modes. Green = layers agree good, red = agree bad,
 // orange = contested (~50/50 or split). Cells no layer covers render
 // no-data (transparent), never mid-orange; layers without live data
-// are excluded and named, never faked in.
+// are excluded and named, never faked in. #819: the gradient
+// recalibrates to the visible extent (best visible = green) and layer
+// weights multiply with per-category multipliers.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -32,14 +34,25 @@ import {
   aggregateToRgba,
   combineStandardRasters,
   sampleAggregate,
+  viewportScaleFor,
   type AggregateField,
   type CombineMode,
 } from "../../../lib/aggregateRaster";
+import {
+  CATEGORIES,
+  CATEGORY_LABEL,
+  DEFAULT_CATEGORY_MULTIPLIERS,
+  DEFAULT_WEIGHTS,
+  LAYER_CATEGORY,
+  STORE_KEY,
+  WEIGHT_MAX,
+  WEIGHT_STEP,
+  effectiveWeight,
+  parseStoredAggregate,
+  type AggregateCategory,
+} from "../../../lib/aggregateWeights";
 
 const ESTONIA_CENTER: [number, number] = [25.0, 58.75];
-
-/** Local-storage key for weights + mode (cheap persistence, #810 §3). */
-const STORE_KEY = "hf-aggregate-v1";
 
 /** Layers whose fetch returned usable scored coverage. */
 interface LayerFeed {
@@ -53,25 +66,23 @@ function isUsableProvenance(p: LayerProvenance): boolean {
   return p === "live" || p === "cache" || p === "stale" || p === "snapshot" || p === "empty";
 }
 
-function loadStored(): { weights: Record<string, number>; mode: CombineMode } | null {
+function loadStored(): {
+  weights: Record<string, number>;
+  multipliers: Record<string, number>;
+  mode: CombineMode;
+} | null {
   try {
     const raw = window.localStorage.getItem(STORE_KEY);
     if (!raw) return null;
-    const body = JSON.parse(raw) as {
-      weights?: Record<string, number>;
-      mode?: CombineMode;
-    };
-    if (!body || typeof body !== "object") return null;
-    const mode: CombineMode = COMBINE_MODES.includes(body.mode as CombineMode)
-      ? (body.mode as CombineMode)
+    // Unreadable v2 blob (or anything unexpected) -> null, and the
+    // caller falls back to shipped defaults. The legacy hf-aggregate-v1
+    // key is deliberately never read: it has no category multipliers.
+    const parsed = parseStoredAggregate(JSON.parse(raw));
+    if (!parsed) return null;
+    const mode: CombineMode = COMBINE_MODES.includes(parsed.mode as CombineMode)
+      ? (parsed.mode as CombineMode)
       : "average";
-    const weights: Record<string, number> = {};
-    for (const [k, v] of Object.entries(body.weights ?? {})) {
-      if (typeof v === "number" && Number.isFinite(v)) {
-        weights[k] = Math.min(2, Math.max(0, v));
-      }
-    }
-    return { weights, mode };
+    return { weights: parsed.weights, multipliers: parsed.multipliers, mode };
   } catch {
     return null;
   }
@@ -84,7 +95,10 @@ export default function AggregatePage() {
   const [loadedCount, setLoadedCount] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
   const [building, setBuilding] = useState(false);
-  const [weights, setWeights] = useState<Record<string, number>>({});
+  const [weights, setWeights] = useState<Record<string, number>>({ ...DEFAULT_WEIGHTS });
+  const [multipliers, setMultipliers] = useState<Record<string, number>>({
+    ...DEFAULT_CATEGORY_MULTIPLIERS,
+  });
   const [mode, setMode] = useState<CombineMode>("average");
 
   const mapDiv = useRef<HTMLDivElement>(null);
@@ -93,11 +107,13 @@ export default function AggregatePage() {
   const fieldRef = useRef<AggregateField | null>(null);
   const requestRef = useRef(0);
 
-  // Restore persisted weights + mode once (client only).
+  // Restore persisted weights + multipliers + mode once (client only).
+  // Anything unreadable falls back to the shipped defaults above.
   useEffect(() => {
     const stored = loadStored();
     if (stored) {
-      setWeights(stored.weights);
+      setWeights({ ...DEFAULT_WEIGHTS, ...stored.weights });
+      setMultipliers({ ...DEFAULT_CATEGORY_MULTIPLIERS, ...stored.multipliers });
       setMode(stored.mode);
     }
   }, []);
@@ -105,11 +121,14 @@ export default function AggregatePage() {
   // Persist on every change (cheap: one small JSON blob).
   useEffect(() => {
     try {
-      window.localStorage.setItem(STORE_KEY, JSON.stringify({ weights, mode }));
+      window.localStorage.setItem(
+        STORE_KEY,
+        JSON.stringify({ weights, multipliers, mode }),
+      );
     } catch {
       // Private mode etc: persistence is a nicety, never a blocker.
     }
-  }, [weights, mode]);
+  }, [weights, multipliers, mode]);
 
   // Fetch every layer's points for the settled view. Pins layers are
   // markers-only by decision (no scored field) and are skipped before
@@ -188,12 +207,21 @@ export default function AggregatePage() {
       );
       inputs.push({
         raster: standardFromScoredField(scored),
-        weight: weights[f.id] ?? 1,
+        weight: effectiveWeight(f.id, weights, multipliers),
       });
     }
     if (inputs.length === 0) return null;
     return combineStandardRasters(inputs, grid, mode);
-  }, [feeds, grid, weights, mode]);
+  }, [feeds, grid, weights, multipliers, mode]);
+
+  // Viewport-recalibrated gradient (#819): normalize to the visible
+  // extent so green = best visible cell, red = worst visible cell.
+  // Derived from the field, which rebuilds per debounced view, so pan
+  // and zoom re-recalibrate with the 600 ms settled-view schedule.
+  const scale = useMemo(
+    () => (aggregate ? viewportScaleFor(aggregate) : null),
+    [aggregate],
+  );
 
   useEffect(() => {
     fieldRef.current = aggregate;
@@ -205,12 +233,12 @@ export default function AggregatePage() {
     }
     const b = aggregate.bbox;
     layer.setField(
-      aggregateToRgba(aggregate),
+      aggregateToRgba(aggregate, scale),
       aggregate.cols,
       aggregate.rows,
       [b.minlon, b.minlat, b.maxlon, b.maxlat],
     );
-  }, [aggregate]);
+  }, [aggregate, scale]);
 
   // Map shell: base map + one agreement overlay + hover readout +
   // settled-view reports (debounced, like ValueHeatMap's schedule).
@@ -251,11 +279,12 @@ export default function AggregatePage() {
         } catch {
           mapObj.addLayer(layer as unknown as maplibregl.CustomLayerInterface);
         }
-        // Paint the field computed before the map finished loading.
+        // Paint the field computed before the map finished loading
+        // (recalibrated like the live path: best visible = green).
         const f = fieldRef.current;
         if (f) {
           const b = f.bbox;
-          layer.setField(aggregateToRgba(f), f.cols, f.rows, [
+          layer.setField(aggregateToRgba(f, viewportScaleFor(f)), f.cols, f.rows, [
             b.minlon,
             b.minlat,
             b.maxlon,
@@ -308,8 +337,24 @@ export default function AggregatePage() {
     };
   }, []);
 
-  const weightFor = (id: LayerId): number => weights[id] ?? 1;
+  const weightFor = (id: LayerId): number => effectiveWeight(id, weights, multipliers);
+  const multiplierFor = (c: AggregateCategory): number =>
+    multipliers[c] ?? DEFAULT_CATEGORY_MULTIPLIERS[c] ?? 1;
   const activeCount = feeds.filter((f) => weightFor(f.id) > 0).length;
+  const resetAll = () => {
+    setWeights({ ...DEFAULT_WEIGHTS });
+    setMultipliers({ ...DEFAULT_CATEGORY_MULTIPLIERS });
+    setMode("average");
+  };
+  const feedsByCategory = useMemo(() => {
+    const groups = new Map<AggregateCategory, LayerFeed[]>();
+    for (const c of CATEGORIES) groups.set(c, []);
+    for (const f of feeds) groups.get(LAYER_CATEGORY[f.id])?.push(f);
+    return CATEGORIES.map((c) => ({
+      category: c,
+      feeds: (groups.get(c) ?? []).sort((a, b) => a.title.localeCompare(b.title, "et")),
+    })).filter((g) => g.feeds.length > 0);
+  }, [feeds]);
 
   return (
     <main style={{ padding: 16, maxWidth: 1100, margin: "0 auto" }}>
@@ -322,7 +367,9 @@ export default function AggregatePage() {
         = kihid nõustuvad, et hea,{" "}
         <strong style={{ color: "#dc2626" }}>punane</strong> = nõustuvad, et halb,{" "}
         <strong style={{ color: "#d97706" }}>oranž</strong> = vastukäiv (~50/50). Tühi ala =
-        andmed puuduvad (ei hinnata, ei peideta keskmise taha).
+        andmed puuduvad (ei hinnata, ei peideta keskmise taha). Skaala
+        kalibreerub nähtava ala järgi: roheline = parim nähtav koht,
+        punane = halvim nähtav koht.
       </p>
       <p aria-live="polite">
         {building || feeds.length === 0
@@ -360,44 +407,78 @@ export default function AggregatePage() {
           }}
         />
       </div>
-      <h2 style={{ marginTop: 24 }}>Kihi kaalud</h2>
+      <h2 style={{ marginTop: 24 }}>Kategooriate kordajad</h2>
       <p>
-        Lohista kaalu (0 = kiht välja arvatud). Muudatused rakenduvad kohe ja
-        salvestuvad sellesse brauserisse.{" "}
-        <button
-          type="button"
-          onClick={() => {
-            setWeights({});
-            setMode("average");
-          }}
-        >
-          Lähtesta
-        </button>
+        Iga kategooria võimendab oma kihte: tegelik kaal = kihi kaal ×
+        kategooria kordaja (0 = kategooria välja arvatud).
       </p>
       <ul style={{ columns: 2, listStyle: "none", padding: 0 }}>
-        {feeds.map((f) => (
-          <li key={f.id} style={{ breakInside: "avoid", margin: "4px 0" }}>
+        {CATEGORIES.map((c) => (
+          <li key={c} style={{ breakInside: "avoid", margin: "4px 0" }}>
             <label>
-              {f.title}{" "}
+              {CATEGORY_LABEL[c]}{" "}
               <input
                 type="range"
                 min={0}
-                max={2}
-                step={0.25}
-                value={weightFor(f.id)}
-                aria-label={`${f.title} kaal`}
+                max={WEIGHT_MAX}
+                step={WEIGHT_STEP}
+                value={multiplierFor(c)}
+                aria-label={`${CATEGORY_LABEL[c]} kordaja`}
                 onChange={(e) =>
-                  setWeights((prev) => ({
+                  setMultipliers((prev) => ({
                     ...prev,
-                    [f.id]: Number(e.target.value),
+                    [c]: Number(e.target.value),
                   }))
                 }
               />{" "}
-              ×{weightFor(f.id)}
+              ×{multiplierFor(c)}
             </label>
           </li>
         ))}
       </ul>
+      <h2 style={{ marginTop: 24 }}>Kihi kaalud</h2>
+      <p>
+        Lohista kaalu (0 = kiht välja arvatud). Tegelik kaal arvestab ka
+        kategooria kordajat. Muudatused rakenduvad kohe ja salvestuvad
+        sellesse brauserisse.{" "}
+        <button type="button" onClick={resetAll}>
+          Lähtesta
+        </button>
+      </p>
+      {feedsByCategory.map((g) => (
+        <div key={g.category}>
+          <h3>
+            {CATEGORY_LABEL[g.category]} (×{multiplierFor(g.category)})
+          </h3>
+          <ul style={{ columns: 2, listStyle: "none", padding: 0 }}>
+            {g.feeds.map((f) => {
+              const layerW = weights[f.id] ?? DEFAULT_WEIGHTS[f.id] ?? 1;
+              return (
+                <li key={f.id} style={{ breakInside: "avoid", margin: "4px 0" }}>
+                  <label>
+                    {f.title}{" "}
+                    <input
+                      type="range"
+                      min={0}
+                      max={WEIGHT_MAX}
+                      step={WEIGHT_STEP}
+                      value={layerW}
+                      aria-label={`${f.title} kaal`}
+                      onChange={(e) =>
+                        setWeights((prev) => ({
+                          ...prev,
+                          [f.id]: Number(e.target.value),
+                        }))
+                      }
+                    />{" "}
+                    ×{weightFor(f.id)}
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
       {excluded.length > 0 && (
         <details>
           <summary>Andmeteta kihid ({excluded.length}) — kaardil ei osale</summary>
