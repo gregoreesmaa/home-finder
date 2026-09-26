@@ -60,7 +60,22 @@ layers / registry edits (joint precedent).
 
 from typing import Dict, List, Optional, Tuple
 
+from walk_access import WALK_TAG, bands_for, walk_cutoff
+
 Score = Tuple[Optional[int], str]  # (score 0..100 | None, Estonian reason)
+
+# ---------------------------------------------------------------------------
+# 814-HOOK (#814): long-tail proximity legs score walk-routed metres on
+# the rescaled bands when the caller passes walk=True (routed metres),
+# else the legacy bird-flight bands (bit-identical). Callers measure the
+# distance (register harvest, not OSM POIs); this module only owns the
+# band tables. Legacy table POI_BANDS; NULL beyond POI_NULL_BEYOND_M.
+# ---------------------------------------------------------------------------
+
+#: Legacy bird-flight walk bands (metres); walk path rescales via bands_for.
+POI_BANDS = [(300, 85), (600, 70), (1000, 55)]
+#: NULL-beyond range, legacy haversine metres (walk: walk_cutoff).
+POI_NULL_BEYOND_M = 1000.0
 
 #: Licence gate (OPENED 2026-09-16, issue #612): the WFS
 #: GetCapabilities Abstract applies the Maa- ja Ruumiamet open
@@ -171,17 +186,23 @@ def agreement_audit(rows: List[dict]) -> List[dict]:
 # (2) Long-tail proximity dims (gated: NULL until licence clears).
 # ---------------------------------------------------------------------------
 
-def _score_dist(dist_m: Optional[float]) -> Optional[int]:
-    """Pure walk bands; None beyond 1000 m (NULL-beyond)."""
+def _score_dist(dist_m: Optional[float], walk: bool = False) -> Optional[int]:
+    """Pure walk bands; None beyond the NULL range (1000 m legacy,
+    walk_cutoff when walk).
+
+    814: walk=True scores routed metres on the rescaled bands;
+    walk=False is the legacy bird-flight table (bit-identical).
+    """
+    gate = walk_cutoff(POI_NULL_BEYOND_M) if walk else POI_NULL_BEYOND_M
     if dist_m is None or dist_m < 0:
         return None
-    if dist_m > 1000:
+    if dist_m > gate:
         return None
-    return _band(dist_m, [(300, 85), (600, 70), (1000, 55)])
+    return _band(dist_m, bands_for("walk" if walk else "haversine", POI_BANDS))
 
 
 def _poi_dim(poi_type: str, origin: Optional[Tuple[float, float]],
-             dist_m: Optional[float]) -> Score:
+             dist_m: Optional[float], walk: bool = False) -> Score:
     if poi_type in DEDICATED_SPLIT:
         return None, ("%s: eraldiregistri küsimus (%s võidab) – "
                       "topeltarvestust pole" % (poi_type,
@@ -190,31 +211,46 @@ def _poi_dim(poi_type: str, origin: Optional[Tuple[float, float]],
         return None, ("%s: %s (%s)" % (poi_type, LICENCE_NOTE, VAHEKIHT))
     if not origin or dist_m is None:
         return None, ("%s info puudub" % poi_type)
-    s = _score_dist(dist_m)
+    s = _score_dist(dist_m, walk)
+    tag = WALK_TAG if walk else ""
     if s is None:
-        return None, ("%s 1000 m raadiuses registris puudub – "
-                      "kaardistus võib olla lünklik (%s)" % (poi_type, VAHEKIHT))
-    return s, ("%s %d m (%s, %s, %s)"
+        gate = int(round(walk_cutoff(POI_NULL_BEYOND_M))) if walk else 1000
+        return None, ("%s %d m raadiuses registris puudub – "
+                      "kaardistus võib olla lünklik (%s)%s"
+                      % (poi_type, gate, VAHEKIHT, tag))
+    return s, ("%s %d m (%s, %s, %s)%s"
                % (poi_type, int(round(dist_m)), VAHEKIHT, "register",
-                  LICENCE_NOTE))
+                  LICENCE_NOTE, tag))
 
 
 def dim_poi_library(origin: Optional[Tuple[float, float]],
-                    dist_m: Optional[float]) -> Score:
-    """Long-tail: raamatukogu proximity (no dedicated issue)."""
-    return _poi_dim("raamatukogu", origin, dist_m)
+                    dist_m: Optional[float], walk: bool = False) -> Score:
+    """Long-tail: raamatukogu proximity (no dedicated issue).
+
+    814: walk=True scores caller-routed walk metres on the rescaled
+    bands; default is the legacy bird-flight table (bit-identical).
+    """
+    return _poi_dim("raamatukogu", origin, dist_m, walk)
 
 
 def dim_poi_post(origin: Optional[Tuple[float, float]],
-                 dist_m: Optional[float]) -> Score:
-    """Long-tail: post proximity (no dedicated issue)."""
-    return _poi_dim("post", origin, dist_m)
+                 dist_m: Optional[float], walk: bool = False) -> Score:
+    """Long-tail: post proximity (no dedicated issue).
+
+    814: walk=True scores caller-routed walk metres on the rescaled
+    bands; default is the legacy bird-flight table (bit-identical).
+    """
+    return _poi_dim("post", origin, dist_m, walk)
 
 
 def dim_poi_pharmacy(origin: Optional[Tuple[float, float]],
-                     dist_m: Optional[float]) -> Score:
-    """Long-tail: tervisekaubad (apteek-ish) proximity."""
-    return _poi_dim("tervisekaubad", origin, dist_m)
+                     dist_m: Optional[float], walk: bool = False) -> Score:
+    """Long-tail: tervisekaubad (apteek-ish) proximity.
+
+    814: walk=True scores caller-routed walk metres on the rescaled
+    bands; default is the legacy bird-flight table (bit-identical).
+    """
+    return _poi_dim("tervisekaubad", origin, dist_m, walk)
 
 
 #: Registry for the central weight-rebalance follow-up: (dims key, param id).

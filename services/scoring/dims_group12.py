@@ -79,7 +79,21 @@ WEIGHTS edits would break every sibling.
 import math
 from typing import Dict, List, Optional, Tuple
 
+from walk_access import (
+    WALK_TAG,
+    FootGraph,
+    walk_cutoff,
+    walk_dist_m,
+)
+
 Score = Tuple[Optional[int], str]  # (score 0..100 | None, Estonian reason)
+
+# ---------------------------------------------------------------------------
+# 814-HOOK (#814): the commute walk leg routes the foot graph when a
+# graph is injected, else the legacy bird-flight path (bit-identical).
+# MINUTES_BANDS score MINUTES, so no band rescaling applies — routed
+# metres simply feed truer walk minutes into the same table.
+# ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
 # Local pure helpers (livability-shaped; see module docstring for why local).
@@ -184,25 +198,69 @@ def stop_pois_from_counts(coords: Dict[str, Tuple[float, float]],
     return pois
 
 
+def _stop_deps(p: dict) -> Optional[int]:
+    """Sanitised departure count for a stop_wday POI (pure)."""
+    deps = p.get("deps")
+    if isinstance(deps, bool):
+        return None
+    if deps is not None:
+        try:
+            deps = int(deps)
+        except (TypeError, ValueError):
+            return None
+    return deps
+
+
 def _nearest_stop(origin: Tuple[float, float],
-                  pois: List[dict]) -> Optional[Tuple[float, Optional[int]]]:
-    """(distance_m, deps) of the nearest stop_wday, else None. Pure."""
-    best = None
+                  pois: List[dict],
+                  graph: Optional[FootGraph] = None,
+                  ) -> Optional[Tuple[float, Optional[int], str]]:
+    """(distance_m, deps, method) of the nearest stop_wday, else None.
+
+    814: with a graph the stop is selected by routed walk metres
+    (STOP_WINDOW_M bounds routing work; the walk gate is
+    walk_cutoff(STOP_WINDOW_M)); without, the legacy haversine
+    selection (bit-identical). Pure.
+    """
+    if graph is None:
+        best = None
+        for p in pois:
+            if p.get("kind") != "stop_wday" or p.get("lat") is None:
+                continue
+            d = _haversine_m(origin, p["lat"], p["lon"])
+            deps = _stop_deps(p)
+            if best is None or d < best[0]:
+                best = (d, deps)
+        if best is None:
+            return None
+        return best[0], best[1], "haversine"
+    cands: List[Tuple[float, dict]] = []  # (hav_m, poi)
     for p in pois:
-        if p.get("kind") != "stop_wday" or p.get("lat") is None:
+        if not isinstance(p, dict) or p.get("kind") != "stop_wday":
             continue
-        d = _haversine_m(origin, p["lat"], p["lon"])
-        deps = p.get("deps")
-        if isinstance(deps, bool):
-            deps = None
-        if deps is not None:
-            try:
-                deps = int(deps)
-            except (TypeError, ValueError):
-                deps = None
-        if best is None or d < best[0]:
-            best = (d, deps)
-    return best
+        lat, lon = p.get("lat"), p.get("lon")
+        if isinstance(lat, bool) or isinstance(lon, bool):
+            continue
+        try:
+            latf, lonf = float(lat), float(lon)
+        except (TypeError, ValueError):
+            continue
+        if not (math.isfinite(latf) and math.isfinite(lonf)):
+            continue
+        cands.append((_haversine_m(origin, latf, lonf), p))
+    if not cands:
+        return None
+    cands.sort(key=lambda c: c[0])
+    cutoff = walk_cutoff(STOP_WINDOW_M)
+    for d, p in cands:
+        if d > STOP_WINDOW_M:
+            break
+        r = walk_dist_m(graph, origin, float(p["lat"]), float(p["lon"]),
+                        cutoff)
+        if r is not None:
+            return r, _stop_deps(p), "walk"
+    d, p = cands[0]
+    return d, _stop_deps(p), "haversine"
 
 
 def estimate_minutes(dist_m: float, deps: Optional[int]) -> Tuple[float, float, float]:
@@ -222,31 +280,39 @@ def estimate_minutes(dist_m: float, deps: Optional[int]) -> Tuple[float, float, 
 # ---------------------------------------------------------------------------
 
 def dim_commute(origin: Optional[Tuple[float, float]],
-                pois: Optional[List[dict]]) -> Score:
+                pois: Optional[List[dict]],
+                graph: Optional[FootGraph] = None) -> Score:
     """p11: estimated one-way commute minutes -> 0..100 (high = short).
 
     Unknown (None) when inputs are missing OR no stop lies within
     STOP_WINDOW_M — a stop-less listing has no GTFS commute to score, and
     scoring it 0 would present missing service as a measured bad commute.
+
+    814: the walk leg is routed foot-graph metres when graph is given
+    (measured walk + estimated wait/ride); else the legacy bird-flight
+    estimate (bit-identical).
     """
     if not origin or pois is None:
         return None, "Sõiduaja info puudub"
-    hit = _nearest_stop(origin, pois)
-    if hit is None or hit[0] > STOP_WINDOW_M:
+    hit = _nearest_stop(origin, pois, graph)
+    gate = walk_cutoff(STOP_WINDOW_M)
+    if hit is None or (hit[2] == "walk" and hit[0] > gate) or (
+            hit[2] != "walk" and hit[0] > STOP_WINDOW_M):
         return None, ("Peatus kaugemal kui 1,5 km – sõiduaja hinnangut pole "
                       "(GTFS-ühendus puudub, mitte mõõdetud halb ühendus)")
-    dist_m, deps = hit
+    dist_m, deps, method = hit
     walk, wait, total = estimate_minutes(dist_m, deps)
     s = _band(total, MINUTES_BANDS)
     assert s is not None
+    tag = WALK_TAG if method == "walk" else ""
     if deps is None or deps <= 0:
         return s, ("Töölesõit (hinnang, sõiduplaanita peatus ~%d väljumist/päev): "
-                   "peatus %s + ooteaeg ~%d min + sõit ~%d min → kokku ~%d min"
-                   % (DFLT_DEPS, _fmt_m(dist_m), int(round(wait)),
+                   "peatus %s%s + ooteaeg ~%d min + sõit ~%d min → kokku ~%d min"
+                   % (DFLT_DEPS, _fmt_m(dist_m), tag, int(round(wait)),
                       int(RIDE_MIN), int(round(total))))
-    return s, ("Töölesõit (hinnang): peatus %s, %d väljumist/kolmapäev, "
+    return s, ("Töölesõit (hinnang): peatus %s%s, %d väljumist/kolmapäev, "
                "ooteaeg ~%d min + sõit ~%d min → kokku ~%d min"
-               % (_fmt_m(dist_m), deps, int(round(wait)), int(RIDE_MIN),
+               % (_fmt_m(dist_m), tag, deps, int(round(wait)), int(RIDE_MIN),
                   int(round(total))))
 
 
@@ -257,9 +323,13 @@ GROUP12_DIMS = (
 
 
 def score_group12(origin: Optional[Tuple[float, float]],
-                  pois: Optional[List[dict]]) -> Dict[str, Optional[int]]:
-    """Group 12 dims for one listing (entry point for the follow-up)."""
-    return {key: fn(origin, pois)[0] for key, _, fn in GROUP12_DIMS}
+                  pois: Optional[List[dict]],
+                  graph: Optional[FootGraph] = None) -> Dict[str, Optional[int]]:
+    """Group 12 dims for one listing (entry point for the follow-up).
+
+    814: graph routes the commute walk leg; None keeps legacy.
+    """
+    return {key: fn(origin, pois, graph)[0] for key, _, fn in GROUP12_DIMS}
 
 
 #: Honest Estonian web labels for the follow-up layers batch. The title says

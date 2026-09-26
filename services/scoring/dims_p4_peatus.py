@@ -85,6 +85,15 @@ import urllib.request
 import zipfile
 from typing import Dict, List, Optional, Tuple
 
+from walk_access import (
+    ROUTE_CANDIDATES,
+    WALK_TAG,
+    FootGraph,
+    bands_for,
+    walk_cutoff,
+    walk_dist_m,
+)
+
 Score = Tuple[Optional[int], str]  # (score 0..100 | None, Estonian reason)
 
 # ---------------------------------------------------------------------------
@@ -303,10 +312,10 @@ def _count(poi: dict, key: str) -> Optional[int]:
     return n if n >= 0 else None
 
 
-def _nearest(origin: Tuple[float, float],
-             pois: List[dict]) -> Optional[Tuple[float, dict]]:
-    """(distance_m, poi) of the nearest well-formed stop_p4, else None. Pure."""
-    best = None
+def _valid_stops(origin: Tuple[float, float],
+                 pois: List[dict]) -> List[Tuple[float, dict]]:
+    """Well-formed stop_p4 POIs as (haversine_m, poi), nearest first."""
+    cands: List[Tuple[float, dict]] = []
     for p in pois:
         if not isinstance(p, dict) or p.get("kind") != "stop_p4":
             continue
@@ -319,10 +328,50 @@ def _nearest(origin: Tuple[float, float],
             continue
         if not (math.isfinite(lat) and math.isfinite(lon)):
             continue
-        d = _haversine_m(origin, lat, lon)
-        if best is None or d < best[0]:
-            best = (d, p)
-    return best
+        cands.append((_haversine_m(origin, lat, lon), p))
+    cands.sort(key=lambda c: c[0])
+    return cands
+
+
+def _nearest(origin: Tuple[float, float],
+             pois: List[dict],
+             window_m: float,
+             graph: Optional[FootGraph] = None,
+             ) -> Optional[Tuple[float, dict, str]]:
+    """(distance_m, poi, method) of the nearest stop, else None. Pure.
+
+    814: with a graph the stop is selected by routed walk metres
+    (candidates within window_m, capped, walk cutoff
+    walk_cutoff(window_m)); without, the legacy global haversine
+    minimum (bit-identical). An unroutable graph falls back to the
+    legacy selection ("haversine").
+    """
+    cands = _valid_stops(origin, pois)
+    if not cands:
+        return None
+    if graph is None:
+        return cands[0][0], cands[0][1], "haversine"
+    cutoff = walk_cutoff(window_m)
+    routed = 0
+    for d, p in cands:
+        if d > window_m or routed >= ROUTE_CANDIDATES:
+            break
+        r = walk_dist_m(graph, origin, float(p["lat"]), float(p["lon"]),
+                        cutoff)
+        routed += 1
+        if r is not None:
+            return r, p, "walk"
+    return cands[0][0], cands[0][1], "haversine"
+
+
+def _walked(reason: str, method: str) -> str:
+    """Append the walk marker on the routed path, else the reason as-is."""
+    return reason + (WALK_TAG if method == "walk" else "")
+
+
+def _gate(window_m: float, method: str) -> float:
+    """Window gate for a lookup method (walk cutoff vs legacy window)."""
+    return walk_cutoff(window_m) if method == "walk" else window_m
 
 
 # ---------------------------------------------------------------------------
@@ -356,44 +405,56 @@ WALK_BANDS = [(300, 100), (600, 85), (900, 70), (1125, 55)]
 # ---------------------------------------------------------------------------
 
 def dim_bus_cut(origin: Optional[Tuple[float, float]],
-                pois: Optional[List[dict]]) -> Score:
+                pois: Optional[List[dict]],
+                graph: Optional[FootGraph] = None) -> Score:
     """P4-061: bus-cut band from the GTFS prev-vs-cur diff (high = stable).
 
     Per-listing Tallinn-fringe reading of the settlement checklist: the
     nearest stop's Wednesday departures this vintage vs the previous one.
     Single-vintage (no prev) stays NULL — a cut cannot be measured from
     one timetable. Unknown when inputs are missing or no stop is near.
+
+    814: stop selection routes the foot graph when graph is given
+    (departure counts still score); else legacy (bit-identical).
     """
     if not origin or pois is None:
         return None, ("Bussikärpe info puudub (EI OLE GTFS-vintsi "
                       "hetktõmmises: allikas peatus.ee on suletud, "
                       "võrdlusvintsi pole)")
-    hit = _nearest(origin, pois)
-    if hit is None or hit[0] > STOP_WINDOW_M:
+    hit = _nearest(origin, pois, STOP_WINDOW_M, graph)
+    if hit is None or hit[0] > _gate(STOP_WINDOW_M, hit[2]):
         return None, ("Lähim peatus kaugemal kui 1,5 km — kärpehinnangut "
                       "pole (EI OLE GTFS-ühendust, mitte mõõdetud kärbe)")
-    dist_m, poi = hit
+    dist_m, poi, method = hit
     cur = _count(poi, "deps_cur")
     prev = _count(poi, "deps_prev")
     if cur is None or prev is None:
         missing = "jooksev" if cur is None else "eelmine"
-        return None, ("Peatus %s, aga %s GTFS-vints puudub — kärbet ei saa "
-                      "ühe sõiduplaani pealt mõõta (EI OLE võrdlusvintsi)"
-                      % (_fmt_m(dist_m), missing))
+        return None, _walked(
+            ("Peatus %s, aga %s GTFS-vints puudub — kärbet ei saa "
+             "ühe sõiduplaani pealt mõõta (EI OLE võrdlusvintsi)"
+             % (_fmt_m(dist_m), missing)),
+            method)
     if prev <= 0:
         if cur > 0:
-            return 90, ("Bussiteenus (hinnang): peatus %s, eelmises vintsis "
-                        "väljumisi polnud, nüüd %d väljumist/kolmapäev — "
-                        "uus teenus" % (_fmt_m(dist_m), cur))
-        return 20, ("Bussiteenus (hinnang): peatus %s, mõlemas vintsis "
-                    "väljumisi pole — püsiv teenusepuudus, mitte andmelünk"
-                    % _fmt_m(dist_m))
+            return 90, _walked(
+                ("Bussiteenus (hinnang): peatus %s, eelmises vintsis "
+                 "väljumisi polnud, nüüd %d väljumist/kolmapäev — "
+                 "uus teenus" % (_fmt_m(dist_m), cur)),
+                method)
+        return 20, _walked(
+            ("Bussiteenus (hinnang): peatus %s, mõlemas vintsis "
+             "väljumisi pole — püsiv teenusepuudus, mitte andmelünk"
+             % _fmt_m(dist_m)),
+            method)
     cut = (cur - prev) / prev
     s = _band(cut, CUT_BANDS)
     assert s is not None
-    return s, ("Bussikärbe (hinnang): peatus %s, eelmine vints %d vs nüüd "
-               "%d väljumist/kolmapäev (%+.0f%%) → skoor %d"
-               % (_fmt_m(dist_m), prev, cur, 100 * cut, s))
+    return s, _walked(
+        ("Bussikärbe (hinnang): peatus %s, eelmine vints %d vs nüüd "
+         "%d väljumist/kolmapäev (%+.0f%%) → skoor %d"
+         % (_fmt_m(dist_m), prev, cur, 100 * cut, s)),
+        method)
 
 
 # ---------------------------------------------------------------------------
@@ -401,33 +462,41 @@ def dim_bus_cut(origin: Optional[Tuple[float, float]],
 # ---------------------------------------------------------------------------
 
 def dim_policy_exposure(origin: Optional[Tuple[float, float]],
-                       pois: Optional[List[dict]]) -> Score:
+                       pois: Optional[List[dict]],
+                       graph: Optional[FootGraph] = None) -> Score:
     """P4-037: commute-alternative offset (high = strong alternative).
 
     Only the GTFS half of the param: frequent service nearby offsets
     automaks/car-free exposure. Car-dependence itself is not in the
     snapshot, so this is an offset band, never a full exposure verdict.
+
+    814: stop selection routes the foot graph when graph is given
+    (departure counts still score); else legacy (bit-identical).
     """
     if not origin or pois is None:
         return None, ("Alternatiivse ühenduse info puudub (EI OLE "
                       "GTFS-ühendust hetktõmmises: allikas peatus.ee "
                       "on suletud)")
-    hit = _nearest(origin, pois)
-    if hit is None or hit[0] > ALT_WINDOW_M:
+    hit = _nearest(origin, pois, ALT_WINDOW_M, graph)
+    if hit is None or hit[0] > _gate(ALT_WINDOW_M, hit[2]):
         return None, ("Lähim peatus kaugemal kui 750 m — alternatiivi "
                       "hinnangut pole (EI OLE ühendust, mitte mõõdetud "
                       "sõltuvus autost)")
-    dist_m, poi = hit
+    dist_m, poi, method = hit
     deps = _count(poi, "deps_wed")
     if deps is None:
-        return None, ("Peatus %s, aga kolmapäeva väljumistabel puudub — "
-                      "alternatiivi ei saa lugeda (EI OLE GTFS-liidestust)"
-                      % _fmt_m(dist_m))
+        return None, _walked(
+            ("Peatus %s, aga kolmapäeva väljumistabel puudub — "
+             "alternatiivi ei saa lugeda (EI OLE GTFS-liidestust)"
+             % _fmt_m(dist_m)),
+            method)
     s = _band(deps, EXPOSURE_BANDS)
     assert s is not None
-    return s, ("Automaksu-riskikaitse (hinnang, ainult ühistranspordi pool): "
-               "peatus %s, %d väljumist/kolmapäev → skoor %d"
-               % (_fmt_m(dist_m), deps, s))
+    return s, _walked(
+        ("Automaksu-riskikaitse (hinnang, ainult ühistranspordi pool): "
+         "peatus %s, %d väljumist/kolmapäev → skoor %d"
+         % (_fmt_m(dist_m), deps, s)),
+        method)
 
 
 # ---------------------------------------------------------------------------
@@ -435,30 +504,38 @@ def dim_policy_exposure(origin: Optional[Tuple[float, float]],
 # ---------------------------------------------------------------------------
 
 def dim_third_places(origin: Optional[Tuple[float, float]],
-                    pois: Optional[List[dict]]) -> Score:
+                    pois: Optional[List[dict]],
+                    graph: Optional[FootGraph] = None) -> Score:
     """P4-045: evening access to third places (high = evening service).
 
     Only the GTFS half of the param: Wednesday departures after 18:00 at
     the nearest stop. Sauna/pub/library hours and keeper tenure are not
     in the snapshot, so this is an access band, never a belonging verdict.
+
+    814: stop selection routes the foot graph when graph is given
+    (departure counts still score); else legacy (bit-identical).
     """
     if not origin or pois is None:
         return None, ("Õhtuse ühenduse info puudub (EI OLE GTFS-õhtutabelit "
                       "hetktõmmises: allikas peatus.ee on suletud)")
-    hit = _nearest(origin, pois)
-    if hit is None or hit[0] > ALT_WINDOW_M:
+    hit = _nearest(origin, pois, ALT_WINDOW_M, graph)
+    if hit is None or hit[0] > _gate(ALT_WINDOW_M, hit[2]):
         return None, ("Lähim peatus kaugemal kui 750 m — õhtuse juurdepääsu "
                       "hinnangut pole (EI OLE ühendust)")
-    dist_m, poi = hit
+    dist_m, poi, method = hit
     eve = _count(poi, "deps_eve")
     if eve is None:
-        return None, ("Peatus %s, aga õhtune väljumistabel (pärast 18:00) "
-                      "puudub — õhtust juurdepääsu ei saa lugeda (EI OLE "
-                      "GTFS-õhtuakent)" % _fmt_m(dist_m))
+        return None, _walked(
+            ("Peatus %s, aga õhtune väljumistabel (pärast 18:00) "
+             "puudub — õhtust juurdepääsu ei saa lugeda (EI OLE "
+             "GTFS-õhtuakent)" % _fmt_m(dist_m)),
+            method)
     s = _band(eve, EVENING_BANDS)
     assert s is not None
-    return s, ("Õhtune juurdepääs (hinnang): peatus %s, %d väljumist pärast "
-               "18:00/kolmapäev → skoor %d" % (_fmt_m(dist_m), eve, s))
+    return s, _walked(
+        ("Õhtune juurdepääs (hinnang): peatus %s, %d väljumist pärast "
+         "18:00/kolmapäev → skoor %d" % (_fmt_m(dist_m), eve, s)),
+        method)
 
 
 # ---------------------------------------------------------------------------
@@ -466,26 +543,35 @@ def dim_third_places(origin: Optional[Tuple[float, float]],
 # ---------------------------------------------------------------------------
 
 def dim_delights_access(origin: Optional[Tuple[float, float]],
-                       pois: Optional[List[dict]]) -> Score:
+                       pois: Optional[List[dict]],
+                       graph: Optional[FootGraph] = None) -> Score:
     """P4-048: <15 min walk access (high = closer stop).
 
     Distance-only by design: <15 min access is a walk fact, so a mapped
     stop scores even before the GTFS frequency join lands. Bench/forest/
     swim/gym delight positions and allotment queues are not in the
     snapshot — this is the transit-access leg only, never the joy verdict.
+
+    814: routed foot-graph metres on the rescaled bands when graph is
+    given (measured walk minutes); else the legacy bird-flight path
+    (bit-identical).
     """
     if not origin or pois is None:
         return None, ("Juurdepääsu info puudub (EI OLE peatuse kaardistust "
                       "hetktõmmises)")
-    hit = _nearest(origin, pois)
-    if hit is None or hit[0] > WALK15_M:
+    hit = _nearest(origin, pois, WALK15_M, graph)
+    if hit is None or hit[0] > _gate(WALK15_M, hit[2]):
         return None, ("Lähim peatus kaugemal kui 15 min jalgsi — "
                       "juurdepääsu hinnangut pole (EI OLE ühendust 15 min "
                       "aknas, mitte mõõdetud rõõmupuudus)")
-    dist_m, _ = hit
+    dist_m, _, method = hit
     walk_min = dist_m / WALK_M_PER_MIN
-    s = _band(dist_m, WALK_BANDS)
+    s = _band(dist_m, bands_for(method, WALK_BANDS))
     assert s is not None
+    if method == "walk":
+        return s, ("Rõõmude juurdepääs (jalgsikäik, marsruut): "
+                   "peatus %s ≈ %d min jalgsi → skoor %d"
+                   % (_fmt_m(dist_m), int(round(walk_min)), s))
     return s, ("Rõõmude juurdepääs (hinnang, linnulennult, marsruutimata): "
                "peatus %s ≈ %d min jalgsi → skoor %d"
                % (_fmt_m(dist_m), int(round(walk_min)), s))
@@ -496,32 +582,40 @@ def dim_delights_access(origin: Optional[Tuple[float, float]],
 # ---------------------------------------------------------------------------
 
 def dim_guest_arrival(origin: Optional[Tuple[float, float]],
-                     pois: Optional[List[dict]]) -> Score:
+                     pois: Optional[List[dict]],
+                     graph: Optional[FootGraph] = None) -> Score:
     """P4-049: Saturday guest-arrival access (high = Saturday service).
 
     Only the GTFS half of the param: Saturday departures at the nearest
     stop. Findability, name pronounceability, guest parking and entrance
     tidiness are not in the snapshot — access band only, never the pride
     verdict.
+
+    814: stop selection routes the foot graph when graph is given
+    (departure counts still score); else legacy (bit-identical).
     """
     if not origin or pois is None:
         return None, ("Külaliste saabumise info puudub (EI OLE "
                       "GTFS-laupäevatabelit hetktõmmises: allikas "
                       "peatus.ee on suletud)")
-    hit = _nearest(origin, pois)
-    if hit is None or hit[0] > ALT_WINDOW_M:
+    hit = _nearest(origin, pois, ALT_WINDOW_M, graph)
+    if hit is None or hit[0] > _gate(ALT_WINDOW_M, hit[2]):
         return None, ("Lähim peatus kaugemal kui 750 m — laupäevase "
                       "saabumise hinnangut pole (EI OLE ühendust)")
-    dist_m, poi = hit
+    dist_m, poi, method = hit
     sat = _count(poi, "deps_sat")
     if sat is None:
-        return None, ("Peatus %s, aga laupäeva väljumistabel puudub — "
-                      "külaliste saabumist ei saa lugeda (EI OLE "
-                      "GTFS-laupäevaakent)" % _fmt_m(dist_m))
+        return None, _walked(
+            ("Peatus %s, aga laupäeva väljumistabel puudub — "
+             "külaliste saabumist ei saa lugeda (EI OLE "
+             "GTFS-laupäevaakent)" % _fmt_m(dist_m)),
+            method)
     s = _band(sat, SAT_BANDS)
     assert s is not None
-    return s, ("Külaliste saabumine laupäeval (hinnang): peatus %s, %d "
-               "väljumist/laupäev → skoor %d" % (_fmt_m(dist_m), sat, s))
+    return s, _walked(
+        ("Külaliste saabumine laupäeval (hinnang): peatus %s, %d "
+         "väljumist/laupäev → skoor %d" % (_fmt_m(dist_m), sat, s)),
+        method)
 
 
 #: Registry for the central weight-rebalance follow-up: (dims key, param id).
@@ -535,6 +629,11 @@ P4_PEATUS_DIMS = (
 
 
 def score_p4_peatus(origin: Optional[Tuple[float, float]],
-                    pois: Optional[List[dict]]) -> Dict[str, Optional[int]]:
-    """P4 peatus dims for one listing (entry point for the follow-up)."""
-    return {key: fn(origin, pois)[0] for key, _, fn in P4_PEATUS_DIMS}
+                    pois: Optional[List[dict]],
+                    graph: Optional[FootGraph] = None) -> Dict[str, Optional[int]]:
+    """P4 peatus dims for one listing (entry point for the follow-up).
+
+    814: graph routes stop selection and the delights walk leg; None
+    keeps legacy.
+    """
+    return {key: fn(origin, pois, graph)[0] for key, _, fn in P4_PEATUS_DIMS}

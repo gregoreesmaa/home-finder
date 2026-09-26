@@ -93,7 +93,67 @@ import math
 import xml.etree.ElementTree as ET
 from typing import Dict, List, Optional, Tuple
 
+from walk_access import (
+    ROUTE_CANDIDATES,
+    FootGraph,
+    bands_for,
+    walk_cutoff,
+    walk_dist_m,
+)
+
 Score = Tuple[Optional[int], str]  # (score 0..100 | None, Estonian reason)
+
+#: NULL-beyond range in haversine km (walk equivalent: walk_cutoff).
+NULL_BEYOND_KM = 2.0
+
+# ---------------------------------------------------------------------------
+# 814-HOOK (#814): GP-proximity legs route the foot graph when a graph
+# is injected, else the legacy bird-flight path (bit-identical). Same
+# contract as dims_p4_sportreg._nearest_walk (local copy per repo
+# precedent).
+# ---------------------------------------------------------------------------
+
+
+def _nearest_walk(origin: Tuple[float, float],
+                  mine: List[dict],
+                  graph: Optional[FootGraph] = None,
+                  ) -> Tuple[Optional[dict], Optional[float], str]:
+    """(poi, km, method): routed walk km when graph routes, else legacy."""
+    if graph is None:
+        nearest, km = _nearest(origin, mine)
+        return nearest, km, "haversine"
+    cands: List[Tuple[float, dict]] = []
+    for p in mine:
+        try:
+            latf = float(p["lat"])
+            lonf = float(p["lon"])
+        except (TypeError, ValueError, KeyError):
+            continue
+        if isinstance(p.get("lat"), bool) or isinstance(p.get("lon"), bool):
+            continue
+        if not (math.isfinite(latf) and math.isfinite(lonf)):
+            continue
+        cands.append((haversine_km(origin, (latf, lonf)), p))
+    if not cands:
+        nearest, km = _nearest(origin, mine)
+        return nearest, km, "haversine"
+    cands.sort(key=lambda c: c[0])
+    cutoff_m = walk_cutoff(NULL_BEYOND_KM) * 1000.0
+    best: Optional[float] = None
+    best_poi: Optional[dict] = None
+    routed = 0
+    for hav_km, p in cands:
+        if hav_km > NULL_BEYOND_KM or routed >= ROUTE_CANDIDATES:
+            break
+        r = walk_dist_m(graph, origin, float(p["lat"]), float(p["lon"]),
+                        cutoff_m)
+        routed += 1
+        if r is not None and (best is None or r < best):
+            best, best_poi = r, p
+    if best is not None and best_poi is not None:
+        return best_poi, best / 1000.0, "walk"
+    nearest, km = _nearest(origin, mine)
+    return nearest, km, "haversine"
 
 #: Proximity bands: (radius_km, score). Beyond 2 km -> NULL (distance only).
 PROX_BANDS = ((0.5, 80), (1.0, 65), (2.0, 50))
@@ -246,8 +306,9 @@ def parse_companies_xml(text: str) -> Tuple[List[dict], dict]:
 # open/closed leg is a documented NULL (no bulk column exists).
 # ---------------------------------------------------------------------------
 
-def _band_score(km: float) -> Optional[int]:
-    for radius, pts in PROX_BANDS:
+def _band_score(km: float, method: str = "haversine") -> Optional[int]:
+    """PROX_BANDS score; walk path uses the rescaled table (bands_for)."""
+    for radius, pts in bands_for(method, list(PROX_BANDS)):
         if km <= radius:
             return pts
     return None
@@ -255,7 +316,8 @@ def _band_score(km: float) -> Optional[int]:
 
 def _slice_dim(kind: str, label: str, check: str,
                origin: Optional[Tuple[float, float]],
-               pois: Optional[List[dict]]) -> Score:
+               pois: Optional[List[dict]],
+               graph: Optional[FootGraph] = None) -> Score:
     mine = _pois_of(pois, kind)
     if not origin:
         return None, ("%s teadmata (EI OLE hinnangut): aadress puudub — "
@@ -268,9 +330,21 @@ def _slice_dim(kind: str, label: str, check: str,
                       "valjas) — %s; kaugemal kui 2 km pole samuti hinnet, "
                       "ainult kaugus (lähedus ei ole kvaliteet, ära feigi)"
                       % (label, label.lower(), check))
-    nearest, km = _nearest(origin, mine)
+    nearest, km, method = _nearest_walk(origin, mine, graph)
     assert nearest is not None and km is not None
-    score = _band_score(km)
+    score = _band_score(km, method)
+    if method == "walk":
+        if score is None:
+            return None, ("%s kaugemal kui %.1f km jalgsikäiku "
+                          "(EI OLE hinnet, ainult kaugus): lähim "
+                          "AKS-liidetud registri vastuvotukoht on %.1f km "
+                          "jalgsikäik (marsruut, hinnang) — %s"
+                          % (label, walk_cutoff(NULL_BEYOND_KM), km, check))
+        return score, ("%s: lähim AKS-liidetud registri vastuvotukoht %s "
+                       "on %.1f km jalgsikäik (marsruut, hinnang, mitte "
+                       "sõiduaeg) — kauguse, mitte kvaliteedi hinne; %s"
+                       % (label, nearest.get("address") or "teadmata",
+                          km, check))
     if score is None:
         return None, ("%s kaugemal kui 2 km (EI OLE hinnet, ainult kaugus): "
                       "lähim AKS-liidetud registri vastuvotukoht on %.1f km "
@@ -283,19 +357,29 @@ def _slice_dim(kind: str, label: str, check: str,
 
 
 def dim_gp_proximity(origin: Optional[Tuple[float, float]],
-                     pois: Optional[List[dict]]) -> Score:
-    """P4-011 GP slice: nearest nimistu vastuvotukoht (AKS-joined) bands."""
+                     pois: Optional[List[dict]],
+                     graph: Optional[FootGraph] = None) -> Score:
+    """P4-011 GP slice: nearest nimistu vastuvotukoht (AKS-joined) bands.
+
+    814: routed foot-graph km when graph is given, else legacy
+    (bit-identical).
+    """
     return _slice_dim(GP_KIND, "Lähim perearsti vastuvott",
                       "kontrolli nimistu avatust Tervisekassa otsingust",
-                      origin, pois)
+                      origin, pois, graph=graph)
 
 
 def dim_gp_clinic_proximity(origin: Optional[Tuple[float, float]],
-                            pois: Optional[List[dict]]) -> Score:
-    """P4-011 clinic slice: nearest Uldarstiabi tegevuskoht bands."""
+                            pois: Optional[List[dict]],
+                            graph: Optional[FootGraph] = None) -> Score:
+    """P4-011 clinic slice: nearest Uldarstiabi tegevuskoht bands.
+
+    814: routed foot-graph km when graph is given, else legacy
+    (bit-identical).
+    """
     return _slice_dim(GP_CLINIC_KIND, "Lähim üldarstiabi tegevuskoht",
                       "kontrolli vastuvotuaegu asutuse kodulehelt",
-                      origin, pois)
+                      origin, pois, graph=graph)
 
 
 def dim_gp_open_status(origin: Optional[Tuple[float, float]],
@@ -318,8 +402,19 @@ P4_MEDRE_DIMS = (
 
 
 def score_p4_medre(origin: Optional[Tuple[float, float]],
-                   pois: Optional[List[dict]]) -> Dict[str, Optional[int]]:
+                   pois: Optional[List[dict]],
+                   graph: Optional[FootGraph] = None) -> Dict[str, Optional[int]]:
     """All three P4 medre dims for one listing (entry point for the
     weight-rebalance follow-up; keys match P4_MEDRE_DIMS). The open-status
-    value is None by design — no bulk column exists, never a faked flag."""
-    return {key: fn(origin, pois)[0] for key, _, fn in P4_MEDRE_DIMS}
+    value is None by design — no bulk column exists, never a faked flag.
+
+    814: graph routes the GP-proximity legs; the open-status stub takes
+    no graph.
+    """
+    out: Dict[str, Optional[int]] = {}
+    for key, _, fn in P4_MEDRE_DIMS:
+        if key == "gp_open_status":
+            out[key] = fn(origin, pois)[0]
+        else:
+            out[key] = fn(origin, pois, graph)[0]
+    return out

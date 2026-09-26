@@ -12,11 +12,15 @@
 //   (server/snapshot.ts, shared via rasterDistanceLabel), the
 //   bonusSpecFor kernel kinds (bands/tileband/qbands/dbands/pins),
 //   and the polygon/tint/district predicates.
-// * Scorer side: services/scoring/dims_*.py + livability.py. Universal
-//   finding: every per-listing distance is bird-flight haversine
+// * Scorer side: services/scoring/dims_*.py + livability.py. Original
+//   finding: every per-listing distance was bird-flight haversine
 //   ("bird-flight at 75 m/min, never routed" — dims_p4_peatus.py;
 //   walk_min = haversine/75 in dims_group12.py; livability._nearest_m).
-//   No scorer leg routes on the foot graph.
+//   Issue #814 migrated the pedestrian-access legs: they now route the
+//   foot-graph sidecar (services/scoring/walk_access.py) when a graph
+//   is injected ("walk-graph" scorer column), on bands rescaled x1.3,
+//   with the labelled bird-flight path as fallback. Air/radio/polygon
+//   layers (ohuseire, mobile/drone, fiber with no leg) stand by design.
 //
 // verdict "change" is reserved for behavior this PR changes (the
 // G07-family relabel below); contested re-tunes are verdict
@@ -50,6 +54,11 @@ import { isPlanktprLayerId } from "../layers_planktpr";
 import { isOutageLayerId } from "../layers_p4_outage";
 import { GTFSSTOPS_LAYER_IDS } from "../layers_gtfsstops";
 import { BUSMESH_LAYER_IDS } from "../layers_busmesh";
+import { SPORT_LAYER_IDS } from "../layers_p4_sport";
+import { EHIS_LAYER_IDS } from "../layers_p4_ehis";
+import { MEDRE_LAYER_IDS } from "../layers_p4_medre";
+import { isOhuseireLayerId } from "../layers_p4_ohuseire";
+import { POI_LAYER_IDS } from "../layers_p4_poi";
 import { OSMDAILY_LAYER_IDS } from "../layers_osmdaily";
 import { B1_LAYER_IDS } from "../layers_batch1";
 import { BATCH5_LAYER_IDS } from "../layers_batch5";
@@ -71,6 +80,7 @@ export type AuditScorerDistance =
   | "haversine"
   | "haversine-bands"
   | "haversine-join"
+  | "walk-graph"
   | "polygon"
   | "district"
   | "attribute"
@@ -96,6 +106,21 @@ const WALK_SCORER_FOLLOW_UP =
   "Walk-graph scorer legs for pedestrian-access layers (map is walk-graph, " +
   "scorer is bird-flight minutes): contested re-tune, needs foot-graph " +
   "lookup at score time on both sides plus recalibration.";
+
+// 814-HOOK (#814): the pedestrian-access legs migrated here route the
+// foot-graph sidecar (services/scoring/walk_access.py: snap + Dijkstra
+// over snapshot osm/harju-foot-graph.json) when a graph is injected,
+// on bands rescaled by WALK_DETOUR (1.3); without a graph they keep the
+// labelled bird-flight path. The followUp above is DONE for these
+// rows; ohuseire/fiber keep their own verdicts below (air semantics /
+// no per-listing leg — documented why the measure stands).
+const walkRef = (legs: string): string =>
+  "services/scoring/walk_access.py (FootGraph + walk_bands recalibration) + " +
+  legs +
+  " (graph=None keeps the legacy bird-flight path; unroutable graphs fall back to it)";
+const WALK_MIGRATED =
+  " Scorer (#814): routes the foot-graph sidecar when injected, on " +
+  "bands rescaled x1.3 (WALK_DETOUR); labelled bird-flight fallback otherwise.";
 
 function defOf(id: LayerId): LayerDef {
   const def = LAYERS.find((l) => l.id === id);
@@ -187,6 +212,10 @@ const COUNT: ReadonlySet<string> = new Set([
   "darkness",
 ]);
 const UTIL_WALK: ReadonlySet<string> = new Set(["fiber", "waste", "water"]);
+const SPORT = new Set<string>(SPORT_LAYER_IDS);
+const EHIS = new Set<string>(EHIS_LAYER_IDS);
+const MEDRE = new Set<string>(MEDRE_LAYER_IDS);
+const POI = new Set<string>(POI_LAYER_IDS);
 const NO_MASTER_FALLBACK = new Set<string>([...GTFSSTOPS_LAYER_IDS, ...BUSMESH_LAYER_IDS]);
 const OSMDAILY = new Set<string>(OSMDAILY_LAYER_IDS);
 // 807 families (issue #807: goodness scores for INERT/pins layers):
@@ -315,18 +344,56 @@ export function auditRowFor(layer: LayerId): AuditRow {
     );
   }
   if (kind === "dbands") {
+    // 814: ohuseire is district air-station coverage, not pedestrian
+    // access — walk-routing an air inlet would be fake precision, so it
+    // stands on bird-flight by design (qbands precedent: distance only
+    // selects which point speaks).
+    if (isOhuseireLayerId(layer)) {
+      return row(
+        layer,
+        "hard-cutoff-join",
+        "haversine-bands",
+        "services/scoring/dims_p4_ohuseire.py dim_official_air " +
+          "(district-coverage count within 2 km, no routing)",
+        "reasonable",
+        "Green = watched district (operating Keskkonnaagentuur air " +
+          "stations within 2 km): coverage counts, and air does not walk " +
+          "footpaths — Euclidean nearest is the honest metric, so the " +
+          "walk-graph scorer migration deliberately skips this layer.",
+      );
+    }
+    // 814 migrated families: sport/ehis/medre/poi register proximity.
+    // Any future dbands id outside these sets keeps the legacy row so
+    // review notices instead of silently joining the migration.
+    const legRef = SPORT.has(layer)
+      ? "services/scoring/dims_p4_sportreg.py (_slice_dim register proximity)"
+      : EHIS.has(layer)
+        ? "services/scoring/dims_p4_ehis_map.py (_slice_dim school proximity)"
+        : MEDRE.has(layer)
+          ? "services/scoring/dims_p4_medre.py (_slice_dim GP proximity)"
+          : POI.has(layer)
+            ? "services/scoring/dims_p4_poi.py (_score_dist long-tail proximity)"
+            : null;
+    if (legRef !== null) {
+      return row(
+        layer,
+        "hard-cutoff-join",
+        "walk-graph",
+        walkRef(legRef),
+        "reasonable",
+        "Green = venue/school/clinic/library/post/pharmacy within the " +
+          "distance bands (pedestrian access!)." +
+          WALK_MIGRATED,
+      );
+    }
     return row(
       layer,
       "hard-cutoff-join",
       "haversine-bands",
-      "services/scoring/dims_p4_sportreg.py PROX_BANDS + dims_p4_ehis_map.py + " +
-        "dims_p4_medre.py + dims_p4_poi.py + dims_p4_ohuseire.py (all haversine, byte parity)",
+      "services/scoring (bird-flight convention; walk migration unverified for this id)",
       "reasonable",
-      "Green = venue/school/clinic/library/post/pharmacy/station within " +
-        "the distance bands (access!). Bird-flight bands are the honest " +
-        "documented approximation on BOTH sides with byte parity — but " +
-        "these are pedestrian-access layers, so a walk-graph upgrade " +
-        "would be more physical.",
+      "Unclassified dbands id: review before trusting this row — add it " +
+        "to a #814 family above, not to this fallback.",
       WALK_SCORER_FOLLOW_UP,
     );
   }
@@ -575,63 +642,61 @@ export function auditRowFor(layer: LayerId): AuditRow {
     );
   }
   // True walk-graph raster families (foot-graph-stamped masters).
+  // 814: scorer legs migrated to the foot graph (walk-graph column).
   if (CORE_WALK.has(layer) || B1.has(layer) || B5.has(layer) || G11C.has(layer)) {
     return row(
       layer,
       "walk-raster",
-      "haversine",
-      "services/scoring/dims_group12.py (walk_min = haversine/75 + wait + ride) + " +
-        "dims_p4_peatus.py (bird-flight at 75 m/min, never routed) + " +
-        "livability._nearest_m haversine (dims_group11.py) + dims_group10b.py " +
-        "dim_emergency (haversine) + dims_group11c.py",
+      "walk-graph",
+      walkRef(
+        "services/scoring/dims_group12.py dim_commute (routed walk minutes) + " +
+          "dims_p4_peatus.py (routed stop selection + delights walk bands) + " +
+          "livability.py access legs + dims_group11.py/dims_group11b.py/dims_group11c.py + " +
+          "dims_group10b.py dim_emergency",
+      ),
       "reasonable",
       "Green = short walk to the amenity/safety feature (parks area, " +
         "transit frequency, school variety, network density, food, care, " +
         "pets/culture/nightlife, safety stations, schoolbus/worship): " +
         "pedestrian access, so the foot-graph map kernel is the honest " +
-        "metric. The scorer approximates with bird-flight minutes " +
-        "(documented, calibrated) — a walk-graph scorer is the " +
-        "contested re-tune.",
-      WALK_SCORER_FOLLOW_UP,
+        "metric." +
+        WALK_MIGRATED,
     );
   }
   if (G11D_AREA.has(layer)) {
     return row(
       layer,
       "walk-raster",
-      "haversine",
-      "services/scoring/dims_group11b.py (_haversine_m 500 m / 1500 m windows)",
+      "walk-graph",
+      walkRef("services/scoring/dims_group11b.py (mailbox/postal/alley legs)"),
       "reasonable",
       "Green = mailbox/postal/alley access nearby (pedestrian errands): " +
-        "foot-graph map kernel is honest; the scorer uses haversine " +
-        "windows (documented approximation).",
-      WALK_SCORER_FOLLOW_UP,
+        "foot-graph map kernel is honest." +
+        WALK_MIGRATED,
     );
   }
   if (G06B_AREA.has(layer)) {
     return row(
       layer,
       "walk-raster",
-      "haversine",
-      "services/scoring/dims_group06b.py (_count_within_m / _nearest haversine)",
+      "walk-graph",
+      walkRef("services/scoring/dims_group06b.py (plaster counts + antiques gate)"),
       "reasonable",
       "Green = plaster/antiques building stock nearby (heritage " +
-        "density hinnang): foot-graph count kernel on the map, " +
-        "haversine counts in the scorer (documented approximation).",
-      WALK_SCORER_FOLLOW_UP,
+        "density hinnang): foot-graph count kernel on the map." +
+        WALK_MIGRATED,
     );
   }
   if (layer === "heritage") {
     return row(
       layer,
       "walk-raster",
-      "haversine",
-      "services/scoring/dims_group06.py (haversine counts)",
+      "walk-graph",
+      walkRef("services/scoring/dims_group06.py (heritage-density counts)"),
       "reasonable",
       "Green = mapped heritage objects nearby (proximity hinnang, never " +
-        "a conservation decision): foot-graph density on the map, " +
-        "haversine in the scorer (documented approximation).",
-      WALK_SCORER_FOLLOW_UP,
+        "a conservation decision): foot-graph density on the map." +
+        WALK_MIGRATED,
     );
   }
   if (layer === "liftproxy") {
@@ -651,41 +716,56 @@ export function auditRowFor(layer: LayerId): AuditRow {
     return row(
       layer,
       "walk-raster",
-      "haversine",
-      "services/scoring/dims_group06b.py (haversine)",
+      "walk-graph",
+      walkRef("services/scoring/dims_group06b.py dim_woodfire (inverted walk bands)"),
       "reasonable",
       "Green = far from mapped wooden houses (fire-spread attention, " +
-        "inverted avoid): the scorer's bird-flight is arguably MORE " +
-        "physical (fire spreads through air, not footpaths) while the " +
-        "map walks — noted, no change: retuning the kernel shape is " +
-        "contested.",
-      WALK_SCORER_FOLLOW_UP,
+        "inverted avoid): the inverted shape is kept, only the " +
+        "measurement is now walked." +
+        WALK_MIGRATED,
     );
   }
   if (layer === "trailprivacy") {
     return row(
       layer,
       "walk-raster",
-      "haversine",
-      "services/scoring/dims_group11b.py dim_trail_privacy (haversine 500 m window)",
+      "walk-graph",
+      walkRef("services/scoring/dims_group11b.py dim_trail_privacy (inverted walk bands)"),
       "reasonable",
       "Green = private (far from dense paths): foot-graph quiet on the " +
-        "map, haversine window in the scorer (documented approximation).",
-      WALK_SCORER_FOLLOW_UP,
+        "map; the inverted shape is kept, only the measurement is now " +
+        "walked." +
+        WALK_MIGRATED,
+    );
+  }
+  // 814: fiber has NO per-listing scorer leg (nothing in
+  // services/scoring scores fixed-line access), so there is nothing to
+  // route — the honest column is none, not a borrowed haversine.
+  if (layer === "fiber") {
+    return row(
+      layer,
+      "walk-raster",
+      "none",
+      "n/a (no per-listing Python leg scores fiber access; " +
+        "dims_group10c.py dim_internet scores radio propagation, a " +
+        "different question that stays Euclidean by design)",
+      "reasonable",
+      "Green = fiber access nearby (utility access): the walk-raster " +
+        "map kernel is honest, but no per-listing leg measures " +
+        "fixed-line access — with no scorer leg there is nothing to " +
+        "route, so the walk migration skips this layer by design.",
     );
   }
   if (UTIL_WALK.has(layer)) {
     return row(
       layer,
       "walk-raster",
-      "haversine",
-      "services/scoring/dims_group10c.py dim_water/dim_waste " +
-        "(_nearest_m/_count_within_m haversine)",
+      "walk-graph",
+      walkRef("services/scoring/dims_group10c.py dim_water/dim_waste"),
       "reasonable",
-      "Green = water/waste/fiber access nearby (utility access): " +
-        "foot-graph map kernel is honest; the scorer uses haversine " +
-        "(documented approximation).",
-      WALK_SCORER_FOLLOW_UP,
+      "Green = water/waste access nearby (utility access): foot-graph " +
+        "map kernel is honest." +
+        WALK_MIGRATED,
     );
   }
   // Anything left must be a raster-labeled id: report its label so a
